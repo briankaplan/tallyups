@@ -4337,7 +4337,12 @@ def init_receipt_sources_table():
     """Initialize receipt_sources table for tracking where receipts are found"""
     import sqlite3
 
-    if not USE_SQLITE or not db:
+    # Only run for SQLite databases (MySQL handles its own schema)
+    if not USE_DATABASE or not db:
+        return
+
+    # Skip if using MySQL - it initializes its own schema
+    if not hasattr(db, 'db_path'):
         return
 
     conn = sqlite3.connect(db.db_path)
@@ -4372,7 +4377,11 @@ def record_receipt_source(merchant, source_type, source_detail=None):
     import sqlite3
     from datetime import datetime
 
-    if not USE_SQLITE or not db:
+    if not USE_DATABASE or not db:
+        return
+
+    # Skip if using MySQL
+    if not hasattr(db, 'db_path'):
         return
 
     # Normalize merchant name
@@ -4401,7 +4410,11 @@ def get_best_sources_for_merchant(merchant):
     """Get likely sources for a merchant based on history"""
     import sqlite3
 
-    if not USE_SQLITE or not db:
+    if not USE_DATABASE or not db:
+        return []
+
+    # Skip if using MySQL
+    if not hasattr(db, 'db_path'):
         return []
 
     from merchant_intelligence import normalize_merchant
