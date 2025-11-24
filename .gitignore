@@ -1,0 +1,147 @@
+# ReceiptAI Master System - .gitignore
+
+# ========================================
+# Python
+# ========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# ========================================
+# CSV Data & Backups (Personal Data)
+# ========================================
+# Main CSV (contains personal transactions)
+FINAL_MASTER_RECONCILED.csv
+
+# All CSV backups
+*.backup.*.csv
+FINAL_MASTER_RECONCILED.backup*.csv
+
+# Repaired/temp CSV files
+*.repaired.csv
+*.temp.csv
+
+# Other CSV data
+master_receipts.csv
+receipt_ai_metadata.csv
+
+# Backup directory
+backups/
+
+# ========================================
+# Receipts (Personal Documents)
+# ========================================
+receipts/
+receipts_trash/
+*.jpg
+*.jpeg
+*.png
+*.pdf
+*.webp
+
+# But keep sample/demo receipts if you add them
+!docs/sample_receipt.jpg
+
+# ========================================
+# Gmail Tokens (OAuth Credentials)
+# ========================================
+gmail_tokens/
+tokens_*.json
+*.token.json
+
+# ========================================
+# Environment & Secrets
+# ========================================
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+credentials.json
+client_secret*.json
+
+# ========================================
+# Logs
+# ========================================
+*.log
+logs/
+viewer_server.log
+viewer_startup.log
+viewer_updates.log
+receipt_finder.log
+
+# ========================================
+# macOS
+# ========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# ========================================
+# IDEs
+# ========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# ========================================
+# Testing
+# ========================================
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# ========================================
+# Archive (if you want to keep it local)
+# ========================================
+_archive/
+
+# ========================================
+# Temporary Files
+# ========================================
+*.tmp
+tmp/
+temp/
+
+# ========================================
+# Keep These Files (Whitelist)
+# ========================================
+# Documentation should be committed
+!*.md
+!README*.md
+
+# Scripts should be committed
+!*.py
+!*.sh
+
+# HTML/CSS/JS should be committed
+!*.html
+!*.css
+!*.js
+
+# Sample/example data (if you create it)
+!sample_data/
+
+# Configuration examples (not real credentials)
+!.env.example
+!config.example.json
