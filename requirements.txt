@@ -18,6 +18,10 @@ google-api-python-client>=2.111.0
 # Cloud storage (Cloudflare R2)
 boto3>=1.34.0
 
+# Database - MySQL
+pymysql>=1.1.0
+cryptography>=41.0.0
+
 # Utilities
 python-dotenv>=1.0.0
 requests>=2.31.0

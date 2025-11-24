@@ -40,18 +40,42 @@ except Exception as e:
     process_all_mi = None
 
 # === DATABASE ===
+USE_DATABASE = False
+db = None
+
+# Try MySQL first (best for Railway deployment)
 try:
-    from db_sqlite import get_db
-    db = get_db()
-    USE_SQLITE = db.use_sqlite
-    if USE_SQLITE:
-        print(f"✅ Using SQLite database: receipts.db")
+    from db_mysql import get_mysql_db
+    db = get_mysql_db()
+    if db.use_mysql:
+        USE_DATABASE = True
+        print(f"✅ Using MySQL database")
     else:
-        print(f"ℹ️  SQLite not available, using CSV mode")
+        db = None
 except Exception as e:
-    print(f"⚠️ Could not load SQLite: {e}")
-    USE_SQLITE = False
+    print(f"ℹ️  MySQL not available: {e}")
+
+# Fall back to SQLite if MySQL not available
+if not USE_DATABASE:
+    try:
+        from db_sqlite import get_db
+        db = get_db()
+        if db.use_sqlite:
+            USE_DATABASE = True
+            print(f"✅ Using SQLite database: receipts.db")
+        else:
+            db = None
+    except Exception as e:
+        print(f"⚠️ Could not load SQLite: {e}")
+
+# Final fallback to CSV mode
+if not USE_DATABASE:
+    print(f"ℹ️  No database available, using CSV mode")
+    USE_DATABASE = False
     db = None
+
+# Maintain backward compatibility with old variable name
+USE_SQLITE = USE_DATABASE
 
 # === AUDIT LOGGER ===
 try:
