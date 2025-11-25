@@ -5554,6 +5554,107 @@ def scan_incoming_receipts():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/admin/sync-receipt-urls", methods=["POST"])
+@login_required
+def sync_receipt_urls():
+    """
+    Sync receipt URLs from the bundled CSV file to MySQL.
+    This is needed because the initial SQLite→MySQL migration didn't include receipt_url.
+    """
+    import csv
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        # Try to load the bundled CSV file
+        csv_path = BASE_DIR / 'receipt_urls_export.csv'
+        if not csv_path.exists():
+            return jsonify({
+                'ok': False,
+                'error': f'receipt_urls_export.csv not found at {csv_path}'
+            }), 404
+
+        # Read the CSV file
+        url_mappings = []
+        with open(csv_path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get('receipt_url') and row.get('_index'):
+                    url_mappings.append({
+                        '_index': int(row['_index']),
+                        'receipt_url': row['receipt_url']
+                    })
+
+        print(f"📦 Loaded {len(url_mappings)} receipt URL mappings from CSV")
+
+        if len(url_mappings) == 0:
+            return jsonify({'ok': True, 'message': 'No URLs to sync', 'updated': 0})
+
+        # Update MySQL
+        if hasattr(db, 'use_mysql') and db.use_mysql:
+            conn = db.get_connection()
+            cursor = conn.cursor()
+
+            updated = 0
+            failed = 0
+
+            for mapping in url_mappings:
+                try:
+                    cursor.execute("""
+                        UPDATE transactions
+                        SET receipt_url = %s, r2_url = %s
+                        WHERE _index = %s
+                    """, (mapping['receipt_url'], mapping['receipt_url'], mapping['_index']))
+                    updated += 1
+                except Exception as e:
+                    failed += 1
+                    if failed <= 5:
+                        print(f"⚠️  Failed to update _index {mapping['_index']}: {e}")
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+
+            print(f"✅ Updated {updated} receipt URLs in MySQL (failed: {failed})")
+
+            return jsonify({
+                'ok': True,
+                'message': f'Updated {updated} receipt URLs',
+                'updated': updated,
+                'failed': failed
+            })
+        else:
+            # SQLite update
+            conn = sqlite3.connect(str(db.db_path))
+            cursor = conn.cursor()
+
+            updated = 0
+            for mapping in url_mappings:
+                try:
+                    cursor.execute("""
+                        UPDATE transactions
+                        SET receipt_url = ?
+                        WHERE _index = ?
+                    """, (mapping['receipt_url'], mapping['_index']))
+                    updated += 1
+                except Exception as e:
+                    print(f"⚠️  Failed to update _index {mapping['_index']}: {e}")
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                'ok': True,
+                'message': f'Updated {updated} receipt URLs',
+                'updated': updated
+            })
+
+    except Exception as e:
+        print(f"❌ Error syncing receipt URLs: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 # =============================================================================
 # MISSING RECEIPT FORM PDF GENERATION
 # =============================================================================
