@@ -2930,7 +2930,11 @@ function loadReceipt() {
   const wrap = document.getElementById('panzoom-wrap');
   const title = document.getElementById('viewer-title');
 
-  if (!selectedRow || !selectedRow['Receipt File']) {
+  // Check for R2 URL first (cloud storage), then local Receipt File
+  const r2Url = selectedRow ? (selectedRow['r2_url'] || selectedRow['R2 URL'] || selectedRow['receipt_url']) : null;
+  const receiptFile = selectedRow ? selectedRow['Receipt File'] : null;
+
+  if (!selectedRow || (!receiptFile && !r2Url)) {
     wrap.innerHTML = `
       <div class="no-receipt">
         <div class="no-receipt-icon">📄</div>
@@ -2941,7 +2945,7 @@ function loadReceipt() {
   }
 
   // Handle multiple receipt paths (comma-separated) - take first one
-  let receiptPath = selectedRow['Receipt File'].split(',')[0].trim();
+  let receiptPath = receiptFile ? receiptFile.split(',')[0].trim() : '';
 
   // Skip special values
   if (receiptPath === 'NO_RECEIPT_NEEDED' || receiptPath === 'NO_RECEIPT') {
@@ -2954,14 +2958,19 @@ function loadReceipt() {
     return;
   }
 
-  title.textContent = receiptPath.split('/').pop(); // Show just filename
+  // Set title from receipt path or R2 URL
+  if (receiptPath) {
+    title.textContent = receiptPath.split('/').pop();
+  } else if (r2Url) {
+    title.textContent = r2Url.split('/').pop();
+  }
+
   const img = document.createElement('img');
 
-  // Check for R2 URL first
-  const r2Url = selectedRow['r2_url'] || selectedRow['R2 URL'];
+  // Use R2 URL if available (cloud storage), otherwise use local path
   if (r2Url && r2Url.startsWith('http')) {
     img.src = r2Url;
-  } else {
+  } else if (receiptPath) {
     // Build proper local path - handle various path formats
     if (receiptPath.startsWith('receipts/')) {
       img.src = `/${receiptPath}`;
@@ -2970,6 +2979,15 @@ function loadReceipt() {
     } else {
       img.src = `/receipts/${receiptPath}`;
     }
+  } else {
+    // Fallback - no valid path
+    wrap.innerHTML = `
+      <div class="no-receipt">
+        <div class="no-receipt-icon">📄</div>
+        <div class="no-receipt-text">Receipt path not found</div>
+      </div>`;
+    title.textContent = 'Receipt Viewer';
+    return;
   }
   img.alt = 'Receipt';
   img.style.imageOrientation = 'from-image'; // Auto-handle EXIF orientation
