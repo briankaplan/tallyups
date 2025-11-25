@@ -1488,32 +1488,58 @@ def get_transactions():
     Query params:
     - show_submitted=true: Include submitted transactions (default: hide them)
     """
-    if USE_SQLITE and db:
+    if USE_DATABASE and db:
         try:
-            conn = sqlite3.connect(str(db.db_path))
-            conn.row_factory = sqlite3.Row
-
             # Check if we should show submitted transactions
             show_submitted = request.args.get('show_submitted', 'false').lower() == 'true'
 
-            # Read transactions from SQLite - filter out submitted ones by default
-            cursor = conn.cursor()
-            if show_submitted:
-                cursor.execute('SELECT * FROM transactions ORDER BY chase_date DESC, _index DESC')
+            # Use MySQL-specific or SQLite-specific code path
+            if hasattr(db, 'use_mysql') and db.use_mysql:
+                # MySQL path
+                conn = db.get_connection()
+                cursor = conn.cursor(dictionary=True)
+
+                if show_submitted:
+                    cursor.execute('SELECT * FROM transactions ORDER BY chase_date DESC, _index DESC')
+                else:
+                    cursor.execute('''
+                        SELECT * FROM transactions
+                        WHERE (already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')
+                        ORDER BY chase_date DESC, _index DESC
+                    ''')
+                rows = cursor.fetchall()
+
+                # Get rejected receipts
+                cursor.execute('SELECT receipt_path FROM rejected_receipts')
+                rejected_paths = {r['receipt_path'] for r in cursor.fetchall()}
+
+                cursor.close()
+                conn.close()
+
+                db_type = "MySQL"
             else:
-                # Hide transactions that have been submitted in a report
-                cursor.execute('''
-                    SELECT * FROM transactions
-                    WHERE (already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')
-                    ORDER BY chase_date DESC, _index DESC
-                ''')
-            rows = cursor.fetchall()
+                # SQLite path
+                conn = sqlite3.connect(str(db.db_path))
+                conn.row_factory = sqlite3.Row
 
-            # Get rejected receipts to filter
-            cursor.execute('SELECT receipt_path FROM rejected_receipts')
-            rejected_paths = {r[0] for r in cursor.fetchall()}
+                cursor = conn.cursor()
+                if show_submitted:
+                    cursor.execute('SELECT * FROM transactions ORDER BY chase_date DESC, _index DESC')
+                else:
+                    cursor.execute('''
+                        SELECT * FROM transactions
+                        WHERE (already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')
+                        ORDER BY chase_date DESC, _index DESC
+                    ''')
+                rows = cursor.fetchall()
 
-            conn.close()
+                # Get rejected receipts
+                cursor.execute('SELECT receipt_path FROM rejected_receipts')
+                rejected_paths = {r[0] for r in cursor.fetchall()}
+
+                conn.close()
+
+                db_type = "SQLite"
 
             # Convert to list of dicts with proper column names for viewer
             records = []
@@ -1545,11 +1571,11 @@ def get_transactions():
 
                 records.append(record)
 
-            print(f"📊 Loaded {len(records)} transactions from SQLite (pure SQL mode)", flush=True)
+            print(f"📊 Loaded {len(records)} transactions from {db_type} (pure SQL mode)", flush=True)
             return jsonify(safe_json(records))
 
         except Exception as e:
-            print(f"⚠️  SQLite read error, falling back to DataFrame: {e}", flush=True)
+            print(f"⚠️  Database read error, falling back to DataFrame: {e}", flush=True)
 
     # Fallback to DataFrame mode
     ensure_df()
