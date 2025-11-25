@@ -13,6 +13,7 @@ from difflib import SequenceMatcher
 from datetime import datetime, date
 
 from flask import Flask, send_from_directory, jsonify, request, abort, Response, make_response, send_file
+from werkzeug.middleware.proxy_fix import ProxyFix
 import pandas as pd
 
 from dotenv import load_dotenv
@@ -134,6 +135,10 @@ TRASH_DIR = BASE_DIR / "receipts_trash"
 RECEIPT_META_PATH = BASE_DIR / "receipt_ai_metadata.csv"
 
 app = Flask(__name__)
+
+# Configure app to trust Railway proxy headers (for HTTPS detection)
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # =============================================================================
 # AUTHENTICATION SETUP
