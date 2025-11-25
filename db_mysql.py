@@ -110,7 +110,7 @@ class MySQLReceiptDatabase:
                     business_type VARCHAR(255),
                     notes TEXT,
                     ai_note TEXT,
-                    ai_confidence DECIMAL(5,4),
+                    ai_confidence FLOAT,
                     ai_receipt_merchant VARCHAR(255),
                     ai_receipt_date DATE,
                     ai_receipt_total DECIMAL(10,2),
