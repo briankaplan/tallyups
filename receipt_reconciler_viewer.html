@@ -1811,9 +1811,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 // API calls
 async function loadCSV() {
   try {
-    const res = await fetch('/csv');
+    const res = await fetch('/api/transactions');
     const data = await res.json();
-    csvData = data || [];  // FIX: Server returns array directly, not {rows: [...]}
+    csvData = data || [];  // Server returns array directly from MySQL
     filteredData = [...csvData];
     renderTable();
     updateDashboard();
