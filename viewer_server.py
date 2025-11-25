@@ -151,7 +151,8 @@ from auth import (
 from flask import session, redirect, url_for, render_template_string
 
 app.secret_key = SECRET_KEY
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('RAILWAY_ENVIRONMENT', False)  # HTTPS only in prod
+# Only require HTTPS cookies in production (Railway sets RAILWAY_ENVIRONMENT)
+app.config['SESSION_COOKIE_SECURE'] = bool(os.environ.get('RAILWAY_ENVIRONMENT'))
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = SESSION_TIMEOUT
