@@ -337,12 +337,15 @@ class MySQLReceiptDatabase:
 
     def get_transaction_by_index(self, index: int) -> Optional[Dict]:
         """Get single transaction by _index"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql:
             raise RuntimeError("MySQL not available")
 
-        cursor = self.conn.cursor()
+        self.ensure_connection()
+        cursor = self.conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute("SELECT * FROM transactions WHERE _index = %s", (index,))
-        return cursor.fetchone()
+        result = cursor.fetchone()
+        cursor.close()
+        return result
 
     def update_transaction(self, index: int, patch: Dict[str, Any]) -> bool:
         """Update transaction with patch data"""
