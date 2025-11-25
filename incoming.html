@@ -396,13 +396,14 @@ function renderRow(receipt) {
   // Format amount: charges are negative (-), refunds are positive
   let amountDisplay = '';
   let amountColor = 'var(--ok)';  // Green for refunds
-  if (receipt.amount) {
-    const isRefund = receipt.is_refund || receipt.subject.toLowerCase().includes('refund');
+  const amount = parseFloat(receipt.amount) || 0;
+  if (amount > 0) {
+    const isRefund = receipt.is_refund || (receipt.subject || '').toLowerCase().includes('refund');
     if (isRefund) {
-      amountDisplay = `+$${receipt.amount.toFixed(2)}`;
+      amountDisplay = `+$${amount.toFixed(2)}`;
       amountColor = 'var(--ok)';  // Green for refunds (money back)
     } else {
-      amountDisplay = `-$${receipt.amount.toFixed(2)}`;
+      amountDisplay = `-$${amount.toFixed(2)}`;
       amountColor = 'var(--bad)';  // Red for charges (money spent)
     }
   }
@@ -421,11 +422,11 @@ function renderRow(receipt) {
   }
 
   // Check if refund for quickAccept
-  const isRefund = receipt.is_refund || receipt.subject.toLowerCase().includes('refund');
+  const isRefund = receipt.is_refund || (receipt.subject || '').toLowerCase().includes('refund');
 
   // Actions
   const actions = receipt.status === 'pending'
-    ? `<button class="btn-success btn-sm" onclick="quickAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${receipt.amount || 0}, ${isRefund})">✓</button>
+    ? `<button class="btn-success btn-sm" onclick="quickAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund})">✓</button>
        <button class="btn-danger btn-sm" onclick="quickReject(${receipt.id})">✗</button>`
     : `<span style="color:var(--muted);font-size:11px">${receipt.status === 'accepted' ? '✓ Accepted' : '✗ Rejected'}</span>`;
 
@@ -439,7 +440,7 @@ function renderRow(receipt) {
       </td>
       <td style="font-weight:500">${escapeHtml(merchant)}</td>
       <td style="font-weight:600;color:${amountColor}">${amountDisplay}</td>
-      <td style="color:var(--muted)">${escapeHtml(receipt.from_email.split('@')[0])}</td>
+      <td style="color:var(--muted)">${escapeHtml((receipt.from_email || '').split('@')[0])}</td>
       <td style="color:var(--muted);font-size:12px">${date}</td>
       <td><span class="confidence-badge ${confidenceClass}">${receipt.confidence_score}%</span></td>
       <td>${actions}</td>
