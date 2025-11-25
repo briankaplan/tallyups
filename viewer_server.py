@@ -78,6 +78,51 @@ if not USE_DATABASE:
 # Maintain backward compatibility with old variable name
 USE_SQLITE = USE_DATABASE
 
+# === DATABASE HELPER FUNCTIONS ===
+def get_db_connection():
+    """
+    Get a database connection that works for both MySQL and SQLite.
+
+    Returns: (conn, db_type) tuple where:
+    - conn: database connection object
+    - db_type: 'mysql' or 'sqlite'
+
+    IMPORTANT: Caller must close the connection when done!
+    For MySQL, cursor is already DictCursor.
+    For SQLite, set row_factory after getting connection.
+    """
+    if not USE_DATABASE or not db:
+        raise RuntimeError("No database available")
+
+    if hasattr(db, 'use_mysql') and db.use_mysql:
+        return db.get_connection(), 'mysql'
+    else:
+        conn = sqlite3.connect(str(db.db_path))
+        conn.row_factory = sqlite3.Row
+        return conn, 'sqlite'
+
+
+def db_execute(conn, db_type, sql, params=None):
+    """
+    Execute SQL with proper placeholder syntax for each database type.
+
+    For MySQL: use %s placeholders
+    For SQLite: use ? placeholders
+
+    Automatically converts ? to %s for MySQL.
+    """
+    if db_type == 'mysql':
+        # Convert SQLite ? placeholders to MySQL %s
+        sql = sql.replace('?', '%s')
+
+    cursor = conn.cursor()
+    if params:
+        cursor.execute(sql, params)
+    else:
+        cursor.execute(sql)
+    return cursor
+
+
 # === AUDIT LOGGER ===
 try:
     from audit_logger import get_audit_logger
@@ -1404,34 +1449,36 @@ def mobile_upload():
 
         # Create incoming receipt record in database
         receipt_id = None
-        if db:
+        if USE_DATABASE and db:
             try:
-                conn = sqlite3.connect(str(db.db_path))
-                cursor = conn.cursor()
+                conn, db_type = get_db_connection()
 
-                # Check if incoming_receipts table exists, create if not
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS incoming_receipts (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        source TEXT,
-                        sender TEXT,
-                        subject TEXT,
-                        receipt_date TEXT,
-                        merchant TEXT,
-                        amount REAL,
-                        category TEXT,
-                        business_type TEXT,
-                        receipt_file TEXT,
-                        status TEXT DEFAULT 'pending',
-                        notes TEXT,
-                        created_at TEXT,
-                        processed_at TEXT,
-                        matched_transaction_id INTEGER
-                    )
-                ''')
+                # Check if incoming_receipts table exists, create if not (only for SQLite)
+                if db_type == 'sqlite':
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS incoming_receipts (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            source TEXT,
+                            sender TEXT,
+                            subject TEXT,
+                            receipt_date TEXT,
+                            merchant TEXT,
+                            amount REAL,
+                            category TEXT,
+                            business_type TEXT,
+                            receipt_file TEXT,
+                            status TEXT DEFAULT 'pending',
+                            notes TEXT,
+                            created_at TEXT,
+                            processed_at TEXT,
+                            matched_transaction_id INTEGER
+                        )
+                    ''')
+                # For MySQL, the table is created in db_mysql._init_schema()
 
                 # Insert the incoming receipt
-                cursor.execute('''
+                cursor = db_execute(conn, db_type, '''
                     INSERT INTO incoming_receipts
                     (source, sender, subject, receipt_date, merchant, amount, category,
                      business_type, receipt_file, status, notes, created_at)
@@ -1496,9 +1543,9 @@ def get_transactions():
 
             # Use MySQL-specific or SQLite-specific code path
             if hasattr(db, 'use_mysql') and db.use_mysql:
-                # MySQL path
+                # MySQL path - get a new connection (caller responsible for closing)
                 conn = db.get_connection()
-                cursor = conn.cursor(dictionary=True)
+                cursor = conn.cursor()  # Already uses DictCursor from get_connection()
 
                 if show_submitted:
                     cursor.execute('SELECT * FROM transactions ORDER BY chase_date DESC, _index DESC')
@@ -1510,12 +1557,16 @@ def get_transactions():
                     ''')
                 rows = cursor.fetchall()
 
-                # Get rejected receipts
-                cursor.execute('SELECT receipt_path FROM rejected_receipts')
-                rejected_paths = {r['receipt_path'] for r in cursor.fetchall()}
+                # Get rejected receipts (safely handle if table doesn't exist yet)
+                rejected_paths = set()
+                try:
+                    cursor.execute('SELECT receipt_path FROM rejected_receipts')
+                    rejected_paths = {r['receipt_path'] for r in cursor.fetchall() if r.get('receipt_path')}
+                except Exception as e:
+                    print(f"ℹ️  rejected_receipts table not found, skipping: {e}", flush=True)
 
                 cursor.close()
-                conn.close()
+                conn.close()  # Close the NEW connection we got
 
                 db_type = "MySQL"
             else:
@@ -2589,14 +2640,15 @@ def upload_receipt_new():
         print(f"   Total: ${total}", flush=True)
         print(f"   Confidence: {confidence}%", flush=True)
 
-        # Step 2: Create new transaction in SQLite
-        if USE_SQLITE and db:
-            conn = sqlite3.connect(str(db.db_path))
-            cursor = conn.cursor()
+        # Step 2: Create new transaction in database
+        if USE_DATABASE and db:
+            conn, db_type = get_db_connection()
 
             # Get next _index
-            cursor.execute('SELECT COALESCE(MAX(_index), 0) + 1 FROM transactions')
-            next_index = cursor.fetchone()[0]
+            cursor = db_execute(conn, db_type, 'SELECT COALESCE(MAX(_index), 0) + 1 FROM transactions')
+            row = cursor.fetchone()
+            # Handle dict (MySQL DictCursor) vs tuple (SQLite)
+            next_index = list(row.values())[0] if isinstance(row, dict) else row[0]
 
             # Rename receipt file with proper naming
             final_filename = f"receipt_{next_index}_{timestamp}{ext}"
@@ -2632,17 +2684,17 @@ def upload_receipt_new():
                     business_type = 'Business Expense'
 
             # Insert new transaction
-            cursor.execute('''
+            cursor = db_execute(conn, db_type, '''
                 INSERT INTO transactions (
                     _index, chase_description, chase_amount, chase_date,
                     business_type, review_status, notes,
-                    receipt_file, receipt_url, source, ai_confidence,
+                    receipt_file, source, ai_confidence,
                     ai_receipt_merchant, ai_receipt_total, ai_receipt_date
-                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, 'manual_upload', ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, 'manual_upload', ?, ?, ?, ?)
             ''', (
                 next_index, merchant, total, receipt_date,
                 business_type, f"Created from uploaded receipt (Gemini OCR {confidence}%)",
-                final_filename, receipt_url or '', confidence,
+                final_filename, confidence,
                 merchant, total, receipt_date
             ))
 
@@ -2759,31 +2811,41 @@ def detach_receipt():
                 print(f"⚠️ Could not move {src} -> {dst}: {e}", flush=True)
 
         # CRITICAL: Save rejection to database so it NEVER comes back
-        if USE_SQLITE and db:
+        if USE_DATABASE and db:
             try:
-                conn = sqlite3.connect(str(db.db_path))
-                cursor = conn.cursor()
+                conn, db_type = get_db_connection()
 
-                # Create rejected_receipts table if it doesn't exist
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS rejected_receipts (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        transaction_date TEXT NOT NULL,
-                        transaction_description TEXT NOT NULL,
-                        transaction_amount TEXT NOT NULL,
-                        receipt_path TEXT NOT NULL,
-                        rejected_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                        reason TEXT DEFAULT 'user_manually_removed',
-                        UNIQUE(transaction_date, transaction_description, transaction_amount, receipt_path)
-                    )
-                ''')
+                # Create rejected_receipts table if it doesn't exist (SQLite only, MySQL has it in init)
+                if db_type == 'sqlite':
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS rejected_receipts (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            transaction_date TEXT NOT NULL,
+                            transaction_description TEXT NOT NULL,
+                            transaction_amount TEXT NOT NULL,
+                            receipt_path TEXT NOT NULL,
+                            rejected_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                            reason TEXT DEFAULT 'user_manually_removed',
+                            UNIQUE(transaction_date, transaction_description, transaction_amount, receipt_path)
+                        )
+                    ''')
 
                 # Record the rejection permanently
-                cursor.execute('''
-                    INSERT OR REPLACE INTO rejected_receipts
-                    (transaction_date, transaction_description, transaction_amount, receipt_path, reason)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (str(transaction_date), str(transaction_desc), str(transaction_amount), filename, 'user_manually_removed'))
+                # MySQL uses ON DUPLICATE KEY, SQLite uses INSERT OR REPLACE
+                if db_type == 'mysql':
+                    cursor = db_execute(conn, db_type, '''
+                        INSERT INTO rejected_receipts
+                        (transaction_date, transaction_description, transaction_amount, receipt_path, reason)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE reason = VALUES(reason), rejected_at = NOW()
+                    ''', (str(transaction_date), str(transaction_desc), str(transaction_amount), filename, 'user_manually_removed'))
+                else:
+                    cursor = db_execute(conn, db_type, '''
+                        INSERT OR REPLACE INTO rejected_receipts
+                        (transaction_date, transaction_description, transaction_amount, receipt_path, reason)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (str(transaction_date), str(transaction_desc), str(transaction_amount), filename, 'user_manually_removed'))
 
                 conn.commit()
                 conn.close()
@@ -2866,18 +2928,10 @@ def add_manual_expense():
         "Source": "Manual Entry"
     }
 
-    # SQLite mode
+    # Database mode (MySQL or SQLite)
     if USE_SQLITE and db:
         try:
-            # Insert using db.update_transaction with the new_index
-            # First, create an empty row in the database
-            # Since we don't have an insert method, we'll use update_transaction with a new index
-            # Actually, we need to manually insert into SQLite
-
-            conn = db.conn
-            cursor = conn.cursor()
-
-            # Build INSERT statement
+            # Build INSERT statement - handle both MySQL and SQLite
             columns = [
                 "_index", "chase_date", "chase_description", "chase_amount",
                 "chase_category", "chase_type", "receipt_file", "business_type",
@@ -2885,11 +2939,6 @@ def add_manual_expense():
                 "ai_receipt_date", "ai_receipt_total", "review_status",
                 "category", "report_id", "source"
             ]
-
-            placeholders = ", ".join(["?"] * len(columns))
-            col_names = ", ".join(columns)
-
-            sql = f"INSERT INTO transactions ({col_names}) VALUES ({placeholders})"
 
             values = (
                 new_index,
@@ -2912,8 +2961,26 @@ def add_manual_expense():
                 "Manual Entry"
             )
 
-            cursor.execute(sql, values)
-            conn.commit()
+            col_names = ", ".join(columns)
+
+            # Use MySQL-specific path if available
+            if hasattr(db, 'use_mysql') and db.use_mysql:
+                placeholders = ", ".join(["%s"] * len(columns))
+                sql = f"INSERT INTO transactions ({col_names}) VALUES ({placeholders})"
+                conn = db.get_connection()
+                cursor = conn.cursor()
+                cursor.execute(sql, values)
+                conn.commit()
+                cursor.close()
+                conn.close()
+            else:
+                # SQLite path
+                placeholders = ", ".join(["?"] * len(columns))
+                sql = f"INSERT INTO transactions ({col_names}) VALUES ({placeholders})"
+                conn = db.conn
+                cursor = conn.cursor()
+                cursor.execute(sql, values)
+                conn.commit()
 
             # Reload df to stay in sync
             df = db.get_all_transactions()
@@ -2923,7 +2990,7 @@ def add_manual_expense():
             return jsonify(safe_json({"ok": True, "expense": new_expense}))
 
         except Exception as e:
-            print(f"⚠️  SQLite insert failed: {e}, falling back to CSV")
+            print(f"⚠️  Database insert failed: {e}, falling back to CSV")
             # Fall through to CSV mode
 
     # CSV mode fallback
@@ -4799,21 +4866,17 @@ def get_rejected_receipts():
 
     Returns list of receipts that user has manually blocked from transactions
     """
-    import sqlite3
-
     try:
-        if not USE_SQLITE or not db:
+        if not USE_DATABASE or not db:
             return jsonify({
                 'ok': True,
                 'count': 0,
                 'rejected_receipts': []
             })
 
-        conn = sqlite3.connect(str(db.db_path))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        conn, db_type = get_db_connection()
 
-        cursor.execute('''
+        cursor = db_execute(conn, db_type, '''
             SELECT
                 id,
                 transaction_date,
@@ -4835,14 +4898,15 @@ def get_rejected_receipts():
             'rejected_receipts': rejected
         })
 
-    except sqlite3.OperationalError:
-        # Table doesn't exist yet
-        return jsonify({
-            'ok': True,
-            'count': 0,
-            'rejected_receipts': []
-        })
     except Exception as e:
+        error_str = str(e).lower()
+        # Table doesn't exist yet (handle both SQLite and MySQL)
+        if "no such table" in error_str or "doesn't exist" in error_str:
+            return jsonify({
+                'ok': True,
+                'count': 0,
+                'rejected_receipts': []
+            })
         print(f"❌ Error fetching rejected receipts: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -4855,16 +4919,13 @@ def delete_rejection(rejection_id):
 
     Use this if you accidentally rejected a receipt
     """
-    import sqlite3
-
     try:
-        if not USE_SQLITE or not db:
-            return jsonify({'ok': False, 'error': 'SQLite not available'}), 500
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
 
-        conn = sqlite3.connect(str(db.db_path))
-        cursor = conn.cursor()
+        conn, db_type = get_db_connection()
 
-        cursor.execute('DELETE FROM rejected_receipts WHERE id = ?', (rejection_id,))
+        cursor = db_execute(conn, db_type, 'DELETE FROM rejected_receipts WHERE id = ?', (rejection_id,))
         conn.commit()
         conn.close()
 
@@ -4892,21 +4953,17 @@ def get_incoming_receipts():
     - status: 'pending', 'accepted', 'rejected', or 'all' (default: 'all')
     - limit: max number of results (default: 100)
     """
-    import sqlite3
-
     try:
-        if not USE_SQLITE or not db:
+        if not USE_DATABASE or not db:
             return jsonify({
                 'ok': False,
-                'error': 'SQLite not available'
+                'error': 'Database not available'
             }), 500
 
         status = request.args.get('status', 'all')
         limit = int(request.args.get('limit', 100))
 
-        conn = sqlite3.connect(str(db.db_path))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        conn, db_type = get_db_connection()
 
         # Build query based on status filter
         if status == 'all':
@@ -4915,7 +4972,7 @@ def get_incoming_receipts():
                 ORDER BY received_date DESC
                 LIMIT ?
             '''
-            cursor.execute(query, (limit,))
+            cursor = db_execute(conn, db_type, query, (limit,))
         else:
             query = '''
                 SELECT * FROM incoming_receipts
@@ -4923,12 +4980,12 @@ def get_incoming_receipts():
                 ORDER BY received_date DESC
                 LIMIT ?
             '''
-            cursor.execute(query, (status, limit))
+            cursor = db_execute(conn, db_type, query, (status, limit))
 
         receipts = [dict(row) for row in cursor.fetchall()]
 
         # Get counts by status
-        cursor.execute('SELECT status, COUNT(*) as count FROM incoming_receipts GROUP BY status')
+        cursor = db_execute(conn, db_type, 'SELECT status, COUNT(*) as count FROM incoming_receipts GROUP BY status')
         status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
 
         conn.close()
@@ -4967,17 +5024,18 @@ def get_incoming_receipts():
             'total': len(receipts)
         })
 
-    except sqlite3.OperationalError as e:
-        # Table doesn't exist yet
-        print(f"⚠️  incoming_receipts table not found: {e}")
-        return jsonify({
-            'ok': True,
-            'receipts': [],
-            'counts': {},
-            'total': 0,
-            'message': 'Run incoming_receipts_service.py to initialize'
-        })
     except Exception as e:
+        error_str = str(e).lower()
+        # Table doesn't exist yet (handle both SQLite and MySQL error messages)
+        if "no such table" in error_str or "doesn't exist" in error_str or "table" in error_str:
+            print(f"⚠️  incoming_receipts table not found: {e}")
+            return jsonify({
+                'ok': True,
+                'receipts': [],
+                'counts': {},
+                'total': 0,
+                'message': 'Incoming receipts table not initialized yet'
+            })
         print(f"❌ Error fetching incoming receipts: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -4997,15 +5055,14 @@ def accept_incoming_receipt():
         "business_type": "Personal"
     }
     """
-    import sqlite3
     from datetime import datetime
     import json
 
     try:
-        if not USE_SQLITE or not db:
+        if not USE_DATABASE or not db:
             return jsonify({
                 'ok': False,
-                'error': 'SQLite not available'
+                'error': 'Database not available'
             }), 500
 
         data = request.json
@@ -5021,12 +5078,10 @@ def accept_incoming_receipt():
                 'error': 'Missing required fields'
             }), 400
 
-        conn = sqlite3.connect(str(db.db_path))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        conn, db_type = get_db_connection()
 
         # Get the receipt data
-        cursor.execute('SELECT * FROM incoming_receipts WHERE id = ?', (receipt_id,))
+        cursor = db_execute(conn, db_type, 'SELECT * FROM incoming_receipts WHERE id = ?', (receipt_id,))
         receipt_row = cursor.fetchone()
 
         if not receipt_row:
@@ -5142,7 +5197,7 @@ def accept_incoming_receipt():
         date_start = (trans_datetime - timedelta(days=3)).strftime('%Y-%m-%d')
         date_end = (trans_datetime + timedelta(days=3)).strftime('%Y-%m-%d')
 
-        cursor.execute('''
+        cursor = db_execute(conn, db_type, '''
             SELECT _index, chase_description, chase_amount, chase_date, receipt_file
             FROM transactions
             WHERE chase_description LIKE ?
@@ -5177,12 +5232,21 @@ def accept_incoming_receipt():
             # Update existing transaction with receipt files
             # Keep incoming/ prefix for files in that subfolder
             receipt_file_str = ', '.join([f.replace('receipts/', '') for f in receipt_files]) if receipt_files else ''
-            cursor.execute('''
-                UPDATE transactions
-                SET receipt_file = ?,
-                    notes = COALESCE(notes, '') || ?
-                WHERE _index = ?
-            ''', (receipt_file_str, f'\n[From incoming receipt: {notes_text}]', matched_transaction_id))
+            # Use CONCAT for MySQL, || for SQLite
+            if db_type == 'mysql':
+                cursor = db_execute(conn, db_type, '''
+                    UPDATE transactions
+                    SET receipt_file = ?,
+                        notes = CONCAT(COALESCE(notes, ''), ?)
+                    WHERE _index = ?
+                ''', (receipt_file_str, f'\n[From incoming receipt: {notes_text}]', matched_transaction_id))
+            else:
+                cursor = db_execute(conn, db_type, '''
+                    UPDATE transactions
+                    SET receipt_file = ?,
+                        notes = COALESCE(notes, '') || ?
+                    WHERE _index = ?
+                ''', (receipt_file_str, f'\n[From incoming receipt: {notes_text}]', matched_transaction_id))
 
             transaction_id = matched_transaction_id
             action = 'attached'
@@ -5194,10 +5258,12 @@ def accept_incoming_receipt():
             receipt_file_str = ', '.join([f.replace('receipts/', '') for f in receipt_files]) if receipt_files else ''
 
             # Get next _index value
-            cursor.execute('SELECT COALESCE(MAX(_index), 0) + 1 FROM transactions')
-            next_index = cursor.fetchone()[0]
+            cursor = db_execute(conn, db_type, 'SELECT COALESCE(MAX(_index), 0) + 1 FROM transactions')
+            row = cursor.fetchone()
+            # Handle dict (MySQL DictCursor) vs tuple (SQLite)
+            next_index = list(row.values())[0] if isinstance(row, dict) else row[0]
 
-            cursor.execute('''
+            cursor = db_execute(conn, db_type, '''
                 INSERT INTO transactions (
                     _index, chase_description, chase_amount, chase_date,
                     business_type, review_status, notes,
@@ -5214,7 +5280,7 @@ def accept_incoming_receipt():
 
         # Update incoming receipt status (separate try block so transaction is preserved)
         try:
-            cursor.execute('''
+            cursor = db_execute(conn, db_type, '''
                 UPDATE incoming_receipts
                 SET status = 'accepted',
                     accepted_as_transaction_id = ?,
@@ -5288,14 +5354,13 @@ def reject_incoming_receipt():
         "reason": "marketing" (optional)
     }
     """
-    import sqlite3
     from datetime import datetime
 
     try:
-        if not USE_SQLITE or not db:
+        if not USE_DATABASE or not db:
             return jsonify({
                 'ok': False,
-                'error': 'SQLite not available'
+                'error': 'Database not available'
             }), 500
 
         data = request.json
@@ -5308,12 +5373,10 @@ def reject_incoming_receipt():
                 'error': 'Missing receipt_id'
             }), 400
 
-        conn = sqlite3.connect(str(db.db_path))
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        conn, db_type = get_db_connection()
 
         # Get the receipt data
-        cursor.execute('SELECT * FROM incoming_receipts WHERE id = ?', (receipt_id,))
+        cursor = db_execute(conn, db_type, 'SELECT * FROM incoming_receipts WHERE id = ?', (receipt_id,))
         receipt = cursor.fetchone()
 
         if not receipt:
@@ -5324,7 +5387,7 @@ def reject_incoming_receipt():
             }), 404
 
         # Update receipt status
-        cursor.execute('''
+        cursor = db_execute(conn, db_type, '''
             UPDATE incoming_receipts
             SET status = 'rejected',
                 rejection_reason = ?,
@@ -5333,29 +5396,44 @@ def reject_incoming_receipt():
         ''', (reason, datetime.now().isoformat(), receipt_id))
 
         # Learn from rejection - record pattern
-        from_email = receipt['from_email']
-        domain = from_email.split('@')[-1] if '@' in from_email else None
+        from_email = receipt['from_email'] if isinstance(receipt, dict) else receipt[receipt.keys().index('from_email')] if hasattr(receipt, 'keys') else None
+        domain = from_email.split('@')[-1] if from_email and '@' in from_email else None
 
+        rejection_count = 0
         if domain:
-            cursor.execute('''
-                INSERT INTO incoming_rejection_patterns (pattern_type, pattern_value, rejection_count, last_rejected_at)
-                VALUES ('domain', ?, 1, ?)
-                ON CONFLICT(pattern_type, pattern_value)
-                DO UPDATE SET
-                    rejection_count = rejection_count + 1,
-                    last_rejected_at = ?
-            ''', (domain, datetime.now().isoformat(), datetime.now().isoformat()))
+            try:
+                # SQLite uses ON CONFLICT, MySQL uses ON DUPLICATE KEY
+                if db_type == 'mysql':
+                    cursor = db_execute(conn, db_type, '''
+                        INSERT INTO incoming_rejection_patterns (pattern_type, pattern_value, rejection_count, last_rejected_at)
+                        VALUES ('domain', ?, 1, ?)
+                        ON DUPLICATE KEY UPDATE
+                            rejection_count = rejection_count + 1,
+                            last_rejected_at = ?
+                    ''', (domain, datetime.now().isoformat(), datetime.now().isoformat()))
+                else:
+                    cursor = db_execute(conn, db_type, '''
+                        INSERT INTO incoming_rejection_patterns (pattern_type, pattern_value, rejection_count, last_rejected_at)
+                        VALUES ('domain', ?, 1, ?)
+                        ON CONFLICT(pattern_type, pattern_value)
+                        DO UPDATE SET
+                            rejection_count = rejection_count + 1,
+                            last_rejected_at = ?
+                    ''', (domain, datetime.now().isoformat(), datetime.now().isoformat()))
 
-        conn.commit()
+                conn.commit()
 
-        # Get updated rejection count for this domain
-        cursor.execute('''
-            SELECT rejection_count FROM incoming_rejection_patterns
-            WHERE pattern_type = 'domain' AND pattern_value = ?
-        ''', (domain,))
+                # Get updated rejection count for this domain
+                cursor = db_execute(conn, db_type, '''
+                    SELECT rejection_count FROM incoming_rejection_patterns
+                    WHERE pattern_type = 'domain' AND pattern_value = ?
+                ''', (domain,))
 
-        result = cursor.fetchone()
-        rejection_count = result['rejection_count'] if result else 0
+                result = cursor.fetchone()
+                rejection_count = result['rejection_count'] if result else 0
+            except Exception as pattern_err:
+                print(f"⚠️  Could not record rejection pattern: {pattern_err}")
+                conn.commit()  # Still commit the status update
 
         conn.close()
 

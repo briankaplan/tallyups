@@ -88,6 +88,43 @@ class MySQLReceiptDatabase:
         if self.conn:
             self.conn.close()
 
+    def get_connection(self):
+        """Get a NEW connection for direct SQL operations.
+
+        IMPORTANT: Caller is responsible for closing this connection!
+        Use this for operations that need direct cursor access.
+        """
+        if not self.config:
+            raise RuntimeError("MySQL not configured")
+
+        return pymysql.connect(
+            **self.config,
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=False
+        )
+
+    def ensure_connection(self):
+        """Ensure the shared connection is alive, reconnect if needed"""
+        if not self.use_mysql:
+            return False
+
+        try:
+            self.conn.ping(reconnect=True)
+            return True
+        except Exception as e:
+            print(f"⚠️  MySQL connection lost, reconnecting: {e}", flush=True)
+            try:
+                self.conn = pymysql.connect(
+                    **self.config,
+                    cursorclass=pymysql.cursors.DictCursor,
+                    autocommit=False
+                )
+                return True
+            except Exception as e2:
+                print(f"❌ MySQL reconnection failed: {e2}", flush=True)
+                self.use_mysql = False
+                return False
+
     def _init_schema(self):
         """Initialize database schema (tables, indexes)"""
         if not self.use_mysql or not self.conn:
@@ -165,6 +202,76 @@ class MySQLReceiptDatabase:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_report_id (report_id),
                     INDEX idx_business (business_type)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create rejected_receipts table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS rejected_receipts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    transaction_date VARCHAR(50),
+                    transaction_description TEXT,
+                    transaction_amount VARCHAR(50),
+                    receipt_path VARCHAR(500) NOT NULL,
+                    transaction_index INT,
+                    reason VARCHAR(255) DEFAULT 'user_manually_removed',
+                    rejected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_receipt_path (receipt_path),
+                    INDEX idx_transaction (transaction_index),
+                    UNIQUE KEY unique_rejection (transaction_date, transaction_amount, receipt_path(200))
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create incoming_receipts table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS incoming_receipts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    email_id VARCHAR(255),
+                    gmail_account VARCHAR(255),
+                    sender VARCHAR(255),
+                    from_email VARCHAR(255),
+                    subject TEXT,
+                    description TEXT,
+                    receipt_date DATE,
+                    received_date DATETIME,
+                    merchant VARCHAR(255),
+                    amount DECIMAL(10,2),
+                    category VARCHAR(255),
+                    business_type VARCHAR(255),
+                    file_path VARCHAR(500),
+                    receipt_file VARCHAR(500),
+                    receipt_files TEXT,
+                    attachments TEXT,
+                    source VARCHAR(100) DEFAULT 'gmail',
+                    status VARCHAR(50) DEFAULT 'pending',
+                    match_type VARCHAR(100),
+                    matched_transaction_id INT,
+                    accepted_as_transaction_id INT,
+                    is_subscription BOOLEAN DEFAULT FALSE,
+                    notes TEXT,
+                    rejection_reason VARCHAR(255),
+                    reviewed_at DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    processed_at DATETIME,
+                    INDEX idx_status (status),
+                    INDEX idx_merchant (merchant),
+                    INDEX idx_date (receipt_date),
+                    INDEX idx_received (received_date),
+                    INDEX idx_source (source)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create incoming_rejection_patterns table for learning
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS incoming_rejection_patterns (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    pattern_type VARCHAR(100) NOT NULL,
+                    pattern_value VARCHAR(255) NOT NULL,
+                    rejection_count INT DEFAULT 1,
+                    last_rejected_at DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_pattern (pattern_type, pattern_value),
+                    INDEX idx_pattern_type (pattern_type)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """)
 
