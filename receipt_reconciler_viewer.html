@@ -5519,7 +5519,7 @@ async function loadArchivedReports() {
               <!-- Stats Row -->
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
                 <div style="text-align:center;padding:12px;background:rgba(59,130,246,.1);border-radius:10px">
-                  <div style="font-size:20px;font-weight:800;color:var(--brand)">$${report.total_amount.toFixed(0)}</div>
+                  <div style="font-size:20px;font-weight:800;color:var(--brand)">$${parseFloat(report.total_amount).toFixed(0)}</div>
                   <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Total</div>
                 </div>
                 <div style="text-align:center;padding:12px;background:rgba(139,92,246,.1);border-radius:10px">
