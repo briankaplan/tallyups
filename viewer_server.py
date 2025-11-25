@@ -5694,6 +5694,332 @@ def sync_receipt_urls():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/admin/full-migration", methods=["POST"])
+@login_required
+def full_migration():
+    """
+    Complete migration from bundled JSON files to MySQL.
+    This migrates ALL tables and ALL data.
+    """
+    import json
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        if not hasattr(db, 'use_mysql') or not db.use_mysql:
+            return jsonify({'ok': False, 'error': 'MySQL not configured'}), 500
+
+        migration_dir = BASE_DIR / 'migration_data'
+        if not migration_dir.exists():
+            return jsonify({
+                'ok': False,
+                'error': f'migration_data directory not found at {migration_dir}'
+            }), 404
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        results = {}
+
+        # 1. Migrate transactions
+        trans_file = migration_dir / 'transactions.json'
+        if trans_file.exists():
+            with open(trans_file, 'r') as f:
+                transactions = json.load(f)
+
+            print(f"📦 Migrating {len(transactions)} transactions...")
+            migrated = 0
+            for row in transactions:
+                try:
+                    cursor.execute("""
+                        INSERT INTO transactions
+                        (_index, chase_date, chase_description, chase_amount, chase_category, chase_type,
+                         receipt_file, receipt_url, r2_url, business_type, notes, ai_note, ai_confidence,
+                         ai_receipt_merchant, ai_receipt_date, ai_receipt_total, review_status,
+                         category, report_id, source, mi_merchant, mi_category, mi_description,
+                         mi_confidence, mi_is_subscription, mi_subscription_name, mi_processed_at,
+                         deleted_by_user, already_submitted)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            chase_date = VALUES(chase_date),
+                            chase_description = VALUES(chase_description),
+                            chase_amount = VALUES(chase_amount),
+                            receipt_file = VALUES(receipt_file),
+                            receipt_url = VALUES(receipt_url),
+                            r2_url = VALUES(r2_url),
+                            business_type = VALUES(business_type),
+                            notes = VALUES(notes),
+                            review_status = VALUES(review_status),
+                            category = VALUES(category),
+                            report_id = VALUES(report_id),
+                            mi_merchant = VALUES(mi_merchant),
+                            mi_category = VALUES(mi_category),
+                            mi_description = VALUES(mi_description),
+                            already_submitted = VALUES(already_submitted)
+                    """, (
+                        row.get('_index'),
+                        row.get('chase_date') if row.get('chase_date') else None,
+                        row.get('chase_description'),
+                        row.get('chase_amount'),
+                        row.get('chase_category'),
+                        row.get('chase_type'),
+                        row.get('receipt_file'),
+                        row.get('receipt_url'),
+                        row.get('receipt_url'),  # r2_url = receipt_url
+                        row.get('business_type'),
+                        row.get('notes'),
+                        row.get('ai_note'),
+                        row.get('ai_confidence'),
+                        row.get('ai_receipt_merchant'),
+                        row.get('ai_receipt_date'),
+                        row.get('ai_receipt_total'),
+                        row.get('review_status'),
+                        row.get('category'),
+                        row.get('report_id'),
+                        row.get('source'),
+                        row.get('mi_merchant'),
+                        row.get('mi_category'),
+                        row.get('mi_description'),
+                        row.get('mi_confidence'),
+                        row.get('mi_is_subscription'),
+                        row.get('mi_subscription_name'),
+                        row.get('mi_processed_at'),
+                        row.get('deleted_by_user'),
+                        row.get('already_submitted')
+                    ))
+                    migrated += 1
+                except Exception as e:
+                    if migrated < 5:
+                        print(f"  ⚠️  Transaction error: {e}")
+            conn.commit()
+            results['transactions'] = migrated
+            print(f"  ✅ Migrated {migrated} transactions")
+
+        # 2. Migrate reports
+        reports_file = migration_dir / 'reports.json'
+        if reports_file.exists():
+            with open(reports_file, 'r') as f:
+                reports = json.load(f)
+
+            print(f"📦 Migrating {len(reports)} reports...")
+            migrated = 0
+            for row in reports:
+                try:
+                    cursor.execute("""
+                        INSERT INTO reports (report_id, report_name, business_type, expense_count, total_amount, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            report_name = VALUES(report_name),
+                            expense_count = VALUES(expense_count),
+                            total_amount = VALUES(total_amount)
+                    """, (
+                        row.get('report_id'),
+                        row.get('report_name'),
+                        row.get('business_type'),
+                        row.get('expense_count'),
+                        row.get('total_amount'),
+                        row.get('created_at')
+                    ))
+                    migrated += 1
+                except Exception as e:
+                    print(f"  ⚠️  Report error: {e}")
+            conn.commit()
+            results['reports'] = migrated
+            print(f"  ✅ Migrated {migrated} reports")
+
+        # 3. Migrate incoming_receipts
+        incoming_file = migration_dir / 'incoming_receipts.json'
+        if incoming_file.exists():
+            with open(incoming_file, 'r') as f:
+                incoming = json.load(f)
+
+            print(f"📦 Migrating {len(incoming)} incoming_receipts...")
+            migrated = 0
+            for row in incoming:
+                try:
+                    cursor.execute("""
+                        INSERT INTO incoming_receipts
+                        (email_id, gmail_account, subject, from_email, from_domain, received_date,
+                         body_snippet, has_attachment, attachment_count, receipt_files, merchant,
+                         amount, transaction_date, ocr_confidence, is_receipt, is_marketing,
+                         confidence_score, status, reviewed_at, accepted_as_transaction_id,
+                         rejection_reason, processed_at, description, is_subscription,
+                         matched_transaction_id, match_type, attachments)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            status = VALUES(status),
+                            merchant = VALUES(merchant),
+                            amount = VALUES(amount)
+                    """, (
+                        row.get('email_id'),
+                        row.get('gmail_account'),
+                        row.get('subject'),
+                        row.get('from_email'),
+                        row.get('from_domain'),
+                        row.get('received_date'),
+                        row.get('body_snippet'),
+                        row.get('has_attachment'),
+                        row.get('attachment_count'),
+                        row.get('receipt_files'),
+                        row.get('merchant'),
+                        row.get('amount'),
+                        row.get('transaction_date'),
+                        row.get('ocr_confidence'),
+                        row.get('is_receipt'),
+                        row.get('is_marketing'),
+                        row.get('confidence_score'),
+                        row.get('status'),
+                        row.get('reviewed_at'),
+                        row.get('accepted_as_transaction_id'),
+                        row.get('rejection_reason'),
+                        row.get('processed_at'),
+                        row.get('description'),
+                        row.get('is_subscription'),
+                        row.get('matched_transaction_id'),
+                        row.get('match_type'),
+                        row.get('attachments')
+                    ))
+                    migrated += 1
+                except Exception as e:
+                    if migrated < 5:
+                        print(f"  ⚠️  Incoming error: {e}")
+            conn.commit()
+            results['incoming_receipts'] = migrated
+            print(f"  ✅ Migrated {migrated} incoming_receipts")
+
+        # 4. Migrate rejected_receipts
+        rejected_file = migration_dir / 'rejected_receipts.json'
+        if rejected_file.exists():
+            with open(rejected_file, 'r') as f:
+                rejected = json.load(f)
+
+            print(f"📦 Migrating {len(rejected)} rejected_receipts...")
+            migrated = 0
+            for row in rejected:
+                try:
+                    cursor.execute("""
+                        INSERT INTO rejected_receipts
+                        (transaction_date, transaction_description, transaction_amount, receipt_path, rejected_at, reason)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            reason = VALUES(reason)
+                    """, (
+                        row.get('transaction_date'),
+                        row.get('transaction_description'),
+                        row.get('transaction_amount'),
+                        row.get('receipt_path'),
+                        row.get('rejected_at'),
+                        row.get('reason')
+                    ))
+                    migrated += 1
+                except Exception as e:
+                    print(f"  ⚠️  Rejected error: {e}")
+            conn.commit()
+            results['rejected_receipts'] = migrated
+            print(f"  ✅ Migrated {migrated} rejected_receipts")
+
+        # 5. Migrate merchants
+        merchants_file = migration_dir / 'merchants.json'
+        if merchants_file.exists():
+            with open(merchants_file, 'r') as f:
+                merchants = json.load(f)
+
+            print(f"📦 Migrating {len(merchants)} merchants...")
+            migrated = 0
+            for row in merchants:
+                try:
+                    cursor.execute("""
+                        INSERT INTO merchants
+                        (raw_description, normalized_name, category, is_subscription, frequency, avg_amount, primary_business_type, aliases)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            normalized_name = VALUES(normalized_name),
+                            category = VALUES(category)
+                    """, (
+                        row.get('raw_description'),
+                        row.get('normalized_name'),
+                        row.get('category'),
+                        row.get('is_subscription'),
+                        row.get('frequency'),
+                        row.get('avg_amount'),
+                        row.get('primary_business_type'),
+                        row.get('aliases')
+                    ))
+                    migrated += 1
+                except Exception as e:
+                    print(f"  ⚠️  Merchant error: {e}")
+            conn.commit()
+            results['merchants'] = migrated
+            print(f"  ✅ Migrated {migrated} merchants")
+
+        # 6. Migrate contacts
+        contacts_file = migration_dir / 'contacts.json'
+        if contacts_file.exists():
+            with open(contacts_file, 'r') as f:
+                contacts = json.load(f)
+
+            print(f"📦 Migrating {len(contacts)} contacts...")
+            migrated = 0
+            for row in contacts:
+                try:
+                    cursor.execute("""
+                        INSERT INTO contacts
+                        (name, first_name, last_name, title, company, category, priority, notes, relationship, status, strategic_notes, connected_on, name_tokens)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            name = VALUES(name)
+                    """, (
+                        row.get('name'),
+                        row.get('first_name'),
+                        row.get('last_name'),
+                        row.get('title'),
+                        row.get('company'),
+                        row.get('category'),
+                        row.get('priority'),
+                        row.get('notes'),
+                        row.get('relationship'),
+                        row.get('status'),
+                        row.get('strategic_notes'),
+                        row.get('connected_on'),
+                        row.get('name_tokens')
+                    ))
+                    migrated += 1
+                except Exception as e:
+                    if migrated < 5:
+                        print(f"  ⚠️  Contact error: {e}")
+            conn.commit()
+            results['contacts'] = migrated
+            print(f"  ✅ Migrated {migrated} contacts")
+
+        cursor.close()
+        conn.close()
+
+        # Verify receipt URLs
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as cnt FROM transactions WHERE receipt_url IS NOT NULL AND receipt_url != ''")
+        url_count = cursor.fetchone()
+        url_count = url_count['cnt'] if isinstance(url_count, dict) else url_count[0]
+        cursor.close()
+        conn.close()
+
+        results['receipt_urls'] = url_count
+
+        print(f"\n✅ Full migration complete!")
+        return jsonify({
+            'ok': True,
+            'message': 'Full migration complete',
+            'results': results
+        })
+
+    except Exception as e:
+        print(f"❌ Migration error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 # =============================================================================
 # MISSING RECEIPT FORM PDF GENERATION
 # =============================================================================
