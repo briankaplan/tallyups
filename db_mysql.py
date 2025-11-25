@@ -329,6 +329,10 @@ class MySQLReceiptDatabase:
         df = df.rename(columns=column_map)
         df = df.drop(columns=['id', 'created_at', 'updated_at'], errors='ignore')
 
+        # Ensure _index is integer type for comparison operations
+        if '_index' in df.columns:
+            df['_index'] = pd.to_numeric(df['_index'], errors='coerce').fillna(0).astype(int)
+
         return df
 
     def get_transaction_by_index(self, index: int) -> Optional[Dict]:
