@@ -1613,6 +1613,13 @@ def get_transactions():
                 record['MI Is Subscription'] = record.get('mi_is_subscription', 0)
                 record['MI Confidence'] = record.get('mi_confidence', 0)
 
+                # Map receipt URLs (for R2 storage)
+                record['r2_url'] = record.get('r2_url', '') or record.get('receipt_url', '')
+                record['R2 URL'] = record.get('r2_url', '') or record.get('receipt_url', '')
+
+                # Map category
+                record['Chase Category'] = record.get('chase_category', '') or record.get('category', '')
+
                 # Filter out rejected receipts
                 receipt_file = record.get('Receipt File', '')
                 if receipt_file:
@@ -3016,8 +3023,8 @@ def reports_preview():
       "date_to": "2024-12-31"
     }
     """
-    if not USE_SQLITE or not db:
-        abort(503, "Reports require SQLite mode")
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
 
     data = request.get_json(force=True) or {}
 
@@ -3080,8 +3087,8 @@ def reports_submit():
     ensure_df()
     global df
 
-    if not USE_SQLITE or not db:
-        abort(503, "Reports require SQLite mode")
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
 
     data = request.get_json(force=True) or {}
 
@@ -3116,8 +3123,8 @@ def reports_submit():
 @app.route("/reports/list", methods=["GET"])
 def reports_list():
     """Get all submitted reports"""
-    if not USE_SQLITE or not db:
-        abort(503, "Reports require SQLite mode")
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
 
     try:
         reports = db.get_all_reports()
@@ -3131,8 +3138,8 @@ def reports_list():
 @app.route("/reports/<report_id>", methods=["GET"])
 def reports_get(report_id):
     """Get expenses for a specific report"""
-    if not USE_SQLITE or not db:
-        abort(503, "Reports require SQLite mode")
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
 
     try:
         expenses = db.get_report_expenses(report_id)
@@ -3182,8 +3189,8 @@ def reports_delete(report_id):
     ensure_df()
     global df
 
-    if not USE_SQLITE or not db:
-        abort(503, "Reports require SQLite mode")
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
 
     try:
         success = db.delete_report(report_id)
@@ -3214,8 +3221,8 @@ def reports_unsubmit(report_id):
     ensure_df()
     global df
 
-    if not USE_SQLITE or not db:
-        abort(503, "Reports require SQLite mode")
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
 
     try:
         # Get report info before deleting for the response
@@ -3256,8 +3263,8 @@ def reports_export_downhome(report_id):
     Export a report in Down Home CSV format.
     Format: External ID, Line, Category, Amount, Currency, Date, Project, Memo, Line of Business, Billable
     """
-    if not USE_SQLITE or not db:
-        abort(503, "Reports require SQLite mode")
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
 
     try:
         expenses = db.get_report_expenses(report_id)
@@ -3441,8 +3448,8 @@ def reports_generate_notes():
 @app.route("/reports/<report_id>/receipts.zip", methods=["GET"])
 def reports_download_receipts_zip(report_id):
     """Download all receipts for a report as a ZIP file"""
-    if not USE_SQLITE or not db:
-        abort(503, "Reports require SQLite mode")
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
 
     try:
         expenses = db.get_report_expenses(report_id)
@@ -3511,8 +3518,8 @@ def reports_download_receipt(report_id, filename):
 @app.route("/reports/<report_id>/page", methods=["GET"])
 def reports_standalone_page(report_id):
     """Render a beautiful standalone report page that can be shared"""
-    if not USE_SQLITE or not db:
-        abort(503, "Reports require SQLite mode")
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
 
     try:
         expenses = db.get_report_expenses(report_id)
@@ -5471,7 +5478,7 @@ def scan_incoming_receipts():
     from datetime import datetime
 
     try:
-        if not USE_SQLITE or not db:
+        if not USE_DATABASE or not db:
             return jsonify({
                 'ok': False,
                 'error': 'SQLite not available'
