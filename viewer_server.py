@@ -1878,18 +1878,32 @@ def ai_match():
     except (TypeError, ValueError):
         abort(400, f"Invalid _index: {data.get('_index')}")
 
-    # Get transaction row
-    if USE_SQLITE and db:
-        df = db.get_all_transactions()
+    # Get transaction row using direct database lookup (more reliable)
+    row = None
+    if USE_DATABASE and db:
+        row_data = db.get_transaction_by_index(idx)
+        if row_data:
+            row = dict(row_data)
+            # Map lowercase keys to UI-friendly names
+            key_map = {'receipt_file': 'Receipt File', 'chase_description': 'Chase Description',
+                      'chase_amount': 'Chase Amount', 'chase_date': 'Chase Date', 'business_type': 'Business Type'}
+            for old_key, new_key in key_map.items():
+                if old_key in row and new_key not in row:
+                    row[new_key] = row[old_key]
 
-    mask = df["_index"] == idx
-    if not mask.any():
-        abort(404, f"_index {idx} not found")
-
-    row = df[mask].iloc[0].to_dict()
+    if not row:
+        # Fallback to DataFrame lookup
+        df = db.get_all_transactions() if USE_DATABASE and db else df
+        if '_index' in df.columns:
+            df['_index'] = pd.to_numeric(df['_index'], errors='coerce').fillna(0).astype(int)
+        mask = df["_index"] == idx
+        if not mask.any():
+            print(f"DEBUG ai_match: idx={idx}, df._index dtype={df['_index'].dtype}, sample={df['_index'].head(3).tolist()}")
+            abort(404, f"_index {idx} not found")
+        row = df[mask].iloc[0].to_dict()
 
     # Check if receipt already attached
-    existing_receipt = row.get('Receipt File', '').strip()
+    existing_receipt = (row.get('Receipt File') or row.get('receipt_file') or '').strip()
 
     try:
         # ============================================================
