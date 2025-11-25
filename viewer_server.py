@@ -1528,6 +1528,13 @@ def get_transactions():
                 record['Receipt File'] = record.get('receipt_file', '')
                 record['Already Submitted'] = record.get('already_submitted', '')
 
+                # Map MI (Machine Intelligence) fields
+                record['MI Merchant'] = record.get('mi_merchant', '')
+                record['MI Category'] = record.get('mi_category', '')
+                record['MI Description'] = record.get('mi_description', '')
+                record['MI Is Subscription'] = record.get('mi_is_subscription', 0)
+                record['MI Confidence'] = record.get('mi_confidence', 0)
+
                 # Filter out rejected receipts
                 receipt_file = record.get('Receipt File', '')
                 if receipt_file:
