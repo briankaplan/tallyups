@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="AI-powered receipt management - Incoming receipts processing">
+<meta name="theme-color" content="#0b0d10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Incoming Receipts - Tallyups</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+<style>
+/* Tallyups Theme - Black & Green */
+:root {
+  --bg:#000000; --panel:#111111; --panel2:#0a0a0a; --edge:#222;
+  --ink:#f0f0f0; --muted:#888; --brand:#00ff88;
+  --ok:#00ff88; --bad:#ff4e6a; --warn:#ffd85e;
+  --glow:rgba(0,255,136,.35);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%; background: var(--bg); color: var(--ink);
+  font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Helvetica, Arial;
+}
+
+/* Header */
+header {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, #0e141a, #0a0f15);
+  border-bottom: 1px solid var(--edge);
+  box-shadow: 0 2px 12px rgba(0,0,0,.5);
+}
+
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand h1 {
+  margin: 0; font-size: 16px; font-weight: 800;
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.version {
+  padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+  background: rgba(0,255,136,.15); color: var(--brand);
+}
+
+/* Navigation */
+.nav-buttons {
+  display: flex; gap: 8px; margin-left: auto;
+}
+.nav-btn {
+  padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 13px;
+  background: rgba(0,255,136,.1); color: var(--muted);
+  border: 1px solid transparent; transition: all .15s;
+}
+.nav-btn:hover {
+  background: rgba(0,255,136,.2); color: var(--ink);
+}
+.nav-btn.active {
+  background: rgba(0,255,136,.2); color: var(--brand);
+  border-color: rgba(0,255,136,.3);
+}
+
+.controls { display: flex; align-items: center; gap: 10px; }
+
+/* Buttons */
+button {
+  cursor: pointer; border: none; border-radius: 10px; padding: 8px 14px;
+  background: #121a25; transition: all .15s ease; font-size: 13px; font-weight: 500;
+  color: var(--ink);
+}
+button:hover { opacity: .9; transform: translateY(-1px); }
+button:active { transform: translateY(0); }
+
+.btn-primary {
+  background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,255,136,.3);
+}
+.btn-success {
+  background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,255,136,.3);
+}
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff;
+}
+.btn-ghost {
+  background: rgba(0,255,136,.1); color: var(--brand);
+}
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+/* Dashboard Stats */
+.dashboard {
+  padding: 16px 20px; background: var(--panel);
+  border-bottom: 1px solid var(--edge);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;
+}
+.stat {
+  background: linear-gradient(135deg, rgba(59,130,246,.08), rgba(139,92,246,.08));
+  padding: 12px 16px; border-radius: 12px;
+  border: 1px solid rgba(59,130,246,.15);
+}
+.stat-label {
+  font-size: 11px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .5px; font-weight: 600;
+}
+.stat-value {
+  font-size: 22px; font-weight: 800; margin: 4px 0; color: var(--ink);
+}
+
+/* Filters */
+.filters {
+  padding: 14px 20px; background: var(--panel);
+  border-bottom: 1px solid var(--edge);
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.chip {
+  padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 8px;
+  background: var(--panel2); border: 1px solid var(--edge); color: var(--muted);
+}
+.chip:hover { background: rgba(59,130,246,.1); }
+.chip.active {
+  background: rgba(59,130,246,.2); border-color: var(--brand); color: var(--brand);
+}
+.chip-icon { font-size: 14px; }
+.chip-count {
+  padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;
+  background: rgba(255,255,255,.08); min-width: 20px; text-align: center;
+}
+.chip.active .chip-count { background: rgba(59,130,246,.3); }
+.chip[data-filter="pending"] .chip-count { background: rgba(59,130,246,.2); color: var(--brand); }
+.chip[data-filter="accepted"] .chip-count { background: rgba(47,255,162,.15); color: var(--ok); }
+.chip[data-filter="rejected"] .chip-count { background: rgba(255,78,106,.1); color: var(--bad); }
+
+/* Content */
+.content {
+  flex: 1; overflow-y: auto; padding: 20px;
+}
+
+/* Table */
+table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  background: var(--panel); border-radius: 12px; overflow: hidden;
+}
+thead {
+  background: linear-gradient(135deg, rgba(59,130,246,.08), rgba(139,92,246,.08));
+  border-bottom: 1px solid var(--edge);
+}
+th {
+  padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 600;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .5px;
+}
+td {
+  padding: 14px 16px; border-bottom: 1px solid var(--edge);
+  font-size: 13px;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover { background: rgba(59,130,246,.03); }
+tr.hidden { display: none; }
+
+/* Badges */
+.confidence-badge {
+  padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  display: inline-block;
+}
+.confidence-high { background: rgba(47,255,162,.15); color: var(--ok); }
+.confidence-medium { background: rgba(255,216,94,.15); color: var(--warn); }
+.confidence-low { background: rgba(255,78,106,.15); color: var(--bad); }
+
+.match-badge {
+  font-size: 11px; color: var(--warn); margin-top: 4px;
+  display: inline-block;
+}
+
+.description {
+  font-size: 12px; color: var(--muted); margin-top: 4px;
+  font-style: italic;
+}
+
+.snippet {
+  font-size: 12px; color: var(--muted); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 300px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 60px 20px;
+  color: var(--muted);
+}
+.empty-state h3 {
+  font-size: 18px; margin-bottom: 8px; color: var(--ink);
+}
+
+/* Loading */
+.loading {
+  text-align: center; padding: 40px; color: var(--muted);
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  padding: 12px 20px; border-radius: 10px;
+  background: var(--panel); border: 1px solid var(--edge);
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  opacity: 0; transform: translateY(20px);
+  transition: all .3s; pointer-events: none;
+  z-index: 1000;
+}
+.toast.show {
+  opacity: 1; transform: translateY(0); pointer-events: auto;
+}
+.toast.success { border-left: 3px solid var(--ok); }
+.toast.error { border-left: 3px solid var(--bad); }
+.toast.info { border-left: 3px solid var(--brand); }
+
+/* Spinner animation */
+.spinner {
+  width: 12px; height: 12px; border: 2px solid var(--edge);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Success row highlight animation */
+.row-success {
+  animation: successFade 2s ease-out;
+}
+@keyframes successFade {
+  0% { background-color: rgba(47,255,162,.2); }
+  100% { background-color: transparent; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="brand">
+    <h1>🧾 Tallyups</h1>
+    <span class="version">v2.0</span>
+  </div>
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="window.location.href='/'">🏠 Home</button>
+    <button class="nav-btn active">📬 Incoming</button>
+    <button class="nav-btn" onclick="window.location.href='/?page=reports'">📊 Reports</button>
+    <button class="nav-btn" onclick="window.location.href='/?page=stats'">📈 Stats</button>
+  </div>
+  <div class="controls">
+    <button class="btn-ghost btn-sm" onclick="clearFiltered()">🗑️ Clear Rejected</button>
+    <button class="btn-primary" onclick="scanForNew()">🔄 Scan Now</button>
+  </div>
+</header>
+
+<!-- Stats Dashboard -->
+<div class="dashboard">
+  <div class="stat">
+    <div class="stat-label">Pending</div>
+    <div class="stat-value" id="stat-pending">0</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Accepted</div>
+    <div class="stat-value" id="stat-accepted">0</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Rejected</div>
+    <div class="stat-value" id="stat-rejected">0</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Total</div>
+    <div class="stat-value" id="stat-total">0</div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+  <div class="chip" onclick="filterStatus('pending')" data-filter="pending">
+    <span class="chip-icon">📥</span> Inbox
+    <span class="chip-count" id="chip-pending">0</span>
+  </div>
+  <div class="chip" onclick="filterStatus('accepted')" data-filter="accepted">
+    <span class="chip-icon">📁</span> Archive
+    <span class="chip-count" id="chip-accepted">0</span>
+  </div>
+  <div class="chip" onclick="filterStatus('rejected')" data-filter="rejected">
+    <span class="chip-icon">🗑️</span> Dismissed
+    <span class="chip-count" id="chip-rejected">0</span>
+  </div>
+  <div class="chip" onclick="filterStatus('all')" data-filter="all">
+    <span class="chip-icon">📋</span> All
+  </div>
+</div>
+
+<!-- Content -->
+<div class="content" id="content">
+  <div class="loading">Loading receipts...</div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+let allReceipts = [];
+let currentFilter = 'pending';  // Default to inbox
+
+// Load receipts on page load
+document.addEventListener('DOMContentLoaded', () => {
+  // Set pending as active by default
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.querySelector('.chip[data-filter="pending"]')?.classList.add('active');
+  loadReceipts();
+});
+
+async function loadReceipts() {
+  try {
+    const response = await fetch('/api/incoming/receipts?status=all&limit=500');
+    const data = await response.json();
+
+    if (data.ok) {
+      allReceipts = data.receipts;
+      updateStats(data.counts);
+      renderTable();
+    } else {
+      showToast(data.error || 'Failed to load receipts', 'error');
+    }
+  } catch (e) {
+    console.error('Load error:', e);
+    showToast('Error loading receipts', 'error');
+  }
+}
+
+function updateStats(counts) {
+  // Update dashboard stats
+  document.getElementById('stat-pending').textContent = counts.pending || 0;
+  document.getElementById('stat-accepted').textContent = counts.accepted || 0;
+  document.getElementById('stat-rejected').textContent = counts.rejected || 0;
+  document.getElementById('stat-total').textContent = allReceipts.length || 0;
+
+  // Update chip counts
+  const chipPending = document.getElementById('chip-pending');
+  const chipAccepted = document.getElementById('chip-accepted');
+  const chipRejected = document.getElementById('chip-rejected');
+  if (chipPending) chipPending.textContent = counts.pending || 0;
+  if (chipAccepted) chipAccepted.textContent = counts.accepted || 0;
+  if (chipRejected) chipRejected.textContent = counts.rejected || 0;
+}
+
+function renderTable() {
+  const content = document.getElementById('content');
+
+  if (allReceipts.length === 0) {
+    content.innerHTML = `
+      <div class="empty-state">
+        <h3>No receipts found</h3>
+        <p>Click "Scan Now" to search for new receipts in your Gmail accounts.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const tableHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 35%">Subject & Details</th>
+          <th style="width: 15%">Merchant</th>
+          <th style="width: 10%">Amount</th>
+          <th style="width: 12%">From</th>
+          <th style="width: 10%">Date</th>
+          <th style="width: 8%">Score</th>
+          <th style="width: 10%">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${allReceipts.map(r => renderRow(r)).join('')}
+      </tbody>
+    </table>
+  `;
+
+  content.innerHTML = tableHTML;
+  applyFilter();
+}
+
+function renderRow(receipt) {
+  const confidenceClass = receipt.confidence_score >= 80 ? 'confidence-high' :
+                          receipt.confidence_score >= 60 ? 'confidence-medium' : 'confidence-low';
+
+  const merchant = receipt.merchant || extractMerchantFromSubject(receipt.subject);
+
+  // Format amount: charges are negative (-), refunds are positive
+  let amountDisplay = '';
+  let amountColor = 'var(--ok)';  // Green for refunds
+  if (receipt.amount) {
+    const isRefund = receipt.is_refund || receipt.subject.toLowerCase().includes('refund');
+    if (isRefund) {
+      amountDisplay = `+$${receipt.amount.toFixed(2)}`;
+      amountColor = 'var(--ok)';  // Green for refunds (money back)
+    } else {
+      amountDisplay = `-$${receipt.amount.toFixed(2)}`;
+      amountColor = 'var(--bad)';  // Red for charges (money spent)
+    }
+  }
+  const date = formatDate(receipt.received_date);
+
+  // Match badge
+  let matchBadge = '';
+  if (receipt.match_type === 'needs_receipt' && receipt.matched_transaction_id) {
+    matchBadge = `<div class="match-badge">📎 Attach to #${receipt.matched_transaction_id}</div>`;
+  }
+
+  // AI description
+  let description = '';
+  if (receipt.description) {
+    description = `<div class="description">${escapeHtml(receipt.description)}</div>`;
+  }
+
+  // Check if refund for quickAccept
+  const isRefund = receipt.is_refund || receipt.subject.toLowerCase().includes('refund');
+
+  // Actions
+  const actions = receipt.status === 'pending'
+    ? `<button class="btn-success btn-sm" onclick="quickAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${receipt.amount || 0}, ${isRefund})">✓</button>
+       <button class="btn-danger btn-sm" onclick="quickReject(${receipt.id})">✗</button>`
+    : `<span style="color:var(--muted);font-size:11px">${receipt.status === 'accepted' ? '✓ Accepted' : '✗ Rejected'}</span>`;
+
+  return `
+    <tr data-status="${receipt.status}" data-id="${receipt.id}">
+      <td>
+        <div style="font-weight:500">${escapeHtml(receipt.subject)}</div>
+        <div class="snippet">${escapeHtml(receipt.body_snippet || '')}</div>
+        ${description}
+        ${matchBadge}
+      </td>
+      <td style="font-weight:500">${escapeHtml(merchant)}</td>
+      <td style="font-weight:600;color:${amountColor}">${amountDisplay}</td>
+      <td style="color:var(--muted)">${escapeHtml(receipt.from_email.split('@')[0])}</td>
+      <td style="color:var(--muted);font-size:12px">${date}</td>
+      <td><span class="confidence-badge ${confidenceClass}">${receipt.confidence_score}%</span></td>
+      <td>${actions}</td>
+    </tr>
+  `;
+}
+
+function extractMerchantFromSubject(subject) {
+  const patterns = [
+    /receipt from ([^#\n]+)/i,
+    /invoice from ([^#\n]+)/i,
+    /payment (?:to|from) ([^#\n]+)/i,
+    /your ([^#\n]+?) (?:receipt|invoice)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = subject.match(pattern);
+    if (match) return match[1].trim().split('#')[0].trim();
+  }
+  return 'Unknown';
+}
+
+async function quickAccept(id, merchant, amount, isRefund = false) {
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  const actionsCell = row.querySelector('td:last-child');
+
+  // Show processing state with spinner
+  actionsCell.innerHTML = '<span style="color:var(--brand);font-size:11px;display:flex;align-items:center;gap:4px"><span class="spinner"></span> Creating transaction...</span>';
+
+  try {
+    const response = await fetch('/api/incoming/accept', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        receipt_id: id,
+        merchant: merchant,
+        amount: amount || 0,
+        is_refund: isRefund,
+        date: new Date().toISOString().split('T')[0],
+        business_type: 'Personal'
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      // Show success with transaction details
+      const actionText = data.action === 'attached' ? 'Attached to existing' : 'New transaction';
+      const txnId = data.transaction_id ? ` #${data.transaction_id}` : '';
+      // Format amount with proper sign: - for charges, + for refunds
+      const amountSign = isRefund ? '+' : '-';
+      const amountStr = amount ? ` (${amountSign}$${parseFloat(amount).toFixed(2)})` : '';
+
+      // Update cell with complete status
+      actionsCell.innerHTML = `<span style="color:var(--ok);font-size:11px;font-weight:600">✅ Complete${txnId}</span>`;
+
+      // Show detailed toast
+      showToast(`✅ Complete! ${actionText}${txnId} - ${merchant}${amountStr}`, 'success');
+
+      // Highlight row briefly
+      row.style.backgroundColor = 'rgba(47,255,162,.1)';
+      row.setAttribute('data-status', 'accepted');
+
+      // Fade highlight after 2 seconds
+      setTimeout(() => {
+        row.style.backgroundColor = '';
+      }, 2000);
+
+      // Refresh stats
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Failed to accept', 'error');
+      actionsCell.innerHTML = `<button class="btn-success btn-sm" onclick="quickAccept(${id}, '${merchant}', ${amount}, ${isRefund})">✓</button>
+                               <button class="btn-danger btn-sm" onclick="quickReject(${id})">✗</button>`;
+    }
+  } catch (e) {
+    console.error('Accept error:', e);
+    showToast('Error accepting receipt', 'error');
+    actionsCell.innerHTML = `<button class="btn-success btn-sm" onclick="quickAccept(${id}, '${merchant}', ${amount}, ${isRefund})">✓</button>
+                             <button class="btn-danger btn-sm" onclick="quickReject(${id})">✗</button>`;
+  }
+}
+
+async function quickReject(id) {
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  const actionsCell = row.querySelector('td:last-child');
+  actionsCell.innerHTML = '<span style="color:var(--muted);font-size:11px">Processing...</span>';
+
+  try {
+    const response = await fetch('/api/incoming/reject', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ receipt_id: id })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      showToast('Rejected', 'info');
+
+      // Fade out and remove the row
+      row.style.transition = 'opacity 0.3s ease';
+      row.style.opacity = '0';
+      setTimeout(() => {
+        row.remove();
+        // Update the receipt from allReceipts array
+        const receiptIndex = allReceipts.findIndex(r => r.id === id);
+        if (receiptIndex !== -1) {
+          allReceipts[receiptIndex].status = 'rejected';
+        }
+        updateStats();
+      }, 300);
+    } else {
+      showToast(data.error || 'Failed to reject', 'error');
+    }
+  } catch (e) {
+    console.error('Reject error:', e);
+    showToast('Error rejecting receipt', 'error');
+  }
+}
+
+function filterStatus(status) {
+  currentFilter = status;
+
+  // Update chip states using data-filter attribute (handles clicks on child elements)
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.classList.remove('active');
+    if (chip.getAttribute('data-filter') === status) {
+      chip.classList.add('active');
+    }
+  });
+
+  applyFilter();
+}
+
+function applyFilter() {
+  const rows = document.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    const rowStatus = row.getAttribute('data-status');
+    if (currentFilter === 'all' || rowStatus === currentFilter) {
+      row.classList.remove('hidden');
+    } else {
+      row.classList.add('hidden');
+    }
+  });
+}
+
+async function scanForNew() {
+  showToast('Scanning Gmail accounts...', 'info');
+
+  try {
+    const response = await fetch('/api/incoming/scan', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({})
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      showToast(`Found ${data.results.total_new} new receipts!`, 'success');
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Scan failed', 'error');
+    }
+  } catch (e) {
+    console.error('Scan error:', e);
+    showToast('Error scanning Gmail', 'error');
+  }
+}
+
+async function clearFiltered() {
+  if (!confirm('Remove all rejected receipts from the database?')) return;
+
+  try {
+    const response = await fetch('/api/incoming/clear-rejected', {
+      method: 'POST'
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      showToast(`Cleared ${data.count} rejected receipts`, 'success');
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Failed to clear', 'error');
+    }
+  } catch (e) {
+    showToast('Error clearing receipts', 'error');
+  }
+}
+
+function formatDate(dateStr) {
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function showToast(message, type = 'info') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = `toast ${type} show`;
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+</script>
+
+</body>
+</html>

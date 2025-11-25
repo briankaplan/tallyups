@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Tallyups">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/receipt-icon-192.png">
+  <title>Tallyups Scanner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    :root {
+      --bg: #000000;
+      --bg-card: #111111;
+      --bg-elevated: #1a1a1a;
+      --accent: #00ff88;
+      --accent-dim: rgba(0, 255, 136, 0.15);
+      --text: #ffffff;
+      --text-dim: #666666;
+      --text-secondary: #999999;
+      --border: #222222;
+      --success: #00ff88;
+      --warning: #ffaa00;
+      --error: #ff4444;
+      --glass: rgba(255, 255, 255, 0.05);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: env(safe-area-inset-top) 20px 12px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.95), rgba(0,0,0,0));
+      pointer-events: none;
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: auto;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 16px;
+      height: 16px;
+      color: #000;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--glass);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.9); }
+    }
+
+    /* ===== MAIN CONTAINER ===== */
+    .main {
+      min-height: 100vh;
+      padding-top: calc(60px + env(safe-area-inset-top));
+      padding-bottom: calc(100px + env(safe-area-inset-bottom));
+    }
+
+    /* ===== CAMERA VIEW ===== */
+    .camera-view {
+      position: relative;
+      width: 100%;
+      padding: 16px;
+    }
+
+    .camera-frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3/4;
+      background: var(--bg-card);
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .camera-frame.has-image {
+      border-color: var(--accent);
+      box-shadow: 0 0 40px var(--accent-dim);
+    }
+
+    #video-preview, #image-preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    #image-preview {
+      object-fit: contain;
+      background: #000;
+    }
+
+    .camera-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px;
+    }
+
+    .scan-icon {
+      width: 80px;
+      height: 80px;
+      border: 2px dashed var(--border);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .scan-icon svg {
+      width: 36px;
+      height: 36px;
+      color: var(--text-dim);
+    }
+
+    .scan-hint {
+      text-align: center;
+    }
+
+    .scan-hint h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .scan-hint p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Corner markers */
+    .corner-markers {
+      position: absolute;
+      inset: 20px;
+      pointer-events: none;
+    }
+
+    .corner {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-color: var(--accent);
+      border-style: solid;
+      border-width: 0;
+      opacity: 0.6;
+    }
+
+    .corner.tl { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 8px; }
+    .corner.tr { top: 0; right: 0; border-top-width: 3px; border-right-width: 3px; border-top-right-radius: 8px; }
+    .corner.bl { bottom: 0; left: 0; border-bottom-width: 3px; border-left-width: 3px; border-bottom-left-radius: 8px; }
+    .corner.br { bottom: 0; right: 0; border-bottom-width: 3px; border-right-width: 3px; border-bottom-right-radius: 8px; }
+
+    /* ===== QUICK ACTIONS ===== */
+    .quick-actions {
+      display: flex;
+      gap: 12px;
+      padding: 0 16px;
+      margin-top: 16px;
+    }
+
+    .action-btn {
+      flex: 1;
+      height: 56px;
+      border: none;
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .action-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .action-btn.primary {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .action-btn.primary:active {
+      transform: scale(0.97);
+      filter: brightness(0.9);
+    }
+
+    .action-btn.secondary {
+      background: var(--bg-elevated);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .action-btn.secondary:active {
+      background: var(--border);
+    }
+
+    /* ===== AI EXTRACTION PANEL ===== */
+    .extraction-panel {
+      padding: 16px;
+      display: none;
+    }
+
+    .extraction-panel.visible {
+      display: block;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--accent-dim);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .ai-badge svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .extraction-card {
+      background: var(--bg-card);
+      border-radius: 20px;
+      padding: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .field-group {
+      margin-bottom: 20px;
+    }
+
+    .field-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .field-input {
+      width: 100%;
+      height: 52px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0 16px;
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field-input:focus {
+      border-color: var(--accent);
+    }
+
+    .field-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Amount field special styling */
+    .amount-input {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    /* Smart suggestions */
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .suggestion-chip {
+      padding: 8px 14px;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .suggestion-chip:active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .suggestion-chip.selected {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Business type chips */
+    .business-chips {
+      display: flex;
+      gap: 8px;
+    }
+
+    .biz-chip {
+      flex: 1;
+      padding: 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .biz-chip.selected {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+    }
+
+    .biz-chip-icon {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .biz-chip-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .biz-chip.selected .biz-chip-label {
+      color: var(--accent);
+    }
+
+    /* Transaction match */
+    .match-section {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .match-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .match-header svg {
+      width: 16px;
+      height: 16px;
+      color: var(--accent);
+    }
+
+    .match-header span {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .match-card {
+      background: var(--bg);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .match-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .match-merchant {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .match-meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .match-amount {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* Submit button */
+    .submit-section {
+      padding: 16px;
+      padding-bottom: calc(16px + env(safe-area-inset-bottom));
+      position: fixed;
+      bottom: 60px;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, var(--bg) 80%, transparent);
+    }
+
+    .submit-btn {
+      width: 100%;
+      height: 56px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 16px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+
+    .submit-btn:active {
+      transform: scale(0.97);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .submit-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* ===== BOTTOM NAV ===== */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(60px + env(safe-area-inset-bottom));
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-around;
+      padding-top: 8px;
+      z-index: 100;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 20px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .nav-item span {
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    /* ===== PROCESSING OVERLAY ===== */
+    .processing-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      z-index: 200;
+    }
+
+    .processing-overlay.visible {
+      display: flex;
+    }
+
+    .ai-processing {
+      width: 80px;
+      height: 80px;
+      position: relative;
+    }
+
+    .ai-ring {
+      position: absolute;
+      inset: 0;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .ai-ring:nth-child(2) {
+      inset: 8px;
+      animation-direction: reverse;
+      animation-duration: 0.8s;
+    }
+
+    .ai-ring:nth-child(3) {
+      inset: 16px;
+      animation-duration: 1.2s;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .processing-text {
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .processing-step {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    /* ===== SUCCESS MODAL ===== */
+    .success-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 24px;
+    }
+
+    .success-modal.visible {
+      display: flex;
+    }
+
+    .success-card {
+      background: var(--bg-card);
+      border-radius: 24px;
+      padding: 40px 32px;
+      text-align: center;
+      max-width: 320px;
+      width: 100%;
+      border: 1px solid var(--border);
+      animation: scaleIn 0.3s ease-out;
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      background: var(--accent-dim);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+
+    .success-icon svg {
+      width: 36px;
+      height: 36px;
+      color: var(--accent);
+    }
+
+    .success-card h3 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .success-card p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .success-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .success-btn {
+      width: 100%;
+      height: 52px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    .success-btn.primary {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .success-btn.secondary {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    /* ===== HISTORY VIEW ===== */
+    .history-view {
+      padding: 16px;
+      display: none;
+    }
+
+    .history-view.visible {
+      display: block;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .history-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .history-stats {
+      display: flex;
+      gap: 16px;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .history-item {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      gap: 14px;
+      border: 1px solid var(--border);
+    }
+
+    .history-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: var(--bg);
+    }
+
+    .history-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .history-merchant {
+      font-size: 16px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-amount {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .history-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .history-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      background: var(--accent-dim);
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .history-status.pending {
+      background: rgba(255, 170, 0, 0.15);
+      color: var(--warning);
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--bg-card);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .empty-icon svg {
+      width: 36px;
+      height: 36px;
+      color: var(--text-dim);
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed;
+      top: calc(70px + env(safe-area-inset-top));
+      left: 16px;
+      right: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transform: translateY(-120%);
+      opacity: 0;
+      transition: all 0.3s ease-out;
+      z-index: 150;
+    }
+
+    .toast.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toast-icon svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .toast.success .toast-icon {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .toast.error .toast-icon {
+      background: rgba(255, 68, 68, 0.15);
+      color: var(--error);
+    }
+
+    .toast-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Hidden inputs */
+    #file-input, #batch-input {
+      display: none;
+    }
+
+    /* Voice recording */
+    .voice-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+      transition: all 0.2s;
+    }
+
+    .voice-btn:active {
+      transform: scale(0.95);
+    }
+
+    .voice-btn svg {
+      width: 24px;
+      height: 24px;
+      color: #000;
+    }
+
+    .voice-btn.recording {
+      background: var(--error);
+      animation: pulseRecord 1s infinite;
+    }
+
+    @keyframes pulseRecord {
+      0%, 100% { box-shadow: 0 4px 20px rgba(255, 68, 68, 0.3); }
+      50% { box-shadow: 0 4px 40px rgba(255, 68, 68, 0.5); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+        </div>
+        Tallyups
+      </div>
+      <div class="status-pill" id="status-pill">
+        <span class="status-dot"></span>
+        <span id="status-text">Ready</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Camera View -->
+    <section class="camera-view" id="camera-view">
+      <div class="camera-frame" id="camera-frame">
+        <video id="video-preview" autoplay playsinline></video>
+        <img id="image-preview" alt="Receipt">
+
+        <div class="camera-placeholder" id="camera-placeholder">
+          <div class="scan-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+          </div>
+          <div class="scan-hint">
+            <h2>Scan Receipt</h2>
+            <p>Snap a photo or choose from gallery.<br>AI will extract everything automatically.</p>
+          </div>
+        </div>
+
+        <div class="corner-markers">
+          <div class="corner tl"></div>
+          <div class="corner tr"></div>
+          <div class="corner bl"></div>
+          <div class="corner br"></div>
+        </div>
+
+        <!-- Voice Button -->
+        <button class="voice-btn" id="voice-btn" title="Voice capture">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="quick-actions">
+        <button class="action-btn primary" id="capture-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+          </svg>
+          Capture
+        </button>
+        <button class="action-btn secondary" id="gallery-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          Gallery
+        </button>
+      </div>
+
+      <input type="file" id="file-input" accept="image/*" capture="environment">
+      <input type="file" id="batch-input" accept="image/*" multiple>
+    </section>
+
+    <!-- AI Extraction Panel -->
+    <section class="extraction-panel" id="extraction-panel">
+      <div class="ai-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+          <path d="M2 17l10 5 10-5"></path>
+          <path d="M2 12l10 5 10-5"></path>
+        </svg>
+        AI Extracted
+      </div>
+
+      <div class="extraction-card">
+        <div class="field-group">
+          <label class="field-label">Amount</label>
+          <input type="text" class="field-input amount-input" id="amount-input" placeholder="$0.00" inputmode="decimal">
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Merchant</label>
+          <input type="text" class="field-input" id="merchant-input" placeholder="Store name">
+          <div class="suggestions" id="merchant-suggestions"></div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label">Date</label>
+            <input type="date" class="field-input" id="date-input">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Category</label>
+            <select class="field-input" id="category-select">
+              <option value="">Auto</option>
+              <option value="Food & Dining">Food & Dining</option>
+              <option value="Gas/Automotive">Gas</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Travel">Travel</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Subscriptions">Subscriptions</option>
+              <option value="Professional Services">Services</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Business</label>
+          <div class="business-chips">
+            <div class="biz-chip" data-biz="Down Home">
+              <div class="biz-chip-icon">🏠</div>
+              <div class="biz-chip-label">Down Home</div>
+            </div>
+            <div class="biz-chip" data-biz="Music City Rodeo">
+              <div class="biz-chip-icon">🎸</div>
+              <div class="biz-chip-label">MCR</div>
+            </div>
+            <div class="biz-chip" data-biz="Personal">
+              <div class="biz-chip-icon">👤</div>
+              <div class="biz-chip-label">Personal</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Notes</label>
+          <input type="text" class="field-input" id="notes-input" placeholder="Add context...">
+        </div>
+
+        <!-- Transaction Match -->
+        <div class="match-section" id="match-section" style="display: none;">
+          <div class="match-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>Matched Transaction</span>
+          </div>
+          <div class="match-card">
+            <div class="match-info">
+              <div class="match-merchant" id="match-merchant">—</div>
+              <div class="match-meta" id="match-meta">—</div>
+            </div>
+            <div class="match-amount" id="match-amount">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="submit-section">
+        <button class="submit-btn" id="submit-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 2L11 13"></path>
+            <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+          </svg>
+          Save Receipt
+        </button>
+      </div>
+    </section>
+
+    <!-- History View -->
+    <section class="history-view" id="history-view">
+      <div class="history-header">
+        <h2>Recent</h2>
+        <div class="history-stats">
+          <div class="stat">
+            <div class="stat-value" id="stat-count">0</div>
+            <div class="stat-label">Today</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-total">$0</div>
+            <div class="stat-label">Total</div>
+          </div>
+        </div>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </section>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="#" class="nav-item active" data-view="scan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="3" y1="9" x2="21" y2="9"></line>
+      </svg>
+      <span>Scan</span>
+    </a>
+    <a href="#" class="nav-item" data-view="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <span>History</span>
+    </a>
+  </nav>
+
+  <!-- Processing Overlay -->
+  <div class="processing-overlay" id="processing-overlay">
+    <div class="ai-processing">
+      <div class="ai-ring"></div>
+      <div class="ai-ring"></div>
+      <div class="ai-ring"></div>
+    </div>
+    <div class="processing-text" id="processing-text">Analyzing receipt...</div>
+    <div class="processing-step" id="processing-step">Extracting text</div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="success-modal" id="success-modal">
+    <div class="success-card">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h3>Receipt Saved!</h3>
+      <p id="success-message">Your receipt has been added and is ready for matching.</p>
+      <div class="success-actions">
+        <button class="success-btn primary" id="scan-another-btn">Scan Another</button>
+        <button class="success-btn secondary" id="view-history-btn">View History</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <div class="toast-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <span class="toast-text" id="toast-text">Saved!</span>
+  </div>
+
+  <script>
+    // ========================================
+    // CONFIGURATION
+    // ========================================
+    const API_BASE = window.location.origin;
+    const SOURCE_TAG = 'mobile_scanner';
+
+    // ========================================
+    // STATE
+    // ========================================
+    let currentImage = { data: null, blob: null };
+    let selectedBusiness = '';
+    let matchedTransaction = null;
+    let history = JSON.parse(localStorage.getItem('receiptHistory') || '[]');
+
+    // ========================================
+    // DOM ELEMENTS
+    // ========================================
+    const $ = id => document.getElementById(id);
+    const $$ = sel => document.querySelectorAll(sel);
+
+    // ========================================
+    // INITIALIZATION
+    // ========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      $('date-input').value = new Date().toISOString().split('T')[0];
+      setupEventListeners();
+      renderHistory();
+      checkConnection();
+    });
+
+    // ========================================
+    // EVENT LISTENERS
+    // ========================================
+    function setupEventListeners() {
+      // Camera capture
+      $('capture-btn').onclick = () => {
+        $('file-input').setAttribute('capture', 'environment');
+        $('file-input').click();
+      };
+
+      // Gallery
+      $('gallery-btn').onclick = () => {
+        $('file-input').removeAttribute('capture');
+        $('file-input').click();
+      };
+
+      // File selected
+      $('file-input').onchange = handleFileSelect;
+
+      // Business chips
+      $$('.biz-chip').forEach(chip => {
+        chip.onclick = () => {
+          $$('.biz-chip').forEach(c => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          selectedBusiness = chip.dataset.biz;
+        };
+      });
+
+      // Amount formatting
+      $('amount-input').onblur = () => {
+        const val = parseFloat($('amount-input').value.replace(/[^0-9.-]/g, ''));
+        if (!isNaN(val)) {
+          $('amount-input').value = '$' + val.toFixed(2);
+          findMatchingTransaction(val);
+        }
+      };
+
+      // Submit
+      $('submit-btn').onclick = submitReceipt;
+
+      // Success modal
+      $('scan-another-btn').onclick = resetScanner;
+      $('view-history-btn').onclick = () => {
+        $('success-modal').classList.remove('visible');
+        switchView('history');
+      };
+
+      // Navigation
+      $$('.nav-item').forEach(item => {
+        item.onclick = e => {
+          e.preventDefault();
+          switchView(item.dataset.view);
+        };
+      });
+
+      // Voice capture using Web Speech API
+      let isRecording = false;
+      let recognition = null;
+
+      // Initialize speech recognition
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+          isRecording = true;
+          $('voice-btn').classList.add('recording');
+          showToast('Listening...', 'info');
+        };
+
+        recognition.onresult = (event) => {
+          let transcript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
+          // Update notes field with transcript
+          $('notes-input').value = transcript;
+          $('notes-input').style.borderColor = 'var(--accent)';
+        };
+
+        recognition.onend = () => {
+          isRecording = false;
+          $('voice-btn').classList.remove('recording');
+          if ($('notes-input').value) {
+            showToast('Voice note added!', 'success');
+          }
+        };
+
+        recognition.onerror = (event) => {
+          isRecording = false;
+          $('voice-btn').classList.remove('recording');
+          if (event.error === 'not-allowed') {
+            showToast('Microphone access denied', 'error');
+          } else if (event.error === 'no-speech') {
+            showToast('No speech detected', 'error');
+          } else {
+            showToast('Voice error: ' + event.error, 'error');
+          }
+        };
+      }
+
+      $('voice-btn').onclick = () => {
+        if (!recognition) {
+          showToast('Voice not supported in this browser', 'error');
+          return;
+        }
+
+        if (isRecording) {
+          recognition.stop();
+        } else {
+          // Clear existing notes if empty or ask to append
+          if (!$('notes-input').value) {
+            recognition.start();
+          } else {
+            // Append to existing notes
+            recognition.start();
+          }
+        }
+      };
+    }
+
+    // ========================================
+    // VIEW MANAGEMENT
+    // ========================================
+    function switchView(view) {
+      $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
+
+      $('camera-view').style.display = view === 'scan' ? 'block' : 'none';
+      $('extraction-panel').style.display = (view === 'scan' && currentImage.data) ? 'block' : 'none';
+      $('history-view').classList.toggle('visible', view === 'history');
+
+      if (view === 'history') renderHistory();
+    }
+
+    // ========================================
+    // FILE HANDLING
+    // ========================================
+    async function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        currentImage.data = ev.target.result;
+        currentImage.blob = file;
+
+        $('image-preview').src = currentImage.data;
+        $('image-preview').style.display = 'block';
+        $('camera-placeholder').style.display = 'none';
+        $('camera-frame').classList.add('has-image');
+
+        await processOCR();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ========================================
+    // OCR PROCESSING
+    // ========================================
+    async function processOCR() {
+      showProcessing('Analyzing receipt...', 'Detecting text');
+
+      try {
+        const formData = new FormData();
+        formData.append('file', currentImage.blob);
+
+        updateProcessing('Analyzing receipt...', 'Running AI extraction');
+
+        const response = await fetch(`${API_BASE}/ocr`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('OCR Result:', data);
+
+          updateProcessing('Analyzing receipt...', 'Populating fields');
+
+          // Fill form
+          if (data.merchant) $('merchant-input').value = data.merchant;
+          if (data.total) {
+            const amt = parseFloat(data.total);
+            $('amount-input').value = '$' + amt.toFixed(2);
+            findMatchingTransaction(amt);
+          }
+          if (data.date) $('date-input').value = formatDateForInput(data.date);
+          if (data.category) $('category-select').value = data.category;
+
+          // Fill AI-generated contextual note from calendar
+          if (data.note) {
+            $('notes-input').value = data.note;
+            // Highlight the notes field to show it was AI-generated
+            $('notes-input').style.borderColor = 'var(--accent)';
+            $('notes-input').style.background = 'var(--accent-dim)';
+            // Add calendar icon indicator
+            const notesLabel = document.querySelector('label[for="notes-input"]') ||
+                               $('notes-input').previousElementSibling;
+            if (notesLabel && !notesLabel.querySelector('.calendar-badge')) {
+              notesLabel.innerHTML = 'Notes <span class="calendar-badge" style="margin-left:6px;font-size:10px;background:var(--accent);color:#000;padding:2px 6px;border-radius:4px;">📅 Calendar</span>';
+            }
+            showToast('Calendar context added!', 'success');
+          }
+
+          // Show suggestions
+          showMerchantSuggestions(data.merchant);
+        } else {
+          showToast('Could not read receipt. Please fill manually.', 'error');
+        }
+      } catch (err) {
+        console.error('OCR error:', err);
+        showToast('AI unavailable. Please fill manually.', 'error');
+      }
+
+      hideProcessing();
+      $('extraction-panel').classList.add('visible');
+    }
+
+    // ========================================
+    // SMART MATCHING
+    // ========================================
+    async function findMatchingTransaction(amount) {
+      try {
+        const response = await fetch(`${API_BASE}/csv`);
+        if (!response.ok) return;
+
+        const transactions = await response.json();
+        const merchant = $('merchant-input').value.toLowerCase();
+        const date = $('date-input').value;
+
+        // Find potential matches
+        const matches = transactions.filter(t => {
+          const txAmt = Math.abs(parseFloat(t['Chase Amount'] || 0));
+          const amtMatch = Math.abs(txAmt - amount) < 0.01;
+          const hasReceipt = t['Receipt File'] && t['Receipt File'].trim();
+          return amtMatch && !hasReceipt;
+        });
+
+        if (matches.length > 0) {
+          matchedTransaction = matches[0];
+          $('match-section').style.display = 'block';
+          $('match-merchant').textContent = matchedTransaction['Chase Description'] || 'Unknown';
+          $('match-meta').textContent = matchedTransaction['Chase Date'] || '';
+          $('match-amount').textContent = '$' + Math.abs(parseFloat(matchedTransaction['Chase Amount'])).toFixed(2);
+        } else {
+          $('match-section').style.display = 'none';
+          matchedTransaction = null;
+        }
+      } catch (err) {
+        console.error('Match error:', err);
+      }
+    }
+
+    // ========================================
+    // SUBMISSION
+    // ========================================
+    async function submitReceipt() {
+      const merchant = $('merchant-input').value.trim();
+      const amount = parseFloat($('amount-input').value.replace(/[^0-9.-]/g, ''));
+
+      if (!currentImage.blob) {
+        showToast('Please capture a receipt first', 'error');
+        return;
+      }
+
+      if (!merchant) {
+        showToast('Please enter merchant name', 'error');
+        $('merchant-input').focus();
+        return;
+      }
+
+      if (isNaN(amount) || amount <= 0) {
+        showToast('Please enter a valid amount', 'error');
+        $('amount-input').focus();
+        return;
+      }
+
+      showProcessing('Saving receipt...', 'Uploading image');
+
+      try {
+        const formData = new FormData();
+        formData.append('file', currentImage.blob, `receipt_${Date.now()}.jpg`);
+        formData.append('merchant', merchant);
+        formData.append('amount', amount.toFixed(2));
+        formData.append('date', $('date-input').value);
+        formData.append('category', $('category-select').value || '');
+        formData.append('business', selectedBusiness);
+        formData.append('notes', $('notes-input').value || '');
+        formData.append('source', SOURCE_TAG);
+
+        updateProcessing('Saving receipt...', 'Processing data');
+
+        const response = await fetch(`${API_BASE}/mobile-upload`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+
+          // Save to local history
+          saveToHistory({
+            id: result.id || Date.now(),
+            merchant,
+            amount,
+            date: $('date-input').value,
+            thumbnail: currentImage.data,
+            synced: true,
+            business: selectedBusiness,
+            timestamp: new Date().toISOString()
+          });
+
+          hideProcessing();
+
+          $('success-message').textContent = matchedTransaction
+            ? `Receipt matched to "${matchedTransaction['Chase Description']}"`
+            : 'Your receipt has been added and is ready for matching.';
+
+          $('success-modal').classList.add('visible');
+        } else {
+          throw new Error('Upload failed');
+        }
+      } catch (err) {
+        console.error('Upload error:', err);
+        hideProcessing();
+
+        // Save offline
+        saveToHistory({
+          id: Date.now(),
+          merchant,
+          amount,
+          date: $('date-input').value,
+          thumbnail: currentImage.data,
+          synced: false,
+          business: selectedBusiness,
+          timestamp: new Date().toISOString(),
+          pendingData: {
+            imageData: currentImage.data,
+            category: $('category-select').value,
+            notes: $('notes-input').value
+          }
+        });
+
+        showToast('Saved offline. Will sync when connected.', 'success');
+        setTimeout(resetScanner, 1500);
+      }
+    }
+
+    // ========================================
+    // HISTORY
+    // ========================================
+    function saveToHistory(item) {
+      history.unshift(item);
+      if (history.length > 100) history = history.slice(0, 100);
+      localStorage.setItem('receiptHistory', JSON.stringify(history));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const todayItems = history.filter(h => {
+        const d = new Date(h.timestamp);
+        const today = new Date();
+        return d.toDateString() === today.toDateString();
+      });
+
+      const todayTotal = todayItems.reduce((sum, h) => sum + (h.amount || 0), 0);
+
+      $('stat-count').textContent = todayItems.length;
+      $('stat-total').textContent = '$' + todayTotal.toFixed(0);
+
+      if (history.length === 0) {
+        $('history-list').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </div>
+            <h3>No receipts yet</h3>
+            <p>Scanned receipts will appear here</p>
+          </div>
+        `;
+        return;
+      }
+
+      $('history-list').innerHTML = history.slice(0, 20).map(item => `
+        <div class="history-item">
+          <img class="history-thumb" src="${item.thumbnail}" alt="">
+          <div class="history-content">
+            <div class="history-row">
+              <span class="history-merchant">${item.merchant}</span>
+              <span class="history-amount">$${parseFloat(item.amount).toFixed(2)}</span>
+            </div>
+            <div class="history-meta">
+              <span>${formatRelativeDate(item.timestamp)}</span>
+              ${item.business ? `<span>${item.business}</span>` : ''}
+              <span class="history-status ${item.synced ? '' : 'pending'}">${item.synced ? 'Synced' : 'Pending'}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ========================================
+    // UTILITIES
+    // ========================================
+    function formatDateForInput(dateStr) {
+      const date = new Date(dateStr);
+      return !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : $('date-input').value;
+    }
+
+    function formatRelativeDate(timestamp) {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diff = now - date;
+
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function showMerchantSuggestions(merchant) {
+      if (!merchant) return;
+      // Could show alternative spellings or corrections
+      $('merchant-suggestions').innerHTML = '';
+    }
+
+    function showProcessing(text, step) {
+      $('processing-text').textContent = text;
+      $('processing-step').textContent = step;
+      $('processing-overlay').classList.add('visible');
+    }
+
+    function updateProcessing(text, step) {
+      $('processing-text').textContent = text;
+      $('processing-step').textContent = step;
+    }
+
+    function hideProcessing() {
+      $('processing-overlay').classList.remove('visible');
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = $('toast');
+      $('toast-text').textContent = message;
+      toast.className = 'toast ' + type;
+      toast.classList.add('visible');
+      setTimeout(() => toast.classList.remove('visible'), 3000);
+    }
+
+    function resetScanner() {
+      currentImage = { data: null, blob: null };
+      matchedTransaction = null;
+      selectedBusiness = '';
+
+      $('image-preview').style.display = 'none';
+      $('camera-placeholder').style.display = 'flex';
+      $('camera-frame').classList.remove('has-image');
+      $('extraction-panel').classList.remove('visible');
+      $('success-modal').classList.remove('visible');
+      $('match-section').style.display = 'none';
+
+      // Reset form
+      $('merchant-input').value = '';
+      $('amount-input').value = '';
+      $('date-input').value = new Date().toISOString().split('T')[0];
+      $('category-select').value = '';
+      $('notes-input').value = '';
+      $$('.biz-chip').forEach(c => c.classList.remove('selected'));
+      $('file-input').value = '';
+    }
+
+    async function checkConnection() {
+      try {
+        const response = await fetch(`${API_BASE}/health`);
+        if (response.ok) {
+          $('status-text').textContent = 'Connected';
+          syncPendingUploads();
+        } else {
+          $('status-text').textContent = 'Offline';
+        }
+      } catch {
+        $('status-text').textContent = 'Offline';
+      }
+    }
+
+    async function syncPendingUploads() {
+      const pending = history.filter(h => !h.synced && h.pendingData);
+      for (const item of pending) {
+        try {
+          const response = await fetch(item.pendingData.imageData);
+          const blob = await response.blob();
+
+          const formData = new FormData();
+          formData.append('file', blob, `receipt_${item.id}.jpg`);
+          formData.append('merchant', item.merchant);
+          formData.append('amount', item.amount.toFixed(2));
+          formData.append('date', item.date);
+          formData.append('category', item.pendingData.category || '');
+          formData.append('business', item.business || '');
+          formData.append('notes', item.pendingData.notes || '');
+          formData.append('source', SOURCE_TAG);
+
+          const uploadResponse = await fetch(`${API_BASE}/mobile-upload`, {
+            method: 'POST',
+            body: formData
+          });
+
+          if (uploadResponse.ok) {
+            item.synced = true;
+            delete item.pendingData;
+          }
+        } catch (err) {
+          console.error('Sync error:', err);
+        }
+      }
+      localStorage.setItem('receiptHistory', JSON.stringify(history));
+      renderHistory();
+    }
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(console.log);
+    }
+  </script>
+</body>
+</html>
