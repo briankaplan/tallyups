@@ -5596,8 +5596,37 @@ def sync_receipt_urls():
             conn = db.get_connection()
             cursor = conn.cursor()
 
+            # First check if receipt_url column exists
+            cursor.execute("DESCRIBE transactions")
+            columns = [row[0] if isinstance(row, tuple) else row.get('Field', '') for row in cursor.fetchall()]
+            print(f"📋 MySQL transactions columns: {columns}")
+
+            if 'receipt_url' not in columns:
+                # Add the column if missing
+                print("⚠️  receipt_url column missing, adding it...")
+                cursor.execute("ALTER TABLE transactions ADD COLUMN receipt_url VARCHAR(1000)")
+                conn.commit()
+
+            if 'r2_url' not in columns:
+                print("⚠️  r2_url column missing, adding it...")
+                cursor.execute("ALTER TABLE transactions ADD COLUMN r2_url VARCHAR(1000)")
+                conn.commit()
+
+            # Check how many transactions exist
+            cursor.execute("SELECT COUNT(*) as cnt FROM transactions")
+            total_transactions = cursor.fetchone()
+            total_count = total_transactions[0] if isinstance(total_transactions, tuple) else total_transactions.get('cnt', 0)
+            print(f"📊 MySQL has {total_count} transactions total")
+
+            # Sample some _index values from MySQL
+            cursor.execute("SELECT _index FROM transactions ORDER BY _index LIMIT 5")
+            sample_indices = [row[0] if isinstance(row, tuple) else row.get('_index') for row in cursor.fetchall()]
+            print(f"📊 Sample MySQL _index values: {sample_indices}")
+
             updated = 0
             failed = 0
+            not_found = 0
+            errors = []
 
             for mapping in url_mappings:
                 try:
@@ -5606,23 +5635,33 @@ def sync_receipt_urls():
                         SET receipt_url = %s, r2_url = %s
                         WHERE _index = %s
                     """, (mapping['receipt_url'], mapping['receipt_url'], mapping['_index']))
-                    updated += 1
+
+                    if cursor.rowcount > 0:
+                        updated += 1
+                    else:
+                        not_found += 1
+                        if not_found <= 3:
+                            print(f"⚠️  _index {mapping['_index']} not found in MySQL")
                 except Exception as e:
                     failed += 1
+                    errors.append(str(e))
                     if failed <= 5:
-                        print(f"⚠️  Failed to update _index {mapping['_index']}: {e}")
+                        print(f"❌ Failed to update _index {mapping['_index']}: {e}")
 
             conn.commit()
             cursor.close()
             conn.close()
 
-            print(f"✅ Updated {updated} receipt URLs in MySQL (failed: {failed})")
+            print(f"✅ Updated {updated} receipt URLs in MySQL (not_found: {not_found}, failed: {failed})")
 
             return jsonify({
                 'ok': True,
-                'message': f'Updated {updated} receipt URLs',
+                'message': f'Updated {updated} receipt URLs ({not_found} not found)',
                 'updated': updated,
-                'failed': failed
+                'not_found': not_found,
+                'failed': failed,
+                'total_transactions': total_count,
+                'errors': errors[:5] if errors else []
             })
         else:
             # SQLite update
