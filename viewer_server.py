@@ -436,17 +436,21 @@ def normalize_merchant_name(s: str | None) -> str:
 # =============================================================================
 
 def load_csv():
-    """Load data from SQLite (if available) or CSV (fallback). Diagnose corruption and attempt auto-repair."""
+    """Load data from database (if available) or CSV (fallback). Diagnose corruption and attempt auto-repair."""
     global df
 
-    # Try SQLite first
-    if USE_SQLITE and db:
+    # Try database first (MySQL or SQLite)
+    if USE_DATABASE and db:
         try:
             df = db.get_all_transactions()
-            print(f"✅ Loaded {len(df)} transactions from SQLite")
+            # Ensure _index is integer for proper comparisons
+            if '_index' in df.columns:
+                df['_index'] = pd.to_numeric(df['_index'], errors='coerce').fillna(0).astype(int)
+            db_type = "MySQL" if hasattr(db, 'use_mysql') and db.use_mysql else "SQLite"
+            print(f"✅ Loaded {len(df)} transactions from {db_type}")
             return
         except Exception as e:
-            print(f"⚠️  SQLite load failed: {e}, falling back to CSV")
+            print(f"⚠️  Database load failed: {e}, falling back to CSV")
 
     # Fallback to CSV
     if not CSV_PATH.exists():
