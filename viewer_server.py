@@ -1356,24 +1356,112 @@ def pwa_icons():
 @app.route("/api/health")
 def health_check():
     """Health check endpoint for PWA connection status and system health."""
+    import time
+
+    health_data = {
+        "status": "ok",
+        "timestamp": datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),
+        "services": {}
+    }
+
+    # Check Database with response time
+    db_start = time.time()
+    db_status = {"status": "unknown", "response_ms": 0}
+    if db:
+        try:
+            if USE_DATABASE:
+                result = db.execute_query("SELECT COUNT(*) as cnt FROM transactions")
+                tx_count = result[0]['cnt'] if result else 0
+                db_status = {
+                    "status": "connected",
+                    "type": "mysql",
+                    "host": "Railway",
+                    "response_ms": round((time.time() - db_start) * 1000, 2),
+                    "transaction_count": tx_count
+                }
+
+                # Get receipt stats
+                receipt_result = db.execute_query("""
+                    SELECT
+                        COUNT(*) as total,
+                        SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                        SUM(CASE WHEN deleted = 1 THEN 1 ELSE 0 END) as deleted
+                    FROM transactions
+                """)
+                if receipt_result:
+                    db_status["receipts"] = {
+                        "total": receipt_result[0]['total'],
+                        "with_receipts": receipt_result[0]['with_receipts'],
+                        "deleted": receipt_result[0]['deleted']
+                    }
+            else:
+                db_status = {
+                    "status": "connected",
+                    "type": "sqlite",
+                    "response_ms": round((time.time() - db_start) * 1000, 2)
+                }
+        except Exception as e:
+            db_status = {
+                "status": "error",
+                "error": str(e),
+                "response_ms": round((time.time() - db_start) * 1000, 2)
+            }
+    else:
+        db_status = {"status": "not_configured"}
+    health_data["services"]["database"] = db_status
+
     # Check R2 storage configuration
     r2_configured = bool(
         os.environ.get('R2_ACCOUNT_ID') and
         os.environ.get('R2_ACCESS_KEY_ID') and
         os.environ.get('R2_SECRET_ACCESS_KEY')
     )
+    r2_bucket = os.environ.get('R2_BUCKET_NAME', 'Not set')
+    health_data["services"]["r2_storage"] = {
+        "status": "connected" if r2_configured else "not_configured",
+        "bucket": r2_bucket if r2_configured else None,
+        "endpoint": f"{os.environ.get('R2_ACCOUNT_ID', '')[:8]}..." if r2_configured else None
+    }
 
     # Check Gemini API configuration
     gemini_configured = bool(os.environ.get('GEMINI_API_KEY'))
+    gemini_key = os.environ.get('GEMINI_API_KEY', '')
+    health_data["services"]["gemini_ai"] = {
+        "status": "configured" if gemini_configured else "not_configured",
+        "key_prefix": gemini_key[:8] + "..." if gemini_configured else None
+    }
 
-    return jsonify({
-        "status": "ok",
-        "database": "connected" if db else "none",
-        "storage": "ok" if r2_configured else "not_configured",
-        "r2_connected": r2_configured,
-        "ai": "ok" if gemini_configured else "not_configured",
-        "gemini_configured": gemini_configured
-    })
+    # Check Gmail accounts
+    gmail_accounts = []
+    gmail_dir = os.path.join(BASE_DIR, 'gmail_tokens')
+    if os.path.isdir(gmail_dir):
+        for email in ['kaplan.brian@gmail.com', 'brian@musiccityrodeo.com', 'brian@downhome.com']:
+            safe_email = email.replace('@', '_at_').replace('.', '_')
+            token_path = os.path.join(gmail_dir, f'{safe_email}_token.json')
+            gmail_accounts.append({
+                "email": email,
+                "connected": os.path.exists(token_path)
+            })
+    health_data["services"]["gmail"] = {
+        "accounts": gmail_accounts,
+        "connected_count": sum(1 for a in gmail_accounts if a['connected'])
+    }
+
+    # Check OCR availability
+    health_data["services"]["ocr"] = {
+        "status": "available",
+        "provider": "gemini" if gemini_configured else "donut_fallback",
+        "accuracy": "99%+" if gemini_configured else "97-98%"
+    }
+
+    # Legacy fields for backwards compatibility
+    health_data["database"] = "connected" if db else "none"
+    health_data["storage"] = "ok" if r2_configured else "not_configured"
+    health_data["r2_connected"] = r2_configured
+    health_data["ai"] = "ok" if gemini_configured else "not_configured"
+    health_data["gemini_configured"] = gemini_configured
+
+    return jsonify(health_data)
 
 
 @app.route("/api/debug/transaction/<int:idx>")

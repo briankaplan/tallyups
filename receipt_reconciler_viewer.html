@@ -432,6 +432,13 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
   background:var(--panel2);padding:20px;border-radius:12px;
   border:1px solid var(--edge);margin-bottom:16px;
 }
+.health-card{
+  transition:transform 0.15s ease, box-shadow 0.15s ease;
+}
+.health-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(0,255,136,0.15);
+}
 .settings-section-title{
   font-size:15px;font-weight:700;color:var(--ink);margin-bottom:16px;
 }
@@ -1342,31 +1349,66 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
     </div>
     <div class="modal-body">
       <!-- System Health -->
-      <div class="settings-section" style="background:linear-gradient(135deg, rgba(0,255,136,.1), rgba(0,204,106,.05));border:1px solid rgba(0,255,136,.2);border-radius:12px;padding:16px;margin-bottom:20px">
-        <div class="settings-section-title" style="color:#00ff88">🟢 System Health</div>
-        <div id="system-health-status" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;margin-top:12px">
-          <div style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px">
-            <div style="font-size:20px;margin-bottom:4px">✅</div>
+      <div class="settings-section" id="system-health-section" style="background:linear-gradient(135deg, rgba(0,255,136,.1), rgba(0,204,106,.05));border:1px solid rgba(0,255,136,.2);border-radius:12px;padding:16px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="settings-section-title" style="color:#00ff88;margin:0" id="health-title">🟢 System Health</div>
+          <div style="font-size:10px;color:var(--muted)" id="health-timestamp">Last checked: --</div>
+        </div>
+        <div id="system-health-status" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px">
+          <div class="health-card" id="health-db-card" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;cursor:pointer" onclick="toggleHealthDetails('db')">
+            <div style="font-size:20px;margin-bottom:4px" id="db-icon">✅</div>
             <div style="font-size:11px;color:var(--muted)">Database</div>
-            <div style="font-size:12px;font-weight:600;color:#00ff88" id="db-status">SQLite</div>
+            <div style="font-size:12px;font-weight:600;color:#00ff88" id="db-status">MySQL</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px" id="db-latency">--ms</div>
           </div>
-          <div style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px">
+          <div class="health-card" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;cursor:pointer" onclick="toggleHealthDetails('r2')">
             <div style="font-size:20px;margin-bottom:4px" id="r2-icon">✅</div>
             <div style="font-size:11px;color:var(--muted)">R2 Storage</div>
             <div style="font-size:12px;font-weight:600;color:#00ff88" id="r2-status">Connected</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px" id="r2-bucket">--</div>
           </div>
-          <div style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px">
+          <div class="health-card" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;cursor:pointer" onclick="toggleHealthDetails('ai')">
             <div style="font-size:20px;margin-bottom:4px" id="ai-icon">✅</div>
             <div style="font-size:11px;color:var(--muted)">Gemini AI</div>
             <div style="font-size:12px;font-weight:600;color:#00ff88" id="ai-status">Ready</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px" id="ai-accuracy">99%+ OCR</div>
           </div>
-          <div style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px">
-            <div style="font-size:20px;margin-bottom:4px" id="ocr-icon">✅</div>
-            <div style="font-size:11px;color:var(--muted)">OCR</div>
-            <div style="font-size:12px;font-weight:600;color:#00ff88" id="health-ocr-status">Donut 98%</div>
+          <div class="health-card" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;cursor:pointer" onclick="toggleHealthDetails('gmail')">
+            <div style="font-size:20px;margin-bottom:4px" id="gmail-icon">📧</div>
+            <div style="font-size:11px;color:var(--muted)">Gmail</div>
+            <div style="font-size:12px;font-weight:600;color:#00ff88" id="gmail-health-status">0/3</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px" id="gmail-accounts-summary">accounts</div>
           </div>
         </div>
-        <button class="btn-ghost" onclick="checkSystemHealth()" style="margin-top:12px;width:100%">🔄 Check All Services</button>
+
+        <!-- Expandable Details Panel -->
+        <div id="health-details-panel" style="display:none;margin-top:12px;padding:12px;background:var(--panel2);border-radius:8px;border-left:3px solid #00ff88">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <strong id="health-details-title" style="color:#00ff88">Details</strong>
+            <button onclick="closeHealthDetails()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button>
+          </div>
+          <div id="health-details-content" style="font-size:12px;color:var(--ink)">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Receipt Stats Row -->
+        <div id="receipt-stats-row" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;margin-top:12px;padding:12px;background:var(--panel2);border-radius:8px">
+          <div style="text-align:center">
+            <div style="font-size:18px;font-weight:700;color:#00ff88" id="stat-total">--</div>
+            <div style="font-size:10px;color:var(--muted)">Transactions</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:18px;font-weight:700;color:#00ff88" id="stat-receipts">--</div>
+            <div style="font-size:10px;color:var(--muted)">With Receipts</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:18px;font-weight:700;color:#fbbf24" id="stat-missing">--</div>
+            <div style="font-size:10px;color:var(--muted)">Missing</div>
+          </div>
+        </div>
+
+        <button class="btn-ghost" onclick="checkSystemHealth()" id="health-check-btn" style="margin-top:12px;width:100%">🔄 Check All Services</button>
       </div>
 
       <div class="settings-section">
@@ -3867,83 +3909,256 @@ async function updateSettingsInfo() {
   }
 }
 
+// Store last health data for details panel
+let lastHealthData = null;
+
 // Check all system services
 async function checkSystemHealth() {
-  const dbStatus = document.getElementById('db-status');
-  const r2Status = document.getElementById('r2-status');
-  const geminiStatus = document.getElementById('ai-status');
-  const ocrStatus = document.getElementById('health-ocr-status');
+  const btn = document.getElementById('health-check-btn');
+  if (btn) btn.innerHTML = '⏳ Checking...';
 
-  // Show checking state
-  if (dbStatus) dbStatus.innerHTML = '<span style="color:#fbbf24">Checking...</span>';
-  if (r2Status) r2Status.innerHTML = '<span style="color:#fbbf24">Checking...</span>';
-  if (geminiStatus) geminiStatus.innerHTML = '<span style="color:#fbbf24">Checking...</span>';
-  if (ocrStatus) ocrStatus.innerHTML = '<span style="color:#fbbf24">Checking...</span>';
+  // Show checking state on all cards
+  const elements = ['db-status', 'r2-status', 'ai-status', 'gmail-health-status'];
+  elements.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<span style="color:#fbbf24">...</span>';
+  });
 
-  // Check Database (via health endpoint)
   try {
-    const healthRes = await fetch('/api/health');
-    const dbRes = await fetch('/api/transactions?limit=1');
-    if (healthRes.ok && dbRes.ok) {
-      const health = await healthRes.json();
-      const data = await dbRes.json();
-      const dbType = health.database === 'connected' ? 'MySQL' : 'SQLite';
-      const dbTypeDesc = document.getElementById('db-type-desc');
-      if (dbTypeDesc) {
-        dbTypeDesc.textContent = dbType === 'MySQL' ? 'MySQL on Railway' : 'SQLite - receipts.db';
-      }
-      if (dbStatus) {
-        dbStatus.className = 'badge badge-good';
-        dbStatus.textContent = `${dbType} ✓`;
-      }
-    } else {
-      if (dbStatus) {
-        dbStatus.className = 'badge badge-bad';
-        dbStatus.textContent = 'Error';
-      }
-    }
-  } catch (e) {
-    if (dbStatus) {
-      dbStatus.className = 'badge badge-bad';
-      dbStatus.textContent = 'Offline';
-    }
-  }
+    const response = await fetch('/api/health');
+    if (!response.ok) throw new Error('Health check failed');
 
-  // Check R2 Storage (via health endpoint)
-  try {
-    const r2Res = await fetch('/api/health');
-    if (r2Res.ok) {
-      const health = await r2Res.json();
-      if (r2Status) {
-        if (health.r2_connected || health.storage === 'ok') {
-          r2Status.innerHTML = '<span style="color:#00ff88">Connected ✓</span>';
-        } else {
-          r2Status.innerHTML = '<span style="color:#fbbf24">Not configured</span>';
+    const health = await response.json();
+    lastHealthData = health;
+
+    // Update timestamp
+    const timestamp = document.getElementById('health-timestamp');
+    if (timestamp && health.timestamp) {
+      const date = new Date(health.timestamp);
+      timestamp.textContent = `Last checked: ${date.toLocaleTimeString()}`;
+    }
+
+    // Update overall health indicator
+    const healthTitle = document.getElementById('health-title');
+    const services = health.services || {};
+    const allGood = services.database?.status === 'connected' &&
+                   services.r2_storage?.status === 'connected' &&
+                   services.gemini_ai?.status === 'configured';
+
+    if (healthTitle) {
+      healthTitle.innerHTML = allGood ? '🟢 System Health' : '🟡 System Health';
+    }
+
+    // Database status
+    const dbStatus = document.getElementById('db-status');
+    const dbIcon = document.getElementById('db-icon');
+    const dbLatency = document.getElementById('db-latency');
+    const dbTypeDesc = document.getElementById('db-type-desc');
+
+    if (services.database) {
+      const db = services.database;
+      if (db.status === 'connected') {
+        if (dbIcon) dbIcon.textContent = '✅';
+        if (dbStatus) dbStatus.innerHTML = `<span style="color:#00ff88">${db.type?.toUpperCase() || 'OK'}</span>`;
+        if (dbLatency) dbLatency.textContent = `${db.response_ms || '--'}ms`;
+        if (dbTypeDesc) dbTypeDesc.textContent = db.type === 'mysql' ? 'MySQL on Railway' : 'SQLite - receipts.db';
+      } else {
+        if (dbIcon) dbIcon.textContent = '❌';
+        if (dbStatus) dbStatus.innerHTML = '<span style="color:#ef4444">Error</span>';
+        if (dbLatency) dbLatency.textContent = db.error ? 'Failed' : '--';
+      }
+
+      // Update receipt stats
+      if (db.receipts) {
+        const statTotal = document.getElementById('stat-total');
+        const statReceipts = document.getElementById('stat-receipts');
+        const statMissing = document.getElementById('stat-missing');
+        const total = db.receipts.total || 0;
+        const withReceipts = db.receipts.with_receipts || 0;
+        const missing = total - withReceipts - (db.receipts.deleted || 0);
+
+        if (statTotal) statTotal.textContent = total.toLocaleString();
+        if (statReceipts) statReceipts.textContent = withReceipts.toLocaleString();
+        if (statMissing) {
+          statMissing.textContent = missing.toLocaleString();
+          statMissing.style.color = missing > 0 ? '#fbbf24' : '#00ff88';
         }
       }
-      // Also check Gemini from same response
-      if (geminiStatus) {
-        if (health.gemini_configured || health.ai === 'ok') {
-          geminiStatus.innerHTML = '<span style="color:#00ff88">Ready ✓</span>';
-        } else {
-          geminiStatus.innerHTML = '<span style="color:#fbbf24">No API key</span>';
-        }
-      }
-    } else {
-      if (r2Status) r2Status.innerHTML = '<span style="color:#fbbf24">Unknown</span>';
-      if (geminiStatus) geminiStatus.innerHTML = '<span style="color:#fbbf24">Unknown</span>';
     }
-  } catch (e) {
-    if (r2Status) r2Status.innerHTML = '<span style="color:#fbbf24">Check failed</span>';
-    if (geminiStatus) geminiStatus.innerHTML = '<span style="color:#fbbf24">Check failed</span>';
+
+    // R2 Storage status
+    const r2Status = document.getElementById('r2-status');
+    const r2Icon = document.getElementById('r2-icon');
+    const r2Bucket = document.getElementById('r2-bucket');
+
+    if (services.r2_storage) {
+      const r2 = services.r2_storage;
+      if (r2.status === 'connected') {
+        if (r2Icon) r2Icon.textContent = '✅';
+        if (r2Status) r2Status.innerHTML = '<span style="color:#00ff88">Connected</span>';
+        if (r2Bucket) r2Bucket.textContent = r2.bucket || 'receipts';
+      } else {
+        if (r2Icon) r2Icon.textContent = '⚠️';
+        if (r2Status) r2Status.innerHTML = '<span style="color:#fbbf24">Not Set</span>';
+        if (r2Bucket) r2Bucket.textContent = 'configure';
+      }
+    }
+
+    // Gemini AI status
+    const aiStatus = document.getElementById('ai-status');
+    const aiIcon = document.getElementById('ai-icon');
+    const aiAccuracy = document.getElementById('ai-accuracy');
+    const geminiBadge = document.getElementById('gemini-badge');
+
+    if (services.gemini_ai) {
+      const ai = services.gemini_ai;
+      if (ai.status === 'configured') {
+        if (aiIcon) aiIcon.textContent = '✅';
+        if (aiStatus) aiStatus.innerHTML = '<span style="color:#00ff88">Ready</span>';
+        if (aiAccuracy) aiAccuracy.textContent = services.ocr?.accuracy || '99%+';
+        if (geminiBadge) geminiBadge.className = 'badge badge-good';
+      } else {
+        if (aiIcon) aiIcon.textContent = '⚠️';
+        if (aiStatus) aiStatus.innerHTML = '<span style="color:#fbbf24">No Key</span>';
+        if (aiAccuracy) aiAccuracy.textContent = 'Donut fallback';
+        if (geminiBadge) geminiBadge.className = 'badge badge-neutral';
+      }
+    }
+
+    // Gmail status
+    const gmailHealthStatus = document.getElementById('gmail-health-status');
+    const gmailIcon = document.getElementById('gmail-icon');
+    const gmailSummary = document.getElementById('gmail-accounts-summary');
+
+    if (services.gmail) {
+      const gmail = services.gmail;
+      const connected = gmail.connected_count || 0;
+      const total = gmail.accounts?.length || 3;
+
+      if (gmailHealthStatus) {
+        gmailHealthStatus.innerHTML = `<span style="color:${connected > 0 ? '#00ff88' : '#fbbf24'}">${connected}/${total}</span>`;
+      }
+      if (gmailIcon) gmailIcon.textContent = connected === total ? '✅' : connected > 0 ? '📧' : '⚠️';
+      if (gmailSummary) gmailSummary.textContent = connected === total ? 'all connected' : 'accounts';
+    }
+
+    if (btn) btn.innerHTML = '🔄 Check All Services';
+    showToast('System health check complete', 'success');
+
+  } catch (error) {
+    console.error('Health check error:', error);
+    if (btn) btn.innerHTML = '🔄 Check All Services';
+
+    // Show error state
+    const dbStatus = document.getElementById('db-status');
+    if (dbStatus) dbStatus.innerHTML = '<span style="color:#ef4444">Offline</span>';
+
+    showToast('Health check failed: ' + error.message, 'error');
+  }
+}
+
+// Toggle health details panel
+function toggleHealthDetails(service) {
+  const panel = document.getElementById('health-details-panel');
+  const title = document.getElementById('health-details-title');
+  const content = document.getElementById('health-details-content');
+
+  if (!lastHealthData || !lastHealthData.services) {
+    showToast('Run health check first', 'info');
+    return;
   }
 
-  // OCR is always available (local Donut fallback)
-  if (ocrStatus) {
-    ocrStatus.innerHTML = '<span style="color:#00ff88">Ready ✓</span>';
+  // If already showing this service, close it
+  if (panel.style.display !== 'none' && panel.dataset.service === service) {
+    panel.style.display = 'none';
+    return;
   }
 
-  showToast('System health check complete', 'success');
+  panel.dataset.service = service;
+  const services = lastHealthData.services;
+
+  let html = '';
+  switch (service) {
+    case 'db':
+      const db = services.database || {};
+      title.textContent = '💾 Database Details';
+      html = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><strong>Type:</strong> ${db.type || 'Unknown'}</div>
+          <div><strong>Host:</strong> ${db.host || 'Local'}</div>
+          <div><strong>Status:</strong> ${db.status || 'Unknown'}</div>
+          <div><strong>Latency:</strong> ${db.response_ms || '--'}ms</div>
+          ${db.transaction_count ? `<div><strong>Transactions:</strong> ${db.transaction_count.toLocaleString()}</div>` : ''}
+          ${db.receipts ? `<div><strong>With Receipts:</strong> ${db.receipts.with_receipts?.toLocaleString() || 0}</div>` : ''}
+        </div>
+        ${db.error ? `<div style="color:#ef4444;margin-top:8px">Error: ${db.error}</div>` : ''}
+      `;
+      break;
+
+    case 'r2':
+      const r2 = services.r2_storage || {};
+      title.textContent = '☁️ R2 Storage Details';
+      html = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><strong>Status:</strong> ${r2.status || 'Unknown'}</div>
+          <div><strong>Bucket:</strong> ${r2.bucket || 'Not set'}</div>
+          ${r2.endpoint ? `<div><strong>Account:</strong> ${r2.endpoint}</div>` : ''}
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--muted)">
+          Receipt images are stored in Cloudflare R2 for fast global access.
+        </div>
+      `;
+      break;
+
+    case 'ai':
+      const ai = services.gemini_ai || {};
+      const ocr = services.ocr || {};
+      title.textContent = '🤖 AI & OCR Details';
+      html = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><strong>Gemini:</strong> ${ai.status || 'Unknown'}</div>
+          <div><strong>OCR Provider:</strong> ${ocr.provider || 'Unknown'}</div>
+          <div><strong>Accuracy:</strong> ${ocr.accuracy || 'Unknown'}</div>
+          ${ai.key_prefix ? `<div><strong>API Key:</strong> ${ai.key_prefix}</div>` : ''}
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--muted)">
+          Gemini Vision extracts merchant, date, and amount from receipt images.
+        </div>
+      `;
+      break;
+
+    case 'gmail':
+      const gmail = services.gmail || {};
+      title.textContent = '📧 Gmail Integration';
+      html = '<div style="display:flex;flex-direction:column;gap:6px">';
+      if (gmail.accounts && gmail.accounts.length > 0) {
+        gmail.accounts.forEach(acc => {
+          const statusColor = acc.connected ? '#00ff88' : '#fbbf24';
+          const statusText = acc.connected ? 'Connected' : 'Not connected';
+          html += `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">
+              <span>${acc.email}</span>
+              <span style="color:${statusColor};font-size:11px">${statusText}</span>
+            </div>
+          `;
+        });
+      } else {
+        html += '<div>No Gmail accounts configured</div>';
+      }
+      html += '</div>';
+      html += `<div style="margin-top:8px;font-size:11px;color:var(--muted)">
+        Gmail integration searches your inbox for receipt attachments.
+      </div>`;
+      break;
+  }
+
+  content.innerHTML = html;
+  panel.style.display = 'block';
+}
+
+function closeHealthDetails() {
+  const panel = document.getElementById('health-details-panel');
+  panel.style.display = 'none';
 }
 
 // Manual Entry Modal
