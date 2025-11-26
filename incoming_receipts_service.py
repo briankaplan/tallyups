@@ -16,8 +16,32 @@ import hashlib
 from dotenv import load_dotenv
 from PIL import Image
 from io import BytesIO
-from pdf2image import convert_from_bytes
-import imgkit  # For HTML to image conversion
+
+# Lazy imports for optional dependencies (require system packages)
+convert_from_bytes = None
+imgkit = None
+
+def _lazy_import_pdf2image():
+    global convert_from_bytes
+    if convert_from_bytes is None:
+        try:
+            from pdf2image import convert_from_bytes as _convert
+            convert_from_bytes = _convert
+        except ImportError:
+            print("⚠️  pdf2image not available - PDF conversion disabled")
+            convert_from_bytes = lambda *args, **kwargs: []
+    return convert_from_bytes
+
+def _lazy_import_imgkit():
+    global imgkit
+    if imgkit is None:
+        try:
+            import imgkit as _imgkit
+            imgkit = _imgkit
+        except ImportError:
+            print("⚠️  imgkit not available - HTML screenshot disabled")
+            imgkit = None
+    return imgkit
 
 load_dotenv()
 
@@ -511,8 +535,10 @@ def convert_pdf_to_jpg(pdf_bytes, output_path):
     Returns: path to saved JPG file
     """
     try:
+        # Lazy import pdf2image
+        pdf_convert = _lazy_import_pdf2image()
         # Convert PDF to images
-        images = convert_from_bytes(pdf_bytes, dpi=200, first_page=1, last_page=1)
+        images = pdf_convert(pdf_bytes, dpi=200, first_page=1, last_page=1)
 
         if images:
             # Save first page as JPG
@@ -581,9 +607,11 @@ img {{ max-width: 100%; height: auto; }}
         # Method 3: Try imgkit as last resort
         if not success:
             try:
-                imgkit.from_file(temp_html, png_path)
-                success = True
-                print(f"      ✓ Screenshot via imgkit: {output_path}")
+                _imgkit = _lazy_import_imgkit()
+                if _imgkit:
+                    _imgkit.from_file(temp_html, png_path)
+                    success = True
+                    print(f"      ✓ Screenshot via imgkit: {output_path}")
             except Exception as e3:
                 print(f"      ⚠️  imgkit failed: {e3}")
 
