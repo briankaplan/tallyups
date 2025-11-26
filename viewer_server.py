@@ -5787,37 +5787,41 @@ def accept_incoming_receipt():
             match_type = 'needs_receipt'
             print(f"   📎 Found existing transaction #{matched_transaction_id} without receipt")
 
+        # Separate R2 URLs from local file paths
+        r2_urls = [f for f in receipt_files if f.startswith('http')]
+        local_files = [f for f in receipt_files if not f.startswith('http')]
+
+        # For receipt_file, use local paths; for receipt_url, use R2 URLs
+        receipt_file_str = ', '.join([f.replace('receipts/', '') for f in local_files]) if local_files else ''
+        receipt_url_str = r2_urls[0] if r2_urls else ''  # Primary R2 URL
+
         if match_type == 'needs_receipt' and matched_transaction_id:
             # Attach to existing transaction
             print(f"   📎 Attaching to existing transaction #{matched_transaction_id}")
 
-            # Update existing transaction with receipt files
-            # Keep incoming/ prefix for files in that subfolder
-            receipt_file_str = ', '.join([f.replace('receipts/', '') for f in receipt_files]) if receipt_files else ''
             # Use CONCAT for MySQL, || for SQLite
             if db_type == 'mysql':
                 cursor = db_execute(conn, db_type, '''
                     UPDATE transactions
-                    SET receipt_file = ?,
+                    SET receipt_file = COALESCE(NULLIF(?, ''), receipt_file),
+                        receipt_url = COALESCE(NULLIF(?, ''), receipt_url),
                         notes = CONCAT(COALESCE(notes, ''), ?)
                     WHERE _index = ?
-                ''', (receipt_file_str, f'\n[From incoming receipt: {notes_text}]', matched_transaction_id))
+                ''', (receipt_file_str, receipt_url_str, f'\n[From incoming receipt: {notes_text}]', matched_transaction_id))
             else:
                 cursor = db_execute(conn, db_type, '''
                     UPDATE transactions
-                    SET receipt_file = ?,
+                    SET receipt_file = COALESCE(NULLIF(?, ''), receipt_file),
+                        receipt_url = COALESCE(NULLIF(?, ''), receipt_url),
                         notes = COALESCE(notes, '') || ?
                     WHERE _index = ?
-                ''', (receipt_file_str, f'\n[From incoming receipt: {notes_text}]', matched_transaction_id))
+                ''', (receipt_file_str, receipt_url_str, f'\n[From incoming receipt: {notes_text}]', matched_transaction_id))
 
             transaction_id = matched_transaction_id
             action = 'attached'
         else:
             # Create new transaction
             print(f"   ➕ Creating new transaction")
-
-            # Keep incoming/ prefix for files in that subfolder
-            receipt_file_str = ', '.join([f.replace('receipts/', '') for f in receipt_files]) if receipt_files else ''
 
             # Get next _index value
             cursor = db_execute(conn, db_type, 'SELECT COALESCE(MAX(_index), 0) + 1 FROM transactions')
@@ -5829,9 +5833,9 @@ def accept_incoming_receipt():
                 INSERT INTO transactions (
                     _index, chase_description, chase_amount, chase_date,
                     business_type, review_status, notes,
-                    receipt_file, source
-                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, 'incoming_receipt')
-            ''', (next_index, merchant, amount, trans_date, business_type, notes_text, receipt_file_str))
+                    receipt_file, receipt_url, source
+                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, 'incoming_receipt')
+            ''', (next_index, merchant, amount, trans_date, business_type, notes_text, receipt_file_str, receipt_url_str))
 
             transaction_id = next_index
             action = 'created'
@@ -5870,6 +5874,7 @@ def accept_incoming_receipt():
                 'Review Status': 'accepted',
                 'notes': notes_text,
                 'Receipt File': receipt_file_str,
+                'receipt_url': receipt_url_str,
                 'source': 'incoming_receipt'
             }
             # Add missing columns with empty values
@@ -5884,6 +5889,8 @@ def accept_incoming_receipt():
             mask = df['_index'] == matched_transaction_id
             if mask.any():
                 df.loc[mask, 'Receipt File'] = receipt_file_str
+                if receipt_url_str:
+                    df.loc[mask, 'receipt_url'] = receipt_url_str
                 print(f"   📊 Updated transaction #{matched_transaction_id} in DataFrame with receipt")
 
         print(f"✅ Accepted receipt {receipt_id} → transaction {transaction_id} ({action})")

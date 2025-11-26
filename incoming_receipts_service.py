@@ -641,10 +641,12 @@ img {{ max-width: 100%; height: auto; }}
 
 def process_receipt_files(service, email_id, attachments, html_body=None):
     """
-    Download and convert receipt files from Gmail email
-    Returns: list of saved file paths
+    Download and convert receipt files from Gmail email.
+    Saves locally and uploads to R2 for cloud storage.
+    Returns: list of saved file paths (R2 URLs if available, otherwise local paths)
     """
     saved_files = []
+    local_files = []
 
     # Create receipts/incoming directory if doesn't exist
     os.makedirs(RECEIPTS_DIR, exist_ok=True)
@@ -673,22 +675,43 @@ def process_receipt_files(service, email_id, attachments, html_body=None):
             output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}_att{i}.jpg")
             result = convert_pdf_to_jpg(file_data, output_path)
             if result:
-                saved_files.append(result)
+                local_files.append(result)
         else:
             # Save other attachments as-is
             output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}_att{i}_{filename}")
             with open(output_path, 'wb') as f:
                 f.write(file_data)
-            saved_files.append(output_path)
+            local_files.append(output_path)
             print(f"      ✓ Saved attachment: {output_path}")
 
     # If no attachments but has HTML body, screenshot it
-    if not saved_files and html_body:
+    if not local_files and html_body:
         print(f"      📸 Screenshotting HTML receipt...")
         output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}_screenshot.jpg")
         result = screenshot_html_receipt(html_body, output_path)
         if result:
-            saved_files.append(result)
+            local_files.append(result)
+
+    # Upload to R2 for cloud storage
+    try:
+        from r2_service import upload_to_r2, R2_ENABLED
+        if R2_ENABLED:
+            for local_path in local_files:
+                # Upload to R2
+                filename = os.path.basename(local_path)
+                r2_key = f"receipts/incoming/{filename}"
+                success, result = upload_to_r2(local_path, r2_key)
+                if success:
+                    print(f"      ☁️  Uploaded to R2: {result}")
+                    saved_files.append(result)  # R2 URL
+                else:
+                    print(f"      ⚠️  R2 upload failed: {result}")
+                    saved_files.append(local_path)  # Fallback to local
+        else:
+            saved_files = local_files
+    except ImportError:
+        print(f"      ⚠️  R2 service not available, using local files")
+        saved_files = local_files
 
     return saved_files
 
@@ -699,18 +722,46 @@ def is_likely_receipt(subject, from_email, body_snippet, has_attachment, min_con
     return confidence >= min_confidence, confidence
 
 def load_gmail_service(account_email):
-    """Load Gmail API service for an account"""
+    """Load Gmail API service for an account - checks multiple token sources"""
     token_file = f"tokens_{account_email.replace('@', '_').replace('.', '_')}.json"
-    token_path = Path(GMAIL_TOKENS_DIR) / token_file
+    token_data = None
 
-    if not token_path.exists():
-        print(f"   ⚠️  Token not found: {account_email}")
+    # Try multiple token directories (for local and Railway deployments)
+    token_dirs = [
+        Path(GMAIL_TOKENS_DIR),
+        Path('receipt-system/gmail_tokens'),
+        Path('../Task/receipt-system/gmail_tokens'),
+        Path('gmail_tokens'),
+        Path('.'),
+    ]
+
+    for token_dir in token_dirs:
+        token_path = token_dir / token_file
+        if token_path.exists():
+            try:
+                with open(token_path, 'r') as f:
+                    token_data = json.load(f)
+                print(f"   ✓ Loaded token from {token_path}")
+                break
+            except Exception as e:
+                print(f"   ⚠️  Could not read {token_path}: {e}")
+
+    # Fallback: check environment variable (for Railway)
+    if not token_data:
+        env_key = f"GMAIL_TOKEN_{account_email.replace('@', '_').replace('.', '_').upper()}"
+        env_token = os.getenv(env_key)
+        if env_token:
+            try:
+                token_data = json.loads(env_token)
+                print(f"   ✓ Loaded token from env {env_key}")
+            except json.JSONDecodeError as e:
+                print(f"   ⚠️  Invalid JSON in {env_key}: {e}")
+
+    if not token_data:
+        print(f"   ⚠️  Token not found for: {account_email}")
         return None
 
     try:
-        with open(token_path, 'r') as f:
-            token_data = json.load(f)
-
         creds = Credentials.from_authorized_user_info(token_data)
         service = build('gmail', 'v1', credentials=creds)
         return service
