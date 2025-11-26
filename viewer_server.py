@@ -76,6 +76,8 @@ if not USE_DATABASE:
     db = None
 
 # Maintain backward compatibility with old variable name
+# Legacy alias - all code should use USE_DATABASE
+# Note: This is assigned after database init, so it reflects the correct value
 USE_SQLITE = USE_DATABASE
 
 # === DATABASE HELPER FUNCTIONS ===
@@ -1284,7 +1286,7 @@ def health_check():
 @login_required
 def debug_transaction(idx):
     """Debug endpoint to test transaction lookup"""
-    result = {"idx": idx, "USE_DATABASE": USE_DATABASE, "db_available": db is not None}
+    result = {"idx": idx, "USE_DATABASE": USE_DATABASE, "USE_SQLITE": USE_SQLITE, "db_available": db is not None}
 
     if USE_DATABASE and db:
         try:
@@ -1714,8 +1716,8 @@ def update_row():
     if not isinstance(patch, dict):
         abort(400, "patch must be an object")
 
-    # Use SQLite if available
-    if USE_SQLITE and db:
+    # Use database if available (MySQL or SQLite)
+    if USE_DATABASE and db:
         try:
             success = db.update_transaction(idx, patch)
             if not success:
