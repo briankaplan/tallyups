@@ -595,7 +595,7 @@ def save_csv():
         return
 
     # Save to SQLite if available
-    if USE_SQLITE and db:
+    if USE_DATABASE and db:
         # SQLite updates happen per-row, so this is mostly for CSV export
         try:
             db.export_to_csv(str(CSV_PATH))
@@ -680,7 +680,7 @@ def update_row_by_index(idx: int, patch: dict, source: str = "viewer_ui") -> boo
             print(f"   Cleared review_status (no receipt to review)", flush=True)
 
     # === STEP 1: Update SQLite FIRST (most important) ===
-    if USE_SQLITE and db:
+    if USE_DATABASE and db:
         try:
             success = db.update_transaction(idx, patch)
             if not success:
@@ -752,7 +752,7 @@ def update_row_by_index(idx: int, patch: dict, source: str = "viewer_ui") -> boo
 
     # === STEP 4: Export to CSV (backward compatibility) ===
     try:
-        if USE_SQLITE and db:
+        if USE_DATABASE and db:
             db.export_to_csv(str(CSV_PATH))
         else:
             df.to_csv(CSV_PATH, index=False)
@@ -1965,7 +1965,7 @@ def ai_match():
                         print(f"   ⚠️ MI processing error: {e}")
 
                 # Apply update
-                if USE_SQLITE and db:
+                if USE_DATABASE and db:
                     db.update_transaction(idx, update_data)
                     df = db.get_all_transactions()
                 else:
@@ -1988,7 +1988,7 @@ def ai_match():
                 }
 
                 # Apply update
-                if USE_SQLITE and db:
+                if USE_DATABASE and db:
                     db.update_transaction(idx, update_data)
                     df = db.get_all_transactions()
                 else:
@@ -2040,7 +2040,7 @@ def ai_match():
             }
 
             # Apply update
-            if USE_SQLITE and db:
+            if USE_DATABASE and db:
                 db.update_transaction(idx, update_data)
                 df = db.get_all_transactions()
             else:
@@ -2076,7 +2076,7 @@ def ai_match():
             }
 
             # Apply update to database
-            if USE_SQLITE and db:
+            if USE_DATABASE and db:
                 db.update_transaction(idx, update_data)
                 df = db.get_all_transactions()
             else:
@@ -2135,7 +2135,7 @@ def ai_note():
         abort(400, f"Invalid _index: {data.get('_index')}")
 
     # Get transaction row
-    if USE_SQLITE and db:
+    if USE_DATABASE and db:
         df = db.get_all_transactions()
 
     mask = df["_index"] == idx
@@ -2150,7 +2150,7 @@ def ai_note():
 
         if note:
             # Update transaction with AI note
-            if USE_SQLITE and db:
+            if USE_DATABASE and db:
                 db.update_transaction(idx, {'AI Note': note})
                 df = db.get_all_transactions()
             else:
@@ -2976,7 +2976,7 @@ def add_manual_expense():
     }
 
     # Database mode (MySQL or SQLite)
-    if USE_SQLITE and db:
+    if USE_DATABASE and db:
         try:
             # Build INSERT statement - handle both MySQL and SQLite
             columns = [
@@ -4461,7 +4461,7 @@ def process_mi():
         if data.get("all"):
             if process_all_mi:
                 count = process_all_mi()
-                if USE_SQLITE and db:
+                if USE_DATABASE and db:
                     df = db.get_all_transactions()
                 return jsonify({
                     "ok": True,
@@ -4475,7 +4475,7 @@ def process_mi():
         if "_index" in data:
             idx = int(data["_index"])
 
-            if USE_SQLITE and db:
+            if USE_DATABASE and db:
                 df = db.get_all_transactions()
 
             mask = df["_index"] == idx
@@ -4498,7 +4498,7 @@ def process_mi():
                     'mi_processed_at': mi_result.get('mi_processed_at', ''),
                 }
 
-                if USE_SQLITE and db:
+                if USE_DATABASE and db:
                     db.update_transaction(idx, update_data)
                     df = db.get_all_transactions()
 
@@ -4689,7 +4689,7 @@ def process_mi_ocr():
                 return jsonify({"ok": False, "message": result["error"]}), 404
 
             # Reload dataframe to get updated data
-            if USE_SQLITE and db:
+            if USE_DATABASE and db:
                 df = db.get_all_transactions()
 
             return jsonify({
@@ -4736,7 +4736,7 @@ def process_mi_batch():
         count = scripts_mi.process_all_transactions(smart_skip=smart_skip, use_receipts=use_receipts)
 
         # Reload dataframe
-        if USE_SQLITE and db:
+        if USE_DATABASE and db:
             df = db.get_all_transactions()
 
         return jsonify({
@@ -6365,7 +6365,7 @@ def generate_missing_receipt_form():
             return jsonify({'ok': False, 'error': 'Missing _index'}), 400
 
         # Get transaction data
-        if USE_SQLITE and db:
+        if USE_DATABASE and db:
             row = db.get_transaction_by_index(row_index)
             if not row:
                 return jsonify({'ok': False, 'error': 'Transaction not found'}), 404
@@ -6597,7 +6597,7 @@ def generate_missing_receipt_form():
             final_filename = filename
 
         # Update the transaction to attach this form as the receipt
-        if USE_SQLITE and db:
+        if USE_DATABASE and db:
             db.update_transaction(row_index, {
                 'receipt_file': final_filename,
                 'Receipt File': final_filename,
@@ -6650,8 +6650,8 @@ if __name__ == "__main__":
         shutil.copy2(CSV_PATH, backup_path)
         print(f"💾 Backup created for {CSV_PATH.name} → {backup_path.name}")
 
-    # Validate database before starting
-    if USE_SQLITE and Path("receipts.db").exists():
+    # Validate SQLite database before starting (only for local SQLite)
+    if USE_DATABASE and db and hasattr(db, 'use_sqlite') and db.use_sqlite and Path("receipts.db").exists():
         print("🔍 Validating database integrity...")
         try:
             import subprocess
