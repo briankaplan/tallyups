@@ -1,35 +1,41 @@
-// Service Worker for Receipt Scanner PWA
-const CACHE_NAME = 'receipt-scanner-v1';
-const urlsToCache = [
+// Service Worker for Tallyups PWA - v2
+const CACHE_NAME = 'tallyups-v2';
+const STATIC_CACHE = 'tallyups-static-v2';
+const DYNAMIC_CACHE = 'tallyups-dynamic-v2';
+const OFFLINE_QUEUE = 'tallyups-offline-queue';
+
+// Core app shell to cache
+const APP_SHELL = [
   '/scanner',
   '/manifest.json',
   '/receipt-icon-192.png',
   '/receipt-icon-512.png'
 ];
 
-// Install event - cache resources
+// Install - cache app shell
 self.addEventListener('install', (event) => {
+  console.log('[SW] Installing service worker v2...');
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-      .catch((err) => {
-        console.log('Cache install error:', err);
+        console.log('[SW] Caching app shell');
+        return cache.addAll(APP_SHELL).catch(err => {
+          console.log('[SW] Some resources failed to cache:', err);
+        });
       })
   );
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate - clean old caches
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating service worker v2...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
+            console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -39,54 +45,142 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch - stale-while-revalidate for pages, cache-first for assets
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests and API calls
-  if (event.request.method !== 'GET' ||
-      event.request.url.includes('/api/') ||
-      event.request.url.includes('/mobile-upload') ||
-      event.request.url.includes('/ocr') ||
-      event.request.url.includes('/csv')) {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Skip non-GET and API requests
+  if (request.method !== 'GET') {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        if (response) {
-          return response;
-        }
+  // API requests - network only, queue if offline
+  if (url.pathname.startsWith('/api/') ||
+      url.pathname === '/mobile-upload' ||
+      url.pathname === '/ocr' ||
+      url.pathname === '/csv' ||
+      url.pathname === '/health') {
+    event.respondWith(networkOnly(request));
+    return;
+  }
 
-        return fetch(event.request).then((response) => {
-          // Don't cache if not a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
+  // Images - cache first
+  if (request.destination === 'image') {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
 
-          // Clone the response
-          const responseToCache = response.clone();
+  // HTML pages - stale while revalidate
+  if (request.destination === 'document' || url.pathname === '/scanner') {
+    event.respondWith(staleWhileRevalidate(request));
+    return;
+  }
 
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-
-          return response;
-        });
-      })
-  );
+  // Everything else - cache first with network fallback
+  event.respondWith(cacheFirst(request));
 });
 
-// Handle background sync for offline uploads
+// Cache strategies
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) {
+    return cached;
+  }
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(DYNAMIC_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (err) {
+    return new Response('Offline', { status: 503 });
+  }
+}
+
+async function staleWhileRevalidate(request) {
+  const cached = await caches.match(request);
+
+  const fetchPromise = fetch(request).then((response) => {
+    if (response.ok) {
+      const cache = caches.open(STATIC_CACHE);
+      cache.then(c => c.put(request, response.clone()));
+    }
+    return response;
+  }).catch(() => cached);
+
+  return cached || fetchPromise;
+}
+
+async function networkOnly(request) {
+  try {
+    return await fetch(request);
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'offline', cached: false }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// Background sync for offline uploads
 self.addEventListener('sync', (event) => {
+  console.log('[SW] Background sync triggered:', event.tag);
   if (event.tag === 'receipt-upload') {
-    event.waitUntil(syncReceipts());
+    event.waitUntil(syncPendingUploads());
   }
 });
 
-async function syncReceipts() {
-  // This would sync pending receipts when back online
-  // The main app handles this via localStorage for now
-  console.log('Background sync triggered');
+async function syncPendingUploads() {
+  console.log('[SW] Syncing pending uploads...');
+  // Notify all clients to sync
+  const clients = await self.clients.matchAll();
+  clients.forEach(client => {
+    client.postMessage({ type: 'SYNC_UPLOADS' });
+  });
 }
+
+// Push notifications (for future use)
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  const data = event.data.json();
+  const options = {
+    body: data.body || 'New notification',
+    icon: '/receipt-icon-192.png',
+    badge: '/receipt-icon-192.png',
+    vibrate: [100, 50, 100],
+    data: data.url || '/scanner',
+    actions: [
+      { action: 'open', title: 'Open' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Tallyups', options)
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  if (event.action === 'open' || !event.action) {
+    event.waitUntil(
+      clients.openWindow(event.notification.data || '/scanner')
+    );
+  }
+});
+
+// Message handling from main app
+self.addEventListener('message', (event) => {
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data.type === 'CACHE_RECEIPT') {
+    // Cache a receipt image for offline viewing
+    caches.open(DYNAMIC_CACHE).then(cache => {
+      cache.put(event.data.url, new Response(event.data.blob));
+    });
+  }
+});
