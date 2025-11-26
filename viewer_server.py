@@ -4058,17 +4058,20 @@ def gmail_status():
 
 @app.route("/settings/gmail/refresh/<account_email>", methods=["POST"])
 def gmail_refresh_account(account_email):
-    """Trigger OAuth re-authorization for a specific Gmail account"""
-    import sys
-    sys.path.insert(0, '../Task')
-    import subprocess
+    """
+    Handle Gmail token refresh request.
+
+    On Railway (cloud deployment): Returns instructions for manual token setup
+    Locally: Could trigger OAuth flow (not implemented for security)
+    """
+    import os
     from pathlib import Path
 
     # Map email to account info
     ACCOUNTS = {
-        'brian@downhome.com': {'email': 'brian@downhome.com', 'token_file': 'tokens_brian_downhome_com.json', 'port': 8080},
-        'kaplan.brian@gmail.com': {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json', 'port': 8081},
-        'brian@musiccityrodeo.com': {'email': 'brian@musiccityrodeo.com', 'token_file': 'tokens_brian_musiccityrodeo_com.json', 'port': 8082},
+        'brian@downhome.com': {'email': 'brian@downhome.com', 'token_file': 'tokens_brian_downhome_com.json'},
+        'kaplan.brian@gmail.com': {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json'},
+        'brian@musiccityrodeo.com': {'email': 'brian@musiccityrodeo.com', 'token_file': 'tokens_brian_musiccityrodeo_com.json'},
     }
 
     if account_email not in ACCOUNTS:
@@ -4076,101 +4079,33 @@ def gmail_refresh_account(account_email):
 
     account = ACCOUNTS[account_email]
 
-    # Create a single-account reauth script
-    reauth_script = Path('../Task/reauth_single_account.py')
+    # Check if we're on Railway (cloud deployment)
+    is_railway = os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_SERVICE_NAME')
 
-    script_content = f"""#!/usr/bin/env python3
-import os
-import sys
-from pathlib import Path
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
-TOKEN_DIR = Path('receipt-system/gmail_tokens')
-CREDENTIALS_FILE = Path('receipt-system/config/credentials.json')
-
-def reauth_account():
-    print(f"🔐 Re-authorizing: {account['email']}")
-    print("-" * 60)
-
-    token_path = TOKEN_DIR / '{account['token_file']}'
-
-    # Remove old token
-    if token_path.exists():
-        print(f"  Removing expired token...")
-        token_path.unlink()
-
-    # Start OAuth flow
-    print(f"  Opening browser for authorization...")
-    print(f"  Using port: {account['port']}")
-    print(f"  ⚠️  IMPORTANT: Please log in as: {account['email']}")
-    print()
-
-    try:
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(CREDENTIALS_FILE),
-            SCOPES,
-            redirect_uri=f'http://localhost:{account['port']}/'
-        )
-
-        # CRITICAL FIX: Request offline access to get refresh tokens
-        creds = flow.run_local_server(
-            port={account['port']},
-            open_browser=True,
-            access_type='offline',
-            prompt='consent'
-        )
-
-        # Save new token
-        token_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(token_path, 'w') as f:
-            f.write(creds.to_json())
-
-        # Test the connection
-        service = build('gmail', 'v1', credentials=creds)
-        profile = service.users().getProfile(userId='me').execute()
-
-        print(f"  ✅ SUCCESS: {{profile['emailAddress']}}")
-        print(f"  Token saved to: {{token_path}}")
-        return True
-
-    except Exception as e:
-        print(f"  ❌ FAILED: {{e}}")
-        return False
-
-if __name__ == '__main__':
-    reauth_account()
-"""
-
-    # Write the script
-    with open(reauth_script, 'w') as f:
-        f.write(script_content)
-
-    reauth_script.chmod(0o755)
-
-    # Run the script in the background
-    try:
-        # Start the OAuth flow
-        result = subprocess.Popen(
-            [sys.executable, str(reauth_script)],
-            cwd='../Task',
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-
-        return jsonify(safe_json({
-            'ok': True,
-            'message': f'OAuth flow started for {account_email}. Please check your browser to authorize.',
-            'account': account_email
-        }))
-
-    except Exception as e:
+    if is_railway:
+        # On Railway, we can't do local OAuth - need to use environment variables or manual token upload
         return jsonify(safe_json({
             'ok': False,
-            'error': str(e)
-        })), 500
+            'error': 'Gmail OAuth requires local setup',
+            'message': f'To configure Gmail for {account_email} on Railway:\n'
+                      f'1. Run the OAuth flow locally to generate tokens\n'
+                      f'2. Upload the token file ({account["token_file"]}) to Railway\n'
+                      f'3. Or set GMAIL_TOKEN_* environment variables in Railway dashboard',
+            'account': account_email,
+            'requires_local_setup': True
+        }))
+
+    # Local environment - could implement OAuth flow here
+    # For security, we return instructions rather than auto-launching browser
+    return jsonify(safe_json({
+        'ok': False,
+        'error': 'Manual OAuth required',
+        'message': f'To refresh Gmail token for {account_email}:\n'
+                  f'1. Run: python3 reauth_gmail.py {account_email}\n'
+                  f'2. Follow the browser prompts to authorize\n'
+                  f'3. Restart the server after authorization',
+        'account': account_email
+    }))
 
 
 # =============================================================================

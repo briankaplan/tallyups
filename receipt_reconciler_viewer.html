@@ -2742,7 +2742,7 @@ function updateRowInPlace(row) {
 }
 
 async function refreshGmailToken(email) {
-  showToast(`Refreshing ${email} token...`, '🔄');
+  showToast(`Checking ${email} token...`, '🔄');
   try {
     const res = await fetch(`/settings/gmail/refresh/${encodeURIComponent(email)}`, {
       method: 'POST'
@@ -2750,13 +2750,20 @@ async function refreshGmailToken(email) {
     const data = await res.json();
     if (data.ok) {
       showToast(`${email} token refreshed successfully`, '✓');
-      // Refresh the status after token refresh
       await checkGmailStatus();
+    } else if (data.requires_local_setup) {
+      // Show a more helpful message for Railway deployments
+      showToast(`Gmail requires local setup`, 'ℹ️');
+      console.log('Gmail Setup Instructions:', data.message);
+      alert(`Gmail OAuth Setup Required\n\n${data.message}`);
     } else {
-      showToast(data.error || `Failed to refresh ${email} token`, '❌');
+      showToast(data.message ? 'See console for setup instructions' : data.error, 'ℹ️');
+      if (data.message) {
+        console.log('Gmail Setup Instructions:', data.message);
+      }
     }
   } catch (e) {
-    showToast(`Error refreshing token: ${e.message}`, '❌');
+    showToast(`Error: ${e.message}`, '❌');
   }
 }
 
