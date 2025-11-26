@@ -203,6 +203,8 @@ app.config['SESSION_COOKIE_SECURE'] = bool(os.environ.get('RAILWAY_ENVIRONMENT')
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = SESSION_TIMEOUT
+# File upload size limit: 50MB (protects against DoS)
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 
 # =============================================================================
@@ -2781,8 +2783,26 @@ def upload_receipt_auto():
                 "message": f"Auto-matched to {match['row'].get('Chase Description')} (${match['row'].get('Chase Amount')}) with {confidence}% confidence"
             }))
         else:
-            # Confidence too low, return suggestion
-            temp_path.unlink(missing_ok=True)
+            # Confidence too low for auto-attach, but KEEP the file for manual attachment
+            # Rename to a "pending" filename so user can attach manually
+            idx = match["row"]["_index"]
+            pending_filename = f"pending_{idx}_{timestamp}{ext}"
+            pending_path = RECEIPT_DIR / pending_filename
+            temp_path.rename(pending_path)
+
+            # Upload to R2 even for pending receipts
+            receipt_url = None
+            if R2_ENABLED and upload_to_r2:
+                try:
+                    success, result = upload_to_r2(pending_path)
+                    if success:
+                        receipt_url = result
+                        print(f"☁️  Uploaded pending to R2: {receipt_url}", flush=True)
+                except Exception as e:
+                    print(f"⚠️  R2 upload error: {e}", flush=True)
+
+            print(f"⚠️  Low confidence match ({confidence}%), saved as pending: {pending_filename}", flush=True)
+
             return jsonify(safe_json({
                 "ok": True,
                 "matched": True,
@@ -2790,7 +2810,9 @@ def upload_receipt_auto():
                 "ocr_data": ocr_data,
                 "transaction": match["row"],
                 "confidence": confidence,
-                "message": f"Found possible match ({confidence}% confidence). Please verify and attach manually."
+                "filename": pending_filename,
+                "receipt_url": receipt_url,
+                "message": f"Found possible match ({confidence}% confidence). Receipt saved - verify and attach manually."
             }))
 
     except Exception as e:
@@ -4839,7 +4861,8 @@ def api_ocr_process():
             "confidence": (confidence / 100.0),  # Convert to 0-1 scale
             "engines_used": ["Gemini Vision"],
             "filename": final_filename,
-            "r2_url": r2_url
+            "receipt_url": r2_url,  # Standardized field name
+            "r2_url": r2_url  # Keep for backwards compatibility
         })
 
     except Exception as e:

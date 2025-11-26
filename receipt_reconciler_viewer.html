@@ -2905,13 +2905,23 @@ async function checkGmailStatus() {
 }
 
 // Rendering
+// Cached month names for performance
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 function renderTable() {
   const tbody = document.getElementById('tbody');
-  tbody.innerHTML = '';
+
+  // Use DocumentFragment for batch DOM operations (significant performance improvement)
+  const fragment = document.createDocumentFragment();
+
+  // Pre-calculate selected index for faster comparison
+  const selectedIndex = selectedRow ? selectedRow._index : null;
 
   filteredData.forEach(row => {
     const tr = document.createElement('tr');
-    if (selectedRow && row._index === selectedRow._index) {
+    const rowIndex = row._index;
+
+    if (selectedIndex !== null && rowIndex === selectedIndex) {
       tr.classList.add('selected');
     }
 
@@ -2920,55 +2930,42 @@ function renderTable() {
       tr.classList.add('newly-matched');
     }
 
-    // Check if this is a refund
-    // ✅ Refunds = negative amounts OR review_status = refund
-    const amount = parseFloat(row['Chase Amount'] || row['Amount'] || 0);
-    const isRefund = amount < 0 || row['Review Status'] === 'refund';
+    // Check if this is a refund (cache amount)
+    const amt = parseFloat(row['Chase Amount'] || row['Amount'] || 0);
+    const isRefund = amt < 0 || row['Review Status'] === 'refund';
     if (isRefund) {
       tr.classList.add('refund-row');
     }
 
-    // Format date as "MMM DD" and "YYYY" - handles both YYYY-MM-DD and "Sat, 22 Nov 2025 00:00:00 GMT" formats
+    // Format date - optimized parsing
     const dateStr = row['Chase Date'] || '';
     let dateHtml = '';
     if (dateStr) {
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       let year, month, day;
-
-      // Try YYYY-MM-DD format first
       const parts = dateStr.split('-');
       if (parts.length === 3 && parts[0].length === 4) {
         year = parts[0];
-        month = months[parseInt(parts[1]) - 1] || parts[1];
+        month = MONTHS[parseInt(parts[1]) - 1] || parts[1];
         day = parseInt(parts[2]);
       } else {
-        // Try parsing as Date string (handles "Sat, 22 Nov 2025 00:00:00 GMT")
         try {
           const d = new Date(dateStr);
           if (!isNaN(d.getTime())) {
             year = d.getFullYear();
-            month = months[d.getMonth()];
+            month = MONTHS[d.getMonth()];
             day = d.getDate();
           }
         } catch (e) {}
       }
 
-      if (year && month && day) {
-        dateHtml = `
-          <div class="date-cell">
-            <span class="date-month-day">${month} ${day}</span>
-            <span class="date-year">${year}</span>
-          </div>
-        `;
-      } else {
-        dateHtml = dateStr;
-      }
+      dateHtml = (year && month && day)
+        ? `<div class="date-cell"><span class="date-month-day">${month} ${day}</span><span class="date-year">${year}</span></div>`
+        : dateStr;
     }
 
-    // Format amount with +/- sign (Positive in CSV = Expense, Negative = Refund)
-    const amt = parseFloat(row['Chase Amount'] || 0);
-    const amtClass = amt > 0 ? 'neg' : 'pos';  // Positive = expense (red), Negative = refund (green)
-    const amtSign = amt > 0 ? '-' : '+';  // Show - for expenses, + for refunds
+    // Format amount with +/- sign
+    const amtClass = amt > 0 ? 'neg' : 'pos';
+    const amtSign = amt > 0 ? '-' : '+';
     const amtHtml = `<span class="amount ${amtClass}">${amtSign}$${Math.abs(amt).toFixed(2)}</span>`;
 
     // MI Enhanced fields
@@ -2987,15 +2984,15 @@ function renderTable() {
 
     // Description cell with inline editing
     const descHtml = miDescription
-      ? `<div class="notes-cell" onclick="editNotes(event, ${row._index})" title="${miDescription}">${miDescription}</div>`
-      : `<div class="notes-cell empty" onclick="editNotes(event, ${row._index})">Click to add note</div>`;
+      ? `<div class="notes-cell" onclick="editNotes(event, ${rowIndex})" title="${miDescription}">${miDescription}</div>`
+      : `<div class="notes-cell empty" onclick="editNotes(event, ${rowIndex})">Click to add note</div>`;
 
-    // Receipt indicator - show ✓ if receipt exists, ✗ if not
+    // Receipt indicator - check both local file and R2 URL
     const receiptFile = row['Receipt File'] || '';
-    const r2Url = row['r2_url'] || row['R2 URL'] || '';
+    const r2Url = row['r2_url'] || row['R2 URL'] || row['receipt_url'] || '';
     const hasReceipt = receiptFile || r2Url;
     const receiptHtml = hasReceipt
-      ? `<span class="receipt-indicator has-receipt" title="${receiptFile}">✓</span>`
+      ? `<span class="receipt-indicator has-receipt" title="${receiptFile || r2Url}">✓</span>`
       : `<span class="receipt-indicator no-receipt">✗</span>`;
 
     tr.innerHTML = `
@@ -3009,15 +3006,19 @@ function renderTable() {
       <td>${descHtml}</td>
     `;
 
-    tr.dataset.index = row._index;
+    tr.dataset.index = rowIndex;
     tr.onclick = (e) => {
       // Don't select row if clicking on notes cell
       if (!e.target.classList.contains('notes-cell') && !e.target.classList.contains('notes-input')) {
         selectRow(row);
       }
     };
-    tbody.appendChild(tr);
+    fragment.appendChild(tr);
   });
+
+  // Single DOM update - much faster than individual appendChild calls
+  tbody.innerHTML = '';
+  tbody.appendChild(fragment);
 }
 
 function getStatusBadge(status, isRefund) {
@@ -3240,6 +3241,23 @@ function loadReceipt() {
     wrap.addEventListener('wheel', panzoomInstance.zoomWithWheel);
   };
 
+  // Error handling - try fallback if R2 URL fails
+  img.onerror = function() {
+    if (r2Url && receiptPath && !img.dataset.retried) {
+      console.warn('R2 URL failed, trying local path:', receiptPath);
+      img.dataset.retried = 'true';
+      img.src = `/receipts/${receiptPath}`;
+    } else {
+      wrap.innerHTML = `
+        <div class="no-receipt">
+          <div class="no-receipt-icon">⚠️</div>
+          <div class="no-receipt-text">Failed to load receipt</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Image may have been moved or deleted</div>
+        </div>`;
+      title.textContent = 'Load Error';
+    }
+  };
+
   // Initial rotation transform
   img.style.transform = `rotate(${currentRotation}deg)`;
 
@@ -3452,10 +3470,38 @@ function updateQuickViewer() {
   const zoomControls = imageDiv.querySelector('.quick-zoom-controls');
   const confidenceBadge = imageDiv.querySelector('.match-confidence');
 
-  // Update image
-  if (receipt['Receipt File']) {
+  // Check for R2 URL (cloud storage) first, then local file
+  const r2Url = receipt['r2_url'] || receipt['R2 URL'] || receipt['receipt_url'] || '';
+  const receiptFile = receipt['Receipt File'] || '';
+  const hasReceipt = r2Url || receiptFile;
+
+  // Check if marked as "not needed"
+  const reviewStatus = (receipt['Review Status'] || '').toLowerCase().trim();
+  if (reviewStatus === 'not needed') {
+    imageDiv.innerHTML = `
+      <div class="no-receipt" style="background:linear-gradient(135deg, rgba(34,197,94,0.1), rgba(22,163,74,0.05))">
+        <div class="no-receipt-icon" style="font-size:64px">✅</div>
+        <div class="no-receipt-text" style="color:#22c55e;font-weight:600">No Receipt Needed</div>
+      </div>`;
+    if (zoomControls) imageDiv.appendChild(zoomControls);
+    if (confidenceBadge) imageDiv.appendChild(confidenceBadge);
+  } else if (hasReceipt) {
     const imgEl = document.createElement('img');
-    imgEl.src = `/receipts/${receipt['Receipt File']}`;
+
+    // Use R2 URL (cloud) if available, otherwise local path
+    if (r2Url && r2Url.startsWith('http')) {
+      imgEl.src = r2Url;
+    } else if (receiptFile) {
+      // Build local path - handle various formats
+      if (receiptFile.startsWith('http')) {
+        imgEl.src = receiptFile;
+      } else if (receiptFile.startsWith('receipts/') || receiptFile.startsWith('incoming/')) {
+        imgEl.src = `/${receiptFile}`;
+      } else {
+        imgEl.src = `/receipts/${receiptFile}`;
+      }
+    }
+
     imgEl.alt = 'Receipt';
     imgEl.style.transition = 'opacity 0.2s ease';
     imgEl.style.imageOrientation = 'from-image'; // Auto-handle EXIF orientation
@@ -3468,6 +3514,22 @@ function updateQuickViewer() {
         imgEl.style.transform = 'rotate(90deg)';
       } else {
         imgEl.style.transform = 'none';
+      }
+    };
+
+    // Error handling - try fallback if R2 URL fails
+    imgEl.onerror = function() {
+      if (r2Url && receiptFile && !imgEl.dataset.retried) {
+        console.warn('R2 URL failed, trying local path:', receiptFile);
+        imgEl.dataset.retried = 'true';
+        imgEl.src = `/receipts/${receiptFile}`;
+      } else {
+        imageDiv.innerHTML = `
+          <div class="no-receipt">
+            <div class="no-receipt-icon">⚠️</div>
+            <div class="no-receipt-text">Failed to load receipt</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">Image may have been moved or deleted</div>
+          </div>`;
       }
     };
 
@@ -3497,6 +3559,7 @@ function updateQuickViewer() {
       <div class="no-receipt">
         <div class="no-receipt-icon">📄</div>
         <div class="no-receipt-text">No receipt attached</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Press A to AI-match or drag & drop</div>
       </div>`;
     if (zoomControls) imageDiv.appendChild(zoomControls);
     if (confidenceBadge) imageDiv.appendChild(confidenceBadge);
@@ -3681,9 +3744,21 @@ function preloadAdjacentReceipts() {
   preloadIndices.forEach(idx => {
     if (idx >= 0 && idx < quickViewerReceipts.length) {
       const receipt = quickViewerReceipts[idx];
-      if (receipt['Receipt File']) {
+      const r2Url = receipt['r2_url'] || receipt['R2 URL'] || receipt['receipt_url'] || '';
+      const receiptFile = receipt['Receipt File'] || '';
+
+      if (r2Url || receiptFile) {
         const img = new Image();
-        img.src = `/receipts/${receipt['Receipt File']}`;
+        // Use R2 URL if available, otherwise local path
+        if (r2Url && r2Url.startsWith('http')) {
+          img.src = r2Url;
+        } else if (receiptFile) {
+          if (receiptFile.startsWith('http')) {
+            img.src = receiptFile;
+          } else {
+            img.src = `/receipts/${receiptFile}`;
+          }
+        }
       }
     }
   });
@@ -4463,15 +4538,16 @@ async function processReceiptImage(file) {
         lastOCRReceiptFilename = result.filename;
         console.log('Receipt saved as:', result.filename);
       }
-      if (result.r2_url) {
-        lastOCRReceiptR2Url = result.r2_url;
-        console.log('Receipt uploaded to R2:', result.r2_url);
+      // Store R2 URL (check both field names for compatibility)
+      if (result.receipt_url || result.r2_url) {
+        lastOCRReceiptR2Url = result.receipt_url || result.r2_url;
+        console.log('Receipt uploaded to R2:', lastOCRReceiptR2Url);
       }
 
       // Show success with confidence
       const confidence = Math.round(result.confidence * 100);
       const engines = result.engines_used ? result.engines_used.join(', ') : 'OCR';
-      const uploadedTo = result.r2_url ? '☁️' : '💾';
+      const uploadedTo = (result.receipt_url || result.r2_url) ? '☁️' : '💾';
       showOCRStatus(
         `${uploadedTo} Extracted! ${result.filename || 'N/A'} (${confidence}%)`,
         'success'
