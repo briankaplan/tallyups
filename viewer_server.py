@@ -204,6 +204,100 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = SESSION_TIMEOUT
 
+
+# =============================================================================
+# CENTRALIZED ERROR HANDLERS
+# =============================================================================
+
+@app.errorhandler(400)
+def bad_request_error(error):
+    """Handle 400 Bad Request errors"""
+    message = str(error.description) if hasattr(error, 'description') else 'Bad request'
+    return jsonify({
+        'ok': False,
+        'error': 'Bad Request',
+        'message': message,
+        'status': 400
+    }), 400
+
+
+@app.errorhandler(401)
+def unauthorized_error(error):
+    """Handle 401 Unauthorized errors"""
+    return jsonify({
+        'ok': False,
+        'error': 'Unauthorized',
+        'message': 'Authentication required',
+        'status': 401
+    }), 401
+
+
+@app.errorhandler(403)
+def forbidden_error(error):
+    """Handle 403 Forbidden errors"""
+    return jsonify({
+        'ok': False,
+        'error': 'Forbidden',
+        'message': 'Access denied',
+        'status': 403
+    }), 403
+
+
+@app.errorhandler(404)
+def not_found_error(error):
+    """Handle 404 Not Found errors"""
+    message = str(error.description) if hasattr(error, 'description') else 'Resource not found'
+    return jsonify({
+        'ok': False,
+        'error': 'Not Found',
+        'message': message,
+        'status': 404
+    }), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 Internal Server errors"""
+    # Log the actual error for debugging
+    print(f"❌ Internal Server Error: {error}", flush=True)
+    return jsonify({
+        'ok': False,
+        'error': 'Internal Server Error',
+        'message': 'An unexpected error occurred. Please try again.',
+        'status': 500
+    }), 500
+
+
+@app.errorhandler(503)
+def service_unavailable_error(error):
+    """Handle 503 Service Unavailable errors"""
+    message = str(error.description) if hasattr(error, 'description') else 'Service temporarily unavailable'
+    return jsonify({
+        'ok': False,
+        'error': 'Service Unavailable',
+        'message': message,
+        'status': 503
+    }), 503
+
+
+# Generic exception handler for uncaught exceptions
+@app.errorhandler(Exception)
+def handle_exception(error):
+    """Handle all uncaught exceptions"""
+    # Log the full traceback
+    import traceback
+    print(f"❌ Unhandled Exception: {error}", flush=True)
+    traceback.print_exc()
+
+    # Return a generic error response
+    return jsonify({
+        'ok': False,
+        'error': 'Server Error',
+        'message': str(error) if app.debug else 'An unexpected error occurred',
+        'status': 500
+    }), 500
+
+
 df: pd.DataFrame | None = None          # global dataframe
 receipt_meta_cache: dict[str, dict] = {}  # filename -> meta dict
 
