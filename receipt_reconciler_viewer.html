@@ -1394,21 +1394,24 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
             <div class="settings-label">Personal Gmail</div>
             <div class="settings-desc">kaplan.brian@gmail.com</div>
           </div>
-          <button class="btn-ghost" onclick="refreshGmailToken('personal')">🔄 Refresh</button>
+          <span id="gmail-status-personal" class="badge badge-neutral">Checking...</span>
+          <button class="btn-ghost" onclick="refreshGmailToken('kaplan.brian@gmail.com')">🔄 Refresh</button>
         </div>
         <div class="settings-row">
           <div>
             <div class="settings-label">Music City Rodeo</div>
             <div class="settings-desc">brian@musiccityrodeo.com</div>
           </div>
-          <button class="btn-ghost" onclick="refreshGmailToken('mcr')">🔄 Refresh</button>
+          <span id="gmail-status-mcr" class="badge badge-neutral">Checking...</span>
+          <button class="btn-ghost" onclick="refreshGmailToken('brian@musiccityrodeo.com')">🔄 Refresh</button>
         </div>
         <div class="settings-row">
           <div>
             <div class="settings-label">Down Home</div>
             <div class="settings-desc">brian@downhome.com</div>
           </div>
-          <button class="btn-ghost" onclick="refreshGmailToken('downhome')">🔄 Refresh</button>
+          <span id="gmail-status-downhome" class="badge badge-neutral">Checking...</span>
+          <button class="btn-ghost" onclick="refreshGmailToken('brian@downhome.com')">🔄 Refresh</button>
         </div>
       </div>
 
@@ -1417,9 +1420,9 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
         <div class="settings-row">
           <div>
             <div class="settings-label">Database</div>
-            <div class="settings-desc">SQLite - receipts.db</div>
+            <div class="settings-desc" id="db-type-desc">MySQL on Railway</div>
           </div>
-          <span class="badge badge-good">SQLite</span>
+          <span id="db-status" class="badge badge-good">Connected</span>
         </div>
         <div class="settings-row">
           <div>
@@ -2738,12 +2741,60 @@ function updateRowInPlace(row) {
   cells[6].innerHTML = notesHtml;
 }
 
-async function refreshGmailToken(account) {
-  showToast(`Refreshing ${account} token...`, '🔄');
-  // This would call backend endpoint to refresh token
-  setTimeout(() => {
-    showToast(`${account} token refreshed`, '✓');
-  }, 1000);
+async function refreshGmailToken(email) {
+  showToast(`Refreshing ${email} token...`, '🔄');
+  try {
+    const res = await fetch(`/settings/gmail/refresh/${encodeURIComponent(email)}`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`${email} token refreshed successfully`, '✓');
+      // Refresh the status after token refresh
+      await checkGmailStatus();
+    } else {
+      showToast(data.error || `Failed to refresh ${email} token`, '❌');
+    }
+  } catch (e) {
+    showToast(`Error refreshing token: ${e.message}`, '❌');
+  }
+}
+
+// Check Gmail account status from backend
+async function checkGmailStatus() {
+  const emailToId = {
+    'kaplan.brian@gmail.com': 'gmail-status-personal',
+    'brian@musiccityrodeo.com': 'gmail-status-mcr',
+    'brian@downhome.com': 'gmail-status-downhome'
+  };
+
+  try {
+    const res = await fetch('/settings/gmail/status');
+    const data = await res.json();
+
+    if (data.ok && data.accounts) {
+      data.accounts.forEach(account => {
+        const statusEl = document.getElementById(emailToId[account.email]);
+        if (!statusEl) return;
+
+        if (!account.exists) {
+          statusEl.className = 'badge badge-neutral';
+          statusEl.textContent = 'Not configured';
+        } else if (account.expired) {
+          statusEl.className = 'badge badge-bad';
+          statusEl.textContent = 'Expired';
+        } else if (account.has_refresh_token) {
+          statusEl.className = 'badge badge-good';
+          statusEl.textContent = 'Connected';
+        } else {
+          statusEl.className = 'badge badge-neutral';
+          statusEl.textContent = 'Needs auth';
+        }
+      });
+    }
+  } catch (e) {
+    console.error('Error checking Gmail status:', e);
+  }
 }
 
 // Rendering
@@ -3746,9 +3797,11 @@ function toggleSettings() {
   const modal = document.getElementById('settings-modal');
   modal.classList.toggle('active');
 
-  // Update transaction count when opening
+  // Update all settings info when opening
   if (modal.classList.contains('active')) {
     updateSettingsInfo();
+    checkGmailStatus();
+    checkSystemHealth();
   }
 }
 
@@ -3775,19 +3828,33 @@ async function checkSystemHealth() {
   if (geminiStatus) geminiStatus.innerHTML = '<span style="color:#fbbf24">Checking...</span>';
   if (ocrStatus) ocrStatus.innerHTML = '<span style="color:#fbbf24">Checking...</span>';
 
-  // Check Database (via transactions API which reads from SQLite)
+  // Check Database (via health endpoint)
   try {
-    const dbRes = await fetch('/api/transactions');
-    if (dbRes.ok) {
+    const healthRes = await fetch('/api/health');
+    const dbRes = await fetch('/api/transactions?limit=1');
+    if (healthRes.ok && dbRes.ok) {
+      const health = await healthRes.json();
       const data = await dbRes.json();
+      const dbType = health.database === 'connected' ? 'MySQL' : 'SQLite';
+      const dbTypeDesc = document.getElementById('db-type-desc');
+      if (dbTypeDesc) {
+        dbTypeDesc.textContent = dbType === 'MySQL' ? 'MySQL on Railway' : 'SQLite - receipts.db';
+      }
       if (dbStatus) {
-        dbStatus.innerHTML = `<span style="color:#00ff88">SQLite ✓ (${data.length} records)</span>`;
+        dbStatus.className = 'badge badge-good';
+        dbStatus.textContent = `${dbType} ✓`;
       }
     } else {
-      if (dbStatus) dbStatus.innerHTML = '<span style="color:#ef4444">Error</span>';
+      if (dbStatus) {
+        dbStatus.className = 'badge badge-bad';
+        dbStatus.textContent = 'Error';
+      }
     }
   } catch (e) {
-    if (dbStatus) dbStatus.innerHTML = '<span style="color:#ef4444">Offline</span>';
+    if (dbStatus) {
+      dbStatus.className = 'badge badge-bad';
+      dbStatus.textContent = 'Offline';
+    }
   }
 
   // Check R2 Storage (via health endpoint)
