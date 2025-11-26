@@ -1360,7 +1360,7 @@ def health_check():
 
     health_data = {
         "status": "ok",
-        "timestamp": datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
         "services": {}
     }
 
@@ -3116,7 +3116,8 @@ def add_manual_expense():
       "business_type": "Down Home",
       "category": "Optional Category",
       "notes": "Optional notes",
-      "receipt_file": "Optional filename from OCR"
+      "receipt_file": "Optional filename from OCR",
+      "receipt_url": "Optional R2 URL from OCR"
     }
     """
     ensure_df()
@@ -3132,8 +3133,12 @@ def add_manual_expense():
     max_index = df["_index"].max() if len(df) > 0 else 0
     new_index = int(max_index) + 1
 
-    # Get receipt file if provided
+    # Get receipt file and URL if provided
     receipt_file = data.get("receipt_file", "")
+    receipt_url = data.get("receipt_url", "")
+
+    # Determine if we have a receipt (file or URL)
+    has_receipt = bool(receipt_file or receipt_url)
 
     # Create new expense row
     new_expense = {
@@ -3144,14 +3149,15 @@ def add_manual_expense():
         "Chase Category": "",
         "Chase Type": "Purchase",
         "Receipt File": receipt_file,
+        "receipt_url": receipt_url,
         "Business Type": data["business_type"],
         "Notes": data.get("notes", ""),
         "AI Note": "",
         "AI Confidence": 0,
-        "ai_receipt_merchant": data["merchant"] if receipt_file else "",
-        "ai_receipt_date": data["date"] if receipt_file else "",
-        "ai_receipt_total": str(data["amount"]) if receipt_file else "",
-        "Review Status": "good" if receipt_file else "",
+        "ai_receipt_merchant": data["merchant"] if has_receipt else "",
+        "ai_receipt_date": data["date"] if has_receipt else "",
+        "ai_receipt_total": str(data["amount"]) if has_receipt else "",
+        "Review Status": "good" if has_receipt else "",
         "Category": data.get("category", ""),
         "Report ID": "",
         "Source": "Manual Entry"
@@ -3163,7 +3169,7 @@ def add_manual_expense():
             # Build INSERT statement - handle both MySQL and SQLite
             columns = [
                 "_index", "chase_date", "chase_description", "chase_amount",
-                "chase_category", "chase_type", "receipt_file", "business_type",
+                "chase_category", "chase_type", "receipt_file", "receipt_url", "business_type",
                 "notes", "ai_note", "ai_confidence", "ai_receipt_merchant",
                 "ai_receipt_date", "ai_receipt_total", "review_status",
                 "category", "report_id", "source"
@@ -3176,15 +3182,16 @@ def add_manual_expense():
                 float(data["amount"]),
                 "",
                 "Purchase",
-                receipt_file,  # Now using the receipt_file from OCR
+                receipt_file,
+                receipt_url,  # R2 cloud URL
                 data["business_type"],
                 data.get("notes", ""),
                 "",
                 0,
-                data["merchant"] if receipt_file else "",  # ai_receipt_merchant
-                data["date"] if receipt_file else "",  # ai_receipt_date
-                str(data["amount"]) if receipt_file else "",  # ai_receipt_total
-                "good" if receipt_file else "",  # review_status
+                data["merchant"] if has_receipt else "",  # ai_receipt_merchant
+                data["date"] if has_receipt else "",  # ai_receipt_date
+                str(data["amount"]) if has_receipt else "",  # ai_receipt_total
+                "good" if has_receipt else "",  # review_status
                 data.get("category", ""),
                 "",
                 "Manual Entry"
@@ -4811,6 +4818,19 @@ def api_ocr_process():
         temp_path.rename(final_path)
         print(f"   💾 Saved as: {final_filename}", flush=True)
 
+        # Upload to R2 cloud storage
+        r2_url = None
+        if R2_ENABLED and upload_to_r2:
+            try:
+                success, result = upload_to_r2(final_path)
+                if success:
+                    r2_url = result
+                    print(f"   ☁️ Uploaded to R2: {r2_url}", flush=True)
+                else:
+                    print(f"   ⚠️ R2 upload failed: {result}", flush=True)
+            except Exception as e:
+                print(f"   ⚠️ R2 upload error: {e}", flush=True)
+
         return jsonify({
             "success": True,
             "merchant": merchant,
@@ -4818,7 +4838,8 @@ def api_ocr_process():
             "total": total,
             "confidence": (confidence / 100.0),  # Convert to 0-1 scale
             "engines_used": ["Gemini Vision"],
-            "filename": final_filename
+            "filename": final_filename,
+            "r2_url": r2_url
         })
 
     except Exception as e:

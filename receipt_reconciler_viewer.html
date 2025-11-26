@@ -2668,17 +2668,30 @@ async function detachReceipt() {
   if (!selectedRow) return;
 
   try {
-    await fetch('/detach_receipt', {
+    const response = await fetch('/detach_receipt', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({_index: selectedRow._index})
     });
+
+    if (!response.ok) {
+      throw new Error('Server error');
+    }
+
+    // Clear all receipt-related fields in local data
     selectedRow['Receipt File'] = '';
     selectedRow.receipt_file = '';
-    renderTable();
-    updateDashboard();  // ✅ FIX: Update counts badge after detaching receipt
-    loadReceipt();
-    showToast('Receipt detached', '✓');
+    selectedRow.receipt_url = '';
+    selectedRow['Review Status'] = '';  // This moves it to "Missing Receipt"
+    selectedRow['AI Confidence'] = '';
+    selectedRow.ai_receipt_merchant = '';
+    selectedRow.ai_receipt_total = '';
+    selectedRow.ai_receipt_date = '';
+
+    // Re-apply filters - this will move the row to Missing Receipts if that filter exists
+    applyFilters();
+    loadReceipt();  // Show empty receipt panel
+    showToast('Receipt detached - moved to Missing Receipts', '✓');
   } catch (e) {
     showToast('Failed to detach: ' + e.message, '❌');
   }
@@ -3128,12 +3141,26 @@ function loadReceipt() {
   // Check for R2 URL first (cloud storage), then local Receipt File
   const r2Url = selectedRow ? (selectedRow['r2_url'] || selectedRow['R2 URL'] || selectedRow['receipt_url']) : null;
   const receiptFile = selectedRow ? selectedRow['Receipt File'] : null;
+  const reviewStatus = selectedRow ? (selectedRow['Review Status'] || '').toLowerCase().trim() : '';
+
+  // Check if marked as "not needed" first
+  if (selectedRow && reviewStatus === 'not needed') {
+    wrap.innerHTML = `
+      <div class="no-receipt" style="background:linear-gradient(135deg, rgba(34,197,94,0.1), rgba(22,163,74,0.05))">
+        <div class="no-receipt-icon" style="font-size:64px">✅</div>
+        <div class="no-receipt-text" style="color:#22c55e;font-weight:600">No Receipt Needed</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">This expense doesn't require a receipt</div>
+      </div>`;
+    title.textContent = 'Not Needed';
+    return;
+  }
 
   if (!selectedRow || (!receiptFile && !r2Url)) {
     wrap.innerHTML = `
       <div class="no-receipt">
         <div class="no-receipt-icon">📄</div>
         <div class="no-receipt-text">No receipt attached</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">Drag & drop a receipt or use AI Match</div>
       </div>`;
     title.textContent = 'Receipt Viewer';
     return;
@@ -3145,11 +3172,12 @@ function loadReceipt() {
   // Skip special values
   if (receiptPath === 'NO_RECEIPT_NEEDED' || receiptPath === 'NO_RECEIPT') {
     wrap.innerHTML = `
-      <div class="no-receipt">
-        <div class="no-receipt-icon">✓</div>
-        <div class="no-receipt-text">No receipt needed</div>
+      <div class="no-receipt" style="background:linear-gradient(135deg, rgba(34,197,94,0.1), rgba(22,163,74,0.05))">
+        <div class="no-receipt-icon" style="font-size:64px">✅</div>
+        <div class="no-receipt-text" style="color:#22c55e;font-weight:600">No Receipt Needed</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">This expense doesn't require a receipt</div>
       </div>`;
-    title.textContent = 'No Receipt Needed';
+    title.textContent = 'Not Needed';
     return;
   }
 
@@ -4379,16 +4407,18 @@ function initOCRDropZone() {
   });
 }
 
-// Store the receipt filename from OCR for use in submitManualEntry
+// Store the receipt filename and R2 URL from OCR for use in submitManualEntry
 let lastOCRReceiptFilename = null;
+let lastOCRReceiptR2Url = null;
 
 async function processReceiptImage(file) {
   const dropZone = document.getElementById('ocr-drop-zone');
   const preview = document.getElementById('ocr-preview');
   const status = document.getElementById('ocr-status');
 
-  // Reset stored filename
+  // Reset stored filename and R2 URL
   lastOCRReceiptFilename = null;
+  lastOCRReceiptR2Url = null;
 
   // Show preview
   const reader = new FileReader();
@@ -4428,17 +4458,22 @@ async function processReceiptImage(file) {
         document.getElementById('manual-amount').value = result.total;
       }
 
-      // IMPORTANT: Store the filename for later use when submitting the form
+      // IMPORTANT: Store the filename and R2 URL for later use when submitting the form
       if (result.filename) {
         lastOCRReceiptFilename = result.filename;
         console.log('Receipt saved as:', result.filename);
+      }
+      if (result.r2_url) {
+        lastOCRReceiptR2Url = result.r2_url;
+        console.log('Receipt uploaded to R2:', result.r2_url);
       }
 
       // Show success with confidence
       const confidence = Math.round(result.confidence * 100);
       const engines = result.engines_used ? result.engines_used.join(', ') : 'OCR';
+      const uploadedTo = result.r2_url ? '☁️' : '💾';
       showOCRStatus(
-        `✅ Extracted! Saved: ${result.filename || 'N/A'} (${confidence}%)`,
+        `${uploadedTo} Extracted! ${result.filename || 'N/A'} (${confidence}%)`,
         'success'
       );
     } else {
@@ -4545,10 +4580,14 @@ async function submitManualEntry(event) {
       notes
     };
 
-    // Include the receipt file from OCR if available
+    // Include the receipt file and R2 URL from OCR if available
     if (lastOCRReceiptFilename) {
       requestBody.receipt_file = lastOCRReceiptFilename;
       console.log('Including receipt file:', lastOCRReceiptFilename);
+    }
+    if (lastOCRReceiptR2Url) {
+      requestBody.receipt_url = lastOCRReceiptR2Url;
+      console.log('Including R2 URL:', lastOCRReceiptR2Url);
     }
 
     const res = await fetch('/add_manual_expense', {
@@ -4640,8 +4679,24 @@ function applyFilters() {
         return hasReceipt && r['Review Status'] === 'bad';
       });
     }
-    else if (filter === 'missing') filtered = filtered.filter(r => !r['Receipt File'] && r['Review Status'] !== 'not needed');
-    else if (filter === 'with-receipts') filtered = filtered.filter(r => r['Receipt File'] && r['Receipt File'].trim() !== '');
+    else if (filter === 'missing') {
+      // Missing = no receipt file AND not marked as "not needed"
+      filtered = filtered.filter(r => {
+        const receiptFile = (r['Receipt File'] || '').trim();
+        const receiptUrl = (r.receipt_url || '').trim();
+        const status = (r['Review Status'] || '').toLowerCase().trim();
+        const hasReceipt = receiptFile !== '' || receiptUrl !== '';
+        return !hasReceipt && status !== 'not needed';
+      });
+    }
+    else if (filter === 'with-receipts') {
+      // With receipts = has a receipt file OR receipt_url
+      filtered = filtered.filter(r => {
+        const receiptFile = (r['Receipt File'] || '').trim();
+        const receiptUrl = (r.receipt_url || '').trim();
+        return receiptFile !== '' || receiptUrl !== '';
+      });
+    }
     else if (filter === 'not-needed') filtered = filtered.filter(r => r['Review Status'] === 'not needed');
     else if (filter === 'refunds') {
       // ✅ Refunds = negative amounts OR review_status = refund
@@ -4906,7 +4961,7 @@ function setupDragDrop() {
       return showToast('Please drop an image or PDF file', '⚠️');
     }
 
-    // If a row is selected, use old upload method
+    // If a row is selected, use upload method
     if (selectedRow) {
       const formData = new FormData();
       formData.append('file', file);
@@ -4921,9 +4976,13 @@ function setupDragDrop() {
         const data = await res.json();
         if (data.ok) {
           selectedRow['Receipt File'] = data.filename;
-          renderTable();
+          if (data.receipt_url) {
+            selectedRow.receipt_url = data.receipt_url;
+          }
+          applyFilters();  // Re-filter to update counts
           loadReceipt();
-          showToast('Receipt attached', '✓');
+          const cloudIcon = data.receipt_url ? '☁️' : '📎';
+          showToast(`${cloudIcon} Receipt attached`, '✓');
         }
       } catch (e) {
         showToast('Upload failed: ' + e.message, '❌');
