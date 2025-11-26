@@ -1280,6 +1280,26 @@ def health_check():
     })
 
 
+@app.route("/api/debug/transaction/<int:idx>")
+@login_required
+def debug_transaction(idx):
+    """Debug endpoint to test transaction lookup"""
+    result = {"idx": idx, "USE_DATABASE": USE_DATABASE, "db_available": db is not None}
+
+    if USE_DATABASE and db:
+        try:
+            row = db.get_transaction_by_index(idx)
+            result["db_lookup"] = "success" if row else "not_found"
+            result["row_type"] = type(row).__name__ if row else None
+            result["row_keys"] = list(row.keys()) if row and isinstance(row, dict) else None
+            result["row_sample"] = {k: str(v)[:50] for k, v in list(row.items())[:5]} if row and isinstance(row, dict) else None
+        except Exception as e:
+            result["db_lookup"] = "error"
+            result["error"] = str(e)
+
+    return jsonify(result)
+
+
 @app.route("/ocr", methods=["POST"])
 @login_required
 def ocr_endpoint():
