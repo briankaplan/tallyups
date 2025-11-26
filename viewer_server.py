@@ -4057,6 +4057,7 @@ def gmail_status():
 
 
 @app.route("/settings/gmail/refresh/<account_email>", methods=["POST"])
+@login_required
 def gmail_refresh_account(account_email):
     """
     Handle Gmail token refresh request.
@@ -4064,48 +4065,49 @@ def gmail_refresh_account(account_email):
     On Railway (cloud deployment): Returns instructions for manual token setup
     Locally: Could trigger OAuth flow (not implemented for security)
     """
-    import os
-    from pathlib import Path
+    try:
+        # Map email to account info
+        ACCOUNTS = {
+            'brian@downhome.com': {'email': 'brian@downhome.com', 'token_file': 'tokens_brian_downhome_com.json'},
+            'kaplan.brian@gmail.com': {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json'},
+            'brian@musiccityrodeo.com': {'email': 'brian@musiccityrodeo.com', 'token_file': 'tokens_brian_musiccityrodeo_com.json'},
+        }
 
-    # Map email to account info
-    ACCOUNTS = {
-        'brian@downhome.com': {'email': 'brian@downhome.com', 'token_file': 'tokens_brian_downhome_com.json'},
-        'kaplan.brian@gmail.com': {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json'},
-        'brian@musiccityrodeo.com': {'email': 'brian@musiccityrodeo.com', 'token_file': 'tokens_brian_musiccityrodeo_com.json'},
-    }
+        if account_email not in ACCOUNTS:
+            return jsonify({'ok': False, 'error': f'Account {account_email} not found'}), 404
 
-    if account_email not in ACCOUNTS:
-        abort(404, f"Account {account_email} not found")
+        account = ACCOUNTS[account_email]
 
-    account = ACCOUNTS[account_email]
+        # Check if we're on Railway (cloud deployment)
+        is_railway = os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_SERVICE_NAME')
 
-    # Check if we're on Railway (cloud deployment)
-    is_railway = os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_SERVICE_NAME')
+        if is_railway:
+            # On Railway, we can't do local OAuth - need to use environment variables or manual token upload
+            return jsonify({
+                'ok': False,
+                'error': 'Gmail OAuth requires local setup',
+                'message': f'To configure Gmail for {account_email} on Railway:\n'
+                          f'1. Run the OAuth flow locally to generate tokens\n'
+                          f'2. Upload the token file ({account["token_file"]}) to Railway\n'
+                          f'3. Or set GMAIL_TOKEN_* environment variables in Railway dashboard',
+                'account': account_email,
+                'requires_local_setup': True
+            })
 
-    if is_railway:
-        # On Railway, we can't do local OAuth - need to use environment variables or manual token upload
-        return jsonify(safe_json({
+        # Local environment - could implement OAuth flow here
+        # For security, we return instructions rather than auto-launching browser
+        return jsonify({
             'ok': False,
-            'error': 'Gmail OAuth requires local setup',
-            'message': f'To configure Gmail for {account_email} on Railway:\n'
-                      f'1. Run the OAuth flow locally to generate tokens\n'
-                      f'2. Upload the token file ({account["token_file"]}) to Railway\n'
-                      f'3. Or set GMAIL_TOKEN_* environment variables in Railway dashboard',
-            'account': account_email,
-            'requires_local_setup': True
-        }))
-
-    # Local environment - could implement OAuth flow here
-    # For security, we return instructions rather than auto-launching browser
-    return jsonify(safe_json({
-        'ok': False,
-        'error': 'Manual OAuth required',
-        'message': f'To refresh Gmail token for {account_email}:\n'
-                  f'1. Run: python3 reauth_gmail.py {account_email}\n'
-                  f'2. Follow the browser prompts to authorize\n'
-                  f'3. Restart the server after authorization',
-        'account': account_email
-    }))
+            'error': 'Manual OAuth required',
+            'message': f'To refresh Gmail token for {account_email}:\n'
+                      f'1. Run: python3 reauth_gmail.py {account_email}\n'
+                      f'2. Follow the browser prompts to authorize\n'
+                      f'3. Restart the server after authorization',
+            'account': account_email
+        })
+    except Exception as e:
+        print(f"Error in gmail_refresh_account: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 # =============================================================================
