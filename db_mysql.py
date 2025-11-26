@@ -349,8 +349,10 @@ class MySQLReceiptDatabase:
 
     def update_transaction(self, index: int, patch: Dict[str, Any]) -> bool:
         """Update transaction with patch data"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql:
             raise RuntimeError("MySQL not available")
+
+        self.ensure_connection()
 
         # Map user-facing column names to database columns
         column_map = {
