@@ -3715,27 +3715,49 @@ def reports_download_receipts_zip(report_id):
 
         # Create ZIP in memory
         zip_buffer = io.BytesIO()
+        import requests
 
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             receipt_count = 0
 
             for exp in expenses:
                 receipt_file = exp.get("receipt_file")
-                if receipt_file:
+                receipt_url = exp.get("receipt_url") or ""
+
+                # Build descriptive filename
+                merchant = exp.get("chase_description", "expense")
+                date = exp.get("chase_date", "")
+                amount = exp.get("chase_amount", 0)
+
+                file_data = None
+                ext = ".jpg"  # default
+
+                # Try R2 URL first (cloud storage)
+                if receipt_url and receipt_url.startswith("http"):
+                    try:
+                        resp = requests.get(receipt_url, timeout=30)
+                        if resp.status_code == 200:
+                            file_data = resp.content
+                            # Get extension from URL
+                            if "." in receipt_url.split("/")[-1]:
+                                ext = "." + receipt_url.split(".")[-1].split("?")[0]
+                            receipt_count += 1
+                    except Exception as e:
+                        print(f"⚠️  Failed to fetch R2 receipt: {e}", flush=True)
+
+                # Fallback to local file
+                if not file_data and receipt_file:
                     receipt_path = Path(RECEIPTS_DIR) / receipt_file
                     if receipt_path.exists():
-                        # Add to ZIP with a cleaned filename
-                        merchant = exp.get("chase_description", "expense")
-                        date = exp.get("chase_date", "")
-                        amount = exp.get("chase_amount", 0)
-
-                        # Create descriptive filename
+                        with open(receipt_path, 'rb') as f:
+                            file_data = f.read()
                         ext = receipt_path.suffix
-                        clean_filename = f"{date}_{merchant}_{amount}{ext}".replace(" ", "_").replace("/", "-")[:100]
-
-                        # Add file to ZIP
-                        zip_file.write(receipt_path, clean_filename)
                         receipt_count += 1
+
+                # Add to ZIP if we got data
+                if file_data:
+                    clean_filename = f"{date}_{merchant}_{amount}{ext}".replace(" ", "_").replace("/", "-")[:100]
+                    zip_file.writestr(clean_filename, file_data)
 
         if receipt_count == 0:
             abort(404, "No receipts found for this report")
