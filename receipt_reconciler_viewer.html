@@ -1395,7 +1395,7 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
             <div class="settings-desc">kaplan.brian@gmail.com</div>
           </div>
           <span id="gmail-status-personal" class="badge badge-neutral">Checking...</span>
-          <button class="btn-ghost" onclick="refreshGmailToken('kaplan.brian@gmail.com')">🔄 Refresh</button>
+          <button class="btn-ghost" onclick="connectGmail('kaplan.brian@gmail.com')" id="gmail-btn-personal">🔗 Connect</button>
         </div>
         <div class="settings-row">
           <div>
@@ -1403,7 +1403,7 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
             <div class="settings-desc">brian@musiccityrodeo.com</div>
           </div>
           <span id="gmail-status-mcr" class="badge badge-neutral">Checking...</span>
-          <button class="btn-ghost" onclick="refreshGmailToken('brian@musiccityrodeo.com')">🔄 Refresh</button>
+          <button class="btn-ghost" onclick="connectGmail('brian@musiccityrodeo.com')" id="gmail-btn-mcr">🔗 Connect</button>
         </div>
         <div class="settings-row">
           <div>
@@ -1411,7 +1411,7 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
             <div class="settings-desc">brian@downhome.com</div>
           </div>
           <span id="gmail-status-downhome" class="badge badge-neutral">Checking...</span>
-          <button class="btn-ghost" onclick="refreshGmailToken('brian@downhome.com')">🔄 Refresh</button>
+          <button class="btn-ghost" onclick="connectGmail('brian@downhome.com')" id="gmail-btn-downhome">🔗 Connect</button>
         </div>
       </div>
 
@@ -2741,26 +2741,48 @@ function updateRowInPlace(row) {
   cells[6].innerHTML = notesHtml;
 }
 
-async function refreshGmailToken(email) {
-  showToast(`Checking ${email} token...`, '🔄');
+// Connect Gmail account via OAuth popup
+function connectGmail(email) {
+  showToast(`Opening Google authorization...`, '🔗');
+
+  // Open OAuth in a popup window
+  const width = 600;
+  const height = 700;
+  const left = (window.innerWidth - width) / 2 + window.screenX;
+  const top = (window.innerHeight - height) / 2 + window.screenY;
+
+  const popup = window.open(
+    `/api/gmail/authorize/${encodeURIComponent(email)}`,
+    'gmail_oauth',
+    `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`
+  );
+
+  // Poll for popup closure and refresh status
+  const pollTimer = setInterval(() => {
+    if (popup.closed) {
+      clearInterval(pollTimer);
+      showToast('Checking Gmail status...', '🔄');
+      setTimeout(() => checkGmailStatus(), 500);
+    }
+  }, 500);
+}
+
+// Disconnect Gmail account
+async function disconnectGmail(email) {
+  if (!confirm(`Disconnect ${email}? You'll need to re-authorize to use Gmail features.`)) {
+    return;
+  }
+
   try {
-    const res = await fetch(`/settings/gmail/refresh/${encodeURIComponent(email)}`, {
+    const res = await fetch(`/api/gmail/disconnect/${encodeURIComponent(email)}`, {
       method: 'POST'
     });
     const data = await res.json();
     if (data.ok) {
-      showToast(`${email} token refreshed successfully`, '✓');
+      showToast(`Disconnected ${email}`, '✓');
       await checkGmailStatus();
-    } else if (data.requires_local_setup) {
-      // Show a more helpful message for Railway deployments
-      showToast(`Gmail requires local setup`, 'ℹ️');
-      console.log('Gmail Setup Instructions:', data.message);
-      alert(`Gmail OAuth Setup Required\n\n${data.message}`);
     } else {
-      showToast(data.message ? 'See console for setup instructions' : data.error, 'ℹ️');
-      if (data.message) {
-        console.log('Gmail Setup Instructions:', data.message);
-      }
+      showToast(data.error || 'Failed to disconnect', '❌');
     }
   } catch (e) {
     showToast(`Error: ${e.message}`, '❌');
@@ -2770,9 +2792,9 @@ async function refreshGmailToken(email) {
 // Check Gmail account status from backend
 async function checkGmailStatus() {
   const emailToId = {
-    'kaplan.brian@gmail.com': 'gmail-status-personal',
-    'brian@musiccityrodeo.com': 'gmail-status-mcr',
-    'brian@downhome.com': 'gmail-status-downhome'
+    'kaplan.brian@gmail.com': { status: 'gmail-status-personal', btn: 'gmail-btn-personal' },
+    'brian@musiccityrodeo.com': { status: 'gmail-status-mcr', btn: 'gmail-btn-mcr' },
+    'brian@downhome.com': { status: 'gmail-status-downhome', btn: 'gmail-btn-downhome' }
   };
 
   try {
@@ -2781,21 +2803,44 @@ async function checkGmailStatus() {
 
     if (data.ok && data.accounts) {
       data.accounts.forEach(account => {
-        const statusEl = document.getElementById(emailToId[account.email]);
+        const ids = emailToId[account.email];
+        if (!ids) return;
+
+        const statusEl = document.getElementById(ids.status);
+        const btnEl = document.getElementById(ids.btn);
+
         if (!statusEl) return;
+
+        const isConnected = account.exists && account.has_refresh_token && !account.expired;
 
         if (!account.exists) {
           statusEl.className = 'badge badge-neutral';
-          statusEl.textContent = 'Not configured';
+          statusEl.textContent = 'Not connected';
+          if (btnEl) {
+            btnEl.textContent = '🔗 Connect';
+            btnEl.onclick = () => connectGmail(account.email);
+          }
         } else if (account.expired) {
           statusEl.className = 'badge badge-bad';
           statusEl.textContent = 'Expired';
+          if (btnEl) {
+            btnEl.textContent = '🔄 Reconnect';
+            btnEl.onclick = () => connectGmail(account.email);
+          }
         } else if (account.has_refresh_token) {
           statusEl.className = 'badge badge-good';
           statusEl.textContent = 'Connected';
+          if (btnEl) {
+            btnEl.textContent = '🔌 Disconnect';
+            btnEl.onclick = () => disconnectGmail(account.email);
+          }
         } else {
           statusEl.className = 'badge badge-neutral';
           statusEl.textContent = 'Needs auth';
+          if (btnEl) {
+            btnEl.textContent = '🔗 Connect';
+            btnEl.onclick = () => connectGmail(account.email);
+          }
         }
       });
     }

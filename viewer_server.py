@@ -4111,6 +4111,336 @@ def gmail_refresh_account(account_email):
 
 
 # =============================================================================
+# GMAIL WEB-BASED OAUTH FLOW
+# =============================================================================
+
+# OAuth state storage (in-memory for simplicity, use Redis/DB for production)
+_oauth_states = {}
+
+GMAIL_ACCOUNTS = {
+    'brian@downhome.com': {'token_file': 'tokens_brian_downhome_com.json', 'name': 'Down Home'},
+    'kaplan.brian@gmail.com': {'token_file': 'tokens_kaplan_brian_gmail_com.json', 'name': 'Personal Gmail'},
+    'brian@musiccityrodeo.com': {'token_file': 'tokens_brian_musiccityrodeo_com.json', 'name': 'Music City Rodeo'},
+}
+
+GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+
+
+def get_oauth_credentials():
+    """Load OAuth credentials from file or environment"""
+    import json
+    from pathlib import Path
+
+    # Try environment variable first (for Railway)
+    creds_json = os.environ.get('GOOGLE_OAUTH_CREDENTIALS')
+    if creds_json:
+        try:
+            return json.loads(creds_json)
+        except:
+            pass
+
+    # Fall back to file
+    creds_paths = [
+        Path('config/credentials.json'),
+        Path('data/credentials.json'),
+        Path('../Task/receipt-system/config/credentials.json'),
+    ]
+
+    for path in creds_paths:
+        if path.exists():
+            with open(path, 'r') as f:
+                return json.load(f)
+
+    return None
+
+
+def get_oauth_redirect_uri():
+    """Get the appropriate redirect URI based on environment"""
+    # Check for Railway
+    railway_url = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+    if railway_url:
+        return f"https://{railway_url}/api/gmail/oauth-callback"
+
+    # Check for custom domain
+    custom_domain = os.environ.get('APP_DOMAIN')
+    if custom_domain:
+        return f"https://{custom_domain}/api/gmail/oauth-callback"
+
+    # Default to localhost for development
+    return "http://localhost:10000/api/gmail/oauth-callback"
+
+
+@app.route("/api/gmail/authorize/<account_email>", methods=["GET"])
+@login_required
+def gmail_authorize(account_email):
+    """
+    Start Gmail OAuth authorization flow.
+    Redirects user to Google's consent screen.
+    """
+    import secrets
+    from urllib.parse import urlencode
+
+    if account_email not in GMAIL_ACCOUNTS:
+        return jsonify({'ok': False, 'error': f'Unknown account: {account_email}'}), 404
+
+    creds = get_oauth_credentials()
+    if not creds:
+        return jsonify({'ok': False, 'error': 'OAuth credentials not configured'}), 500
+
+    # Get client info (support both "installed" and "web" credential types)
+    client_info = creds.get('web') or creds.get('installed')
+    if not client_info:
+        return jsonify({'ok': False, 'error': 'Invalid credentials format'}), 500
+
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    _oauth_states[state] = {
+        'account_email': account_email,
+        'created_at': datetime.now().isoformat()
+    }
+
+    # Clean up old states (older than 10 minutes)
+    cutoff = datetime.now() - timedelta(minutes=10)
+    for s in list(_oauth_states.keys()):
+        try:
+            created = datetime.fromisoformat(_oauth_states[s]['created_at'])
+            if created < cutoff:
+                del _oauth_states[s]
+        except:
+            del _oauth_states[s]
+
+    # Build authorization URL
+    redirect_uri = get_oauth_redirect_uri()
+    auth_params = {
+        'client_id': client_info['client_id'],
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'scope': ' '.join(GMAIL_SCOPES),
+        'access_type': 'offline',
+        'prompt': 'consent',  # Force consent to get refresh token
+        'state': state,
+        'login_hint': account_email,  # Pre-fill email
+    }
+
+    auth_url = f"https://accounts.google.com/o/oauth2/auth?{urlencode(auth_params)}"
+
+    # Check if this is an AJAX request or direct navigation
+    if request.headers.get('Accept', '').startswith('application/json'):
+        return jsonify({
+            'ok': True,
+            'auth_url': auth_url,
+            'redirect_uri': redirect_uri,
+            'state': state
+        })
+
+    # Direct navigation - redirect to Google
+    return redirect(auth_url)
+
+
+@app.route("/api/gmail/oauth-callback", methods=["GET"])
+def gmail_oauth_callback():
+    """
+    Handle OAuth callback from Google.
+    Exchanges authorization code for tokens.
+    """
+    import json
+    import requests
+    from pathlib import Path
+
+    error = request.args.get('error')
+    if error:
+        error_desc = request.args.get('error_description', 'Unknown error')
+        return render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Gmail Authorization Failed</title>
+            <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+            .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+            h1{color:#ef4444}button{background:#00ff88;color:#000;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;margin-top:20px}</style>
+            </head>
+            <body><div class="card"><h1>Authorization Failed</h1><p>{{ error }}: {{ desc }}</p>
+            <button onclick="window.close()">Close</button></div></body></html>
+        ''', error=error, desc=error_desc)
+
+    code = request.args.get('code')
+    state = request.args.get('state')
+
+    if not code or not state:
+        return render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Invalid Request</title>
+            <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+            .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+            h1{color:#ef4444}</style>
+            </head>
+            <body><div class="card"><h1>Invalid Request</h1><p>Missing authorization code or state</p></div></body></html>
+        '''), 400
+
+    # Validate state
+    if state not in _oauth_states:
+        return render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Invalid State</title>
+            <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+            .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+            h1{color:#ef4444}</style>
+            </head>
+            <body><div class="card"><h1>Invalid State</h1><p>Authorization request expired or invalid. Please try again.</p></div></body></html>
+        '''), 400
+
+    state_data = _oauth_states.pop(state)
+    account_email = state_data['account_email']
+
+    # Get credentials
+    creds = get_oauth_credentials()
+    if not creds:
+        return render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Configuration Error</title>
+            <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+            .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+            h1{color:#ef4444}</style>
+            </head>
+            <body><div class="card"><h1>Configuration Error</h1><p>OAuth credentials not found</p></div></body></html>
+        '''), 500
+
+    client_info = creds.get('web') or creds.get('installed')
+
+    # Exchange code for tokens
+    try:
+        token_response = requests.post(
+            'https://oauth2.googleapis.com/token',
+            data={
+                'code': code,
+                'client_id': client_info['client_id'],
+                'client_secret': client_info['client_secret'],
+                'redirect_uri': get_oauth_redirect_uri(),
+                'grant_type': 'authorization_code',
+            },
+            timeout=30
+        )
+
+        if not token_response.ok:
+            error_data = token_response.json()
+            return render_template_string('''
+                <!DOCTYPE html>
+                <html>
+                <head><title>Token Exchange Failed</title>
+                <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+                .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+                h1{color:#ef4444}</style>
+                </head>
+                <body><div class="card"><h1>Token Exchange Failed</h1><p>{{ error }}</p></div></body></html>
+            ''', error=error_data.get('error_description', 'Unknown error')), 400
+
+        token_data = token_response.json()
+
+        # Add expiry timestamp
+        if 'expires_in' in token_data:
+            expiry = datetime.now() + timedelta(seconds=token_data['expires_in'])
+            token_data['expiry'] = expiry.isoformat()
+
+        # Save token to file
+        account_info = GMAIL_ACCOUNTS.get(account_email, {})
+        token_file = account_info.get('token_file', f'tokens_{account_email.replace("@", "_").replace(".", "_")}.json')
+
+        # Try multiple token directories
+        token_dirs = [
+            Path('receipt-system/gmail_tokens'),
+            Path('../Task/receipt-system/gmail_tokens'),
+            Path('gmail_tokens'),
+        ]
+
+        saved = False
+        for token_dir in token_dirs:
+            try:
+                token_dir.mkdir(parents=True, exist_ok=True)
+                token_path = token_dir / token_file
+                with open(token_path, 'w') as f:
+                    json.dump(token_data, f, indent=2)
+                print(f"✅ Token saved to {token_path}", flush=True)
+                saved = True
+                break
+            except Exception as e:
+                print(f"⚠️ Could not save to {token_dir}: {e}", flush=True)
+
+        if not saved:
+            # Store in environment variable as fallback (for Railway)
+            env_key = f"GMAIL_TOKEN_{account_email.replace('@', '_').replace('.', '_').upper()}"
+            print(f"⚠️ Could not save token to file. Set {env_key} environment variable with token JSON", flush=True)
+
+        account_name = account_info.get('name', account_email)
+        return render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Gmail Connected!</title>
+            <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+            .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+            h1{color:#00ff88}button{background:#00ff88;color:#000;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;margin-top:20px;font-weight:600}</style>
+            </head>
+            <body><div class="card">
+            <h1>✓ Gmail Connected!</h1>
+            <p><strong>{{ name }}</strong> ({{ email }}) has been successfully authorized.</p>
+            <p style="color:#888;font-size:14px">You can now close this window.</p>
+            <button onclick="window.opener && window.opener.checkGmailStatus && window.opener.checkGmailStatus(); window.close();">Close Window</button>
+            </div></body></html>
+        ''', name=account_name, email=account_email)
+
+    except Exception as e:
+        print(f"❌ OAuth callback error: {e}", flush=True)
+        return render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Error</title>
+            <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+            .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+            h1{color:#ef4444}</style>
+            </head>
+            <body><div class="card"><h1>Error</h1><p>{{ error }}</p></div></body></html>
+        ''', error=str(e)), 500
+
+
+@app.route("/api/gmail/disconnect/<account_email>", methods=["POST"])
+@login_required
+def gmail_disconnect(account_email):
+    """Remove Gmail authorization for an account"""
+    from pathlib import Path
+
+    if account_email not in GMAIL_ACCOUNTS:
+        return jsonify({'ok': False, 'error': f'Unknown account: {account_email}'}), 404
+
+    account_info = GMAIL_ACCOUNTS[account_email]
+    token_file = account_info['token_file']
+
+    # Try to delete from multiple locations
+    token_dirs = [
+        Path('receipt-system/gmail_tokens'),
+        Path('../Task/receipt-system/gmail_tokens'),
+        Path('gmail_tokens'),
+    ]
+
+    deleted = False
+    for token_dir in token_dirs:
+        token_path = token_dir / token_file
+        if token_path.exists():
+            try:
+                token_path.unlink()
+                print(f"✅ Deleted token: {token_path}", flush=True)
+                deleted = True
+            except Exception as e:
+                print(f"⚠️ Could not delete {token_path}: {e}", flush=True)
+
+    return jsonify({
+        'ok': True,
+        'deleted': deleted,
+        'message': f'Disconnected {account_email}' if deleted else f'No token found for {account_email}'
+    })
+
+
+# =============================================================================
 # MERCHANT INTELLIGENCE PROCESSING ENDPOINT
 # =============================================================================
 
