@@ -1,8 +1,5 @@
-[phases.setup]
-nixPkgs = ["python311", "gcc"]
-
-[phases.install]
-cmds = ["pip install -r requirements.txt"]
+# Let nixpacks auto-detect Python and set up pip
+# Only customize start command for gunicorn
 
 [start]
 cmd = "gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
