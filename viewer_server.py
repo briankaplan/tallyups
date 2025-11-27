@@ -4234,6 +4234,47 @@ def api_find_missing_receipts():
     })
 
 # =============================================================================
+# CALENDAR SETTINGS ENDPOINTS
+# =============================================================================
+
+@app.route("/settings/calendar/status", methods=["GET"])
+def calendar_status():
+    """Get Google Calendar connection status."""
+    try:
+        from calendar_service import get_calendar_service, get_events_around_date
+        from datetime import datetime
+
+        # Try to get the service
+        service = get_calendar_service()
+
+        if not service:
+            return jsonify({
+                'ok': True,
+                'connected': False,
+                'message': 'Calendar not connected. Set CALENDAR_TOKEN environment variable.',
+                'setup_instructions': 'Run setup_calendar.py locally to generate the token, then set CALENDAR_TOKEN env var on Railway.'
+            })
+
+        # Try to fetch today's events as a connection test
+        today = datetime.now().strftime('%Y-%m-%d')
+        events = get_events_around_date(today, days_before=1, days_after=1)
+
+        return jsonify({
+            'ok': True,
+            'connected': True,
+            'message': f'Calendar connected! Found {len(events)} events around today.',
+            'sample_events': [e['title'] for e in events[:5]] if events else []
+        })
+
+    except Exception as e:
+        return jsonify({
+            'ok': False,
+            'connected': False,
+            'error': str(e)
+        })
+
+
+# =============================================================================
 # GMAIL SETTINGS ENDPOINTS
 # =============================================================================
 

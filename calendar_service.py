@@ -30,12 +30,24 @@ def get_calendar_service():
         from googleapiclient.discovery import build
 
         creds = None
+        token_data = None
 
-        # Try to load existing calendar token
-        if CALENDAR_TOKEN_PATH.exists():
+        # Try to load from environment variable first (for Railway)
+        env_token = os.getenv('CALENDAR_TOKEN')
+        if env_token:
+            try:
+                token_data = json.loads(env_token)
+                creds = Credentials.from_authorized_user_info(token_data)
+                print("✅ Calendar: Loaded token from CALENDAR_TOKEN env var")
+            except Exception as e:
+                print(f"⚠️ Calendar: Could not load from env var: {e}")
+
+        # Fall back to file
+        if not creds and CALENDAR_TOKEN_PATH.exists():
             with open(CALENDAR_TOKEN_PATH, 'r') as f:
                 token_data = json.load(f)
             creds = Credentials.from_authorized_user_info(token_data)
+            print("✅ Calendar: Loaded token from file")
 
         # If no valid creds, try to use existing Gmail token with calendar scope added
         if not creds or not creds.valid:
