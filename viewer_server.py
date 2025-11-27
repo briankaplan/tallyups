@@ -6256,6 +6256,94 @@ def sync_receipt_urls():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/admin/fix-missing-receipt-urls", methods=["POST"])
+@login_required
+def fix_missing_receipt_urls():
+    """
+    Find transactions with receipt_file but no receipt_url and generate R2 URLs.
+    This doesn't upload files - it just sets the URL assuming the file is already in R2.
+    """
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        conn, db_type = get_db_connection()
+
+        # Find transactions with receipt_file but no receipt_url
+        cursor = db_execute(conn, db_type, '''
+            SELECT _index, receipt_file, receipt_url
+            FROM transactions
+            WHERE receipt_file IS NOT NULL
+            AND receipt_file != ''
+            AND (receipt_url IS NULL OR receipt_url = '')
+        ''')
+
+        rows = cursor.fetchall()
+        print(f"📋 Found {len(rows)} transactions with receipt_file but no receipt_url")
+
+        if not rows:
+            conn.close()
+            return jsonify({
+                'ok': True,
+                'message': 'No transactions need fixing',
+                'fixed': 0
+            })
+
+        # R2 public URL base
+        R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+
+        fixed = 0
+        errors = []
+
+        for row in rows:
+            try:
+                idx = row['_index']
+                receipt_file = row['receipt_file']
+
+                # Generate R2 URL from receipt_file
+                # Handle various formats: "file.jpg", "incoming/file.jpg", "receipts/file.jpg"
+                filename = receipt_file.split(',')[0].strip()  # Take first file if multiple
+
+                # Clean up the path
+                if filename.startswith('receipts/'):
+                    filename = filename[9:]
+
+                # Build R2 URL
+                receipt_url = f"{R2_PUBLIC_URL}/receipts/{filename}"
+
+                # Update the transaction
+                cursor = db_execute(conn, db_type, '''
+                    UPDATE transactions
+                    SET receipt_url = ?
+                    WHERE _index = ?
+                ''', (receipt_url, idx))
+
+                fixed += 1
+                if fixed <= 10:
+                    print(f"   ✓ #{idx}: {receipt_file} → {receipt_url}")
+
+            except Exception as e:
+                errors.append(f"#{row.get('_index', '?')}: {str(e)}")
+                if len(errors) <= 5:
+                    print(f"   ❌ Error: {e}")
+
+        conn.commit()
+        conn.close()
+
+        print(f"✅ Fixed {fixed} receipt URLs")
+
+        return jsonify({
+            'ok': True,
+            'message': f'Fixed {fixed} receipt URLs',
+            'fixed': fixed,
+            'errors': errors[:10] if errors else []
+        })
+
+    except Exception as e:
+        print(f"❌ Error fixing receipt URLs: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/admin/full-migration", methods=["POST"])
 @login_required
 def full_migration():
