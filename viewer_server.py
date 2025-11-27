@@ -6442,8 +6442,12 @@ def preview_auto_match():
     Preview potential matches without making changes.
     Shows what would be matched if auto-match runs.
     """
-    if not current_user.is_authenticated:
-        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
         from smart_auto_matcher import (
@@ -6542,8 +6546,12 @@ def check_duplicate_receipt():
     Check if a receipt image is a duplicate of an existing one.
     POST with 'file' (multipart) or 'url' (JSON body).
     """
-    if not current_user.is_authenticated:
-        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
         from smart_auto_matcher import DuplicateDetector
@@ -6581,8 +6589,12 @@ def check_duplicate_receipt():
 @app.route("/api/auto-match/stats", methods=["GET"])
 def auto_match_stats():
     """Get statistics about auto-matching status."""
-    if not current_user.is_authenticated:
-        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
         if not USE_DATABASE or not db:
