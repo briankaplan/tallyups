@@ -22,9 +22,9 @@ boto3>=1.34.0
 pymysql>=1.1.0
 cryptography>=41.0.0
 
-# PDF/HTML processing (optional - require system packages)
-pdf2image>=1.16.0
-imgkit>=1.2.2
+# PDF/HTML processing - REMOVED: requires system packages not available on Railway
+# pdf2image and imgkit are lazy-loaded in incoming_receipts_service.py
+# Install locally if needed: pip install pdf2image imgkit
 
 # Utilities
 python-dotenv>=1.0.0
