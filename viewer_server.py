@@ -6257,12 +6257,20 @@ def sync_receipt_urls():
 
 
 @app.route("/api/admin/fix-missing-receipt-urls", methods=["POST"])
-@login_required
 def fix_missing_receipt_urls():
     """
     Find transactions with receipt_file but no receipt_url and generate R2 URLs.
     This doesn't upload files - it just sets the URL assuming the file is already in R2.
+
+    Can be called with admin_key query param or logged in session.
     """
+    # Allow admin key or login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
     try:
         if not USE_DATABASE or not db:
             return jsonify({'ok': False, 'error': 'Database not available'}), 500
