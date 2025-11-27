@@ -6352,6 +6352,265 @@ def fix_missing_receipt_urls():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+# ============================================================================
+# SMART AUTO-MATCHING API
+# ============================================================================
+
+@app.route("/api/auto-match/run", methods=["POST"])
+def run_auto_match():
+    """
+    Run smart auto-matching to connect Gmail receipts with bank transactions.
+    Matches based on amount + date + merchant similarity.
+    High confidence matches (75%+) are auto-attached.
+    Medium confidence (50-75%) are marked for review.
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
+    try:
+        from smart_auto_matcher import (
+            SmartAutoMatcher, get_unmatched_transactions, get_pending_receipts,
+            auto_match_pending_receipts, ensure_hash_table
+        )
+
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        conn, db_type = get_db_connection()
+        if db_type != 'mysql':
+            return jsonify({'ok': False, 'error': 'Auto-match requires MySQL database'}), 400
+
+        # Ensure hash table exists
+        ensure_hash_table(conn)
+
+        # Run auto-matching
+        print("🔄 Running smart auto-match...")
+        result = auto_match_pending_receipts(conn)
+
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            **result
+        })
+
+    except ImportError as e:
+        return jsonify({'ok': False, 'error': f'Module not available: {e}'}), 500
+    except Exception as e:
+        print(f"❌ Auto-match error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/auto-match/preview", methods=["GET"])
+def preview_auto_match():
+    """
+    Preview potential matches without making changes.
+    Shows what would be matched if auto-match runs.
+    """
+    if not current_user.is_authenticated:
+        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
+    try:
+        from smart_auto_matcher import (
+            SmartAutoMatcher, get_unmatched_transactions, get_pending_receipts
+        )
+
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        conn, db_type = get_db_connection()
+        if db_type != 'mysql':
+            return jsonify({'ok': False, 'error': 'Preview requires MySQL database'}), 400
+
+        # Get data
+        transactions = get_unmatched_transactions(conn, days_back=90)
+        receipts = get_pending_receipts(conn)
+
+        conn.close()
+
+        if not transactions:
+            return jsonify({
+                'ok': True,
+                'message': 'No unmatched transactions found',
+                'transactions_count': 0,
+                'receipts_count': len(receipts) if receipts else 0,
+                'potential_matches': []
+            })
+
+        if not receipts:
+            return jsonify({
+                'ok': True,
+                'message': 'No pending receipts to match',
+                'transactions_count': len(transactions),
+                'receipts_count': 0,
+                'potential_matches': []
+            })
+
+        # Find potential matches (preview only)
+        matcher = SmartAutoMatcher()
+
+        # Convert receipts to matcher format
+        receipt_dicts = []
+        for r in receipts:
+            receipt_dicts.append({
+                'id': r['id'],
+                'email_id': r['email_id'],
+                'merchant': r['merchant'],
+                'amount': r['amount'],
+                'date': r['transaction_date'],
+                'confidence_score': r['confidence_score'],
+                'is_subscription': r['is_subscription'],
+            })
+
+        matches = matcher.find_matches_for_receipts(receipt_dicts, transactions)
+
+        potential_matches = []
+        for m in matches:
+            if not m.get('no_match_found') and m.get('transaction'):
+                potential_matches.append({
+                    'receipt': {
+                        'merchant': m['receipt'].get('merchant'),
+                        'amount': m['receipt'].get('amount'),
+                        'date': str(m['receipt'].get('date')),
+                    },
+                    'transaction': {
+                        'index': m['transaction'].get('_index'),
+                        'merchant': m['transaction'].get('chase_description'),
+                        'amount': float(m['transaction'].get('chase_amount', 0)),
+                        'date': str(m['transaction'].get('chase_date')),
+                    },
+                    'score': round(m['score'] * 100, 1),
+                    'auto_match': m.get('auto_match', False),
+                    'needs_review': m.get('needs_review', False),
+                    'details': m.get('details', {})
+                })
+
+        return jsonify({
+            'ok': True,
+            'transactions_count': len(transactions),
+            'receipts_count': len(receipts),
+            'potential_matches': potential_matches,
+            'auto_match_count': sum(1 for m in potential_matches if m['auto_match']),
+            'review_count': sum(1 for m in potential_matches if m['needs_review']),
+        })
+
+    except ImportError as e:
+        return jsonify({'ok': False, 'error': f'Module not available: {e}'}), 500
+    except Exception as e:
+        print(f"❌ Preview error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/auto-match/check-duplicate", methods=["POST"])
+def check_duplicate_receipt():
+    """
+    Check if a receipt image is a duplicate of an existing one.
+    POST with 'file' (multipart) or 'url' (JSON body).
+    """
+    if not current_user.is_authenticated:
+        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
+    try:
+        from smart_auto_matcher import DuplicateDetector
+
+        detector = DuplicateDetector()
+
+        # Get image data from file upload or URL
+        if 'file' in request.files:
+            file = request.files['file']
+            image_data = file.read()
+            filename = file.filename
+        elif request.is_json and request.json.get('url'):
+            url = request.json['url']
+            response = requests.get(url, timeout=10)
+            image_data = response.content
+            filename = url.split('/')[-1]
+        else:
+            return jsonify({'ok': False, 'error': 'No file or URL provided'}), 400
+
+        # Check for duplicate
+        result = detector.is_duplicate(image_data, filename)
+        is_dup, matching_file = result
+
+        return jsonify({
+            'ok': True,
+            'is_duplicate': is_dup,
+            'matching_file': matching_file,
+            'filename': filename
+        })
+
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/auto-match/stats", methods=["GET"])
+def auto_match_stats():
+    """Get statistics about auto-matching status."""
+    if not current_user.is_authenticated:
+        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        conn, db_type = get_db_connection()
+
+        cursor = db_execute(conn, db_type, '''
+            SELECT
+                COUNT(*) as total_transactions,
+                SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as with_receipt_file,
+                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipt_url,
+                SUM(CASE WHEN (receipt_file IS NULL OR receipt_file = '') AND (receipt_url IS NULL OR receipt_url = '') THEN 1 ELSE 0 END) as missing_receipt
+            FROM transactions
+            WHERE chase_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+        ''')
+        tx_stats = cursor.fetchone()
+
+        # Get incoming receipts stats
+        try:
+            cursor = db_execute(conn, db_type, '''
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN status = 'auto_matched' THEN 1 ELSE 0 END) as auto_matched,
+                    SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted,
+                    SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+                    SUM(CASE WHEN match_type = 'needs_review' THEN 1 ELSE 0 END) as needs_review
+                FROM incoming_receipts
+            ''')
+            receipt_stats = cursor.fetchone()
+        except:
+            receipt_stats = {'total': 0, 'pending': 0, 'auto_matched': 0, 'accepted': 0, 'rejected': 0, 'needs_review': 0}
+
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'transactions': {
+                'total': tx_stats.get('total_transactions', 0),
+                'with_receipt': tx_stats.get('with_receipt_url', 0) or tx_stats.get('with_receipt_file', 0),
+                'missing_receipt': tx_stats.get('missing_receipt', 0),
+            },
+            'incoming_receipts': {
+                'total': receipt_stats.get('total', 0) if receipt_stats else 0,
+                'pending': receipt_stats.get('pending', 0) if receipt_stats else 0,
+                'auto_matched': receipt_stats.get('auto_matched', 0) if receipt_stats else 0,
+                'accepted': receipt_stats.get('accepted', 0) if receipt_stats else 0,
+                'rejected': receipt_stats.get('rejected', 0) if receipt_stats else 0,
+                'needs_review': receipt_stats.get('needs_review', 0) if receipt_stats else 0,
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/admin/full-migration", methods=["POST"])
 @login_required
 def full_migration():
