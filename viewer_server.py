@@ -6025,19 +6025,27 @@ def reject_incoming_receipt():
 
 
 @app.route("/api/incoming/scan", methods=["POST"])
-@login_required
 def scan_incoming_receipts():
     """
-    Trigger a manual scan of Gmail accounts for new receipts
+    Trigger a manual scan of Gmail accounts for new receipts.
+    Also runs auto-match after scanning to attach receipts to transactions.
 
     Body (optional):
     {
         "accounts": ["kaplan.brian@gmail.com"],  // specific accounts, or leave empty for all
-        "since_date": "2024-09-01"  // optional date filter
+        "since_date": "2024-09-01",  // optional date filter
+        "auto_match": true  // automatically match receipts after scanning (default: true)
     }
     """
     import sqlite3
     from datetime import datetime
+
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
         if not USE_DATABASE or not db:
@@ -6105,10 +6113,31 @@ def scan_incoming_receipts():
 
         print(f"\n✅ Scan complete: {results['total_new']} new receipts added")
 
+        # Auto-match if enabled (default: true)
+        auto_match_enabled = data.get('auto_match', True)
+        auto_match_results = None
+
+        if auto_match_enabled and results['total_new'] > 0:
+            try:
+                from smart_auto_matcher import auto_match_pending_receipts, ensure_hash_table
+
+                conn, db_type = get_db_connection()
+                if db_type == 'mysql':
+                    print("🔄 Running auto-match on new receipts...")
+                    ensure_hash_table(conn)
+                    auto_match_results = auto_match_pending_receipts(conn)
+                    print(f"   ✅ Auto-matched: {auto_match_results.get('auto_matched', 0)}")
+                    print(f"   📋 Needs review: {auto_match_results.get('needs_review', 0)}")
+                conn.close()
+            except Exception as match_err:
+                print(f"   ⚠️ Auto-match failed: {match_err}")
+                auto_match_results = {'error': str(match_err)}
+
         return jsonify({
             'ok': True,
             'message': f"Found {results['total_new']} new receipts",
-            'results': results
+            'results': results,
+            'auto_match': auto_match_results
         })
 
     except Exception as e:
