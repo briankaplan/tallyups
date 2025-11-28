@@ -671,11 +671,18 @@ def process_receipt_files(service, email_id, attachments, html_body=None):
 
         # Check if it's a PDF
         if filename.lower().endswith('.pdf'):
-            # Convert PDF to JPG
+            # Try to convert PDF to JPG
             output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}_att{i}.jpg")
             result = convert_pdf_to_jpg(file_data, output_path)
             if result:
                 local_files.append(result)
+            else:
+                # Fallback: save PDF directly if conversion fails
+                pdf_output = os.path.join(RECEIPTS_DIR, f"{base_filename}_att{i}.pdf")
+                with open(pdf_output, 'wb') as f:
+                    f.write(file_data)
+                local_files.append(pdf_output)
+                print(f"      ✓ Saved PDF directly (conversion failed): {pdf_output}")
         else:
             # Save other attachments as-is
             output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}_att{i}_{filename}")

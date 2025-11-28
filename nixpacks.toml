@@ -1,5 +1,18 @@
-# Let nixpacks auto-detect Python and set up pip
-# Only customize start command for gunicorn
+# Force Python provider (override Node.js detection from package.json)
+providers = ["python"]
+
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip", "poppler_utils"]
+
+[phases.install]
+cmds = [
+    "python -m venv /opt/venv",
+    "/opt/venv/bin/pip install --upgrade pip",
+    "/opt/venv/bin/pip install -r requirements.txt"
+]
+
+[phases.build]
+cmds = ["echo 'Build complete'"]
 
 [start]
-cmd = "gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+cmd = "/opt/venv/bin/gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
