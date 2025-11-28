@@ -4425,54 +4425,83 @@ def gmail_status():
 @login_required
 def gmail_refresh_account(account_email):
     """
-    Handle Gmail token refresh request.
+    Refresh Gmail token using the stored refresh_token.
 
-    On Railway (cloud deployment): Returns instructions for manual token setup
-    Locally: Could trigger OAuth flow (not implemented for security)
+    This uses the OAuth 2.0 refresh token to get a new access token
+    without requiring user interaction.
     """
     try:
-        # Map email to account info
-        ACCOUNTS = {
-            'brian@downhome.com': {'email': 'brian@downhome.com', 'token_file': 'tokens_brian_downhome_com.json'},
-            'kaplan.brian@gmail.com': {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json'},
-            'brian@musiccityrodeo.com': {'email': 'brian@musiccityrodeo.com', 'token_file': 'tokens_brian_musiccityrodeo_com.json'},
-        }
+        # Try auto-refresh using the refresh_token
+        service, error = get_gmail_service(account_email)
 
-        if account_email not in ACCOUNTS:
-            return jsonify({'ok': False, 'error': f'Account {account_email} not found'}), 404
-
-        account = ACCOUNTS[account_email]
-
-        # Check if we're on Railway (cloud deployment)
-        is_railway = os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('RAILWAY_SERVICE_NAME')
-
-        if is_railway:
-            # On Railway, we can't do local OAuth - need to use environment variables or manual token upload
+        if service:
+            # Token refreshed successfully - verify it works
+            try:
+                profile = service.users().getProfile(userId='me').execute()
+                email = profile.get('emailAddress', account_email)
+                return jsonify({
+                    'ok': True,
+                    'message': f'Gmail token refreshed successfully for {email}',
+                    'account': email,
+                    'refreshed': True
+                })
+            except Exception as e:
+                return jsonify({
+                    'ok': False,
+                    'error': f'Token refreshed but API call failed: {str(e)}',
+                    'account': account_email
+                }), 500
+        else:
+            # Auto-refresh failed - return instructions for re-authorization
             return jsonify({
                 'ok': False,
-                'error': 'Gmail OAuth requires local setup',
-                'message': f'To configure Gmail for {account_email} on Railway:\n'
-                          f'1. Run the OAuth flow locally to generate tokens\n'
-                          f'2. Upload the token file ({account["token_file"]}) to Railway\n'
-                          f'3. Or set GMAIL_TOKEN_* environment variables in Railway dashboard',
+                'error': error or 'Token refresh failed',
+                'message': f'Could not auto-refresh token for {account_email}. Re-authorization may be required.',
                 'account': account_email,
-                'requires_local_setup': True
-            })
+                'requires_reauth': True
+            }), 400
 
-        # Local environment - could implement OAuth flow here
-        # For security, we return instructions rather than auto-launching browser
-        return jsonify({
-            'ok': False,
-            'error': 'Manual OAuth required',
-            'message': f'To refresh Gmail token for {account_email}:\n'
-                      f'1. Run: python3 reauth_gmail.py {account_email}\n'
-                      f'2. Follow the browser prompts to authorize\n'
-                      f'3. Restart the server after authorization',
-            'account': account_email
-        })
     except Exception as e:
         print(f"Error in gmail_refresh_account: {e}", flush=True)
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/settings/gmail/refresh-all", methods=["POST"])
+@login_required
+def gmail_refresh_all():
+    """
+    Refresh Gmail tokens for all configured accounts.
+    """
+    results = []
+    for email in GMAIL_ACCOUNTS.keys():
+        service, error = get_gmail_service(email)
+        if service:
+            try:
+                profile = service.users().getProfile(userId='me').execute()
+                results.append({
+                    'email': email,
+                    'ok': True,
+                    'verified_email': profile.get('emailAddress', email)
+                })
+            except Exception as e:
+                results.append({
+                    'email': email,
+                    'ok': False,
+                    'error': f'API call failed: {str(e)}'
+                })
+        else:
+            results.append({
+                'email': email,
+                'ok': False,
+                'error': error or 'Token refresh failed'
+            })
+
+    success_count = sum(1 for r in results if r['ok'])
+    return jsonify({
+        'ok': success_count == len(results),
+        'message': f'Refreshed {success_count}/{len(results)} Gmail accounts',
+        'results': results
+    })
 
 
 # =============================================================================
@@ -4489,6 +4518,120 @@ GMAIL_ACCOUNTS = {
 }
 
 GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+
+
+def get_gmail_credentials_with_autorefresh(account_email: str):
+    """
+    Load Gmail credentials for an account and automatically refresh if expired.
+
+    Uses google-auth library to handle token refresh via refresh_token.
+    Returns (credentials, error) tuple.
+    """
+    import json
+    from datetime import datetime
+
+    try:
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+    except ImportError:
+        return None, "google-auth library not installed"
+
+    if account_email not in GMAIL_ACCOUNTS:
+        return None, f"Unknown account: {account_email}"
+
+    account = GMAIL_ACCOUNTS[account_email]
+    env_key = f"GMAIL_TOKEN_{account_email.replace('@', '_').replace('.', '_').upper()}"
+
+    # Try to load token from env var first
+    token_data = None
+    token_source = None
+
+    env_token = os.environ.get(env_key)
+    if env_token:
+        try:
+            token_data = json.loads(env_token)
+            token_source = 'env'
+        except Exception as e:
+            print(f"⚠️ Failed to parse {env_key}: {e}", flush=True)
+
+    # Fall back to file
+    if not token_data:
+        from pathlib import Path
+        token_dirs = [
+            Path('gmail_tokens'),
+            Path('receipt-system/gmail_tokens'),
+            Path('../Task/receipt-system/gmail_tokens'),
+        ]
+        for token_dir in token_dirs:
+            candidate = token_dir / account['token_file']
+            if candidate.exists():
+                try:
+                    with open(candidate, 'r') as f:
+                        token_data = json.load(f)
+                        token_source = str(candidate)
+                        break
+                except:
+                    pass
+
+    if not token_data:
+        return None, f"No token found for {account_email}"
+
+    # Check if we have a refresh token
+    if 'refresh_token' not in token_data or not token_data['refresh_token']:
+        return None, f"No refresh token for {account_email}"
+
+    # Create credentials object
+    try:
+        # Get OAuth client info for token refresh
+        oauth_creds = get_oauth_credentials()
+        if not oauth_creds:
+            return None, "OAuth credentials not configured"
+
+        client_info = oauth_creds.get('web') or oauth_creds.get('installed')
+        if not client_info:
+            return None, "Invalid OAuth credentials format"
+
+        creds = Credentials(
+            token=token_data.get('token'),
+            refresh_token=token_data.get('refresh_token'),
+            token_uri=client_info.get('token_uri', 'https://oauth2.googleapis.com/token'),
+            client_id=client_info.get('client_id'),
+            client_secret=client_info.get('client_secret'),
+            scopes=GMAIL_SCOPES
+        )
+
+        # Auto-refresh if expired
+        if creds.expired or not creds.valid:
+            print(f"🔄 Refreshing Gmail token for {account_email}...", flush=True)
+            creds.refresh(Request())
+            print(f"✅ Gmail token refreshed for {account_email}", flush=True)
+
+            # Note: On Railway, we can't save back to env vars automatically
+            # The refreshed token is valid for this session
+            # Could persist to database if needed
+
+        return creds, None
+
+    except Exception as e:
+        print(f"❌ Gmail credential error for {account_email}: {e}", flush=True)
+        return None, str(e)
+
+
+def get_gmail_service(account_email: str):
+    """
+    Get an authenticated Gmail API service for an account.
+    Automatically refreshes tokens if expired.
+    """
+    creds, error = get_gmail_credentials_with_autorefresh(account_email)
+    if error:
+        return None, error
+
+    try:
+        from googleapiclient.discovery import build
+        service = build('gmail', 'v1', credentials=creds)
+        return service, None
+    except Exception as e:
+        return None, str(e)
 
 
 def get_oauth_credentials():
