@@ -4239,31 +4239,33 @@ def api_find_missing_receipts():
 
 @app.route("/settings/calendar/status", methods=["GET"])
 def calendar_status():
-    """Get Google Calendar connection status."""
+    """Get Google Calendar connection status (supports multiple accounts)."""
     try:
-        from calendar_service import get_calendar_service, get_events_around_date
+        from calendar_service import get_calendar_status, get_events_around_date
         from datetime import datetime
 
-        # Try to get the service
-        service = get_calendar_service()
+        # Get status for all connected accounts
+        status = get_calendar_status()
 
-        if not service:
+        if not status.get('connected'):
             return jsonify({
                 'ok': True,
                 'connected': False,
-                'message': 'Calendar not connected. Set CALENDAR_TOKEN environment variable.',
-                'setup_instructions': 'Run setup_calendar.py locally to generate the token, then set CALENDAR_TOKEN env var on Railway.'
+                'message': 'No calendars connected. Set CALENDAR_TOKENS env var for multiple accounts or CALENDAR_TOKEN for single account.',
+                'setup_instructions': 'Run setup_multi_calendar.py locally to authorize multiple accounts, then set CALENDAR_TOKENS env var on Railway.'
             })
 
-        # Try to fetch today's events as a connection test
+        # Try to fetch events around today as a connection test
         today = datetime.now().strftime('%Y-%m-%d')
         events = get_events_around_date(today, days_before=1, days_after=1)
 
         return jsonify({
             'ok': True,
             'connected': True,
-            'message': f'Calendar connected! Found {len(events)} events around today.',
-            'sample_events': [e['title'] for e in events[:5]] if events else []
+            'account_count': status.get('account_count', 1),
+            'accounts': status.get('accounts', []),
+            'message': f'{status.get("account_count", 1)} calendar(s) connected! Found {len(events)} events around today.',
+            'sample_events': [{'title': e['title'], 'calendar': e.get('calendar', 'primary')} for e in events[:10]] if events else []
         })
 
     except Exception as e:
@@ -4274,6 +4276,62 @@ def calendar_status():
         })
 
 
+# Calendar preferences file
+CALENDAR_PREFS_FILE = Path(__file__).parent / "calendar_preferences.json"
+
+
+@app.route("/settings/calendar/preferences", methods=["GET"])
+def get_calendar_preferences():
+    """Get saved calendar preferences (which calendars are enabled)."""
+    try:
+        if CALENDAR_PREFS_FILE.exists():
+            with open(CALENDAR_PREFS_FILE, 'r') as f:
+                prefs = json.load(f)
+            return jsonify({
+                'ok': True,
+                'enabled_calendars': prefs.get('enabled_calendars', [])
+            })
+        else:
+            # Default: all calendars enabled (empty list means all)
+            return jsonify({
+                'ok': True,
+                'enabled_calendars': []
+            })
+    except Exception as e:
+        return jsonify({
+            'ok': False,
+            'error': str(e)
+        })
+
+
+@app.route("/settings/calendar/preferences", methods=["POST"])
+@login_required
+def save_calendar_preferences():
+    """Save calendar preferences (which calendars are enabled)."""
+    try:
+        data = request.get_json()
+        enabled_calendars = data.get('enabled_calendars', [])
+
+        prefs = {
+            'enabled_calendars': enabled_calendars,
+            'updated_at': datetime.now().isoformat()
+        }
+
+        with open(CALENDAR_PREFS_FILE, 'w') as f:
+            json.dump(prefs, f, indent=2)
+
+        return jsonify({
+            'ok': True,
+            'message': f'Saved {len(enabled_calendars)} calendar(s)',
+            'enabled_calendars': enabled_calendars
+        })
+    except Exception as e:
+        return jsonify({
+            'ok': False,
+            'error': str(e)
+        }), 500
+
+
 # =============================================================================
 # GMAIL SETTINGS ENDPOINTS
 # =============================================================================
@@ -4281,14 +4339,17 @@ def calendar_status():
 @app.route("/settings/gmail/status", methods=["GET"])
 def gmail_status():
     """Get status of all Gmail accounts"""
-    import sys
-    sys.path.insert(0, '../Task')
-
     from pathlib import Path
     import json
     from datetime import datetime
 
-    TOKEN_DIR = Path('../Task/receipt-system/gmail_tokens')
+    # Check multiple possible token directories (same as callback saves to)
+    TOKEN_DIRS = [
+        Path('gmail_tokens'),
+        Path('receipt-system/gmail_tokens'),
+        Path('../Task/receipt-system/gmail_tokens'),
+    ]
+
     ACCOUNTS = [
         {'email': 'brian@downhome.com', 'token_file': 'tokens_brian_downhome_com.json'},
         {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json'},
@@ -4297,30 +4358,52 @@ def gmail_status():
 
     statuses = []
     for account in ACCOUNTS:
-        token_path = TOKEN_DIR / account['token_file']
+        token_data = None
+        token_source = None
+
+        # First check environment variable (for Railway persistence)
+        env_key = f"GMAIL_TOKEN_{account['email'].replace('@', '_').replace('.', '_').upper()}"
+        env_token = os.environ.get(env_key)
+        if env_token:
+            try:
+                token_data = json.loads(env_token)
+                token_source = 'env'
+            except:
+                pass
+
+        # If not in env, try to find token in any of the directories
+        if not token_data:
+            for token_dir in TOKEN_DIRS:
+                candidate = token_dir / account['token_file']
+                if candidate.exists():
+                    try:
+                        with open(candidate, 'r') as f:
+                            token_data = json.load(f)
+                            token_source = str(candidate)
+                            break
+                    except:
+                        pass
 
         status = {
             'email': account['email'],
             'token_file': account['token_file'],
-            'exists': token_path.exists(),
+            'exists': token_data is not None,
             'has_refresh_token': False,
             'expired': None,
-            'expiry': None
+            'expiry': None,
+            'source': token_source
         }
 
-        if token_path.exists():
-            try:
-                with open(token_path, 'r') as f:
-                    token_data = json.load(f)
+        if token_data:
+            status['has_refresh_token'] = 'refresh_token' in token_data and token_data['refresh_token']
 
-                status['has_refresh_token'] = 'refresh_token' in token_data and token_data['refresh_token']
-
-                if 'expiry' in token_data:
+            if 'expiry' in token_data:
+                try:
                     expiry = datetime.fromisoformat(token_data['expiry'].replace('Z', '+00:00'))
                     status['expiry'] = token_data['expiry']
                     status['expired'] = expiry < datetime.now(expiry.tzinfo)
-            except Exception as e:
-                status['error'] = str(e)
+                except:
+                    pass
 
         statuses.append(status)
 
@@ -4409,9 +4492,11 @@ def get_oauth_credentials():
     creds_json = os.environ.get('GOOGLE_OAUTH_CREDENTIALS')
     if creds_json:
         try:
-            return json.loads(creds_json)
-        except:
-            pass
+            parsed = json.loads(creds_json)
+            print(f"✅ Loaded OAuth credentials from env var (type: {'web' if 'web' in parsed else 'installed'})", flush=True)
+            return parsed
+        except Exception as e:
+            print(f"❌ Failed to parse GOOGLE_OAUTH_CREDENTIALS: {e}", flush=True)
 
     # Fall back to file
     creds_paths = [
@@ -4454,61 +4539,85 @@ def gmail_authorize(account_email):
     import secrets
     from urllib.parse import urlencode
 
-    if account_email not in GMAIL_ACCOUNTS:
-        return jsonify({'ok': False, 'error': f'Unknown account: {account_email}'}), 404
+    try:
+        from datetime import datetime, timedelta
+        print(f"📧 Gmail authorize request for: {account_email}", flush=True)
 
-    creds = get_oauth_credentials()
-    if not creds:
-        return jsonify({'ok': False, 'error': 'OAuth credentials not configured'}), 500
+        if account_email not in GMAIL_ACCOUNTS:
+            print(f"❌ Unknown account: {account_email}", flush=True)
+            return jsonify({'ok': False, 'error': f'Unknown account: {account_email}'}), 404
 
-    # Get client info (support both "installed" and "web" credential types)
-    client_info = creds.get('web') or creds.get('installed')
-    if not client_info:
-        return jsonify({'ok': False, 'error': 'Invalid credentials format'}), 500
+        creds = get_oauth_credentials()
+        if not creds:
+            print(f"❌ OAuth credentials not configured", flush=True)
+            return jsonify({'ok': False, 'error': 'OAuth credentials not configured'}), 500
 
-    # Generate state for CSRF protection
-    state = secrets.token_urlsafe(32)
-    _oauth_states[state] = {
-        'account_email': account_email,
-        'created_at': datetime.now().isoformat()
-    }
+        # Get client info (support both "installed" and "web" credential types)
+        client_info = creds.get('web') or creds.get('installed')
+        if not client_info:
+            print(f"❌ Invalid credentials format: {list(creds.keys())}", flush=True)
+            return jsonify({'ok': False, 'error': 'Invalid credentials format'}), 500
 
-    # Clean up old states (older than 10 minutes)
-    cutoff = datetime.now() - timedelta(minutes=10)
-    for s in list(_oauth_states.keys()):
-        try:
-            created = datetime.fromisoformat(_oauth_states[s]['created_at'])
-            if created < cutoff:
+        print(f"✅ Got client_info with client_id: {client_info.get('client_id', 'N/A')[:20]}...", flush=True)
+
+        # Generate state for CSRF protection
+        # Embed account_email in state for multi-worker support (Railway runs 2 gunicorn workers)
+        # State format: base64(account_email:timestamp:random)
+        import base64
+        timestamp = datetime.now().isoformat()
+        random_part = secrets.token_urlsafe(16)
+        state_data = f"{account_email}:{timestamp}:{random_part}"
+        state = base64.urlsafe_b64encode(state_data.encode('utf-8')).decode('utf-8').rstrip('=')
+
+        # Also store in memory (for same-worker requests)
+        _oauth_states[state] = {
+            'account_email': account_email,
+            'created_at': timestamp
+        }
+
+        # Clean up old states (older than 10 minutes)
+        cutoff = datetime.now() - timedelta(minutes=10)
+        for s in list(_oauth_states.keys()):
+            try:
+                created = datetime.fromisoformat(_oauth_states[s]['created_at'])
+                if created < cutoff:
+                    del _oauth_states[s]
+            except:
                 del _oauth_states[s]
-        except:
-            del _oauth_states[s]
 
-    # Build authorization URL
-    redirect_uri = get_oauth_redirect_uri()
-    auth_params = {
-        'client_id': client_info['client_id'],
-        'redirect_uri': redirect_uri,
-        'response_type': 'code',
-        'scope': ' '.join(GMAIL_SCOPES),
-        'access_type': 'offline',
-        'prompt': 'consent',  # Force consent to get refresh token
-        'state': state,
-        'login_hint': account_email,  # Pre-fill email
-    }
-
-    auth_url = f"https://accounts.google.com/o/oauth2/auth?{urlencode(auth_params)}"
-
-    # Check if this is an AJAX request or direct navigation
-    if request.headers.get('Accept', '').startswith('application/json'):
-        return jsonify({
-            'ok': True,
-            'auth_url': auth_url,
+        # Build authorization URL
+        redirect_uri = get_oauth_redirect_uri()
+        auth_params = {
+            'client_id': client_info['client_id'],
             'redirect_uri': redirect_uri,
-            'state': state
-        })
+            'response_type': 'code',
+            'scope': ' '.join(GMAIL_SCOPES),
+            'access_type': 'offline',
+            'prompt': 'consent',  # Force consent to get refresh token
+            'state': state,
+            'login_hint': account_email,  # Pre-fill email
+        }
 
-    # Direct navigation - redirect to Google
-    return redirect(auth_url)
+        auth_url = f"https://accounts.google.com/o/oauth2/auth?{urlencode(auth_params)}"
+        print(f"✅ Redirecting to Google OAuth: {auth_url[:80]}...", flush=True)
+
+        # Check if this is an AJAX request or direct navigation
+        if request.headers.get('Accept', '').startswith('application/json'):
+            return jsonify({
+                'ok': True,
+                'auth_url': auth_url,
+                'redirect_uri': redirect_uri,
+                'state': state
+            })
+
+        # Direct navigation - redirect to Google
+        return redirect(auth_url)
+
+    except Exception as e:
+        print(f"❌ Gmail authorize error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': f'Server error: {str(e)}'}), 500
 
 
 @app.route("/api/gmail/oauth-callback", methods=["GET"])
@@ -4520,6 +4629,7 @@ def gmail_oauth_callback():
     import json
     import requests
     from pathlib import Path
+    from datetime import datetime, timedelta
 
     error = request.args.get('error')
     if error:
@@ -4551,8 +4661,44 @@ def gmail_oauth_callback():
             <body><div class="card"><h1>Invalid Request</h1><p>Missing authorization code or state</p></div></body></html>
         '''), 400
 
-    # Validate state
-    if state not in _oauth_states:
+    # Validate state - decode it to get account email
+    # State format: base64(account_email:timestamp:random)
+    import base64
+    try:
+        # Try to get from memory first (same worker)
+        if state in _oauth_states:
+            state_data = _oauth_states.pop(state)
+            account_email = state_data['account_email']
+            print(f"✅ State validated from memory for: {account_email}", flush=True)
+        else:
+            # Decode state to extract account email (for multi-worker support)
+            # Add padding if needed for base64 decode
+            padding = 4 - len(state) % 4
+            if padding != 4:
+                state_padded = state + '=' * padding
+            else:
+                state_padded = state
+            decoded = base64.urlsafe_b64decode(state_padded).decode('utf-8')
+            parts = decoded.split(':', 2)
+            if len(parts) >= 2:
+                account_email = parts[0]
+                timestamp_str = parts[1] if len(parts) > 1 else None
+
+                # Validate it's a known account
+                if account_email not in GMAIL_ACCOUNTS:
+                    raise ValueError(f"Unknown account in state: {account_email}")
+
+                # Validate timestamp isn't too old (10 minutes)
+                if timestamp_str:
+                    state_time = datetime.fromisoformat(timestamp_str)
+                    if datetime.now() - state_time > timedelta(minutes=10):
+                        raise ValueError("State expired")
+
+                print(f"✅ State decoded for multi-worker support: {account_email}", flush=True)
+            else:
+                raise ValueError("Invalid state format")
+    except Exception as e:
+        print(f"❌ State validation failed: {e}", flush=True)
         return render_template_string('''
             <!DOCTYPE html>
             <html>
@@ -4563,9 +4709,6 @@ def gmail_oauth_callback():
             </head>
             <body><div class="card"><h1>Invalid State</h1><p>Authorization request expired or invalid. Please try again.</p></div></body></html>
         '''), 400
-
-    state_data = _oauth_states.pop(state)
-    account_email = state_data['account_email']
 
     # Get credentials
     creds = get_oauth_credentials()
@@ -4641,27 +4784,58 @@ def gmail_oauth_callback():
             except Exception as e:
                 print(f"⚠️ Could not save to {token_dir}: {e}", flush=True)
 
+        # Generate env var key for Railway persistence
+        env_key = f"GMAIL_TOKEN_{account_email.replace('@', '_').replace('.', '_').upper()}"
+        token_json = json.dumps(token_data)
+
         if not saved:
-            # Store in environment variable as fallback (for Railway)
-            env_key = f"GMAIL_TOKEN_{account_email.replace('@', '_').replace('.', '_').upper()}"
             print(f"⚠️ Could not save token to file. Set {env_key} environment variable with token JSON", flush=True)
+        else:
+            print(f"✅ Token saved to file. For Railway persistence, also set {env_key} env var", flush=True)
 
         account_name = account_info.get('name', account_email)
-        return render_template_string('''
-            <!DOCTYPE html>
-            <html>
-            <head><title>Gmail Connected!</title>
-            <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
-            .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
-            h1{color:#00ff88}button{background:#00ff88;color:#000;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;margin-top:20px;font-weight:600}</style>
-            </head>
-            <body><div class="card">
-            <h1>✓ Gmail Connected!</h1>
-            <p><strong>{{ name }}</strong> ({{ email }}) has been successfully authorized.</p>
-            <p style="color:#888;font-size:14px">You can now close this window.</p>
-            <button onclick="window.opener && window.opener.checkGmailStatus && window.opener.checkGmailStatus(); window.close();">Close Window</button>
-            </div></body></html>
-        ''', name=account_name, email=account_email)
+
+        # On Railway, show the token so user can set env var for persistence
+        is_railway = os.environ.get('RAILWAY_PUBLIC_DOMAIN') is not None
+        if is_railway:
+            return render_template_string('''
+                <!DOCTYPE html>
+                <html>
+                <head><title>Gmail Connected!</title>
+                <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px;box-sizing:border-box}
+                .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:600px;width:100%}
+                h1{color:#00ff88}button{background:#00ff88;color:#000;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;margin-top:10px;font-weight:600}
+                .token-box{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:10px;margin:15px 0;text-align:left;font-family:monospace;font-size:11px;word-break:break-all;max-height:150px;overflow-y:auto}
+                .env-key{color:#58a6ff;font-weight:bold}
+                .copy-btn{background:#238636;margin-left:10px}</style>
+                </head>
+                <body><div class="card">
+                <h1>✓ Gmail Connected!</h1>
+                <p><strong>{{ name }}</strong> ({{ email }}) has been successfully authorized.</p>
+                <p style="color:#fbbf24;font-size:14px">⚠️ <strong>Railway Note:</strong> To persist this token across deployments, set this environment variable:</p>
+                <p class="env-key">{{ env_key }}</p>
+                <div class="token-box" id="token">{{ token }}</div>
+                <button onclick="copyToken()">📋 Copy Token</button>
+                <button class="copy-btn" onclick="window.opener && window.opener.checkGmailStatus && window.opener.checkGmailStatus(); window.close();">Close Window</button>
+                <script>function copyToken(){navigator.clipboard.writeText(document.getElementById('token').innerText);alert('Token copied! Set it as '+{{ env_key|tojson }}+' in Railway variables.');}</script>
+                </div></body></html>
+            ''', name=account_name, email=account_email, env_key=env_key, token=token_json)
+        else:
+            return render_template_string('''
+                <!DOCTYPE html>
+                <html>
+                <head><title>Gmail Connected!</title>
+                <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+                .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+                h1{color:#00ff88}button{background:#00ff88;color:#000;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;margin-top:20px;font-weight:600}</style>
+                </head>
+                <body><div class="card">
+                <h1>✓ Gmail Connected!</h1>
+                <p><strong>{{ name }}</strong> ({{ email }}) has been successfully authorized.</p>
+                <p style="color:#888;font-size:14px">You can now close this window.</p>
+                <button onclick="window.opener && window.opener.checkGmailStatus && window.opener.checkGmailStatus(); window.close();">Close Window</button>
+                </div></body></html>
+            ''', name=account_name, email=account_email)
 
     except Exception as e:
         print(f"❌ OAuth callback error: {e}", flush=True)
