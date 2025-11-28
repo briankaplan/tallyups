@@ -6639,25 +6639,62 @@ def fix_incoming_receipt_dates():
 
         # Find transactions with wrong dates
         # These are transactions created from incoming_receipts where chase_date != received_date
-        # Use receipt_date if available, otherwise received_date
-        query = '''
-            SELECT
-                ir.id as incoming_id,
-                ir.received_date as correct_date,
-                ir.receipt_date,
-                ir.merchant,
-                ir.amount,
-                ir.accepted_as_transaction_id as txn_id,
-                t._index,
-                t.chase_date as old_chase_date,
-                t.chase_description,
-                t.created_at
-            FROM incoming_receipts ir
-            INNER JOIN transactions t ON t._index = ir.accepted_as_transaction_id
-            WHERE ir.status = 'accepted'
-            AND ir.accepted_as_transaction_id IS NOT NULL
-            AND DATE(t.chase_date) != DATE(COALESCE(ir.receipt_date, ir.received_date))
-        '''
+        # First, check if receipt_date column exists (might be missing in older databases)
+        has_receipt_date = True
+        try:
+            cursor.execute("SELECT receipt_date FROM incoming_receipts LIMIT 1")
+            cursor.fetchone()
+        except Exception:
+            has_receipt_date = False
+            # Add the column if it doesn't exist
+            try:
+                if db_type == 'mysql':
+                    cursor.execute("ALTER TABLE incoming_receipts ADD COLUMN receipt_date DATE")
+                    conn.commit()
+                    print("Added receipt_date column to incoming_receipts")
+            except Exception as e:
+                print(f"Could not add receipt_date column: {e}")
+
+        # Use appropriate query based on column availability
+        if has_receipt_date:
+            query = '''
+                SELECT
+                    ir.id as incoming_id,
+                    ir.received_date as correct_date,
+                    ir.receipt_date,
+                    ir.merchant,
+                    ir.amount,
+                    ir.accepted_as_transaction_id as txn_id,
+                    t._index,
+                    t.chase_date as old_chase_date,
+                    t.chase_description,
+                    t.created_at
+                FROM incoming_receipts ir
+                INNER JOIN transactions t ON t._index = ir.accepted_as_transaction_id
+                WHERE ir.status = 'accepted'
+                AND ir.accepted_as_transaction_id IS NOT NULL
+                AND DATE(t.chase_date) != DATE(COALESCE(ir.receipt_date, ir.received_date))
+            '''
+        else:
+            # Fallback query using only received_date
+            query = '''
+                SELECT
+                    ir.id as incoming_id,
+                    ir.received_date as correct_date,
+                    NULL as receipt_date,
+                    ir.merchant,
+                    ir.amount,
+                    ir.accepted_as_transaction_id as txn_id,
+                    t._index,
+                    t.chase_date as old_chase_date,
+                    t.chase_description,
+                    t.created_at
+                FROM incoming_receipts ir
+                INNER JOIN transactions t ON t._index = ir.accepted_as_transaction_id
+                WHERE ir.status = 'accepted'
+                AND ir.accepted_as_transaction_id IS NOT NULL
+                AND DATE(t.chase_date) != DATE(ir.received_date)
+            '''
 
         cursor.execute(query)
         raw_rows = cursor.fetchall()
