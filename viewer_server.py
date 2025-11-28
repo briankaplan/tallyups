@@ -1433,17 +1433,25 @@ def health_check():
         "key_prefix": gemini_key[:8] + "..." if gemini_configured else None
     }
 
-    # Check Gmail accounts
+    # Check Gmail accounts (check both env vars and files)
     gmail_accounts = []
     gmail_dir = os.path.join(BASE_DIR, 'gmail_tokens')
-    if os.path.isdir(gmail_dir):
-        for email in ['kaplan.brian@gmail.com', 'brian@musiccityrodeo.com', 'brian@downhome.com']:
-            safe_email = email.replace('@', '_at_').replace('.', '_')
-            token_path = os.path.join(gmail_dir, f'{safe_email}_token.json')
-            gmail_accounts.append({
-                "email": email,
-                "connected": os.path.exists(token_path)
-            })
+    for email in ['kaplan.brian@gmail.com', 'brian@musiccityrodeo.com', 'brian@downhome.com']:
+        # Check environment variable first (Railway persistence)
+        env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
+        env_token = os.environ.get(env_key)
+
+        # Check file-based token as fallback
+        safe_email = email.replace('@', '_at_').replace('.', '_')
+        token_path = os.path.join(gmail_dir, f'{safe_email}_token.json')
+        file_exists = os.path.exists(token_path) if os.path.isdir(gmail_dir) else False
+
+        connected = bool(env_token) or file_exists
+        gmail_accounts.append({
+            "email": email,
+            "connected": connected,
+            "source": "env" if env_token else ("file" if file_exists else None)
+        })
     health_data["services"]["gmail"] = {
         "accounts": gmail_accounts,
         "connected_count": sum(1 for a in gmail_accounts if a['connected'])
