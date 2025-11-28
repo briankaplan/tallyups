@@ -1885,8 +1885,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupDragDrop();
   setupResizer();
   loadTheme();
+  updateIncomingBadge();  // Show pending incoming receipts count
   showToast('System ready! Press ? for keyboard shortcuts', '🚀');
 });
+
+// Fetch and display incoming receipts badge count
+async function updateIncomingBadge() {
+  try {
+    const res = await fetch('/api/incoming/receipts?status=pending&limit=1', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const badge = document.getElementById('incoming-badge');
+    if (!badge) return;
+    const pendingCount = data.counts?.pending || 0;
+    if (pendingCount > 0) {
+      badge.textContent = pendingCount;
+      badge.style.display = 'block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch (e) {
+    console.log('Could not fetch incoming badge count:', e.message);
+  }
+}
 
 // API calls
 async function loadCSV() {
