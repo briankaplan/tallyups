@@ -254,6 +254,7 @@ tr.hidden { display: none; }
   </div>
   <div class="controls">
     <button class="btn-ghost btn-sm" onclick="clearFiltered()">🗑️ Clear Rejected</button>
+    <button class="btn-ghost btn-sm" onclick="reprocessMissing()" title="Re-download receipts for accepted items that have no files">🔧 Fix Missing</button>
     <button class="btn-primary" onclick="scanForNew()">🔄 Scan Now</button>
   </div>
 </header>
@@ -630,6 +631,34 @@ async function clearFiltered() {
     }
   } catch (e) {
     showToast('Error clearing receipts', 'error');
+  }
+}
+
+async function reprocessMissing() {
+  showToast('Re-processing accepted receipts with missing files...', 'info');
+
+  try {
+    const response = await fetch('/api/incoming/reprocess-missing', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({})
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      if (data.processed === 0) {
+        showToast('All accepted receipts already have files!', 'success');
+      } else {
+        showToast(`Fixed ${data.success} of ${data.processed} receipts`, 'success');
+      }
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Failed to reprocess', 'error');
+    }
+  } catch (e) {
+    console.error('Reprocess error:', e);
+    showToast('Error reprocessing receipts', 'error');
   }
 }
 

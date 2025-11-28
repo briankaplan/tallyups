@@ -6440,6 +6440,169 @@ def reject_incoming_receipt():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/reprocess-missing", methods=["POST"])
+@login_required
+def reprocess_missing_receipts():
+    """
+    Re-process accepted incoming receipts that have no receipt files downloaded.
+    This fixes receipts that were accepted but PDF conversion failed.
+    """
+    import json
+    import traceback
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        conn, db_type = get_db_connection()
+
+        # Find accepted incoming receipts where transaction has no receipt files
+        query = '''
+            SELECT
+                ir.id as incoming_id,
+                ir.email_id,
+                ir.gmail_account,
+                ir.subject,
+                ir.merchant,
+                ir.amount,
+                ir.attachments,
+                ir.accepted_as_transaction_id
+            FROM incoming_receipts ir
+            LEFT JOIN transactions t ON t._index = ir.accepted_as_transaction_id
+            WHERE ir.status = 'accepted'
+            AND ir.email_id IS NOT NULL
+            AND ir.gmail_account IS NOT NULL
+            AND (t.receipt_file IS NULL OR t.receipt_file = '')
+            AND (t.receipt_url IS NULL OR t.receipt_url = '')
+        '''
+
+        cursor = db_execute(conn, db_type, query)
+        rows = cursor.fetchall()
+
+        if not rows:
+            conn.close()
+            return jsonify({
+                'ok': True,
+                'message': 'No missing receipts found - all accepted incoming receipts have files!',
+                'processed': 0,
+                'success': 0,
+                'failed': 0
+            })
+
+        print(f"🔄 Re-processing {len(rows)} accepted receipts with missing files...")
+
+        # Import here to avoid circular imports
+        import sys
+        sys.path.insert(0, str(BASE_DIR))
+        from incoming_receipts_service import process_receipt_files, load_gmail_service
+
+        success_count = 0
+        fail_count = 0
+        results = []
+
+        for row in rows:
+            row = dict(row)
+            incoming_id = row['incoming_id']
+            email_id = row['email_id']
+            gmail_account = row['gmail_account']
+            merchant = row.get('merchant') or 'Unknown'
+            amount = row.get('amount') or 0
+            txn_index = row.get('accepted_as_transaction_id')
+            attachments_str = row.get('attachments') or '[]'
+
+            print(f"📧 Processing: {merchant} ${amount} (Incoming #{incoming_id})")
+
+            try:
+                attachments = json.loads(attachments_str)
+                if not attachments:
+                    print(f"   ⚠️  No attachments")
+                    fail_count += 1
+                    results.append({'id': incoming_id, 'merchant': merchant, 'status': 'no_attachments'})
+                    continue
+
+                # Load Gmail service
+                service = load_gmail_service(gmail_account)
+                if not service:
+                    print(f"   ❌ Gmail service failed")
+                    fail_count += 1
+                    results.append({'id': incoming_id, 'merchant': merchant, 'status': 'gmail_failed'})
+                    continue
+
+                # Get HTML body
+                html_body = None
+                try:
+                    msg_data = service.users().messages().get(userId='me', id=email_id, format='full').execute()
+                    def get_html_body(payload):
+                        if 'parts' in payload:
+                            for part in payload['parts']:
+                                if part.get('mimeType') == 'text/html':
+                                    import base64
+                                    data = part.get('body', {}).get('data', '')
+                                    if data:
+                                        return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                        return ''
+                    html_body = get_html_body(msg_data.get('payload', {}))
+                except Exception as e:
+                    print(f"   ⚠️  Could not get email body: {e}")
+
+                # Process receipt files
+                receipt_files = process_receipt_files(service, email_id, attachments, html_body)
+
+                if not receipt_files:
+                    print(f"   ❌ No files downloaded")
+                    fail_count += 1
+                    results.append({'id': incoming_id, 'merchant': merchant, 'status': 'download_failed'})
+                    continue
+
+                print(f"   ✅ Downloaded {len(receipt_files)} file(s)")
+
+                # Separate R2 URLs from local paths
+                r2_urls = [f for f in receipt_files if f.startswith('http')]
+                local_files = [f for f in receipt_files if not f.startswith('http')]
+                import os
+                receipt_file_str = ', '.join([os.path.basename(f) for f in local_files]) if local_files else ''
+                receipt_url_str = r2_urls[0] if r2_urls else ''
+
+                # Update transaction
+                if txn_index:
+                    db_execute(conn, db_type, '''
+                        UPDATE transactions
+                        SET receipt_file = COALESCE(NULLIF(?, ''), receipt_file),
+                            receipt_url = COALESCE(NULLIF(?, ''), receipt_url)
+                        WHERE _index = ?
+                    ''', (receipt_file_str, receipt_url_str, txn_index))
+                    conn.commit()
+
+                # Update incoming_receipts
+                db_execute(conn, db_type, 'UPDATE incoming_receipts SET receipt_files = ? WHERE id = ?',
+                          (json.dumps(receipt_files), incoming_id))
+                conn.commit()
+
+                success_count += 1
+                results.append({'id': incoming_id, 'merchant': merchant, 'status': 'success', 'files': len(receipt_files)})
+
+            except Exception as e:
+                print(f"   ❌ Error: {e}")
+                fail_count += 1
+                results.append({'id': incoming_id, 'merchant': merchant, 'status': 'error', 'error': str(e)})
+
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'message': f'Re-processed {len(rows)} receipts: {success_count} success, {fail_count} failed',
+            'processed': len(rows),
+            'success': success_count,
+            'failed': fail_count,
+            'results': results
+        })
+
+    except Exception as e:
+        print(f"❌ Error reprocessing receipts: {e}")
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/scan", methods=["POST"])
 def scan_incoming_receipts():
     """
