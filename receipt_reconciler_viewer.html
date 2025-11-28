@@ -1009,18 +1009,21 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
     <span class="version">v2.0</span>
   </div>
   <!-- Navigation Tabs -->
-  <div style="display:flex;gap:8px;margin-left:auto">
-    <button id="nav-home" class="btn-ghost" onclick="switchPage('home')" style="border-radius:8px;font-weight:600">
+  <div style="display:flex;gap:8px;margin-left:auto" class="nav-tabs">
+    <button id="nav-home" class="btn-ghost nav-tab active" onclick="switchPage('home')" style="border-radius:8px;font-weight:600">
       🏠 Home
     </button>
-    <button id="nav-incoming" class="btn-ghost" onclick="switchPage('incoming')" style="border-radius:8px;font-weight:600;position:relative">
+    <button id="nav-incoming" class="btn-ghost nav-tab" onclick="switchPage('incoming')" style="border-radius:8px;font-weight:600;position:relative">
       📬 Incoming
       <span id="incoming-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--danger);color:white;border-radius:10px;padding:2px 6px;font-size:10px;font-weight:700"></span>
     </button>
-    <button id="nav-reports" class="btn-ghost" onclick="switchPage('reports')" style="border-radius:8px;font-weight:600">
+    <button id="nav-scanner" class="btn-ghost nav-tab" onclick="window.location.href='/scanner'" style="border-radius:8px;font-weight:600">
+      📷 Scan
+    </button>
+    <button id="nav-reports" class="btn-ghost nav-tab" onclick="switchPage('reports')" style="border-radius:8px;font-weight:600">
       📊 Reports
     </button>
-    <button id="nav-stats" class="btn-ghost" onclick="switchPage('stats')" style="border-radius:8px;font-weight:600">
+    <button id="nav-stats" class="btn-ghost nav-tab" onclick="switchPage('stats')" style="border-radius:8px;font-weight:600">
       📈 Stats
     </button>
   </div>
@@ -2146,6 +2149,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupResizer();
   loadTheme();
   updateIncomingBadge();  // Show pending incoming receipts count
+
+  // Handle URL parameters for navigation (e.g., /?page=reports)
+  const urlParams = new URLSearchParams(window.location.search);
+  const requestedPage = urlParams.get('page');
+  if (requestedPage && ['home', 'reports', 'stats'].includes(requestedPage)) {
+    switchPage(requestedPage);
+  }
+
   showToast('System ready! Press ? for keyboard shortcuts', '🚀');
 });
 
