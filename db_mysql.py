@@ -125,6 +125,42 @@ class MySQLReceiptDatabase:
                 self.use_mysql = False
                 return False
 
+    def execute_query(self, query: str, params: tuple = None) -> List[Dict]:
+        """Execute a raw SQL query and return results as list of dicts.
+
+        Args:
+            query: SQL query string
+            params: Optional tuple of parameters for parameterized queries
+
+        Returns:
+            List of dictionaries (one per row) for SELECT queries,
+            or empty list for non-SELECT queries
+        """
+        if not self.use_mysql:
+            return []
+
+        self.ensure_connection()
+
+        try:
+            cursor = self.conn.cursor()
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+
+            # Check if this is a SELECT query
+            if query.strip().upper().startswith('SELECT'):
+                results = cursor.fetchall()
+                cursor.close()
+                return list(results) if results else []
+            else:
+                self.conn.commit()
+                cursor.close()
+                return []
+        except Exception as e:
+            print(f"❌ Query error: {e}", flush=True)
+            return []
+
     def _init_schema(self):
         """Initialize database schema (tables, indexes)"""
         if not self.use_mysql or not self.conn:
