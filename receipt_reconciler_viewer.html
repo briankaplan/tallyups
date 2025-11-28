@@ -2886,7 +2886,8 @@ async function checkGmailStatus() {
 
         if (!statusEl) return;
 
-        const isConnected = account.exists && account.has_refresh_token && !account.expired;
+        // If we have a refresh_token, we're connected (access token auto-refreshes when used)
+        const isConnected = account.exists && account.has_refresh_token;
 
         if (!account.exists) {
           statusEl.className = 'badge badge-neutral';
@@ -2895,19 +2896,21 @@ async function checkGmailStatus() {
             btnEl.textContent = '🔗 Connect';
             btnEl.onclick = () => connectGmail(account.email);
           }
+        } else if (account.has_refresh_token) {
+          // Connected - has refresh token so can auto-refresh when needed
+          statusEl.className = 'badge badge-good';
+          statusEl.textContent = account.expired ? 'Connected (will refresh)' : 'Connected';
+          if (btnEl) {
+            btnEl.textContent = '🔌 Disconnect';
+            btnEl.onclick = () => disconnectGmail(account.email);
+          }
         } else if (account.expired) {
+          // No refresh token AND expired - need to reconnect
           statusEl.className = 'badge badge-bad';
           statusEl.textContent = 'Expired';
           if (btnEl) {
             btnEl.textContent = '🔄 Reconnect';
             btnEl.onclick = () => connectGmail(account.email);
-          }
-        } else if (account.has_refresh_token) {
-          statusEl.className = 'badge badge-good';
-          statusEl.textContent = 'Connected';
-          if (btnEl) {
-            btnEl.textContent = '🔌 Disconnect';
-            btnEl.onclick = () => disconnectGmail(account.email);
           }
         } else {
           statusEl.className = 'badge badge-neutral';
@@ -3050,8 +3053,11 @@ function getStatusBadge(status, isRefund) {
 }
 
 function getConfidenceIndicator(row) {
-  // Check if receipt exists
-  if (!row['Receipt File']) {
+  // Check if receipt exists (any source)
+  const receiptFile = (row['Receipt File'] || '').trim();
+  const receiptUrl = (row.receipt_url || '').trim();
+  const r2Url = (row.r2_url || row['R2 URL'] || '').trim();
+  if (!receiptFile && !receiptUrl && !r2Url) {
     return '—';
   }
 
@@ -3451,7 +3457,13 @@ function openQuickViewer() {
   if (!selectedRow) return;
 
   // Build list of ALL receipts (filtered or all, depending on view)
-  quickViewerReceipts = filteredData.filter(r => r['Receipt File'] && r['Receipt File'].trim() !== '');
+  // Check all receipt sources: Receipt File, receipt_url, r2_url
+  quickViewerReceipts = filteredData.filter(r => {
+    const receiptFile = (r['Receipt File'] || '').trim();
+    const receiptUrl = (r.receipt_url || '').trim();
+    const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+    return receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+  });
 
   if (quickViewerReceipts.length === 0) {
     showToast('No receipts to view', '📄');
