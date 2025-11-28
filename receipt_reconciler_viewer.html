@@ -29,6 +29,217 @@
   --chip:#f0fff0; --chipOn:#d0ffd0; --chipL:#004422;
 }
 
+/* ============================================
+   AWARD-WORTHY POLISH & MICRO-INTERACTIONS
+   ============================================ */
+
+/* Skeleton Loading Animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--panel2) 25%, var(--edge) 50%, var(--panel2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+  border-radius: 6px;
+}
+.skeleton-text { height: 14px; margin: 4px 0; }
+.skeleton-circle { border-radius: 50%; }
+
+/* Smooth Page Transitions */
+.page-content {
+  animation: fadeSlideIn 0.3s ease-out;
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Nav Tab Styling - Award Quality */
+.nav-tab {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-tab::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--brand);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(-50%);
+}
+.nav-tab:hover::before {
+  width: 60%;
+}
+.nav-tab.active {
+  background: rgba(0,255,136,.15) !important;
+  color: var(--brand) !important;
+}
+.nav-tab.active::before {
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--brand), transparent);
+}
+
+/* Ripple Effect for Buttons */
+@keyframes ripple {
+  to { transform: scale(4); opacity: 0; }
+}
+button:active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.3);
+  border-radius: inherit;
+  animation: ripple 0.4s ease-out;
+  pointer-events: none;
+}
+
+/* Glow Effect on Focus */
+button:focus-visible, .input:focus-visible, select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--glow);
+}
+
+/* Toast Entrance Animation */
+@keyframes toastSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.toast.show {
+  animation: toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Success Checkmark Animation */
+@keyframes checkPop {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.success-check {
+  animation: checkPop 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Stat Card Hover Effect */
+.stat {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,255,136,0.15);
+  border-color: rgba(0,255,136,0.3);
+}
+
+/* Table Row Hover Enhancement */
+tbody tr {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+tbody tr:hover {
+  background: rgba(59,130,246,.06);
+  transform: translateX(2px);
+}
+tbody tr.selected {
+  transform: translateX(0);
+}
+
+/* Receipt Thumbnail Hover */
+.receipt-thumb {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.receipt-thumb:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+/* Modal Backdrop Blur */
+.modal-overlay {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Chip Filter Animation */
+.chip {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,255,136,0.2);
+}
+.chip.active {
+  transform: scale(1.02);
+  box-shadow: 0 2px 12px rgba(0,255,136,0.3);
+}
+
+/* Smooth Number Transitions */
+.stat-value, .amount {
+  transition: color 0.2s ease;
+}
+
+/* Loading Spinner Enhancement */
+@keyframes spinPulse {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.loading-spinner {
+  animation: spinPulse 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Keyboard Shortcut Hints */
+.kbd-hint {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+}
+button:hover .kbd-hint,
+button:focus .kbd-hint {
+  opacity: 1;
+}
+
+/* Gradient Text for Branding */
+.gradient-text {
+  background: linear-gradient(135deg, #00ff88, #00cc6a, #00aa55);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Progress Bar Animation */
+@keyframes progressPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.progress-bar {
+  animation: progressPulse 1.5s ease infinite;
+}
+
+/* Card Entrance Animation */
+@keyframes cardSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card-animate {
+  animation: cardSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Staggered Animation Delays */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+
 *{box-sizing:border-box}
 html,body{
   height:100%;margin:0;background:var(--bg);color:var(--ink);
