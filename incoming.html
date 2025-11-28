@@ -236,6 +236,170 @@ tr.hidden { display: none; }
   0% { background-color: rgba(47,255,162,.2); }
   100% { background-color: transparent; }
 }
+
+/* Clickable rows */
+tr.clickable { cursor: pointer; }
+tr.clickable:hover { background: rgba(59,130,246,.06); }
+
+/* Sender info */
+.sender-info {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sender-name {
+  font-weight: 600; color: var(--ink); font-size: 13px;
+}
+.sender-email {
+  font-size: 11px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 180px;
+}
+
+/* Attachment badge */
+.attachment-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 6px; border-radius: 4px; font-size: 10px;
+  background: rgba(139,92,246,.15); color: #a78bfa;
+  margin-top: 4px;
+}
+
+/* Preview eye icon */
+.preview-btn {
+  width: 32px; height: 32px; border-radius: 6px;
+  background: rgba(59,130,246,.1); color: var(--brand);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer; border: none;
+  transition: all .15s;
+}
+.preview-btn:hover {
+  background: rgba(59,130,246,.2); transform: scale(1.05);
+}
+
+/* Preview Modal */
+.preview-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.9);
+  display: none; z-index: 2000;
+  padding: 20px;
+  overflow-y: auto;
+}
+.preview-modal.active { display: flex; align-items: flex-start; justify-content: center; }
+
+.preview-content {
+  background: var(--panel);
+  border-radius: 16px;
+  max-width: 700px;
+  width: 100%;
+  margin: 40px auto;
+  box-shadow: 0 24px 48px rgba(0,0,0,.5);
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.preview-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--edge);
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.preview-title {
+  font-size: 18px; font-weight: 700; color: var(--ink);
+  line-height: 1.4;
+  flex: 1;
+}
+.preview-close {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: rgba(239,68,68,.1); color: var(--bad);
+  font-size: 20px; cursor: pointer; border: none;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-left: 16px;
+}
+
+.preview-body { padding: 24px; }
+
+.preview-meta {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+  margin-bottom: 20px;
+}
+.preview-meta-item {
+  background: var(--panel2);
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+}
+.preview-meta-label {
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.preview-meta-value {
+  font-size: 14px; font-weight: 600; color: var(--ink);
+  word-break: break-word;
+}
+.preview-meta-value.large {
+  font-size: 24px;
+}
+.preview-meta-value.amount-charge { color: var(--bad); }
+.preview-meta-value.amount-refund { color: var(--ok); }
+
+.preview-section {
+  margin-bottom: 20px;
+}
+.preview-section-title {
+  font-size: 11px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 8px; font-weight: 600;
+}
+.preview-section-content {
+  background: var(--panel2);
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.preview-attachments {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.preview-attachment {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(139,92,246,.1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #a78bfa;
+}
+.preview-attachment-icon { font-size: 16px; }
+
+.preview-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--edge);
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.preview-actions {
+  display: flex; gap: 10px;
+}
+
+/* Account badge */
+.account-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.account-badge.personal { background: rgba(59,130,246,.15); color: #60a5fa; }
+.account-badge.mcr { background: rgba(239,68,68,.15); color: #f87171; }
+.account-badge.downhome { background: rgba(34,197,94,.15); color: #4ade80; }
 </style>
 </head>
 <body>
@@ -306,6 +470,52 @@ tr.hidden { display: none; }
 
 <!-- Toast -->
 <div id="toast" class="toast"></div>
+
+<!-- Preview Modal -->
+<div id="preview-modal" class="preview-modal" onclick="if(event.target===this)closePreview()">
+  <div class="preview-content">
+    <div class="preview-header">
+      <div class="preview-title" id="preview-subject">Email Subject</div>
+      <button class="preview-close" onclick="closePreview()">✕</button>
+    </div>
+    <div class="preview-body">
+      <div class="preview-meta">
+        <div class="preview-meta-item">
+          <div class="preview-meta-label">From</div>
+          <div class="preview-meta-value" id="preview-from">sender@email.com</div>
+        </div>
+        <div class="preview-meta-item">
+          <div class="preview-meta-label">Amount</div>
+          <div class="preview-meta-value large" id="preview-amount">$0.00</div>
+        </div>
+        <div class="preview-meta-item">
+          <div class="preview-meta-label">Merchant</div>
+          <div class="preview-meta-value" id="preview-merchant">Unknown</div>
+        </div>
+        <div class="preview-meta-item">
+          <div class="preview-meta-label">Date</div>
+          <div class="preview-meta-value" id="preview-date">Jan 1, 2025</div>
+        </div>
+      </div>
+      <div class="preview-section" id="preview-ai-section" style="display:none">
+        <div class="preview-section-title">AI Analysis</div>
+        <div class="preview-section-content" id="preview-ai-notes"></div>
+      </div>
+      <div class="preview-section">
+        <div class="preview-section-title">Email Body Preview</div>
+        <div class="preview-section-content" id="preview-body">Loading...</div>
+      </div>
+      <div class="preview-section" id="preview-attachments-section" style="display:none">
+        <div class="preview-section-title">Attachments</div>
+        <div class="preview-attachments" id="preview-attachments"></div>
+      </div>
+    </div>
+    <div class="preview-footer">
+      <div id="preview-account-badge"></div>
+      <div class="preview-actions" id="preview-actions"></div>
+    </div>
+  </div>
+</div>
 
 <script>
 let allReceipts = [];
@@ -429,28 +639,57 @@ function renderRow(receipt) {
   // Get the actual receipt date (use receipt_date if available, otherwise received_date)
   const receiptDate = receipt.receipt_date || receipt.received_date || '';
 
-  // Actions
+  // Actions - include preview button
+  const previewBtn = `<button class="preview-btn" onclick="event.stopPropagation();showPreview(${receipt.id})" title="Preview">👁️</button>`;
   const actions = receipt.status === 'pending'
-    ? `<button class="btn-success btn-sm" onclick="quickAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}')">✓</button>
-       <button class="btn-danger btn-sm" onclick="quickReject(${receipt.id})">✗</button>`
-    : `<span style="color:var(--muted);font-size:11px">${receipt.status === 'accepted' ? '✓ Accepted' : '✗ Rejected'}</span>`;
+    ? `${previewBtn}
+       <button class="btn-success btn-sm" onclick="event.stopPropagation();quickAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}')">✓</button>
+       <button class="btn-danger btn-sm" onclick="event.stopPropagation();quickReject(${receipt.id})">✗</button>`
+    : `${previewBtn}<span style="color:var(--muted);font-size:11px;margin-left:8px">${receipt.status === 'accepted' ? '✓ Accepted' : '✗ Rejected'}</span>`;
+
+  // Parse sender info
+  const fromEmail = receipt.from_email || '';
+  const senderName = extractSenderName(fromEmail);
+
+  // Attachment count
+  let attachmentCount = 0;
+  try {
+    const atts = typeof receipt.attachments === 'string' ? JSON.parse(receipt.attachments) : (receipt.attachments || []);
+    attachmentCount = atts.length;
+  } catch(e) {}
+  const attachmentBadge = attachmentCount > 0 ? `<span class="attachment-badge">📎 ${attachmentCount}</span>` : '';
 
   return `
-    <tr data-status="${receipt.status}" data-id="${receipt.id}">
+    <tr data-status="${receipt.status}" data-id="${receipt.id}" class="clickable" onclick="showPreview(${receipt.id})">
       <td>
         <div style="font-weight:500">${escapeHtml(receipt.subject)}</div>
         <div class="snippet">${escapeHtml(receipt.body_snippet || '')}</div>
         ${description}
         ${matchBadge}
+        ${attachmentBadge}
       </td>
       <td style="font-weight:500">${escapeHtml(merchant)}</td>
       <td style="font-weight:600;color:${amountColor}">${amountDisplay}</td>
-      <td style="color:var(--muted)">${escapeHtml((receipt.from_email || '').split('@')[0])}</td>
+      <td>
+        <div class="sender-info">
+          <span class="sender-name">${escapeHtml(senderName)}</span>
+          <span class="sender-email">${escapeHtml(fromEmail)}</span>
+        </div>
+      </td>
       <td style="color:var(--muted);font-size:12px">${date}</td>
       <td><span class="confidence-badge ${confidenceClass}">${receipt.confidence_score}%</span></td>
-      <td>${actions}</td>
+      <td onclick="event.stopPropagation()">${actions}</td>
     </tr>
   `;
+}
+
+function extractSenderName(email) {
+  if (!email) return 'Unknown';
+  // Extract display name from "Name <email>" format
+  const match = email.match(/^([^<]+)</);
+  if (match) return match[1].trim();
+  // Otherwise extract username from email
+  return email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function extractMerchantFromSubject(subject) {
@@ -746,6 +985,149 @@ function showToast(message, type = 'info') {
     toast.classList.remove('show');
   }, 3000);
 }
+
+// Preview Modal Functions
+let currentPreviewReceipt = null;
+
+function showPreview(receiptId) {
+  const receipt = allReceipts.find(r => r.id === receiptId);
+  if (!receipt) return;
+
+  currentPreviewReceipt = receipt;
+  const modal = document.getElementById('preview-modal');
+
+  // Populate the modal
+  document.getElementById('preview-subject').textContent = receipt.subject || 'No subject';
+  document.getElementById('preview-from').textContent = receipt.from_email || 'Unknown sender';
+
+  // Format amount
+  const amount = parseFloat(receipt.amount) || 0;
+  const isRefund = receipt.is_refund || (receipt.subject || '').toLowerCase().includes('refund');
+  const amountEl = document.getElementById('preview-amount');
+  if (amount > 0) {
+    if (isRefund) {
+      amountEl.textContent = `+$${amount.toFixed(2)}`;
+      amountEl.className = 'preview-meta-value large amount-refund';
+    } else {
+      amountEl.textContent = `-$${amount.toFixed(2)}`;
+      amountEl.className = 'preview-meta-value large amount-charge';
+    }
+  } else {
+    amountEl.textContent = 'Not detected';
+    amountEl.className = 'preview-meta-value large';
+  }
+
+  // Merchant
+  const merchant = receipt.merchant || extractMerchantFromSubject(receipt.subject);
+  document.getElementById('preview-merchant').textContent = merchant;
+
+  // Date
+  const dateStr = receipt.receipt_date || receipt.received_date;
+  document.getElementById('preview-date').textContent = dateStr ? formatDate(dateStr) : 'Unknown';
+
+  // AI Notes / Description
+  const aiSection = document.getElementById('preview-ai-section');
+  if (receipt.description || receipt.ai_notes) {
+    aiSection.style.display = 'block';
+    document.getElementById('preview-ai-notes').textContent = receipt.description || receipt.ai_notes;
+  } else {
+    aiSection.style.display = 'none';
+  }
+
+  // Body snippet
+  document.getElementById('preview-body').textContent = receipt.body_snippet || 'No preview available';
+
+  // Attachments
+  const attachmentsSection = document.getElementById('preview-attachments-section');
+  const attachmentsEl = document.getElementById('preview-attachments');
+  let attachments = [];
+  try {
+    attachments = typeof receipt.attachments === 'string' ? JSON.parse(receipt.attachments) : (receipt.attachments || []);
+  } catch(e) {}
+
+  if (attachments.length > 0) {
+    attachmentsSection.style.display = 'block';
+    attachmentsEl.innerHTML = attachments.map(att => {
+      const name = typeof att === 'string' ? att : (att.filename || att.name || 'Attachment');
+      const icon = getAttachmentIcon(name);
+      return `<div class="preview-attachment"><span class="preview-attachment-icon">${icon}</span> ${escapeHtml(name)}</div>`;
+    }).join('');
+  } else {
+    attachmentsSection.style.display = 'none';
+  }
+
+  // Account badge
+  const accountBadgeEl = document.getElementById('preview-account-badge');
+  const gmailAccount = receipt.gmail_account || '';
+  let accountClass = 'personal';
+  let accountLabel = gmailAccount.split('@')[0] || 'Unknown';
+  if (gmailAccount.includes('musiccity')) {
+    accountClass = 'mcr';
+    accountLabel = 'MCR';
+  } else if (gmailAccount.includes('downhome')) {
+    accountClass = 'downhome';
+    accountLabel = 'DownHome';
+  }
+  accountBadgeEl.innerHTML = `<span class="account-badge ${accountClass}">${accountLabel}</span>`;
+
+  // Actions
+  const actionsEl = document.getElementById('preview-actions');
+  const receiptDate = receipt.receipt_date || receipt.received_date || '';
+  if (receipt.status === 'pending') {
+    actionsEl.innerHTML = `
+      <button class="btn-danger" onclick="closePreview();quickReject(${receipt.id})">✕ Reject</button>
+      <button class="btn-success" onclick="closePreview();quickAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}')">✓ Accept</button>
+    `;
+  } else {
+    const statusText = receipt.status === 'accepted' ? '✓ Accepted' : '✕ Rejected';
+    actionsEl.innerHTML = `<span style="color:var(--muted)">${statusText}</span>`;
+  }
+
+  // Show modal
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePreview() {
+  const modal = document.getElementById('preview-modal');
+  modal.classList.remove('active');
+  document.body.style.overflow = '';
+  currentPreviewReceipt = null;
+}
+
+function getAttachmentIcon(filename) {
+  const ext = (filename || '').split('.').pop().toLowerCase();
+  switch(ext) {
+    case 'pdf': return '📄';
+    case 'png': case 'jpg': case 'jpeg': case 'gif': case 'webp': return '🖼️';
+    case 'html': case 'htm': return '🌐';
+    default: return '📎';
+  }
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  if (!document.getElementById('preview-modal').classList.contains('active')) return;
+
+  if (e.key === 'Escape') {
+    closePreview();
+  } else if (currentPreviewReceipt && currentPreviewReceipt.status === 'pending') {
+    if (e.key === 'Enter' || e.key === 'a' || e.key === 'A') {
+      // Accept with Enter or 'A'
+      const r = currentPreviewReceipt;
+      const merchant = r.merchant || extractMerchantFromSubject(r.subject);
+      const amount = parseFloat(r.amount) || 0;
+      const isRefund = r.is_refund || (r.subject || '').toLowerCase().includes('refund');
+      const receiptDate = r.receipt_date || r.received_date || '';
+      closePreview();
+      quickAccept(r.id, merchant, amount, isRefund, receiptDate);
+    } else if (e.key === 'r' || e.key === 'R' || e.key === 'Backspace') {
+      // Reject with 'R' or Backspace
+      closePreview();
+      quickReject(currentPreviewReceipt.id);
+    }
+  }
+});
 </script>
 
 </body>
