@@ -1474,6 +1474,56 @@ def health_check():
     return jsonify(health_data)
 
 
+@app.route("/api/debug/receipt-stats")
+def debug_receipt_stats():
+    """Debug endpoint to check receipt statistics"""
+    if not USE_DATABASE or not db:
+        return jsonify({'error': 'Database not available'}), 500
+
+    try:
+        # Get receipt stats
+        stats = db.execute_query("""
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN (receipt_url IS NULL OR receipt_url = '') AND (receipt_file IS NULL OR receipt_file = '') THEN 1 ELSE 0 END) as missing_receipt,
+                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as has_receipt_url,
+                SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as has_receipt_file,
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as has_r2_url
+            FROM transactions
+        """)
+
+        # Check which columns exist
+        columns = db.execute_query("SHOW COLUMNS FROM transactions")
+        col_names = [c['Field'] for c in columns] if columns else []
+
+        # Get deleted count if column exists
+        deleted_count = 0
+        if 'deleted' in col_names:
+            deleted_result = db.execute_query("SELECT COUNT(*) as cnt FROM transactions WHERE deleted = 1")
+            deleted_count = deleted_result[0]['cnt'] if deleted_result else 0
+
+        # Get sample missing receipts
+        sample_missing = db.execute_query("""
+            SELECT _index, chase_date, chase_description, chase_amount, business_type
+            FROM transactions
+            WHERE (receipt_url IS NULL OR receipt_url = '')
+              AND (receipt_file IS NULL OR receipt_file = '')
+            LIMIT 20
+        """)
+
+        return jsonify({
+            'ok': True,
+            'stats': stats[0] if stats else {},
+            'deleted_count': deleted_count,
+            'has_deleted_column': 'deleted' in col_names,
+            'sample_missing': sample_missing,
+            'columns': col_names[:20]  # First 20 columns
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
 @app.route("/api/debug/transaction/<int:idx>")
 @login_required
 def debug_transaction(idx):
