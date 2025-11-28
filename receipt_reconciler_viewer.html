@@ -1457,6 +1457,26 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
         </div>
       </div>
 
+      <!-- Calendar Integration Section -->
+      <div class="settings-section" id="calendar-settings-section">
+        <div class="settings-section-title">📅 Calendar Integration</div>
+        <div id="calendar-status-row" style="margin-bottom:12px;padding:12px;background:var(--panel2);border-radius:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--ink)" id="calendar-connection-status">Checking...</div>
+              <div style="font-size:11px;color:var(--muted)" id="calendar-status-detail">Loading calendar status</div>
+            </div>
+            <button class="btn-ghost" onclick="checkCalendarStatus()" style="font-size:12px">🔄 Refresh</button>
+          </div>
+        </div>
+        <div id="calendar-accounts-list" style="display:none">
+          <!-- Populated dynamically with checkboxes for each calendar -->
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;padding:8px;background:rgba(0,255,136,.05);border-radius:6px">
+          💡 Calendar events are used to auto-generate contextual notes like "Uber - Vegas Trip" or "Parking - Rodeo Vegas"
+        </div>
+      </div>
+
       <div class="settings-section">
         <div class="settings-section-title">💾 Data & Storage</div>
         <div class="settings-row">
@@ -3324,20 +3344,41 @@ function updateDashboard() {
     // ✅ Needs review = has receipt AND (no status OR status not in good/bad/not needed)
     needsReview: csvData.filter(r => {
       const status = (r['Review Status'] || '').toLowerCase().trim();
-      const hasReceipt = r['Receipt File'] && r['Receipt File'].trim() !== '';
+      const receiptFile = (r['Receipt File'] || '').trim();
+      const receiptUrl = (r.receipt_url || '').trim();
+      const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+      const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
       return hasReceipt && (!status || (status !== 'good' && status !== 'bad' && status !== 'not needed'));
     }).length,
     // ✅ Good/Bad must have receipts
     good: csvData.filter(r => {
-      const hasReceipt = r['Receipt File'] && r['Receipt File'].trim() !== '';
+      const receiptFile = (r['Receipt File'] || '').trim();
+      const receiptUrl = (r.receipt_url || '').trim();
+      const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+      const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
       return hasReceipt && r['Review Status'] === 'good';
     }).length,
     bad: csvData.filter(r => {
-      const hasReceipt = r['Receipt File'] && r['Receipt File'].trim() !== '';
+      const receiptFile = (r['Receipt File'] || '').trim();
+      const receiptUrl = (r.receipt_url || '').trim();
+      const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+      const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
       return hasReceipt && r['Review Status'] === 'bad';
     }).length,
-    missing: csvData.filter(r => (!r['Receipt File'] || r['Receipt File'] === '' || r['Receipt File'] === 'None') && r['Receipt File'] !== 'NO_RECEIPT_NEEDED' && r['Review Status'] !== 'not needed').length,
-    withReceipts: csvData.filter(r => r['Receipt File'] && r['Receipt File'] !== 'NO_RECEIPT_NEEDED').length,
+    missing: csvData.filter(r => {
+      const receiptFile = (r['Receipt File'] || '').trim();
+      const receiptUrl = (r.receipt_url || '').trim();
+      const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+      const status = (r['Review Status'] || '').toLowerCase().trim();
+      const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+      return !hasReceipt && status !== 'not needed';
+    }).length,
+    withReceipts: csvData.filter(r => {
+      const receiptFile = (r['Receipt File'] || '').trim();
+      const receiptUrl = (r.receipt_url || '').trim();
+      const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+      return receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+    }).length,
     notNeeded: csvData.filter(r => r['Review Status'] === 'not needed' || r['Receipt File'] === 'NO_RECEIPT_NEEDED').length,
     // ✅ Refunds = negative amounts OR review_status = refund
     refunds: csvData.filter(r => {
@@ -4009,6 +4050,174 @@ async function updateSettingsInfo() {
   const countEl = document.getElementById('transaction-count-setting');
   if (countEl) {
     countEl.textContent = transactionCount.toLocaleString() + ' transactions';
+  }
+
+  // Check calendar status when settings open
+  checkCalendarStatus();
+}
+
+// Calendar settings state
+let calendarSettings = {
+  enabled_calendars: [] // List of enabled calendar emails
+};
+
+// Check calendar connection status and load settings
+async function checkCalendarStatus() {
+  const statusEl = document.getElementById('calendar-connection-status');
+  const detailEl = document.getElementById('calendar-status-detail');
+  const accountsList = document.getElementById('calendar-accounts-list');
+
+  if (statusEl) statusEl.textContent = 'Checking...';
+  if (detailEl) detailEl.textContent = 'Connecting to calendar service...';
+
+  try {
+    const res = await fetch('/settings/calendar/status');
+    const data = await res.json();
+
+    if (!data.connected) {
+      if (statusEl) {
+        statusEl.textContent = '❌ Not Connected';
+        statusEl.style.color = '#ff4e6a';
+      }
+      if (detailEl) detailEl.textContent = data.message || 'Calendar not configured';
+      if (accountsList) accountsList.style.display = 'none';
+      return;
+    }
+
+    // Connected - show account count
+    const accountCount = data.account_count || 1;
+    if (statusEl) {
+      statusEl.textContent = `✅ ${accountCount} Calendar${accountCount > 1 ? 's' : ''} Connected`;
+      statusEl.style.color = '#00ff88';
+    }
+    if (detailEl) detailEl.textContent = data.message || `${accountCount} account(s) linked`;
+
+    // Populate calendar list with checkboxes
+    if (accountsList && data.accounts && data.accounts.length > 0) {
+      accountsList.style.display = 'block';
+      accountsList.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Select which calendars to use for context:</div>';
+
+      // Load saved settings
+      await loadCalendarSettings();
+
+      data.accounts.forEach(account => {
+        const isEnabled = calendarSettings.enabled_calendars.length === 0 ||
+                         calendarSettings.enabled_calendars.includes(account.email);
+
+        const row = document.createElement('div');
+        row.className = 'settings-row';
+        row.style.padding = '10px 12px';
+        row.style.background = isEnabled ? 'rgba(0,255,136,.08)' : 'transparent';
+        row.style.borderRadius = '8px';
+        row.style.marginBottom = '6px';
+        row.style.transition = 'background .2s';
+
+        row.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;flex:1">
+            <input type="checkbox"
+                   id="cal-${account.email.replace(/[@.]/g, '-')}"
+                   ${isEnabled ? 'checked' : ''}
+                   onchange="toggleCalendar('${account.email}', this.checked)"
+                   style="width:18px;height:18px;accent-color:#00ff88;cursor:pointer">
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--ink)">${account.name || account.email}</div>
+              <div style="font-size:11px;color:var(--muted)">${account.email}</div>
+            </div>
+          </div>
+          <span class="badge ${account.connected ? 'badge-good' : 'badge-bad'}">${account.connected ? 'Active' : 'Error'}</span>
+        `;
+
+        accountsList.appendChild(row);
+      });
+
+      // Add save button
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'btn-primary';
+      saveBtn.style.marginTop = '12px';
+      saveBtn.style.width = '100%';
+      saveBtn.innerHTML = '💾 Save Calendar Settings';
+      saveBtn.onclick = saveCalendarSettings;
+      accountsList.appendChild(saveBtn);
+    }
+
+  } catch (err) {
+    console.error('Calendar status check failed:', err);
+    if (statusEl) {
+      statusEl.textContent = '⚠️ Error';
+      statusEl.style.color = '#ffd85e';
+    }
+    if (detailEl) detailEl.textContent = 'Could not check calendar status';
+  }
+}
+
+// Load saved calendar settings
+async function loadCalendarSettings() {
+  try {
+    const res = await fetch('/settings/calendar/preferences');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.enabled_calendars) {
+        calendarSettings.enabled_calendars = data.enabled_calendars;
+      }
+    }
+  } catch (err) {
+    console.log('No saved calendar settings found, using defaults');
+  }
+}
+
+// Toggle calendar enabled state
+function toggleCalendar(email, enabled) {
+  const row = document.getElementById(`cal-${email.replace(/[@.]/g, '-')}`).closest('.settings-row');
+  if (row) {
+    row.style.background = enabled ? 'rgba(0,255,136,.08)' : 'transparent';
+  }
+
+  if (enabled) {
+    if (!calendarSettings.enabled_calendars.includes(email)) {
+      calendarSettings.enabled_calendars.push(email);
+    }
+  } else {
+    calendarSettings.enabled_calendars = calendarSettings.enabled_calendars.filter(e => e !== email);
+  }
+}
+
+// Save calendar settings
+async function saveCalendarSettings() {
+  // Get all checked calendars
+  const checkboxes = document.querySelectorAll('#calendar-accounts-list input[type="checkbox"]');
+  const enabledCalendars = [];
+
+  checkboxes.forEach(cb => {
+    if (cb.checked) {
+      // Extract email from id (cal-email-domain-com -> email@domain.com)
+      const idParts = cb.id.replace('cal-', '').split('-');
+      // Reconstruct email (last part after last dash is domain)
+      const email = cb.id.replace('cal-', '').replace(/-/g, function(match, offset, str) {
+        // Count dashes - replace all but the one before domain
+        const remaining = str.substring(offset + 1);
+        if (remaining.includes('-')) return '.';
+        return '@';
+      });
+      enabledCalendars.push(email);
+    }
+  });
+
+  try {
+    const res = await fetch('/settings/calendar/preferences', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ enabled_calendars: enabledCalendars })
+    });
+
+    if (res.ok) {
+      showToast('Calendar settings saved!', 'success');
+      calendarSettings.enabled_calendars = enabledCalendars;
+    } else {
+      showToast('Failed to save settings', 'error');
+    }
+  } catch (err) {
+    console.error('Save calendar settings failed:', err);
+    showToast('Error saving settings', 'error');
   }
 }
 
@@ -4737,40 +4946,51 @@ function applyFilters() {
       // ✅ MUST have a receipt to be reviewed - no receipt = missing receipts
       filtered = filtered.filter(r => {
         const status = (r['Review Status'] || '').toLowerCase().trim();
-        const hasReceipt = r['Receipt File'] && r['Receipt File'].trim() !== '';
+        const receiptFile = (r['Receipt File'] || '').trim();
+        const receiptUrl = (r.receipt_url || '').trim();
+        const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+        const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
         return hasReceipt && (!status || (status !== 'good' && status !== 'bad' && status !== 'not needed'));
       });
     }
     else if (filter === 'good') {
       // ✅ MUST have a receipt to be marked good - no receipt = missing receipts
       filtered = filtered.filter(r => {
-        const hasReceipt = r['Receipt File'] && r['Receipt File'].trim() !== '';
+        const receiptFile = (r['Receipt File'] || '').trim();
+        const receiptUrl = (r.receipt_url || '').trim();
+        const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+        const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
         return hasReceipt && r['Review Status'] === 'good';
       });
     }
     else if (filter === 'bad') {
       // ✅ MUST have a receipt to be marked bad - no receipt = missing receipts
       filtered = filtered.filter(r => {
-        const hasReceipt = r['Receipt File'] && r['Receipt File'].trim() !== '';
+        const receiptFile = (r['Receipt File'] || '').trim();
+        const receiptUrl = (r.receipt_url || '').trim();
+        const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+        const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
         return hasReceipt && r['Review Status'] === 'bad';
       });
     }
     else if (filter === 'missing') {
-      // Missing = no receipt file AND not marked as "not needed"
+      // Missing = no receipt (file, url, or r2) AND not marked as "not needed"
       filtered = filtered.filter(r => {
         const receiptFile = (r['Receipt File'] || '').trim();
         const receiptUrl = (r.receipt_url || '').trim();
+        const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
         const status = (r['Review Status'] || '').toLowerCase().trim();
-        const hasReceipt = receiptFile !== '' || receiptUrl !== '';
+        const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
         return !hasReceipt && status !== 'not needed';
       });
     }
     else if (filter === 'with-receipts') {
-      // With receipts = has a receipt file OR receipt_url
+      // With receipts = has a receipt file, receipt_url, or r2_url
       filtered = filtered.filter(r => {
         const receiptFile = (r['Receipt File'] || '').trim();
         const receiptUrl = (r.receipt_url || '').trim();
-        return receiptFile !== '' || receiptUrl !== '';
+        const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
+        return receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
       });
     }
     else if (filter === 'not-needed') filtered = filtered.filter(r => r['Review Status'] === 'not needed');
