@@ -6603,6 +6603,143 @@ def reprocess_missing_receipts():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/fix-dates", methods=["POST"])
+def fix_incoming_receipt_dates():
+    """
+    Fix transactions that came from incoming_receipts but have wrong dates.
+    Updates chase_date to match the actual receipt date from incoming_receipts.
+
+    Body (optional):
+    {
+        "dry_run": true  // Preview changes without applying them
+    }
+    """
+    import traceback
+    import pymysql
+
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json() or {}
+        dry_run = data.get('dry_run', False)
+
+        conn, db_type = get_db_connection()
+        if not conn:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        if db_type == 'mysql':
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+        else:
+            cursor = conn.cursor()
+
+        # Find transactions with wrong dates
+        # These are transactions created from incoming_receipts where chase_date != received_date
+        # Use receipt_date if available, otherwise received_date
+        query = '''
+            SELECT
+                ir.id as incoming_id,
+                ir.received_date as correct_date,
+                ir.receipt_date,
+                ir.merchant,
+                ir.amount,
+                ir.accepted_as_transaction_id as txn_id,
+                t._index,
+                t.chase_date as old_chase_date,
+                t.chase_description,
+                t.created_at
+            FROM incoming_receipts ir
+            INNER JOIN transactions t ON t._index = ir.accepted_as_transaction_id
+            WHERE ir.status = 'accepted'
+            AND ir.accepted_as_transaction_id IS NOT NULL
+            AND DATE(t.chase_date) != DATE(COALESCE(ir.receipt_date, ir.received_date))
+        '''
+
+        cursor.execute(query)
+        raw_rows = cursor.fetchall()
+
+        # Convert to dicts for SQLite compatibility
+        if db_type == 'sqlite':
+            rows = [dict(r) for r in raw_rows]
+        else:
+            rows = raw_rows
+
+        if not rows:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'ok': True,
+                'message': 'All transaction dates are correct!',
+                'fixed': 0
+            })
+
+        results = []
+        fixed_count = 0
+
+        for row in rows:
+            # Use receipt_date if available, otherwise received_date
+            correct_date = row['receipt_date'] or row['correct_date']
+            if correct_date:
+                # Ensure it's a string in YYYY-MM-DD format
+                if hasattr(correct_date, 'strftime'):
+                    correct_date = correct_date.strftime('%Y-%m-%d')
+                else:
+                    correct_date = str(correct_date).split('T')[0].split(' ')[0]
+
+            result = {
+                'txn_id': row['txn_id'],
+                'merchant': row['merchant'] or row['chase_description'],
+                'amount': float(row['amount']) if row['amount'] else 0,
+                'old_date': str(row['old_chase_date']),
+                'new_date': correct_date
+            }
+
+            if not dry_run and correct_date:
+                # Update the transaction date - use ? for SQLite, %s for MySQL
+                if db_type == 'mysql':
+                    cursor.execute('''
+                        UPDATE transactions
+                        SET chase_date = %s
+                        WHERE _index = %s
+                    ''', (correct_date, row['txn_id']))
+                else:
+                    cursor.execute('''
+                        UPDATE transactions
+                        SET chase_date = ?
+                        WHERE _index = ?
+                    ''', (correct_date, row['txn_id']))
+                fixed_count += 1
+                result['fixed'] = True
+            else:
+                result['fixed'] = False
+
+            results.append(result)
+
+        if not dry_run:
+            conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'message': f'{"Would fix" if dry_run else "Fixed"} {len(rows)} transaction dates',
+            'dry_run': dry_run,
+            'fixed': fixed_count if not dry_run else 0,
+            'found': len(rows),
+            'results': results
+        })
+
+    except Exception as e:
+        print(f"❌ Error fixing dates: {e}")
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/scan", methods=["POST"])
 def scan_incoming_receipts():
     """

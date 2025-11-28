@@ -255,6 +255,7 @@ tr.hidden { display: none; }
   <div class="controls">
     <button class="btn-ghost btn-sm" onclick="clearFiltered()">🗑️ Clear Rejected</button>
     <button class="btn-ghost btn-sm" onclick="reprocessMissing()" title="Re-download receipts for accepted items that have no files">🔧 Fix Missing</button>
+    <button class="btn-ghost btn-sm" onclick="fixDates()" title="Fix wrong dates on transactions from incoming receipts">📅 Fix Dates</button>
     <button class="btn-primary" onclick="scanForNew()">🔄 Scan Now</button>
   </div>
 </header>
@@ -425,9 +426,12 @@ function renderRow(receipt) {
   // Check if refund for quickAccept
   const isRefund = receipt.is_refund || (receipt.subject || '').toLowerCase().includes('refund');
 
+  // Get the actual receipt date (use receipt_date if available, otherwise received_date)
+  const receiptDate = receipt.receipt_date || receipt.received_date || '';
+
   // Actions
   const actions = receipt.status === 'pending'
-    ? `<button class="btn-success btn-sm" onclick="quickAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund})">✓</button>
+    ? `<button class="btn-success btn-sm" onclick="quickAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}')">✓</button>
        <button class="btn-danger btn-sm" onclick="quickReject(${receipt.id})">✗</button>`
     : `<span style="color:var(--muted);font-size:11px">${receipt.status === 'accepted' ? '✓ Accepted' : '✗ Rejected'}</span>`;
 
@@ -464,12 +468,15 @@ function extractMerchantFromSubject(subject) {
   return 'Unknown';
 }
 
-async function quickAccept(id, merchant, amount, isRefund = false) {
+async function quickAccept(id, merchant, amount, isRefund = false, receiptDate = '') {
   const row = document.querySelector(`tr[data-id="${id}"]`);
   const actionsCell = row.querySelector('td:last-child');
 
   // Show processing state with spinner
   actionsCell.innerHTML = '<span style="color:var(--brand);font-size:11px;display:flex;align-items:center;gap:4px"><span class="spinner"></span> Creating transaction...</span>';
+
+  // Use actual receipt date, fallback to today if not provided
+  const transDate = receiptDate ? receiptDate.split('T')[0] : new Date().toISOString().split('T')[0];
 
   try {
     const response = await fetch('/api/incoming/accept', {
@@ -480,7 +487,7 @@ async function quickAccept(id, merchant, amount, isRefund = false) {
         merchant: merchant,
         amount: amount || 0,
         is_refund: isRefund,
-        date: new Date().toISOString().split('T')[0],
+        date: transDate,
         business_type: 'Personal'
       })
     });
@@ -659,6 +666,59 @@ async function reprocessMissing() {
   } catch (e) {
     console.error('Reprocess error:', e);
     showToast('Error reprocessing receipts', 'error');
+  }
+}
+
+async function fixDates() {
+  // First do a dry run to show what will be fixed
+  showToast('Checking for transactions with wrong dates...', 'info');
+
+  try {
+    const dryRunResponse = await fetch('/api/incoming/fix-dates', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ dry_run: true })
+    });
+
+    const dryRunData = await dryRunResponse.json();
+
+    if (!dryRunData.ok) {
+      showToast(dryRunData.error || 'Failed to check dates', 'error');
+      return;
+    }
+
+    if (dryRunData.found === 0) {
+      showToast('All transaction dates are correct!', 'success');
+      return;
+    }
+
+    // Show confirmation with details
+    const details = dryRunData.results.map(r =>
+      `${r.merchant}: ${r.old_date} -> ${r.new_date}`
+    ).join('\n');
+
+    if (!confirm(`Found ${dryRunData.found} transaction(s) with wrong dates:\n\n${details}\n\nFix them?`)) {
+      return;
+    }
+
+    // Actually fix the dates
+    showToast('Fixing transaction dates...', 'info');
+    const response = await fetch('/api/incoming/fix-dates', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ dry_run: false })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      showToast(`Fixed ${data.fixed} transaction dates!`, 'success');
+    } else {
+      showToast(data.error || 'Failed to fix dates', 'error');
+    }
+  } catch (e) {
+    console.error('Fix dates error:', e);
+    showToast('Error fixing dates', 'error');
   }
 }
 
