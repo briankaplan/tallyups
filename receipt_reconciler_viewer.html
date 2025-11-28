@@ -803,16 +803,16 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
     <!-- Toolbar -->
     <div class="toolbar">
       <div class="toolbar-group">
-        <button class="btn-primary" onclick="openManualEntryModal()" title="Add Manual Expense">
+        <button class="btn-ghost" onclick="openManualEntryModal()" title="Add a manual expense entry">
           ➕ Manual Entry
         </button>
-        <button class="btn-primary" onclick="smartSearchMissing()" title="Smart search: AI match, Gmail, and iMessage (learns patterns over time)" style="background:linear-gradient(135deg, var(--brand) 0%, #EA4335 50%, #0B84FE 100%)">
-          🔍 Smart Search
+        <button class="btn-primary" onclick="smartSearchMissing()" title="Find missing receipts automatically using AI, Gmail, and iMessage">
+          🔍 Find Receipts
         </button>
-        <button class="btn-primary" onclick="processMerchantIntelligence()" title="Process Merchant Intelligence" style="background:var(--brand2)">
-          🧠 Process MI
+        <button class="btn-ghost" onclick="processMerchantIntelligence()" title="Auto-categorize expenses using AI (merchant names, categories, descriptions)">
+          🏷️ Auto-Categorize
         </button>
-        <button class="btn-success" onclick="saveCSV()" title="Save Changes">
+        <button class="btn-success" onclick="saveCSV()" title="Save all changes to database">
           💾 Save
         </button>
       </div>
