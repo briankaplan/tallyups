@@ -665,11 +665,271 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
   font-size:13px;color:var(--muted);
 }
 
-/* Responsive */
+/* ============================================
+   RESPONSIVE MOBILE STYLES
+   ============================================ */
+
+/* Safe area support for notched devices */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* Tablet breakpoint */
 @media(max-width:1024px){
-  .left{flex:0 0 100%;max-width:100%}
+  .left{flex:0 0 100%;max-width:100%;min-width:unset}
   .right{display:none}
   .main{flex-direction:column}
+  .divider{display:none}
+
+  /* Show mobile receipt viewer button */
+  .mobile-receipt-btn{display:flex!important}
+
+  /* Adjust table columns */
+  th:nth-child(4), td:nth-child(4),
+  th:nth-child(5), td:nth-child(5),
+  th:nth-child(8), td:nth-child(8){display:none}
+
+  .quick-viewer-body{flex-direction:column}
+  .quick-viewer-data{width:100%;max-height:300px}
+}
+
+/* Mobile breakpoint */
+@media(max-width:768px){
+  /* Header mobile layout */
+  header{
+    flex-wrap:wrap;
+    padding:12px 16px;
+    padding-top:calc(12px + var(--safe-top));
+    gap:12px;
+  }
+  header .brand{order:1}
+  header .controls{order:2;gap:6px}
+  header > div[style*="nav"]{
+    order:3;width:100%;justify-content:center;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    padding-bottom:4px;
+  }
+
+  /* Navigation buttons */
+  .btn-ghost[onclick*="switchPage"]{
+    padding:8px 12px;font-size:12px;white-space:nowrap;
+  }
+
+  /* Hide some header controls on mobile */
+  .icon-btn[title="Keyboard Shortcuts (?)"],
+  .version{display:none}
+
+  /* Dashboard compact */
+  .dashboard{
+    padding:12px;gap:8px;
+    grid-template-columns:repeat(2,1fr);
+  }
+  .stat{padding:10px 12px}
+  .stat-value{font-size:18px}
+  .stat-label{font-size:10px}
+
+  /* Toolbar mobile */
+  .toolbar{
+    padding:12px 16px;gap:8px;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+  }
+  .toolbar button{font-size:12px;padding:8px 10px;white-space:nowrap}
+  .toolbar-divider{display:none}
+
+  /* Filters scrollable */
+  .filters{
+    padding:10px 16px;gap:8px;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    flex-wrap:nowrap;
+  }
+  .chip{white-space:nowrap;padding:6px 10px;font-size:11px}
+
+  /* Table mobile optimizations */
+  .table-wrap{max-height:calc(100vh - 280px)}
+  table{font-size:12px}
+  th,td{padding:10px 8px}
+
+  /* Hide more columns on small mobile */
+  th:nth-child(6), td:nth-child(6){display:none}
+
+  /* Date cell compact */
+  .date-cell{padding:4px 6px;min-width:60px}
+  .date-month-day{font-size:11px}
+  .date-year{font-size:9px}
+
+  /* Amount column */
+  .amount{font-size:13px}
+
+  /* Merchant name truncate */
+  td:nth-child(2){max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* Modal mobile */
+  .modal{width:95%;max-width:none;max-height:90vh;border-radius:12px}
+  .modal-header{padding:16px}
+  .modal-body{padding:16px}
+  .modal-footer{padding:12px 16px;flex-wrap:wrap}
+
+  /* Quick viewer mobile */
+  .quick-viewer-content{
+    width:100%;height:100%;max-width:none;max-height:none;
+    border-radius:0;
+  }
+  .quick-viewer-header{padding:16px;padding-top:calc(16px + var(--safe-top))}
+  .quick-viewer-body{padding:16px;flex-direction:column;gap:16px}
+  .quick-viewer-image{min-height:250px;border-radius:8px}
+  .quick-viewer-data{width:100%;max-height:none;padding:16px}
+
+  /* Navigation buttons */
+  .quick-nav-btn{width:40px;height:40px;font-size:18px}
+  .quick-nav-btn.prev{left:8px}
+  .quick-nav-btn.next{right:8px}
+
+  /* Shortcuts hide on mobile */
+  .quick-shortcuts{display:none}
+
+  /* Toast mobile */
+  .toast{
+    left:16px;right:16px;bottom:calc(16px + var(--safe-bottom));
+    border-radius:10px;
+  }
+
+  /* Settings modal */
+  .settings-section{padding:16px}
+  .settings-row{flex-direction:column;align-items:flex-start;gap:8px}
+
+  /* Hotkey grid */
+  .hotkey-grid{grid-template-columns:1fr}
+}
+
+/* Small mobile breakpoint */
+@media(max-width:480px){
+  /* Even more compact header */
+  header{padding:10px 12px;padding-top:calc(10px + var(--safe-top))}
+  .brand h1{font-size:14px}
+
+  /* Controls icon-only */
+  .icon-btn{width:32px;height:32px;font-size:16px}
+
+  /* Dashboard single column option */
+  .dashboard{grid-template-columns:repeat(2,1fr)}
+  .stat-value{font-size:16px}
+
+  /* Table even more compact */
+  th,td{padding:8px 6px}
+  table{font-size:11px}
+
+  /* Hide receipt column indicator on very small screens */
+  th:nth-child(7), td:nth-child(7){width:40px}
+  .receipt-indicator{font-size:12px}
+
+  /* Merchant max width */
+  td:nth-child(2){max-width:90px}
+
+  /* Quick viewer data compact */
+  .data-row{margin-bottom:12px;padding-bottom:12px}
+  .data-label{font-size:10px;margin-bottom:4px}
+  .data-value{font-size:14px}
+  .data-value.large{font-size:20px}
+}
+
+/* Mobile Receipt Viewer Modal */
+.mobile-receipt-modal{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.97);
+  z-index:2500;
+  display:none;
+  flex-direction:column;
+  padding-top:var(--safe-top);
+  padding-bottom:var(--safe-bottom);
+}
+.mobile-receipt-modal.active{display:flex}
+
+.mobile-receipt-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px;background:var(--panel);
+  border-bottom:1px solid var(--edge);
+}
+.mobile-receipt-title{font-size:16px;font-weight:700;color:var(--ink)}
+.mobile-receipt-close{
+  width:36px;height:36px;border-radius:8px;
+  background:rgba(239,68,68,.1);color:var(--bad);
+  font-size:20px;display:flex;align-items:center;justify-content:center;
+}
+
+.mobile-receipt-image{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  background:repeating-conic-gradient(#0a0a0a 0% 25%,#0f0f0f 0% 50%) 50%/20px 20px;
+  overflow:hidden;position:relative;
+}
+.mobile-receipt-image img{
+  max-width:100%;max-height:100%;object-fit:contain;
+  cursor:grab;
+}
+.mobile-receipt-image img:active{cursor:grabbing}
+
+.mobile-receipt-info{
+  background:var(--panel);padding:16px;
+  border-top:1px solid var(--edge);
+  max-height:40vh;overflow-y:auto;
+}
+.mobile-receipt-row{
+  display:flex;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);
+}
+.mobile-receipt-row:last-child{border-bottom:none}
+.mobile-receipt-label{font-size:12px;color:var(--muted);font-weight:600}
+.mobile-receipt-value{font-size:14px;color:var(--ink);font-weight:600;text-align:right}
+
+.mobile-receipt-nav{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(59,130,246,.9);color:#fff;border:none;
+  font-size:20px;cursor:pointer;z-index:10;
+  display:flex;align-items:center;justify-content:center;
+}
+.mobile-receipt-nav:disabled{opacity:.3;cursor:not-allowed}
+.mobile-receipt-nav.prev{left:12px}
+.mobile-receipt-nav.next{right:12px}
+
+/* Mobile receipt viewer button in table rows */
+.mobile-receipt-btn{
+  display:none;
+  width:36px;height:36px;border-radius:8px;
+  background:var(--brand);color:#000;
+  font-size:16px;align-items:center;justify-content:center;
+  cursor:pointer;border:none;
+}
+.mobile-receipt-btn:active{transform:scale(0.95)}
+
+/* Touch-friendly tap targets */
+@media(pointer:coarse){
+  button,
+  .chip,
+  .nav-item,
+  tbody tr{
+    min-height:44px;
+  }
+
+  /* Larger touch targets for table rows */
+  td{padding:14px 10px}
+
+  /* Prevent text selection on tap */
+  button,.chip{
+    -webkit-user-select:none;
+    user-select:none;
+  }
+}
+
+/* Landscape mobile */
+@media(max-width:768px) and (orientation:landscape){
+  .dashboard{grid-template-columns:repeat(4,1fr)}
+  .table-wrap{max-height:calc(100vh - 200px)}
+  .mobile-receipt-info{max-height:30vh}
+  .quick-viewer-body{flex-direction:row}
+  .quick-viewer-data{width:300px;max-height:none}
 }
 
 /* OCR Drag and Drop */
@@ -3054,7 +3314,12 @@ function renderTable() {
     tr.onclick = (e) => {
       // Don't select row if clicking on notes cell
       if (!e.target.classList.contains('notes-cell') && !e.target.classList.contains('notes-input')) {
-        selectRow(row);
+        // On mobile/tablet, open the mobile receipt viewer
+        if (window.innerWidth <= 1024) {
+          showMobileReceiptViewer(rowIndex);
+        } else {
+          selectRow(row);
+        }
       }
     };
     fragment.appendChild(tr);
@@ -6416,6 +6681,247 @@ function closeReportModal() {
   if (modal) {
     modal.remove();
   }
+}
+
+// ============================================
+// MOBILE RECEIPT VIEWER
+// ============================================
+
+let mobileReceiptModal = null;
+let mobileReceiptPanzoom = null;
+
+function initMobileReceiptModal() {
+  // Create modal if it doesn't exist
+  if (!document.getElementById('mobile-receipt-modal')) {
+    const modal = document.createElement('div');
+    modal.id = 'mobile-receipt-modal';
+    modal.className = 'mobile-receipt-modal';
+    modal.innerHTML = `
+      <div class="mobile-receipt-header">
+        <div class="mobile-receipt-title" id="mobile-receipt-title">Receipt</div>
+        <button class="mobile-receipt-close" onclick="closeMobileReceiptViewer()">×</button>
+      </div>
+      <div class="mobile-receipt-image" id="mobile-receipt-image">
+        <button class="mobile-receipt-nav prev" onclick="navigateMobileReceipt(-1)" id="mobile-prev">‹</button>
+        <button class="mobile-receipt-nav next" onclick="navigateMobileReceipt(1)" id="mobile-next">›</button>
+        <img id="mobile-receipt-img" src="" alt="Receipt" style="display:none">
+        <div id="mobile-no-receipt" style="text-align:center;color:var(--muted);padding:40px">
+          <div style="font-size:48px;opacity:0.3;margin-bottom:16px">📄</div>
+          <div>No receipt attached</div>
+        </div>
+      </div>
+      <div class="mobile-receipt-info" id="mobile-receipt-info">
+        <div class="mobile-receipt-row">
+          <span class="mobile-receipt-label">Merchant</span>
+          <span class="mobile-receipt-value" id="mobile-merchant">—</span>
+        </div>
+        <div class="mobile-receipt-row">
+          <span class="mobile-receipt-label">Amount</span>
+          <span class="mobile-receipt-value" id="mobile-amount">—</span>
+        </div>
+        <div class="mobile-receipt-row">
+          <span class="mobile-receipt-label">Date</span>
+          <span class="mobile-receipt-value" id="mobile-date">—</span>
+        </div>
+        <div class="mobile-receipt-row">
+          <span class="mobile-receipt-label">Business</span>
+          <span class="mobile-receipt-value" id="mobile-business">—</span>
+        </div>
+        <div class="mobile-receipt-row">
+          <span class="mobile-receipt-label">Status</span>
+          <span class="mobile-receipt-value" id="mobile-status">—</span>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-success" onclick="mobileMarkStatus('good')" style="flex:1;min-width:80px">✓ Good</button>
+          <button class="btn-danger" onclick="mobileMarkStatus('bad')" style="flex:1;min-width:80px">✗ Bad</button>
+          <button class="btn-ghost" onclick="openQuickViewerFromMobile()" style="flex:1;min-width:80px">✏️ Edit</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    mobileReceiptModal = modal;
+  }
+}
+
+function showMobileReceiptViewer(idx) {
+  initMobileReceiptModal();
+  const modal = document.getElementById('mobile-receipt-modal');
+  const row = DATA[idx];
+
+  if (!row) return;
+
+  // Store current index
+  modal.dataset.currentIdx = idx;
+
+  // Update title
+  document.getElementById('mobile-receipt-title').textContent =
+    row['Vendor/Merchant'] || 'Receipt Details';
+
+  // Update info
+  document.getElementById('mobile-merchant').textContent =
+    row['Vendor/Merchant'] || '—';
+  document.getElementById('mobile-amount').textContent =
+    row['Amount'] || '—';
+  document.getElementById('mobile-date').textContent =
+    row['Transaction Date'] || '—';
+  document.getElementById('mobile-business').textContent =
+    row['Business Type'] || '—';
+  document.getElementById('mobile-status').textContent =
+    row['Review Status'] || 'Pending';
+
+  // Update receipt image
+  const img = document.getElementById('mobile-receipt-img');
+  const noReceipt = document.getElementById('mobile-no-receipt');
+  const receiptUrl = row['receipt_url'] || row['Receipt URL'] || '';
+
+  if (receiptUrl) {
+    img.src = receiptUrl;
+    img.style.display = 'block';
+    noReceipt.style.display = 'none';
+
+    // Initialize panzoom for pinch-to-zoom
+    if (mobileReceiptPanzoom) {
+      mobileReceiptPanzoom.destroy();
+    }
+    img.onload = () => {
+      if (typeof Panzoom !== 'undefined') {
+        mobileReceiptPanzoom = Panzoom(img, {
+          maxScale: 5,
+          minScale: 0.5,
+          contain: 'outside'
+        });
+        img.parentElement.addEventListener('wheel', mobileReceiptPanzoom.zoomWithWheel);
+      }
+    };
+  } else {
+    img.style.display = 'none';
+    noReceipt.style.display = 'block';
+  }
+
+  // Update navigation buttons
+  updateMobileNavButtons(idx);
+
+  // Show modal
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMobileReceiptViewer() {
+  const modal = document.getElementById('mobile-receipt-modal');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  if (mobileReceiptPanzoom) {
+    mobileReceiptPanzoom.destroy();
+    mobileReceiptPanzoom = null;
+  }
+}
+
+function navigateMobileReceipt(direction) {
+  const modal = document.getElementById('mobile-receipt-modal');
+  const currentIdx = parseInt(modal.dataset.currentIdx || 0);
+  const newIdx = currentIdx + direction;
+
+  if (newIdx >= 0 && newIdx < FILTERED.length) {
+    const dataIdx = FILTERED[newIdx];
+    showMobileReceiptViewer(dataIdx);
+  }
+}
+
+function updateMobileNavButtons(dataIdx) {
+  const currentFilteredIdx = FILTERED.indexOf(dataIdx);
+  const prevBtn = document.getElementById('mobile-prev');
+  const nextBtn = document.getElementById('mobile-next');
+
+  if (prevBtn) prevBtn.disabled = currentFilteredIdx <= 0;
+  if (nextBtn) nextBtn.disabled = currentFilteredIdx >= FILTERED.length - 1;
+}
+
+function mobileMarkStatus(status) {
+  const modal = document.getElementById('mobile-receipt-modal');
+  const dataIdx = parseInt(modal.dataset.currentIdx || 0);
+
+  if (DATA[dataIdx]) {
+    DATA[dataIdx]['Review Status'] = status;
+    saveRow(dataIdx, 'Review Status', status);
+
+    // Update display
+    document.getElementById('mobile-status').textContent = status;
+
+    // Show toast
+    showToast(`Marked as ${status}`, status === 'good' ? '✅' : '❌');
+
+    // Auto-advance to next
+    setTimeout(() => navigateMobileReceipt(1), 500);
+  }
+}
+
+function openQuickViewerFromMobile() {
+  const modal = document.getElementById('mobile-receipt-modal');
+  const dataIdx = parseInt(modal.dataset.currentIdx || 0);
+  closeMobileReceiptViewer();
+  showQuickViewer(dataIdx);
+}
+
+// Override row click behavior on mobile
+function handleRowClick(idx, e) {
+  // Check if we're on mobile/tablet
+  if (window.innerWidth <= 1024) {
+    e.preventDefault();
+    e.stopPropagation();
+    showMobileReceiptViewer(idx);
+    return false;
+  }
+  // Desktop behavior - select row and show in side panel
+  selectRow(idx);
+}
+
+// Add touch event handling for swipe navigation in mobile viewer
+document.addEventListener('DOMContentLoaded', () => {
+  initMobileReceiptModal();
+
+  // Add swipe support to mobile receipt viewer
+  let touchStartX = 0;
+  let touchEndX = 0;
+
+  document.addEventListener('touchstart', (e) => {
+    const modal = document.getElementById('mobile-receipt-modal');
+    if (modal && modal.classList.contains('active')) {
+      touchStartX = e.changedTouches[0].screenX;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    const modal = document.getElementById('mobile-receipt-modal');
+    if (modal && modal.classList.contains('active')) {
+      touchEndX = e.changedTouches[0].screenX;
+      const diff = touchStartX - touchEndX;
+
+      // Minimum swipe distance of 50px
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) {
+          navigateMobileReceipt(1); // Swipe left - next
+        } else {
+          navigateMobileReceipt(-1); // Swipe right - previous
+        }
+      }
+    }
+  }, { passive: true });
+
+  // Close on escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMobileReceiptViewer();
+    }
+  });
+});
+
+// Helper to check if we're on mobile
+function isMobileDevice() {
+  return window.innerWidth <= 1024 ||
+    ('ontouchstart' in window) ||
+    (navigator.maxTouchPoints > 0);
 }
 </script>
 </body>
