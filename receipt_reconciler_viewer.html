@@ -1708,7 +1708,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 /* ============================================
    MOBILE BOTTOM NAVIGATION
    ============================================ */
-.mobile-bottom-nav {
+.bottom-nav {
   display: none;
   position: fixed;
   bottom: 0;
@@ -1725,11 +1725,11 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   z-index: 100;
 }
 
-.light .mobile-bottom-nav {
+.light .bottom-nav {
   background: rgba(255, 255, 255, 0.95);
 }
 
-.mobile-nav-item {
+.nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1742,18 +1742,18 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   transition: color 0.2s;
 }
 
-.mobile-nav-item.active {
+.nav-item.active {
   color: var(--brand);
 }
 
-.mobile-nav-item svg {
+.nav-item svg {
   width: 24px;
   height: 24px;
 }
 
 /* Show bottom nav on mobile */
 @media (max-width: 768px) {
-  .mobile-bottom-nav {
+  .bottom-nav {
     display: flex;
   }
 
@@ -8958,22 +8958,22 @@ if (filterSheet) {
 </script>
 
 <!-- Mobile Bottom Navigation -->
-<nav class="mobile-bottom-nav">
-  <a href="/" class="mobile-nav-item">
+<nav class="bottom-nav">
+  <a href="/" class="nav-item">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
       <polyline points="9 22 9 12 15 12 15 22"/>
     </svg>
     Home
   </a>
-  <a href="/viewer" class="mobile-nav-item active">
+  <a href="/viewer" class="nav-item active">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M9 11l3 3L22 4"/>
       <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
     </svg>
     Reconcile
   </a>
-  <a href="/library" class="mobile-nav-item">
+  <a href="/library" class="nav-item">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <rect x="3" y="3" width="7" height="7"/>
       <rect x="14" y="3" width="7" height="7"/>
@@ -8982,21 +8982,21 @@ if (filterSheet) {
     </svg>
     Library
   </a>
-  <a href="/scanner" class="mobile-nav-item">
+  <a href="/scanner" class="nav-item">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
       <circle cx="12" cy="13" r="4"/>
     </svg>
     Scan
   </a>
-  <a href="/incoming" class="mobile-nav-item">
+  <a href="/incoming" class="nav-item">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
       <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
     </svg>
     Inbox
   </a>
-  <a href="/reports" class="mobile-nav-item">
+  <a href="/reports" class="nav-item">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
       <polyline points="14 2 14 8 20 8"/>
