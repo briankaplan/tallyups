@@ -8118,7 +8118,7 @@ def diagnose_incoming_dates():
                 t._index as txn_index,
                 t.chase_date as txn_chase_date,
                 t.chase_description,
-                t.amount as txn_amount
+                t.chase_amount as txn_amount
             FROM incoming_receipts ir
             LEFT JOIN transactions t ON t._index = ir.accepted_as_transaction_id
             ORDER BY ir.received_date DESC
