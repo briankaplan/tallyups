@@ -1474,6 +1474,152 @@ def health_check():
     return jsonify(health_data)
 
 
+@app.route("/api/location/nearby")
+def get_nearby_places():
+    """
+    Smart location lookup - finds nearby restaurants/businesses using Overpass API.
+    Much better than basic reverse geocoding for identifying where you are.
+
+    Query params:
+    - lat: latitude
+    - lng: longitude
+    - merchant: optional merchant name from OCR to match against
+    """
+    import requests
+
+    lat = request.args.get('lat')
+    lng = request.args.get('lng')
+    merchant = request.args.get('merchant', '')
+
+    if not lat or not lng:
+        return jsonify({'error': 'lat and lng required'}), 400
+
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except ValueError:
+        return jsonify({'error': 'Invalid coordinates'}), 400
+
+    # Search radius in meters - restaurants/cafes within 100m
+    radius = 100
+
+    # Overpass API query for nearby POIs (restaurants, cafes, shops, etc.)
+    overpass_query = f"""
+    [out:json][timeout:10];
+    (
+      node["amenity"~"restaurant|cafe|bar|fast_food|pub"](around:{radius},{lat},{lng});
+      node["shop"](around:{radius},{lat},{lng});
+      way["amenity"~"restaurant|cafe|bar|fast_food|pub"](around:{radius},{lat},{lng});
+      way["shop"](around:{radius},{lat},{lng});
+    );
+    out center tags;
+    """
+
+    places = []
+    best_match = None
+
+    try:
+        resp = requests.post(
+            'https://overpass-api.de/api/interpreter',
+            data={'data': overpass_query},
+            timeout=10
+        )
+
+        if resp.ok:
+            data = resp.json()
+            elements = data.get('elements', [])
+
+            for el in elements:
+                tags = el.get('tags', {})
+                name = tags.get('name', '')
+                if not name:
+                    continue
+
+                # Get coordinates (for ways, use center)
+                el_lat = el.get('lat') or el.get('center', {}).get('lat')
+                el_lng = el.get('lon') or el.get('center', {}).get('lon')
+
+                # Calculate distance
+                distance = 0
+                if el_lat and el_lng:
+                    # Simple distance formula (good enough for short distances)
+                    dlat = (el_lat - lat) * 111000  # ~111km per degree
+                    dlng = (el_lng - lng) * 111000 * math.cos(math.radians(lat))
+                    distance = math.sqrt(dlat**2 + dlng**2)
+
+                # Determine category
+                amenity = tags.get('amenity', '')
+                shop_type = tags.get('shop', '')
+                cuisine = tags.get('cuisine', '')
+
+                if amenity in ['restaurant', 'cafe', 'fast_food']:
+                    category = 'Meals'
+                elif amenity in ['bar', 'pub']:
+                    category = 'Entertainment'
+                elif shop_type:
+                    category = 'Supplies'
+                else:
+                    category = ''
+
+                place = {
+                    'name': name,
+                    'type': amenity or shop_type,
+                    'cuisine': cuisine,
+                    'category': category,
+                    'distance_m': round(distance, 1),
+                    'address': tags.get('addr:street', ''),
+                    'city': tags.get('addr:city', '')
+                }
+                places.append(place)
+
+                # Match against merchant name if provided
+                if merchant and not best_match:
+                    merchant_lower = merchant.lower()
+                    name_lower = name.lower()
+                    # Check for match
+                    if (merchant_lower in name_lower or
+                        name_lower in merchant_lower or
+                        SequenceMatcher(None, merchant_lower, name_lower).ratio() > 0.6):
+                        best_match = place
+
+            # Sort by distance
+            places.sort(key=lambda x: x['distance_m'])
+
+    except Exception as e:
+        print(f"[Location] Overpass error: {e}")
+
+    # If no places found, try basic reverse geocoding as fallback
+    if not places:
+        try:
+            resp = requests.get(
+                f'https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lng}&format=json',
+                headers={'User-Agent': 'Tallyups/1.0'},
+                timeout=5
+            )
+            if resp.ok:
+                data = resp.json()
+                addr = data.get('address', {})
+                name = addr.get('amenity') or addr.get('shop') or addr.get('restaurant') or addr.get('building') or ''
+                if name:
+                    places.append({
+                        'name': name,
+                        'type': 'location',
+                        'category': '',
+                        'distance_m': 0,
+                        'address': addr.get('road', ''),
+                        'city': addr.get('city') or addr.get('town') or addr.get('village', '')
+                    })
+        except:
+            pass
+
+    return jsonify({
+        'places': places[:10],  # Top 10 closest
+        'best_match': best_match,
+        'closest': places[0] if places else None,
+        'count': len(places)
+    })
+
+
 @app.route("/api/debug/receipt-stats")
 def debug_receipt_stats():
     """Debug endpoint to check receipt statistics"""

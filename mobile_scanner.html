@@ -2388,20 +2388,55 @@
       }
     }
 
-    async function reverseGeocode(lat, lng) {
+    async function reverseGeocode(lat, lng, merchant = '') {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+        // Use smart location lookup API for better restaurant/business identification
+        const url = `${API_BASE}/location/nearby?lat=${lat}&lng=${lng}&merchant=${encodeURIComponent(merchant)}`;
+        const res = await fetch(url);
+
         if (res.ok) {
           const data = await res.json();
-          if (data.address) {
-            captureLocation.name = data.address.amenity || data.address.shop || data.address.restaurant || data.address.road || '';
-            captureLocation.city = data.address.city || data.address.town || data.address.village || '';
-            if (captureLocation.name) {
-              console.log('[Location] Resolved:', captureLocation.name);
-            }
+
+          // Best match is if merchant name matches a nearby place
+          if (data.best_match) {
+            captureLocation.name = data.best_match.name;
+            captureLocation.type = data.best_match.type;
+            captureLocation.category = data.best_match.category;
+            captureLocation.city = data.best_match.city;
+            captureLocation.matched = true;
+            console.log('[Location] Matched:', data.best_match.name);
+          } else if (data.closest) {
+            // Otherwise use closest place
+            captureLocation.name = data.closest.name;
+            captureLocation.type = data.closest.type;
+            captureLocation.category = data.closest.category;
+            captureLocation.city = data.closest.city;
+            captureLocation.distance = data.closest.distance_m;
+            console.log('[Location] Closest:', data.closest.name, `(${data.closest.distance_m}m)`);
+          }
+
+          // Store all nearby places for suggestions
+          captureLocation.nearby = data.places || [];
+
+          // Auto-fill category if detected from location
+          if (captureLocation.category && !$('category-select').value) {
+            $('category-select').value = captureLocation.category;
+            console.log('[Location] Auto-category:', captureLocation.category);
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        // Fallback to basic OpenStreetMap
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.address) {
+              captureLocation.name = data.address.amenity || data.address.shop || data.address.restaurant || data.address.road || '';
+              captureLocation.city = data.address.city || data.address.town || data.address.village || '';
+            }
+          }
+        } catch (e2) {}
+      }
     }
 
     // ========================================
@@ -2512,11 +2547,16 @@
               data.note = `📅 ${calEvent.title}`;
             }
 
-            // Use location name if merchant not found
-            if (!data.merchant && captureLocation?.name) {
-              $('merchant-input').value = captureLocation.name;
-              $('merchant-input').classList.add('ai-filled');
+            // Re-lookup location with merchant name for better matching
+            if (captureLocation?.lat && !captureLocation.matched) {
+              reverseGeocode(captureLocation.lat, captureLocation.lng, data.merchant);
             }
+          }
+
+          // Use location name if merchant not found by OCR
+          if (!data.merchant && captureLocation?.name) {
+            $('merchant-input').value = captureLocation.name;
+            $('merchant-input').classList.add('ai-filled');
           }
 
           if (data.total) {
