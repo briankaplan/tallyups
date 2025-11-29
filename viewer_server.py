@@ -6961,15 +6961,22 @@ def serve_report_builder():
 # =============================================================================
 
 @app.route("/api/incoming/receipts", methods=["GET"])
-@login_required
 def get_incoming_receipts():
     """
     Get all incoming receipts from Gmail
+    Supports admin_key authentication for API access.
 
     Query params:
     - status: 'pending', 'accepted', 'rejected', or 'all' (default: 'all')
     - limit: max number of results (default: 100)
     """
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'error': 'Authentication required'}), 401
+
     try:
         if not USE_DATABASE or not db:
             return jsonify({
