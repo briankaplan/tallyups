@@ -1538,9 +1538,12 @@ def dashboard_stats():
         cursor.execute("SELECT COUNT(*) as count FROM transactions")
         total_transactions = cursor.fetchone()[0]
 
-        # Pending incoming receipts
-        cursor.execute("SELECT COUNT(*) as count FROM incoming_receipts WHERE status = 'pending'")
-        pending = cursor.fetchone()[0]
+        # Pending incoming receipts (handle if table doesn't exist)
+        try:
+            cursor.execute("SELECT COUNT(*) as count FROM incoming_receipts WHERE status = 'pending'")
+            pending = cursor.fetchone()[0]
+        except:
+            pending = 0
 
         # This month's spending
         cursor.execute("""
