@@ -806,6 +806,50 @@
       height: 22px;
     }
 
+    /* Save to Device Button */
+    .submit-section {
+      display: flex;
+      gap: 12px;
+    }
+
+    .save-device-btn {
+      width: 60px;
+      height: 60px;
+      background: var(--bg-card);
+      color: var(--text);
+      border: 2px solid var(--border);
+      border-radius: 18px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .save-device-btn:active {
+      transform: scale(0.95);
+      background: var(--bg);
+    }
+
+    .save-device-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .save-device-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .submit-btn {
+      flex: 1;
+    }
+
     /* Bottom Navigation */
     .bottom-nav {
       position: fixed;
@@ -2318,6 +2362,14 @@
       </div>
 
       <div class="submit-section">
+        <button class="save-device-btn" id="save-device-btn" disabled title="Save to Photos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>Save</span>
+        </button>
         <button class="submit-btn" id="submit-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 2L11 13"></path>
@@ -2826,6 +2878,12 @@
         submitReceipt();
       };
 
+      // Save to Device
+      $('save-device-btn').onclick = () => {
+        hapticFeedback('medium');
+        saveToDevice();
+      };
+
       // Success modal
       $('scan-another-btn').onclick = () => {
         hapticFeedback();
@@ -2956,6 +3014,7 @@
         $('camera-placeholder').style.display = 'none';
         $('camera-frame').classList.add('has-image');
         $('retake-btn').classList.add('visible');
+        $('save-device-btn').disabled = false;
 
         // Hide templates when image captured
         const templatesSection = $('templates-section');
@@ -3671,6 +3730,59 @@
     }
 
     // ========================================
+    // SAVE TO DEVICE
+    // ========================================
+    async function saveToDevice() {
+      if (!currentImage.blob) {
+        showToast('Capture a receipt first', 'error');
+        return;
+      }
+
+      const merchant = $('merchant-input').value.trim() || 'Receipt';
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `${merchant}_${timestamp}.jpg`;
+
+      // Try Web Share API first (best for iOS - allows saving to Photos)
+      if (navigator.canShare && navigator.canShare({ files: [new File([currentImage.blob], filename, { type: 'image/jpeg' })] })) {
+        try {
+          const file = new File([currentImage.blob], filename, { type: 'image/jpeg' });
+          await navigator.share({
+            files: [file],
+            title: 'Receipt',
+            text: `Receipt from ${merchant}`
+          });
+          showToast('Receipt shared!', 'success');
+          hapticFeedback('success');
+          return;
+        } catch (err) {
+          // User cancelled or share failed, fall through to download
+          if (err.name !== 'AbortError') {
+            console.log('Share failed, trying download:', err);
+          }
+        }
+      }
+
+      // Fallback: Download the file
+      try {
+        const url = URL.createObjectURL(currentImage.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Receipt saved to Downloads', 'success');
+        hapticFeedback('success');
+      } catch (err) {
+        console.error('Download failed:', err);
+        showToast('Could not save receipt', 'error');
+        hapticFeedback('error');
+      }
+    }
+
+    // ========================================
     // SUBMISSION
     // ========================================
     async function submitReceipt() {
@@ -4120,6 +4232,7 @@
       $('success-modal').classList.remove('visible');
       $('match-section').style.display = 'none';
       $('retake-btn').classList.remove('visible');
+      $('save-device-btn').disabled = true;
 
       // Reset form
       $('merchant-input').value = '';
