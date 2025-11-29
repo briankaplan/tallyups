@@ -1316,8 +1316,29 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    """Serve the HTML viewer."""
+    """Serve the Dashboard as the main landing page."""
+    return send_from_directory(BASE_DIR, "dashboard.html")
+
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    """Serve the Dashboard page."""
+    return send_from_directory(BASE_DIR, "dashboard.html")
+
+
+@app.route("/viewer")
+@login_required
+def viewer():
+    """Serve the legacy HTML viewer."""
     return send_from_directory(BASE_DIR, "receipt_reconciler_viewer.html")
+
+
+@app.route("/settings")
+@login_required
+def settings_page():
+    """Serve the Settings page."""
+    return send_from_directory(BASE_DIR, "settings.html")
 
 
 @app.route("/incoming.html")
@@ -1487,6 +1508,70 @@ def health_check():
     health_data["gemini_configured"] = gemini_configured
 
     return jsonify(health_data)
+
+
+@app.route("/api/dashboard/stats")
+def dashboard_stats():
+    """
+    Get dashboard statistics for the home page.
+    Returns total receipts, pending count, month total, and match rate.
+    """
+    db = get_db()
+    if not db:
+        return jsonify({
+            "total_receipts": 0,
+            "pending": 0,
+            "month_total": 0,
+            "match_rate": 0
+        })
+
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        # Total receipts with receipt_url (matched)
+        cursor.execute("SELECT COUNT(*) as count FROM expenses WHERE receipt_url IS NOT NULL AND receipt_url != ''")
+        total_matched = cursor.fetchone()["count"]
+
+        # Total expenses
+        cursor.execute("SELECT COUNT(*) as count FROM expenses")
+        total_expenses = cursor.fetchone()["count"]
+
+        # Pending incoming receipts
+        cursor.execute("SELECT COUNT(*) as count FROM incoming_receipts WHERE status = 'pending'")
+        pending = cursor.fetchone()["count"]
+
+        # This month's spending
+        cursor.execute("""
+            SELECT COALESCE(SUM(ABS(amount)), 0) as total
+            FROM expenses
+            WHERE MONTH(date) = MONTH(CURRENT_DATE())
+            AND YEAR(date) = YEAR(CURRENT_DATE())
+            AND amount < 0
+        """)
+        month_total = float(cursor.fetchone()["total"] or 0)
+
+        # Calculate match rate
+        match_rate = round((total_matched / total_expenses * 100) if total_expenses > 0 else 0)
+
+        return jsonify({
+            "total_receipts": total_matched,
+            "pending": pending,
+            "month_total": round(month_total, 2),
+            "match_rate": match_rate,
+            "total_expenses": total_expenses
+        })
+
+    except Exception as e:
+        print(f"Dashboard stats error: {e}")
+        return jsonify({
+            "total_receipts": 0,
+            "pending": 0,
+            "month_total": 0,
+            "match_rate": 0,
+            "error": str(e)
+        })
+    finally:
+        cursor.close()
 
 
 @app.route("/api/location/nearby")

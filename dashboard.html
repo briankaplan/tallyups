@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <title>Tallyups - Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #000000;
+      --bg-card: #111111;
+      --bg-elevated: #1a1a1a;
+      --accent: #00ff88;
+      --accent-dim: rgba(0, 255, 136, 0.15);
+      --accent-glow: rgba(0, 255, 136, 0.3);
+      --text: #ffffff;
+      --text-dim: #666666;
+      --text-secondary: #999999;
+      --border: #222222;
+      --success: #00ff88;
+      --warning: #ffaa00;
+      --error: #ff4444;
+      --info: #4488ff;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      padding-top: var(--safe-top);
+      padding-bottom: calc(80px + var(--safe-bottom));
+    }
+
+    /* Header */
+    .header {
+      padding: 20px 20px 16px;
+      background: linear-gradient(180deg, rgba(0,255,136,0.08) 0%, transparent 100%);
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 20px;
+      height: 20px;
+      color: #000;
+    }
+
+    .logo-text {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-elevated);
+      border-color: var(--accent);
+    }
+
+    .icon-btn svg {
+      width: 20px;
+      height: 20px;
+      color: var(--text-secondary);
+    }
+
+    .greeting {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding: 0 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .stat-card.highlight {
+      background: linear-gradient(135deg, rgba(0,255,136,0.1) 0%, var(--bg-card) 100%);
+      border-color: rgba(0,255,136,0.3);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-value.accent {
+      color: var(--accent);
+    }
+
+    .stat-change {
+      font-size: 12px;
+      color: var(--success);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stat-change.warning {
+      color: var(--warning);
+    }
+
+    /* Quick Actions */
+    .section {
+      padding: 0 16px;
+      margin-bottom: 24px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .section-link {
+      font-size: 14px;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .action-btn:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .action-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .action-btn.primary .action-icon {
+      background: rgba(0,0,0,0.2);
+      color: #000;
+    }
+
+    .action-btn.primary .action-label {
+      color: #000;
+    }
+
+    .action-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .action-icon svg {
+      width: 22px;
+      height: 22px;
+      color: var(--accent);
+    }
+
+    .action-label {
+      font-size: 12px;
+      color: var(--text);
+      text-align: center;
+      font-weight: 500;
+    }
+
+    /* Service Status */
+    .status-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .status-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .status-icon svg {
+      width: 18px;
+      height: 18px;
+      color: var(--text-secondary);
+    }
+
+    .status-name {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.ok {
+      background: rgba(0,255,136,0.15);
+      color: var(--success);
+    }
+
+    .status-badge.warning {
+      background: rgba(255,170,0,0.15);
+      color: var(--warning);
+    }
+
+    .status-badge.error {
+      background: rgba(255,68,68,0.15);
+      color: var(--error);
+    }
+
+    /* Recent Activity */
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .activity-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .activity-item:hover {
+      border-color: var(--accent);
+    }
+
+    .activity-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .activity-icon svg {
+      width: 20px;
+      height: 20px;
+      color: var(--accent);
+    }
+
+    .activity-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .activity-title {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .activity-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .activity-amount {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(17,17,17,0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      padding: 8px 16px;
+      padding-bottom: calc(8px + var(--safe-bottom));
+      display: flex;
+      justify-content: space-around;
+      z-index: 100;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-elevated);
+    }
+
+    .nav-item.active {
+      background: var(--accent-dim);
+    }
+
+    .nav-item.active svg {
+      color: var(--accent);
+    }
+
+    .nav-item.active .nav-label {
+      color: var(--accent);
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+      color: var(--text-secondary);
+    }
+
+    .nav-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .nav-badge {
+      position: absolute;
+      top: 4px;
+      right: 8px;
+      min-width: 18px;
+      height: 18px;
+      background: var(--accent);
+      color: #000;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 5px;
+    }
+
+    .nav-item {
+      position: relative;
+    }
+
+    /* Loading State */
+    .loading {
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Skeleton Loading */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-card) 0%, var(--bg-elevated) 50%, var(--bg-card) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .empty-state p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* Responsive */
+    @media (min-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .quick-actions {
+        grid-template-columns: repeat(6, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <span class="logo-text">Tally<span>ups</span></span>
+      </div>
+      <div class="header-actions">
+        <a href="/settings" class="icon-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+    <p class="greeting" id="greeting">Good morning! Here's your receipt overview.</p>
+  </header>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card highlight">
+      <div class="stat-label">Total Receipts</div>
+      <div class="stat-value accent" id="stat-total">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value" id="stat-pending">-</div>
+      <div class="stat-change warning" id="pending-change"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">This Month</div>
+      <div class="stat-value" id="stat-month">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Match Rate</div>
+      <div class="stat-value" id="stat-rate">-</div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Quick Actions</h2>
+    </div>
+    <div class="quick-actions">
+      <a href="/scanner" class="action-btn primary">
+        <div class="action-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <span class="action-label">Scan</span>
+      </a>
+      <a href="/incoming" class="action-btn">
+        <div class="action-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+            <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+          </svg>
+        </div>
+        <span class="action-label">Inbox</span>
+      </a>
+      <a href="/library" class="action-btn">
+        <div class="action-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <span class="action-label">Library</span>
+      </a>
+      <a href="/report-builder" class="action-btn">
+        <div class="action-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+        </div>
+        <span class="action-label">Reports</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Service Status -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Services</h2>
+    </div>
+    <div class="status-list" id="status-list">
+      <div class="status-item">
+        <div class="status-info">
+          <div class="status-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <span class="status-name">Gmail</span>
+        </div>
+        <span class="status-badge" id="gmail-status">...</span>
+      </div>
+      <div class="status-item">
+        <div class="status-info">
+          <div class="status-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <span class="status-name">Calendar</span>
+        </div>
+        <span class="status-badge" id="calendar-status">...</span>
+      </div>
+      <div class="status-item">
+        <div class="status-info">
+          <div class="status-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <span class="status-name">AI (Gemini)</span>
+        </div>
+        <span class="status-badge" id="ai-status">...</span>
+      </div>
+      <div class="status-item">
+        <div class="status-info">
+          <div class="status-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+          <span class="status-name">Storage (R2)</span>
+        </div>
+        <span class="status-badge" id="storage-status">...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="section">
+    <div class="section-header">
+      <h2 class="section-title">Recent Receipts</h2>
+      <a href="/library" class="section-link">View All</a>
+    </div>
+    <div class="activity-list" id="activity-list">
+      <div class="loading">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span class="nav-label">Home</span>
+    </a>
+    <a href="/library" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/>
+        <rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      <span class="nav-label">Library</span>
+    </a>
+    <a href="/scanner" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span class="nav-label">Scan</span>
+    </a>
+    <a href="/incoming" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+        <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+      </svg>
+      <span class="nav-label">Inbox</span>
+      <span class="nav-badge" id="inbox-badge" style="display:none">0</span>
+    </a>
+    <a href="/report-builder" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      <span class="nav-label">Reports</span>
+    </a>
+  </nav>
+
+  <script>
+    const ADMIN_KEY = 'tallyups-admin-2024';
+
+    // Set greeting based on time
+    function setGreeting() {
+      const hour = new Date().getHours();
+      let greeting = 'Good evening';
+      if (hour < 12) greeting = 'Good morning';
+      else if (hour < 17) greeting = 'Good afternoon';
+      document.getElementById('greeting').textContent = `${greeting}! Here's your receipt overview.`;
+    }
+
+    // Fetch dashboard stats
+    async function loadStats() {
+      try {
+        const response = await fetch(`/api/dashboard/stats?admin_key=${ADMIN_KEY}`);
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById('stat-total').textContent = data.total_receipts || 0;
+          document.getElementById('stat-pending').textContent = data.pending || 0;
+          document.getElementById('stat-month').textContent = `$${(data.month_total || 0).toLocaleString()}`;
+          document.getElementById('stat-rate').textContent = `${data.match_rate || 0}%`;
+
+          if (data.pending > 0) {
+            document.getElementById('pending-change').innerHTML = `
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              ${data.pending} need review
+            `;
+            // Update inbox badge
+            const badge = document.getElementById('inbox-badge');
+            badge.textContent = data.pending;
+            badge.style.display = 'flex';
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load stats:', e);
+      }
+    }
+
+    // Fetch service status
+    async function loadStatus() {
+      try {
+        const response = await fetch(`/api/health`);
+        if (response.ok) {
+          const data = await response.json();
+
+          // Gmail
+          const gmailEl = document.getElementById('gmail-status');
+          if (data.gmail_accounts > 0) {
+            gmailEl.textContent = `${data.gmail_accounts} accounts`;
+            gmailEl.className = 'status-badge ok';
+          } else {
+            gmailEl.textContent = 'Not connected';
+            gmailEl.className = 'status-badge warning';
+          }
+
+          // Calendar
+          const calEl = document.getElementById('calendar-status');
+          if (data.calendars_count > 0) {
+            calEl.textContent = `${data.calendars_count} calendars`;
+            calEl.className = 'status-badge ok';
+          } else {
+            calEl.textContent = 'Not connected';
+            calEl.className = 'status-badge warning';
+          }
+
+          // AI
+          const aiEl = document.getElementById('ai-status');
+          if (data.gemini_configured) {
+            aiEl.textContent = 'Connected';
+            aiEl.className = 'status-badge ok';
+          } else {
+            aiEl.textContent = 'Not configured';
+            aiEl.className = 'status-badge error';
+          }
+
+          // Storage
+          const storageEl = document.getElementById('storage-status');
+          if (data.r2_connected) {
+            storageEl.textContent = 'Connected';
+            storageEl.className = 'status-badge ok';
+          } else {
+            storageEl.textContent = 'Local only';
+            storageEl.className = 'status-badge warning';
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load status:', e);
+      }
+    }
+
+    // Fetch recent activity
+    async function loadActivity() {
+      const container = document.getElementById('activity-list');
+      try {
+        const response = await fetch(`/api/library/receipts?admin_key=${ADMIN_KEY}&limit=5`);
+        if (response.ok) {
+          const data = await response.json();
+          const receipts = data.receipts || [];
+
+          if (receipts.length === 0) {
+            container.innerHTML = `
+              <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <p>No receipts yet. Scan your first receipt!</p>
+              </div>
+            `;
+            return;
+          }
+
+          container.innerHTML = receipts.map(r => `
+            <div class="activity-item" onclick="window.location.href='/library?id=${r.index || r.id}'">
+              <div class="activity-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <div class="activity-content">
+                <div class="activity-title">${r.merchant || 'Unknown'}</div>
+                <div class="activity-meta">${r.date || 'No date'}</div>
+              </div>
+              <div class="activity-amount">$${(r.amount || 0).toFixed(2)}</div>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        console.error('Failed to load activity:', e);
+        container.innerHTML = '<div class="empty-state"><p>Failed to load recent receipts</p></div>';
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      setGreeting();
+      loadStats();
+      loadStatus();
+      loadActivity();
+    });
+  </script>
+</body>
+</html>
