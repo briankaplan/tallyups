@@ -1516,29 +1516,31 @@ def dashboard_stats():
     Get dashboard statistics for the home page.
     Returns total receipts, pending count, month total, and match rate.
     """
-    db = get_db()
-    if not db:
+    try:
+        conn, db_type = get_db_connection()
+    except Exception as e:
         return jsonify({
             "total_receipts": 0,
             "pending": 0,
             "month_total": 0,
-            "match_rate": 0
+            "match_rate": 0,
+            "error": str(e)
         })
 
-    cursor = db.cursor(dictionary=True)
+    cursor = conn.cursor()
 
     try:
         # Total receipts with receipt_url (matched)
         cursor.execute("SELECT COUNT(*) as count FROM expenses WHERE receipt_url IS NOT NULL AND receipt_url != ''")
-        total_matched = cursor.fetchone()["count"]
+        total_matched = cursor.fetchone()[0]
 
         # Total expenses
         cursor.execute("SELECT COUNT(*) as count FROM expenses")
-        total_expenses = cursor.fetchone()["count"]
+        total_expenses = cursor.fetchone()[0]
 
         # Pending incoming receipts
         cursor.execute("SELECT COUNT(*) as count FROM incoming_receipts WHERE status = 'pending'")
-        pending = cursor.fetchone()["count"]
+        pending = cursor.fetchone()[0]
 
         # This month's spending
         cursor.execute("""
@@ -1548,7 +1550,7 @@ def dashboard_stats():
             AND YEAR(date) = YEAR(CURRENT_DATE())
             AND amount < 0
         """)
-        month_total = float(cursor.fetchone()["total"] or 0)
+        month_total = float(cursor.fetchone()[0] or 0)
 
         # Calculate match rate
         match_rate = round((total_matched / total_expenses * 100) if total_expenses > 0 else 0)
@@ -1572,6 +1574,7 @@ def dashboard_stats():
         })
     finally:
         cursor.close()
+        conn.close()
 
 
 @app.route("/api/location/nearby")
