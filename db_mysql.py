@@ -318,6 +318,74 @@ class MySQLReceiptDatabase:
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """)
 
+            # Create merchants table for merchant intelligence/learning
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS merchants (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    raw_description VARCHAR(500) NOT NULL,
+                    normalized_name VARCHAR(255) NOT NULL,
+                    category VARCHAR(255),
+                    is_subscription BOOLEAN DEFAULT FALSE,
+                    subscription_name VARCHAR(255),
+                    avg_amount DECIMAL(10,2),
+                    primary_business_type VARCHAR(255),
+                    confidence DECIMAL(5,4) DEFAULT 0.7,
+                    transaction_count INT DEFAULT 1,
+                    last_seen DATE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_raw_desc (raw_description(255)),
+                    INDEX idx_normalized (normalized_name),
+                    INDEX idx_category (category),
+                    INDEX idx_subscription (is_subscription)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create contacts table for CRM/attendee matching
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS contacts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    first_name VARCHAR(100),
+                    last_name VARCHAR(100),
+                    name_tokens VARCHAR(500),
+                    email VARCHAR(255),
+                    phone VARCHAR(50),
+                    title VARCHAR(255),
+                    company VARCHAR(255),
+                    category VARCHAR(100),
+                    notes TEXT,
+                    is_vip BOOLEAN DEFAULT FALSE,
+                    team VARCHAR(100),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_name (name),
+                    INDEX idx_first_name (first_name),
+                    INDEX idx_name_tokens (name_tokens(100)),
+                    INDEX idx_company (company),
+                    INDEX idx_category (category),
+                    INDEX idx_team (team)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create merchant_learning table for auto-learning from corrections
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS merchant_learning (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    raw_description VARCHAR(500) NOT NULL,
+                    learned_merchant VARCHAR(255),
+                    learned_category VARCHAR(255),
+                    learned_business_type VARCHAR(255),
+                    source VARCHAR(100) DEFAULT 'user_correction',
+                    confidence DECIMAL(5,4) DEFAULT 0.9,
+                    learn_count INT DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_raw_desc (raw_description(255)),
+                    INDEX idx_learned_merchant (learned_merchant)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
             self.conn.commit()
 
             # Run schema migrations to add columns that might be missing
@@ -843,6 +911,264 @@ class MySQLReceiptDatabase:
             print(f"❌ Failed to delete report {report_id}: {e}", flush=True)
             self.conn.rollback()
             return False
+
+    # =========================================================================
+    # MERCHANT INTELLIGENCE METHODS
+    # =========================================================================
+
+    def get_all_merchants(self) -> Dict[str, Dict]:
+        """Get all merchants as dict keyed by raw_description (uppercase)"""
+        if not self.use_mysql or not self.conn:
+            return {}
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT raw_description, normalized_name, category,
+                       is_subscription, avg_amount, primary_business_type
+                FROM merchants
+            """)
+            merchants = {}
+            for row in cursor.fetchall():
+                merchants[row['raw_description'].upper()] = {
+                    'normalized': row['normalized_name'],
+                    'category': row['category'],
+                    'is_subscription': bool(row['is_subscription']),
+                    'avg_amount': float(row['avg_amount']) if row['avg_amount'] else None,
+                    'business_type': row['primary_business_type']
+                }
+            return merchants
+        except Exception as e:
+            print(f"⚠️ Error loading merchants: {e}")
+            return {}
+        finally:
+            cursor.close()
+
+    def upsert_merchant(
+        self,
+        raw_description: str,
+        normalized_name: str,
+        category: str = None,
+        is_subscription: bool = False,
+        subscription_name: str = None,
+        avg_amount: float = None,
+        primary_business_type: str = None,
+        confidence: float = 0.7
+    ) -> bool:
+        """Insert or update a merchant in the knowledge base"""
+        if not self.use_mysql or not self.conn:
+            return False
+
+        self.ensure_connection()
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                INSERT INTO merchants (
+                    raw_description, normalized_name, category, is_subscription,
+                    subscription_name, avg_amount, primary_business_type, confidence,
+                    transaction_count, last_seen
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1, CURDATE())
+                ON DUPLICATE KEY UPDATE
+                    normalized_name = VALUES(normalized_name),
+                    category = COALESCE(VALUES(category), category),
+                    is_subscription = VALUES(is_subscription),
+                    subscription_name = COALESCE(VALUES(subscription_name), subscription_name),
+                    avg_amount = COALESCE(VALUES(avg_amount), avg_amount),
+                    primary_business_type = COALESCE(VALUES(primary_business_type), primary_business_type),
+                    confidence = GREATEST(confidence, VALUES(confidence)),
+                    transaction_count = transaction_count + 1,
+                    last_seen = CURDATE()
+            """, (raw_description, normalized_name, category, is_subscription,
+                  subscription_name, avg_amount, primary_business_type, confidence))
+            self.conn.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Merchant upsert error: {e}")
+            self.conn.rollback()
+            return False
+
+    def learn_merchant_correction(
+        self,
+        raw_description: str,
+        learned_merchant: str = None,
+        learned_category: str = None,
+        learned_business_type: str = None
+    ) -> bool:
+        """Record a user correction for merchant learning"""
+        if not self.use_mysql or not self.conn:
+            return False
+
+        self.ensure_connection()
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                INSERT INTO merchant_learning (
+                    raw_description, learned_merchant, learned_category,
+                    learned_business_type, source, confidence, learn_count
+                ) VALUES (%s, %s, %s, %s, 'user_correction', 0.95, 1)
+                ON DUPLICATE KEY UPDATE
+                    learned_merchant = COALESCE(VALUES(learned_merchant), learned_merchant),
+                    learned_category = COALESCE(VALUES(learned_category), learned_category),
+                    learned_business_type = COALESCE(VALUES(learned_business_type), learned_business_type),
+                    learn_count = learn_count + 1,
+                    confidence = LEAST(0.99, confidence + 0.01)
+            """, (raw_description, learned_merchant, learned_category, learned_business_type))
+            self.conn.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Merchant learning error: {e}")
+            self.conn.rollback()
+            return False
+
+    def get_learned_merchant(self, raw_description: str) -> Optional[Dict]:
+        """Get learned merchant info if it exists"""
+        if not self.use_mysql or not self.conn:
+            return None
+
+        self.ensure_connection()
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT learned_merchant, learned_category, learned_business_type, confidence
+                FROM merchant_learning
+                WHERE raw_description = %s
+            """, (raw_description,))
+            result = cursor.fetchone()
+            cursor.close()
+            return result
+        except:
+            return None
+
+    # =========================================================================
+    # CONTACTS/CRM METHODS
+    # =========================================================================
+
+    def search_contacts(self, query: str, limit: int = 5) -> List[Dict]:
+        """Search contacts by name for note generation"""
+        if not self.use_mysql or not self.conn or not query or len(query) < 2:
+            return []
+
+        self.ensure_connection()
+        try:
+            cursor = self.conn.cursor()
+            query_lower = query.lower()
+            cursor.execute("""
+                SELECT name, title, company, category, team
+                FROM contacts
+                WHERE name_tokens LIKE %s OR name LIKE %s
+                ORDER BY
+                    CASE WHEN first_name = %s THEN 1
+                         WHEN name LIKE %s THEN 2
+                         ELSE 3 END
+                LIMIT %s
+            """, (f'%{query_lower}%', f'%{query}%', query, f'{query}%', limit))
+            results = [dict(r) for r in cursor.fetchall()]
+            cursor.close()
+            return results
+        except Exception as e:
+            print(f"⚠️ Contact search error: {e}")
+            return []
+
+    def upsert_contact(
+        self,
+        name: str,
+        email: str = None,
+        phone: str = None,
+        title: str = None,
+        company: str = None,
+        category: str = None,
+        team: str = None,
+        is_vip: bool = False,
+        notes: str = None
+    ) -> bool:
+        """Insert or update a contact"""
+        if not self.use_mysql or not self.conn:
+            return False
+
+        # Parse first/last name
+        name_parts = name.strip().split()
+        first_name = name_parts[0] if name_parts else ''
+        last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+        name_tokens = name.lower()
+
+        self.ensure_connection()
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                INSERT INTO contacts (
+                    name, first_name, last_name, name_tokens, email, phone,
+                    title, company, category, team, is_vip, notes
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    email = COALESCE(VALUES(email), email),
+                    phone = COALESCE(VALUES(phone), phone),
+                    title = COALESCE(VALUES(title), title),
+                    company = COALESCE(VALUES(company), company),
+                    category = COALESCE(VALUES(category), category),
+                    team = COALESCE(VALUES(team), team),
+                    is_vip = VALUES(is_vip),
+                    notes = COALESCE(VALUES(notes), notes)
+            """, (name, first_name, last_name, name_tokens, email, phone,
+                  title, company, category, team, is_vip, notes))
+            self.conn.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Contact upsert error: {e}")
+            self.conn.rollback()
+            return False
+
+    def get_all_contacts(self) -> List[Dict]:
+        """Get all contacts"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT * FROM contacts ORDER BY name")
+            results = cursor.fetchall()
+            cursor.close()
+            return list(results)
+        except:
+            return []
+
+    def seed_default_contacts(self):
+        """Seed default VIP contacts from contacts_engine.py"""
+        VIP_PEOPLE = [
+            ("Brian Kaplan", "mcr", True),
+            ("Patrick Humes", "mcr", True),
+            ("Barry Stephenson", "mcr", True),
+            ("Paige", "mcr", True),
+            ("Jason Ross", "downhome", True),
+            ("Tim Staples", "downhome", True),
+            ("Joel Bergvall", "downhome", True),
+            ("Kevin Sabbe", "downhome", True),
+            ("Andrew Cohen", "downhome", True),
+            ("Celeste Stange", "downhome", True),
+            ("Tom May", "downhome", True),
+            ("Stephen Person", "industry", True),
+            ("Tom Etzel", "industry", True),
+            ("Cindy Mabe", "industry", True),
+            ("Ken Robold", "industry", True),
+            ("Taylor Lindsey", "industry", True),
+            ("Ben Kline", "industry", True),
+            ("Nick Barnes", "industry", True),
+            ("Copeland Isaacson", "industry", False),
+            ("Margarette Hart", "industry", False),
+            ("Sarah Moore", "industry", False),
+            ("Shanna Strassberg", "industry", False),
+            ("Sarah Hilly", "industry", False),
+            ("Sarah DeMarco", "industry", False),
+            ("Dawn Gates", "industry", False),
+            ("Scott Siman", "industry", True),
+        ]
+        count = 0
+        for name, team, is_vip in VIP_PEOPLE:
+            if self.upsert_contact(name=name, team=team, is_vip=is_vip):
+                count += 1
+        print(f"✅ Seeded {count} default contacts")
+        return count
 
 
 # Singleton instance
