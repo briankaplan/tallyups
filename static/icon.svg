@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88"/>
+      <stop offset="100%" style="stop-color:#00cc6a"/>
+    </linearGradient>
+    <linearGradient id="shadow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#000;stop-opacity:0"/>
+      <stop offset="100%" style="stop-color:#000;stop-opacity:0.15"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="108" ry="108" fill="url(#bg)"/>
+
+  <!-- Subtle inner shadow -->
+  <rect width="512" height="512" rx="108" ry="108" fill="url(#shadow)"/>
+
+  <!-- Receipt shape -->
+  <path d="M156 96 L356 96 L356 380 L336 365 L316 380 L296 365 L276 380 L256 365 L236 380 L216 365 L196 380 L176 365 L156 380 Z"
+        fill="#fff"
+        stroke="none"
+        opacity="0.95"/>
+
+  <!-- Check mark / tally -->
+  <path d="M200 200 L240 240 L310 160"
+        fill="none"
+        stroke="#00cc6a"
+        stroke-width="28"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- Dollar lines -->
+  <rect x="195" y="280" width="120" height="16" rx="8" fill="#00cc6a" opacity="0.6"/>
+  <rect x="195" y="315" width="80" height="16" rx="8" fill="#00cc6a" opacity="0.4"/>
+</svg>
