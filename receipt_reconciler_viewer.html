@@ -969,6 +969,9 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   .icon-btn[title="Keyboard Shortcuts (?)"],
   .version{display:none}
 
+  /* Hide top nav tabs on mobile - use bottom nav instead */
+  .nav-tabs{display:none !important}
+
   /* Dashboard compact - 2x2 */
   .dashboard{
     padding:10px 12px;
@@ -1078,6 +1081,8 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 
 /* Small mobile breakpoint */
 @media(max-width:480px){
+  /* Hide top nav tabs on mobile - use bottom nav instead */
+  .nav-tabs{display:none !important}
   /* Even more compact header */
   header{padding:10px 12px;padding-top:calc(10px + var(--safe-top))}
   .brand h1{font-size:14px}

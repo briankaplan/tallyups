@@ -1514,6 +1514,20 @@ def health_check():
         "accuracy": "99%+" if gemini_configured else "97-98%"
     }
 
+    # Check Calendar integration
+    calendar_connected = False
+    try:
+        from calendar_service import get_calendar_service
+        creds = get_calendar_service()
+        calendar_connected = creds is not None
+    except Exception:
+        pass
+    health_data["services"]["calendar"] = {
+        "connected": calendar_connected,
+        "status": "connected" if calendar_connected else "not_configured"
+    }
+    health_data["calendar_connected"] = calendar_connected
+
     # Legacy fields for backwards compatibility
     health_data["database"] = "connected" if db else "none"
     health_data["storage"] = "ok" if r2_configured else "not_configured"

@@ -810,20 +810,22 @@
         if (response.ok) {
           const data = await response.json();
 
-          // Gmail
+          // Gmail - read from services.gmail.connected_count
           const gmailEl = document.getElementById('gmail-status');
-          if (data.gmail_accounts > 0) {
-            gmailEl.textContent = `${data.gmail_accounts} accounts`;
+          const gmailCount = data.services?.gmail?.connected_count || 0;
+          if (gmailCount > 0) {
+            gmailEl.textContent = `${gmailCount} accounts`;
             gmailEl.className = 'status-badge ok';
           } else {
             gmailEl.textContent = 'Not connected';
             gmailEl.className = 'status-badge warning';
           }
 
-          // Calendar
+          // Calendar - read from services.calendar
           const calEl = document.getElementById('calendar-status');
-          if (data.calendars_count > 0) {
-            calEl.textContent = `${data.calendars_count} calendars`;
+          const calendarConnected = data.services?.calendar?.connected || data.calendar_connected;
+          if (calendarConnected) {
+            calEl.textContent = 'Connected';
             calEl.className = 'status-badge ok';
           } else {
             calEl.textContent = 'Not connected';
