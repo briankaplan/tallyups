@@ -2712,7 +2712,7 @@ def api_ai_categorize():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not session.get('logged_in'):
+        if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
     data = request.get_json(force=True) or {}
@@ -2774,7 +2774,7 @@ def api_ai_note_gemini():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not session.get('logged_in'):
+        if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
     data = request.get_json(force=True) or {}
@@ -2830,7 +2830,7 @@ def api_ai_auto_process():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not session.get('logged_in'):
+        if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
     data = request.get_json(force=True) or {}
@@ -2899,7 +2899,7 @@ def api_ai_batch_categorize():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not session.get('logged_in'):
+        if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
     data = request.get_json(force=True) or {}
@@ -6862,7 +6862,7 @@ def get_library_receipts():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not session.get('logged_in'):
+        if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
     try:
