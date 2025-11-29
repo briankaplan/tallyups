@@ -927,7 +927,17 @@ async function startReview() {
   showToast('Loading transactions...', 'info');
 
   try {
-    const response = await fetch('/load_data');
+    const response = await fetch('/api/transactions', {
+      credentials: 'include'
+    });
+
+    // Handle auth errors
+    if (response.status === 401) {
+      showToast('Session expired - redirecting to login', 'error');
+      window.location.href = '/login?next=/report-builder';
+      return;
+    }
+
     const data = await response.json();
     allTransactions = data;
 
@@ -1206,6 +1216,7 @@ async function markBad() {
     const response = await fetch('/save_row', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({
         _index: txId,
         patches: [{'Review Status': 'Bad'}]
@@ -1260,6 +1271,7 @@ async function finishReport() {
       await fetch('/save_row', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           _index: item.id,
           patches: [{'Already Submitted': 'yes'}]

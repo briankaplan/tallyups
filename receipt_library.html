@@ -1334,8 +1334,24 @@
         if (filters.amountMax) params.append('amount_max', filters.amountMax);
         params.append('sort', currentSort);
 
-        const response = await fetch(`/api/library/receipts?${params.toString()}`);
+        const response = await fetch(`/api/library/receipts?${params.toString()}`, {
+          credentials: 'include'
+        });
+
+        // Handle auth errors
+        if (response.status === 401) {
+          console.error('Authentication required - redirecting to login');
+          window.location.href = '/login?next=/library';
+          return;
+        }
+
         const data = await response.json();
+
+        if (!data.ok && data.error) {
+          console.error('API error:', data.error);
+          showEmpty('Error loading receipts', data.error);
+          return;
+        }
 
         receipts = data.receipts || [];
         sourceCounts = data.source_counts || {};
