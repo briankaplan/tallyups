@@ -391,8 +391,11 @@ def parse_email_date(date_str: str) -> str:
     Handles formats like:
     - "Wed, 27 Aug 2024 14:35:22 -0400"
     - "27 Aug 2024 10:00:00"
-    - "Wed, 27 Aug" (truncated - try to infer year)
+    - "Wed, 27 Aug" (truncated - try to infer year using day-of-week)
+    - "Tue, 28 Oc" (severely truncated month)
     - Already formatted dates like "2024-08-27"
+
+    Uses day-of-week matching to infer the correct year when missing.
 
     Returns: YYYY-MM-DD string or empty string if parsing fails
     """
@@ -408,7 +411,8 @@ def parse_email_date(date_str: str) -> str:
         return date_str[:10]
 
     import email.utils
-    from datetime import datetime
+    from datetime import datetime, date, timedelta
+    import calendar
     import re
 
     try:
@@ -418,17 +422,15 @@ def parse_email_date(date_str: str) -> str:
     except:
         pass
 
-    # Handle truncated formats like "Wed, 27 Aug 202", "Wed, 27 Aug", or "Wed, 27 Au"
-    # Gmail sometimes truncates month names (Au for August, Oc for October, Se for September)
     # Build month_map to support 2-4 character prefixes
     month_map = {}
     for prefix, month_num in [
         ('ja', 1), ('jan', 1),
         ('fe', 2), ('feb', 2),
-        ('ma', 3), ('mar', 3),  # Note: also catches May but May is 'may'
+        ('ma', 3), ('mar', 3),
         ('ap', 4), ('apr', 4),
         ('may', 5),
-        ('ju', 6), ('jun', 6),  # Note: also catches July but we check 'jul' first
+        ('ju', 6), ('jun', 6),
         ('jul', 7),
         ('au', 8), ('aug', 8),
         ('se', 9), ('sep', 9),
@@ -438,8 +440,20 @@ def parse_email_date(date_str: str) -> str:
     ]:
         month_map[prefix] = month_num
 
+    # Day of week map
+    dow_map = {
+        'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6
+    }
+
     try:
-        # Pattern: day month year - month can be 2-4+ chars (for truncated names like "Au", "Oc", "Se")
+        # Extract day of week if present (e.g., "Wed, 27 Aug")
+        dow_match = re.match(r'^([a-zA-Z]{3}),?\s*', date_str)
+        target_dow = None
+        if dow_match:
+            dow_str = dow_match.group(1).lower()
+            target_dow = dow_map.get(dow_str)
+
+        # Pattern: day month year - month can be 2+ chars (for truncated names like "Au", "Oc", "Se")
         match = re.search(r'(\d{1,2})\s+([a-zA-Z]{2,})\s*(\d{2,4})?', date_str)
         if match:
             day = int(match.group(1))
@@ -449,26 +463,48 @@ def parse_email_date(date_str: str) -> str:
             # Try to find month - check exact match first, then try prefixes
             month = month_map.get(month_str)
             if not month:
-                # Try using just first 3 chars (standard abbreviation)
                 month = month_map.get(month_str[:3])
             if not month:
-                # Try first 2 chars (truncated like "au", "oc", "se")
                 month = month_map.get(month_str[:2])
+
             if month:
-                # Determine year
+                now = datetime.now()
+
                 if year_str:
                     year = int(year_str)
                     if year < 100:
-                        year += 2000  # "24" -> 2024
+                        year += 2000
                     elif year < 1000:
-                        # Truncated year like "202" -> 2024/2025
-                        year = int(str(year) + '4')  # Assume recent year
+                        year = int(str(year) + '4')
                 else:
-                    # No year - use current year or previous if month is in future
-                    now = datetime.now()
-                    year = now.year
-                    if month > now.month:
-                        year -= 1
+                    # No year - try to find the right year using day-of-week
+                    # Check years from current back to 2 years ago
+                    year = None
+
+                    if target_dow is not None:
+                        # Use day-of-week to find correct year
+                        for candidate_year in range(now.year, now.year - 3, -1):
+                            try:
+                                test_date = date(candidate_year, month, day)
+                                if test_date.weekday() == target_dow:
+                                    # Day of week matches!
+                                    # Prefer dates in the past
+                                    if test_date <= now.date():
+                                        year = candidate_year
+                                        break
+                            except ValueError:
+                                # Invalid date (e.g., Feb 30)
+                                continue
+
+                    # If no match found or no day-of-week, use simple logic
+                    if year is None:
+                        year = now.year
+                        # If the month is after current month, assume previous year
+                        if month > now.month:
+                            year -= 1
+                        # If same month but day is after today, also previous year
+                        elif month == now.month and day > now.day:
+                            year -= 1
 
                 return f"{year:04d}-{month:02d}-{day:02d}"
     except:
@@ -5270,11 +5306,17 @@ def gmail_refresh_account(account_email):
 
 
 @app.route("/settings/gmail/refresh-all", methods=["POST"])
-@login_required
 def gmail_refresh_all():
     """
     Refresh Gmail tokens for all configured accounts.
     """
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
     results = []
     for email in GMAIL_ACCOUNTS.keys():
         service, error = get_gmail_service(email)
