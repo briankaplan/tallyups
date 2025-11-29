@@ -1254,28 +1254,152 @@ function getAttachmentIcon(filename) {
 }
 
 // Keyboard navigation
-document.addEventListener('keydown', (e) => {
-  if (!document.getElementById('preview-modal').classList.contains('active')) return;
+let currentRowIndex = -1;
 
-  if (e.key === 'Escape') {
-    closePreview();
-  } else if (currentPreviewReceipt && currentPreviewReceipt.status === 'pending') {
-    if (e.key === 'Enter' || e.key === 'a' || e.key === 'A') {
-      // Accept with Enter or 'A'
-      const r = currentPreviewReceipt;
-      const merchant = r.merchant || extractMerchantFromSubject(r.subject);
-      const amount = parseFloat(r.amount) || 0;
-      const isRefund = r.is_refund || (r.subject || '').toLowerCase().includes('refund');
-      const receiptDate = r.receipt_date || r.received_date || '';
+document.addEventListener('keydown', (e) => {
+  // Handle preview modal shortcuts
+  if (document.getElementById('preview-modal').classList.contains('active')) {
+    if (e.key === 'Escape') {
       closePreview();
-      quickAccept(r.id, merchant, amount, isRefund, receiptDate);
-    } else if (e.key === 'r' || e.key === 'R' || e.key === 'Backspace') {
-      // Reject with 'R' or Backspace
-      closePreview();
-      quickReject(currentPreviewReceipt.id);
+    } else if (currentPreviewReceipt && currentPreviewReceipt.status === 'pending') {
+      if (e.key === 'Enter' || e.key === 'a' || e.key === 'A') {
+        const r = currentPreviewReceipt;
+        const merchant = r.merchant || extractMerchantFromSubject(r.subject);
+        const amount = parseFloat(r.amount) || 0;
+        const isRefund = r.is_refund || (r.subject || '').toLowerCase().includes('refund');
+        const receiptDate = r.receipt_date || r.received_date || '';
+        closePreview();
+        quickAccept(r.id, merchant, amount, isRefund, receiptDate);
+      } else if (e.key === 'r' || e.key === 'R' || e.key === 'Backspace') {
+        closePreview();
+        quickReject(currentPreviewReceipt.id);
+      }
+    }
+    return;
+  }
+
+  // Global shortcuts
+  const key = e.key.toLowerCase();
+
+  // J/K for navigation (like vim)
+  if (key === 'j' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    navigateRows(1);
+  } else if (key === 'k' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    navigateRows(-1);
+  }
+  // / for search focus
+  else if (key === '/') {
+    e.preventDefault();
+    const searchInput = document.querySelector('input[type="search"], input[placeholder*="Search"]');
+    if (searchInput) searchInput.focus();
+  }
+  // Enter to open preview on selected row
+  else if (key === 'enter' && currentRowIndex >= 0) {
+    const visibleReceipts = getVisibleReceipts();
+    if (visibleReceipts[currentRowIndex]) {
+      showPreview(visibleReceipts[currentRowIndex].id);
     }
   }
+  // Shift+A to batch accept all visible
+  else if (key === 'a' && e.shiftKey) {
+    e.preventDefault();
+    batchAcceptVisible();
+  }
+  // ? for help
+  else if (key === '?') {
+    e.preventDefault();
+    showKeyboardHelp();
+  }
 });
+
+function getVisibleReceipts() {
+  return allReceipts.filter(r => {
+    if (currentFilter === 'all') return true;
+    return r.status === currentFilter;
+  });
+}
+
+function navigateRows(direction) {
+  const visibleReceipts = getVisibleReceipts();
+  if (visibleReceipts.length === 0) return;
+
+  currentRowIndex = Math.max(0, Math.min(visibleReceipts.length - 1, currentRowIndex + direction));
+
+  // Highlight current row
+  const rows = document.querySelectorAll('tbody tr:not(.hidden)');
+  rows.forEach((row, i) => {
+    if (i === currentRowIndex) {
+      row.style.background = 'rgba(0,255,136,0.1)';
+      row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      row.style.background = '';
+    }
+  });
+}
+
+async function batchAcceptVisible() {
+  const pending = allReceipts.filter(r => r.status === 'pending');
+  if (pending.length === 0) {
+    showToast('No pending receipts to accept', 'info');
+    return;
+  }
+
+  if (!confirm(`Accept all ${pending.length} pending receipts?`)) return;
+
+  showToast(`Processing ${pending.length} receipts...`, 'info');
+  let success = 0;
+
+  for (const r of pending) {
+    const merchant = r.merchant || extractMerchantFromSubject(r.subject);
+    const amount = parseFloat(r.amount) || 0;
+    const isRefund = r.is_refund || (r.subject || '').toLowerCase().includes('refund');
+    const receiptDate = r.receipt_date || r.received_date || '';
+
+    try {
+      const response = await fetch('/api/incoming/accept', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          receipt_id: r.id,
+          merchant,
+          amount,
+          is_refund: isRefund,
+          date: receiptDate ? receiptDate.split('T')[0] : new Date().toISOString().split('T')[0],
+          business_type: 'Personal'
+        })
+      });
+      if (response.ok) success++;
+    } catch (e) { console.error(e); }
+  }
+
+  showToast(`Accepted ${success}/${pending.length} receipts`, 'success');
+  loadReceipts();
+}
+
+function showKeyboardHelp() {
+  const helpHtml = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="this.remove()">
+      <div style="background:var(--panel);padding:24px;border-radius:12px;max-width:400px" onclick="event.stopPropagation()">
+        <h3 style="margin:0 0 16px 0">Keyboard Shortcuts</h3>
+        <div style="display:grid;gap:8px;font-size:13px">
+          <div><kbd>J</kbd> / <kbd>Down</kbd> - Next row</div>
+          <div><kbd>K</kbd> / <kbd>Up</kbd> - Previous row</div>
+          <div><kbd>Enter</kbd> - Preview selected</div>
+          <div><kbd>A</kbd> - Accept (in preview)</div>
+          <div><kbd>R</kbd> - Reject (in preview)</div>
+          <div><kbd>Shift+A</kbd> - Batch accept all pending</div>
+          <div><kbd>/</kbd> - Focus search</div>
+          <div><kbd>Esc</kbd> - Close modal</div>
+          <div><kbd>?</kbd> - Show this help</div>
+        </div>
+        <button style="margin-top:16px;width:100%" class="btn-primary" onclick="this.parentNode.parentNode.remove()">Got it</button>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', helpHtml);
+}
 </script>
 
 </body>

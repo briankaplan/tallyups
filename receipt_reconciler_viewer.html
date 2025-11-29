@@ -1289,11 +1289,62 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
         <button class="btn-success" onclick="saveCSV()" title="Save all changes to database">
           💾 Save
         </button>
+        <div class="toolbar-divider"></div>
+        <!-- Batch Operations -->
+        <button class="btn-ghost" id="batch-select-btn" onclick="toggleBatchMode()" title="Select multiple transactions for bulk operations">
+          ☑️ Batch
+        </button>
+        <div id="batch-actions" style="display:none;gap:6px" class="toolbar-group">
+          <button class="btn-ghost btn-sm" onclick="selectAllVisible()">Select All</button>
+          <button class="btn-ghost btn-sm" onclick="clearSelection()">Clear</button>
+          <select id="batch-business-select" class="input" style="width:140px;font-size:12px" onchange="batchSetBusiness(this.value)">
+            <option value="">Set Business...</option>
+            <option value="Music City Rodeo">MCR</option>
+            <option value="Down Home">Down Home</option>
+            <option value="Personal">Personal</option>
+          </select>
+          <select id="batch-status-select" class="input" style="width:130px;font-size:12px" onchange="batchSetStatus(this.value)">
+            <option value="">Set Status...</option>
+            <option value="good">Good</option>
+            <option value="bad">Bad</option>
+            <option value="not needed">Not Needed</option>
+          </select>
+          <span id="batch-count" style="font-size:11px;color:var(--muted);margin-left:8px">0 selected</span>
+        </div>
       </div>
       <div class="toolbar-divider"></div>
-      <div class="toolbar-group">
-        <input type="text" class="input" id="search" placeholder="Search..." style="width:200px">
+      <div class="toolbar-group" style="gap:8px">
+        <!-- Advanced Search -->
+        <div style="position:relative">
+          <input type="text" class="input" id="search" placeholder="/ Search..." style="width:200px;padding-left:28px">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px">🔍</span>
+        </div>
+        <button class="btn-ghost btn-sm" onclick="toggleAdvancedSearch()" title="Advanced Search Filters" id="advanced-search-btn">
+          ⚙️
+        </button>
       </div>
+    </div>
+
+    <!-- Advanced Search Panel (hidden by default) -->
+    <div id="advanced-search-panel" style="display:none;padding:12px 20px;background:var(--panel2);border-bottom:1px solid var(--edge);gap:16px" class="filters">
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="font-size:11px;color:var(--muted);font-weight:600">AMOUNT:</label>
+        <input type="number" id="search-amount-min" class="input" placeholder="Min" style="width:80px;font-size:12px" step="0.01">
+        <span style="color:var(--muted)">-</span>
+        <input type="number" id="search-amount-max" class="input" placeholder="Max" style="width:80px;font-size:12px" step="0.01">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="font-size:11px;color:var(--muted);font-weight:600">DATE:</label>
+        <input type="date" id="search-date-from" class="input" style="width:130px;font-size:12px">
+        <span style="color:var(--muted)">-</span>
+        <input type="date" id="search-date-to" class="input" style="width:130px;font-size:12px">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="font-size:11px;color:var(--muted);font-weight:600">MERCHANT:</label>
+        <input type="text" id="search-merchant" class="input" placeholder="Merchant name..." style="width:150px;font-size:12px">
+      </div>
+      <button class="btn-primary btn-sm" onclick="applyAdvancedSearch()">Apply</button>
+      <button class="btn-ghost btn-sm" onclick="clearAdvancedSearch()">Clear</button>
     </div>
 
     <!-- Filters -->
@@ -1798,12 +1849,36 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
             <span class="hotkey-key"><span class="kbd">↓</span></span>
           </div>
           <div class="hotkey-item">
+            <span class="hotkey-desc">Focus Search</span>
+            <span class="hotkey-key"><span class="kbd">/</span></span>
+          </div>
+          <div class="hotkey-item">
+            <span class="hotkey-desc">Missing Receipt Form</span>
+            <span class="hotkey-key"><span class="kbd">F</span></span>
+          </div>
+          <div class="hotkey-item">
             <span class="hotkey-desc">Close Modal</span>
             <span class="hotkey-key"><span class="kbd">Esc</span></span>
           </div>
           <div class="hotkey-item">
             <span class="hotkey-desc">Show This Menu</span>
             <span class="hotkey-key"><span class="kbd">?</span></span>
+          </div>
+        </div>
+
+        <div class="hotkey-section">
+          <div class="hotkey-section-title">📅 Extra Features</div>
+          <div class="hotkey-item">
+            <span class="hotkey-desc">Calendar View</span>
+            <span class="hotkey-key"><span class="kbd">Stats Page</span></span>
+          </div>
+          <div class="hotkey-item">
+            <span class="hotkey-desc">Batch Mode</span>
+            <span class="hotkey-key"><span class="kbd">Toolbar Button</span></span>
+          </div>
+          <div class="hotkey-item">
+            <span class="hotkey-desc">Advanced Search</span>
+            <span class="hotkey-key"><span class="kbd">Toolbar Button</span></span>
           </div>
         </div>
       </div>
@@ -5734,6 +5809,22 @@ function setupEventListeners() {
       e.preventDefault();
       undo();
     }
+    else if (key === '/') {
+      e.preventDefault();
+      document.getElementById('search').focus();
+    }
+    else if (key === 'f' && !e.ctrlKey) {
+      e.preventDefault();
+      openMissingReceiptModal();
+    }
+    else if (key === 'arrowup') {
+      e.preventDefault();
+      navigateRow(-1);
+    }
+    else if (key === 'arrowdown') {
+      e.preventDefault();
+      navigateRow(1);
+    }
   });
 }
 
@@ -7145,6 +7236,426 @@ function isMobileDevice() {
     ('ontouchstart' in window) ||
     (navigator.maxTouchPoints > 0);
 }
+
+// ============================================
+// BATCH OPERATIONS
+// ============================================
+let batchMode = false;
+let selectedTransactions = new Set();
+
+function toggleBatchMode() {
+  batchMode = !batchMode;
+  const btn = document.getElementById('batch-select-btn');
+  const actions = document.getElementById('batch-actions');
+
+  if (batchMode) {
+    btn.style.background = 'var(--brand)';
+    btn.style.color = '#000';
+    actions.style.display = 'flex';
+    showToast('Batch mode ON - Click rows to select', 'info');
+  } else {
+    btn.style.background = '';
+    btn.style.color = '';
+    actions.style.display = 'none';
+    selectedTransactions.clear();
+    renderTable();
+  }
+}
+
+function toggleTransactionSelection(index, event) {
+  if (!batchMode) return;
+  event.stopPropagation();
+
+  if (selectedTransactions.has(index)) {
+    selectedTransactions.delete(index);
+  } else {
+    selectedTransactions.add(index);
+  }
+
+  updateBatchCount();
+  renderTable();
+}
+
+function selectAllVisible() {
+  filteredData.forEach(row => selectedTransactions.add(row._index));
+  updateBatchCount();
+  renderTable();
+  showToast(`Selected ${selectedTransactions.size} transactions`, 'info');
+}
+
+function clearSelection() {
+  selectedTransactions.clear();
+  updateBatchCount();
+  renderTable();
+}
+
+function updateBatchCount() {
+  const countEl = document.getElementById('batch-count');
+  if (countEl) {
+    countEl.textContent = `${selectedTransactions.size} selected`;
+  }
+}
+
+async function batchSetBusiness(businessType) {
+  if (!businessType || selectedTransactions.size === 0) return;
+
+  const count = selectedTransactions.size;
+  if (!confirm(`Set ${count} transactions to "${businessType}"?`)) {
+    document.getElementById('batch-business-select').value = '';
+    return;
+  }
+
+  showToast(`Updating ${count} transactions...`, 'info');
+
+  let success = 0;
+  for (const index of selectedTransactions) {
+    try {
+      const res = await fetch('/update_row', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ _index: index, patch: { 'Business Type': businessType }})
+      });
+      if (res.ok) {
+        success++;
+        const row = csvData.find(r => r._index === index);
+        if (row) row['Business Type'] = businessType;
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  showToast(`Updated ${success}/${count} transactions`, 'success');
+  document.getElementById('batch-business-select').value = '';
+  selectedTransactions.clear();
+  updateBatchCount();
+  renderTable();
+  updateDashboard();
+}
+
+async function batchSetStatus(status) {
+  if (!status || selectedTransactions.size === 0) return;
+
+  const count = selectedTransactions.size;
+  if (!confirm(`Set ${count} transactions to "${status}"?`)) {
+    document.getElementById('batch-status-select').value = '';
+    return;
+  }
+
+  showToast(`Updating ${count} transactions...`, 'info');
+
+  let success = 0;
+  for (const index of selectedTransactions) {
+    try {
+      const res = await fetch('/update_row', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ _index: index, patch: { 'Review Status': status }})
+      });
+      if (res.ok) {
+        success++;
+        const row = csvData.find(r => r._index === index);
+        if (row) row['Review Status'] = status;
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  showToast(`Updated ${success}/${count} transactions`, 'success');
+  document.getElementById('batch-status-select').value = '';
+  selectedTransactions.clear();
+  updateBatchCount();
+  renderTable();
+}
+
+// ============================================
+// ADVANCED SEARCH
+// ============================================
+let advancedSearchVisible = false;
+
+function toggleAdvancedSearch() {
+  advancedSearchVisible = !advancedSearchVisible;
+  const panel = document.getElementById('advanced-search-panel');
+  const btn = document.getElementById('advanced-search-btn');
+
+  if (advancedSearchVisible) {
+    panel.style.display = 'flex';
+    btn.style.background = 'var(--brand)';
+    btn.style.color = '#000';
+  } else {
+    panel.style.display = 'none';
+    btn.style.background = '';
+    btn.style.color = '';
+  }
+}
+
+function applyAdvancedSearch() {
+  const amountMin = parseFloat(document.getElementById('search-amount-min').value) || null;
+  const amountMax = parseFloat(document.getElementById('search-amount-max').value) || null;
+  const dateFrom = document.getElementById('search-date-from').value || null;
+  const dateTo = document.getElementById('search-date-to').value || null;
+  const merchant = document.getElementById('search-merchant').value.toLowerCase().trim();
+
+  filteredData = csvData.filter(row => {
+    const amount = Math.abs(parseFloat(row['Chase Amount']) || 0);
+    const date = row['Chase Date'] || '';
+    const merchantName = (row['MI Merchant'] || row['Chase Description'] || '').toLowerCase();
+
+    if (amountMin !== null && amount < amountMin) return false;
+    if (amountMax !== null && amount > amountMax) return false;
+    if (dateFrom && date < dateFrom) return false;
+    if (dateTo && date > dateTo) return false;
+    if (merchant && !merchantName.includes(merchant)) return false;
+
+    return true;
+  });
+
+  renderTable();
+  showToast(`Found ${filteredData.length} matching transactions`, 'success');
+}
+
+function clearAdvancedSearch() {
+  document.getElementById('search-amount-min').value = '';
+  document.getElementById('search-amount-max').value = '';
+  document.getElementById('search-date-from').value = '';
+  document.getElementById('search-date-to').value = '';
+  document.getElementById('search-merchant').value = '';
+  document.getElementById('search').value = '';
+
+  filteredData = [...csvData];
+  renderTable();
+  showToast('Filters cleared', 'info');
+}
+
+// ============================================
+// AUTO-CATEGORIZATION LEARNING
+// ============================================
+const categoryRules = JSON.parse(localStorage.getItem('categoryRules') || '{}');
+
+function learnCategorization(merchant, businessType, category) {
+  const key = merchant.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+  if (!key) return;
+
+  categoryRules[key] = { businessType, category, lastUsed: Date.now() };
+  localStorage.setItem('categoryRules', JSON.stringify(categoryRules));
+}
+
+function suggestCategorization(merchant) {
+  const key = merchant.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+  return categoryRules[key] || null;
+}
+
+// Auto-apply learned rules when loading
+function applyLearnedRules() {
+  let applied = 0;
+
+  csvData.forEach(row => {
+    if (row['Business Type']) return; // Already categorized
+
+    const merchant = row['MI Merchant'] || row['Chase Description'] || '';
+    const suggestion = suggestCategorization(merchant);
+
+    if (suggestion) {
+      row['Business Type'] = suggestion.businessType;
+      if (suggestion.category) row['MI Category'] = suggestion.category;
+      applied++;
+    }
+  });
+
+  if (applied > 0) {
+    showToast(`Auto-categorized ${applied} transactions from learned rules`, 'success');
+    renderTable();
+    updateDashboard();
+  }
+}
+
+// ============================================
+// CALENDAR VIEW
+// ============================================
+function openCalendarView() {
+  // Create calendar modal
+  let modal = document.getElementById('calendar-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'calendar-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal" style="max-width:900px;max-height:90vh">
+        <div class="modal-header">
+          <div class="modal-title">📅 Calendar View</div>
+          <button class="modal-close" onclick="closeCalendarView()">×</button>
+        </div>
+        <div class="modal-body" style="padding:0">
+          <div id="calendar-container" style="padding:20px"></div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  modal.classList.add('active');
+  renderCalendar();
+}
+
+function closeCalendarView() {
+  const modal = document.getElementById('calendar-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+function renderCalendar() {
+  const container = document.getElementById('calendar-container');
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+
+  // Group transactions by date
+  const transactionsByDate = {};
+  csvData.forEach(row => {
+    const date = row['Chase Date'];
+    if (date) {
+      if (!transactionsByDate[date]) transactionsByDate[date] = [];
+      transactionsByDate[date].push(row);
+    }
+  });
+
+  // Get days in month
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startDay = firstDay.getDay();
+
+  let html = `
+    <div style="text-align:center;margin-bottom:20px">
+      <h3 style="margin:0">${today.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center">
+      <div style="font-weight:600;color:var(--muted);padding:8px">Sun</div>
+      <div style="font-weight:600;color:var(--muted);padding:8px">Mon</div>
+      <div style="font-weight:600;color:var(--muted);padding:8px">Tue</div>
+      <div style="font-weight:600;color:var(--muted);padding:8px">Wed</div>
+      <div style="font-weight:600;color:var(--muted);padding:8px">Thu</div>
+      <div style="font-weight:600;color:var(--muted);padding:8px">Fri</div>
+      <div style="font-weight:600;color:var(--muted);padding:8px">Sat</div>
+  `;
+
+  // Empty cells before first day
+  for (let i = 0; i < startDay; i++) {
+    html += '<div></div>';
+  }
+
+  // Days
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dayTxns = transactionsByDate[dateStr] || [];
+    const total = dayTxns.reduce((sum, t) => sum + Math.abs(parseFloat(t['Chase Amount']) || 0), 0);
+    const isToday = day === today.getDate();
+
+    html += `
+      <div style="padding:8px;background:var(--panel2);border-radius:8px;min-height:60px;cursor:${dayTxns.length ? 'pointer' : 'default'};${isToday ? 'border:2px solid var(--brand);' : ''}"
+           onclick="${dayTxns.length ? `showDayTransactions('${dateStr}')` : ''}">
+        <div style="font-weight:600;${isToday ? 'color:var(--brand)' : ''}">${day}</div>
+        ${dayTxns.length ? `
+          <div style="font-size:11px;color:var(--muted)">${dayTxns.length} txn</div>
+          <div style="font-size:12px;font-weight:600;color:var(--bad)">$${total.toFixed(0)}</div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function showDayTransactions(dateStr) {
+  // Filter to show only that day's transactions
+  document.getElementById('search').value = dateStr;
+  applyFilters();
+  closeCalendarView();
+  showToast(`Showing transactions for ${dateStr}`, 'info');
+}
+
+// ============================================
+// SMART NOTIFICATIONS
+// ============================================
+let notificationPermission = Notification.permission;
+
+async function requestNotificationPermission() {
+  if ('Notification' in window) {
+    notificationPermission = await Notification.requestPermission();
+    return notificationPermission === 'granted';
+  }
+  return false;
+}
+
+function showNotification(title, body, icon = '/favicon.ico') {
+  if (notificationPermission !== 'granted') return;
+
+  new Notification(title, { body, icon, badge: icon });
+}
+
+// Check for weekly summaries (call on page load)
+async function checkWeeklySummary() {
+  const lastSummary = localStorage.getItem('lastWeeklySummary');
+  const now = Date.now();
+  const oneWeek = 7 * 24 * 60 * 60 * 1000;
+
+  if (lastSummary && (now - parseInt(lastSummary)) < oneWeek) return;
+
+  // Generate summary
+  const unmatched = csvData.filter(r => !r['Receipt File']).length;
+  const thisWeek = csvData.filter(r => {
+    const date = new Date(r['Chase Date']);
+    return (now - date.getTime()) < oneWeek;
+  });
+  const weeklyTotal = thisWeek.reduce((sum, r) => sum + Math.abs(parseFloat(r['Chase Amount']) || 0), 0);
+
+  if (unmatched > 0 || weeklyTotal > 0) {
+    showNotification(
+      'Weekly Expense Summary',
+      `${unmatched} receipts missing | $${weeklyTotal.toFixed(2)} spent this week`
+    );
+    localStorage.setItem('lastWeeklySummary', now.toString());
+  }
+}
+
+// Check for subscription reminders
+function checkSubscriptionReminders() {
+  const subscriptions = csvData.filter(r => r.mi_is_subscription);
+  const now = new Date();
+
+  subscriptions.forEach(sub => {
+    const lastCharge = new Date(sub['Chase Date']);
+    const daysSince = Math.floor((now - lastCharge) / (1000 * 60 * 60 * 24));
+
+    // Remind if subscription is due soon (around 25-31 days)
+    if (daysSince >= 25 && daysSince <= 31) {
+      showNotification(
+        'Subscription Reminder',
+        `${sub.mi_subscription_name || sub['MI Merchant']} may renew soon ($${Math.abs(parseFloat(sub['Chase Amount'])).toFixed(2)})`
+      );
+    }
+  });
+}
+
+// Initialize notifications on load
+document.addEventListener('DOMContentLoaded', () => {
+  requestNotificationPermission().then(granted => {
+    if (granted) {
+      checkWeeklySummary();
+      checkSubscriptionReminders();
+    }
+  });
+});
+
+// Add calendar button to stats page
+setTimeout(() => {
+  const statsHeader = document.querySelector('#stats-page h2');
+  if (statsHeader) {
+    const calBtn = document.createElement('button');
+    calBtn.className = 'btn-ghost';
+    calBtn.style.marginLeft = '16px';
+    calBtn.innerHTML = '📅 Calendar View';
+    calBtn.onclick = openCalendarView;
+    statsHeader.parentNode.appendChild(calBtn);
+  }
+}, 100);
 </script>
 </body>
 </html>
