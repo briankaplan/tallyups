@@ -6645,9 +6645,10 @@ def get_library_receipts():
             date_val = tx.get('chase_date') or tx.get('date') or ''
 
             receipt = {
-                'id': f"tx_{tx.get('id')}",
+                'id': f"tx_{tx.get('id') or tx.get('_index')}",
                 'type': 'transaction',
-                'transaction_id': tx.get('id'),
+                'transaction_id': tx.get('id') or tx.get('_index'),
+                '_index': tx.get('_index'),  # MySQL uses _index for linking
                 'merchant': merchant,
                 'amount': float(amount or 0),
                 'date': str(date_val),
@@ -6678,14 +6679,26 @@ def get_library_receipts():
                 if receipt_source == 'mobile_scanner' or receipt_source == 'mobile_scanner_pwa':
                     receipt_source = 'scanner'
 
-                # Skip if already linked to transaction (avoid duplicates)
-                tx_id = inc.get('transaction_id')
-                if tx_id and any(r['type'] == 'transaction' and r['transaction_id'] == tx_id for r in all_receipts):
-                    continue
-
                 # For incoming receipts, use received_date (email date) as the authoritative date
                 # receipt_date/transaction_date are OCR-extracted and may be wrong
                 receipt_date = inc.get('received_date') or inc.get('receipt_date') or ''
+
+                # If linked to a transaction, update that transaction's date with correct email date
+                tx_id = inc.get('transaction_id') or inc.get('accepted_as_transaction_id')
+                if tx_id:
+                    # Find and update the linked transaction with the correct email date
+                    found_tx = False
+                    for r in all_receipts:
+                        if r['type'] == 'transaction':
+                            # Check various ways the transaction could be identified
+                            r_tx_id = r.get('transaction_id') or r.get('_index')
+                            if r_tx_id == tx_id or r.get('id') == f"tx_{tx_id}":
+                                r['date'] = str(receipt_date)  # Use email date
+                                r['incoming_id'] = inc.get('id')  # Link back to incoming
+                                found_tx = True
+                                break
+                    if found_tx:
+                        continue  # Skip adding duplicate - transaction is already in list
 
                 receipt = {
                     'id': f"inc_{inc.get('id')}",
