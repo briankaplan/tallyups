@@ -1205,7 +1205,11 @@ def mobile_scanner():
 
 @app.route("/manifest.json")
 def pwa_manifest():
-    """Serve PWA manifest."""
+    """Serve PWA manifest for Add to Home Screen support."""
+    # Try static folder first (new location), then BASE_DIR for backwards compat
+    static_path = BASE_DIR / "static" / "manifest.json"
+    if static_path.exists():
+        return send_from_directory(BASE_DIR / "static", "manifest.json", mimetype='application/manifest+json')
     return send_from_directory(BASE_DIR, "manifest.json", mimetype='application/manifest+json')
 
 

@@ -1,0 +1,65 @@
+{
+  "name": "Tallyups - Receipt Manager",
+  "short_name": "Tallyups",
+  "description": "AI-powered receipt management and expense tracking",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#00ff88",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Scan Receipt",
+      "short_name": "Scan",
+      "description": "Scan a new receipt",
+      "url": "/scanner",
+      "icons": [{ "src": "/static/icons/scan-shortcut.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Inbox",
+      "short_name": "Inbox",
+      "description": "View incoming receipts",
+      "url": "/incoming",
+      "icons": [{ "src": "/static/icons/inbox-shortcut.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Receipt Library",
+      "short_name": "Library",
+      "description": "Browse all receipts",
+      "url": "/library",
+      "icons": [{ "src": "/static/icons/library-shortcut.png", "sizes": "96x96" }]
+    }
+  ],
+  "share_target": {
+    "action": "/api/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "receipt",
+          "accept": ["image/*", "application/pdf"]
+        }
+      ]
+    }
+  },
+  "categories": ["finance", "productivity", "utilities"],
+  "prefer_related_applications": false
+}

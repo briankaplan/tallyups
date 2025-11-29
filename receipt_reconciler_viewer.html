@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#0b0d10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.json">
 <title>Tallyups - Expense Management</title>
 <!-- Favicon (brain emoji as SVG) -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
@@ -1769,6 +1771,268 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   .toast {
     bottom: calc(70px + var(--safe-bottom));
   }
+
+  /* Hide desktop filter row on mobile - use filter sheet instead */
+  .filters {
+    display: none;
+  }
+
+  /* Mobile filter button - shows in toolbar */
+  .mobile-filter-btn {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    background: var(--brand);
+    color: #000;
+    font-weight: 600;
+  }
+  .mobile-filter-btn .filter-count {
+    background: rgba(0,0,0,0.2);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+}
+
+/* ============================================
+   MOBILE FILTER SHEET (iOS-style bottom sheet)
+   ============================================ */
+.filter-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.filter-sheet-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.filter-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border-radius: 20px 20px 0 0;
+  z-index: 1001;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  max-height: 85vh;
+  overflow: hidden;
+  padding-bottom: var(--safe-bottom);
+}
+.filter-sheet.active {
+  transform: translateY(0);
+}
+
+.filter-sheet-handle {
+  width: 36px;
+  height: 5px;
+  background: var(--edge);
+  border-radius: 3px;
+  margin: 8px auto 0;
+}
+
+.filter-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--edge);
+}
+.filter-sheet-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.filter-sheet-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--panel2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--muted);
+}
+.filter-sheet-clear {
+  font-size: 14px;
+  color: var(--brand);
+  background: none;
+  padding: 8px 12px;
+}
+
+.filter-sheet-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  max-height: calc(85vh - 100px);
+}
+
+.filter-section {
+  margin-bottom: 24px;
+}
+.filter-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.filter-option {
+  padding: 10px 16px;
+  border-radius: 20px;
+  background: var(--panel2);
+  border: 1px solid var(--edge);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  transition: all 0.2s ease;
+}
+.filter-option.active {
+  background: var(--brand);
+  color: #000;
+  border-color: var(--brand);
+}
+.filter-option:active {
+  transform: scale(0.95);
+}
+
+.filter-sheet-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--edge);
+  display: flex;
+  gap: 12px;
+}
+.filter-sheet-footer button {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.filter-apply-btn {
+  background: var(--brand);
+  color: #000;
+}
+.filter-reset-btn {
+  background: var(--panel2);
+  color: var(--ink);
+}
+
+/* ============================================
+   PULL TO REFRESH
+   ============================================ */
+.pull-refresh-indicator {
+  position: fixed;
+  top: calc(60px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%) translateY(-60px);
+  width: 40px;
+  height: 40px;
+  background: var(--panel);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 90;
+  transition: transform 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+.pull-refresh-indicator.pulling {
+  opacity: 1;
+  transform: translateX(-50%) translateY(20px);
+}
+.pull-refresh-indicator.refreshing {
+  opacity: 1;
+  transform: translateX(-50%) translateY(20px);
+}
+.pull-refresh-indicator svg {
+  width: 24px;
+  height: 24px;
+  color: var(--brand);
+}
+.pull-refresh-indicator.refreshing svg {
+  animation: spin 0.8s linear infinite;
+}
+
+/* ============================================
+   HAPTIC FEEDBACK VISUAL HINT
+   ============================================ */
+.haptic-tap {
+  animation: hapticPulse 0.15s ease-out;
+}
+@keyframes hapticPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+/* ============================================
+   iOS STANDALONE MODE ADJUSTMENTS
+   ============================================ */
+@media (display-mode: standalone) {
+  /* When running as PWA, adjust for no browser chrome */
+  header {
+    padding-top: calc(12px + var(--safe-top));
+  }
+
+  /* Hide any "add to home screen" prompts */
+  .pwa-install-prompt {
+    display: none;
+  }
+}
+
+/* ============================================
+   SWIPE GESTURES SUPPORT
+   ============================================ */
+.swipe-row {
+  transition: transform 0.2s ease;
+  position: relative;
+}
+.swipe-actions {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.swipe-row.swiped .swipe-actions {
+  opacity: 1;
+}
+.swipe-action {
+  width: 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 4px;
+}
+.swipe-action.delete {
+  background: var(--bad);
+  color: #fff;
+}
+.swipe-action.approve {
+  background: var(--ok);
+  color: #000;
 }
 </style>
 </head>
@@ -1841,6 +2105,14 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
     <!-- Toolbar -->
     <div class="toolbar">
       <div class="toolbar-group">
+        <!-- Mobile Filter Button (hidden on desktop) -->
+        <button class="mobile-filter-btn" onclick="openFilterSheet()" style="display:none" title="Filter transactions">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          Filters
+          <span class="filter-count" id="mobile-filter-count" style="display:none">0</span>
+        </button>
         <button class="btn-ghost" onclick="openManualEntryModal()" title="Add a manual expense entry">
           ➕ Manual Entry
         </button>
@@ -8449,6 +8721,240 @@ setTimeout(() => {
     statsHeader.parentNode.appendChild(calBtn);
   }
 }, 100);
+</script>
+
+<!-- Mobile Filter Sheet (iOS-style bottom sheet) -->
+<div class="filter-sheet-backdrop" id="filter-sheet-backdrop" onclick="closeFilterSheet()"></div>
+<div class="filter-sheet" id="filter-sheet">
+  <div class="filter-sheet-handle"></div>
+  <div class="filter-sheet-header">
+    <span class="filter-sheet-title">Filters</span>
+    <button class="filter-sheet-clear" onclick="clearAllFilters()">Clear All</button>
+    <button class="filter-sheet-close" onclick="closeFilterSheet()">&times;</button>
+  </div>
+  <div class="filter-sheet-body">
+    <!-- Status Filter -->
+    <div class="filter-section">
+      <div class="filter-section-title">Receipt Status</div>
+      <div class="filter-options" id="filter-status-options">
+        <button class="filter-option active" data-filter="status" data-value="all">All</button>
+        <button class="filter-option" data-filter="status" data-value="missing">Missing</button>
+        <button class="filter-option" data-filter="status" data-value="good">Good</button>
+        <button class="filter-option" data-filter="status" data-value="bad">Bad</button>
+        <button class="filter-option" data-filter="status" data-value="not needed">Not Needed</button>
+      </div>
+    </div>
+    <!-- Business Filter -->
+    <div class="filter-section">
+      <div class="filter-section-title">Business</div>
+      <div class="filter-options" id="filter-business-options">
+        <button class="filter-option active" data-filter="business" data-value="all">All</button>
+        <button class="filter-option" data-filter="business" data-value="Music City Rodeo">MCR</button>
+        <button class="filter-option" data-filter="business" data-value="Down Home">Down Home</button>
+        <button class="filter-option" data-filter="business" data-value="Personal">Personal</button>
+      </div>
+    </div>
+    <!-- Date Range Filter -->
+    <div class="filter-section">
+      <div class="filter-section-title">Date Range</div>
+      <div class="filter-options" id="filter-date-options">
+        <button class="filter-option active" data-filter="date" data-value="all">All Time</button>
+        <button class="filter-option" data-filter="date" data-value="today">Today</button>
+        <button class="filter-option" data-filter="date" data-value="week">This Week</button>
+        <button class="filter-option" data-filter="date" data-value="month">This Month</button>
+        <button class="filter-option" data-filter="date" data-value="quarter">This Quarter</button>
+      </div>
+    </div>
+    <!-- Amount Filter -->
+    <div class="filter-section">
+      <div class="filter-section-title">Amount Range</div>
+      <div class="filter-options" id="filter-amount-options">
+        <button class="filter-option active" data-filter="amount" data-value="all">Any</button>
+        <button class="filter-option" data-filter="amount" data-value="under50">Under $50</button>
+        <button class="filter-option" data-filter="amount" data-value="50to200">$50 - $200</button>
+        <button class="filter-option" data-filter="amount" data-value="over200">Over $200</button>
+      </div>
+    </div>
+  </div>
+  <div class="filter-sheet-footer">
+    <button class="filter-reset-btn" onclick="clearAllFilters()">Reset</button>
+    <button class="filter-apply-btn" onclick="applyMobileFilters()">Apply Filters</button>
+  </div>
+</div>
+
+<!-- Pull to Refresh Indicator -->
+<div class="pull-refresh-indicator" id="pull-refresh-indicator">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+    <polyline points="21 3 21 9 15 9"/>
+  </svg>
+</div>
+
+<script>
+// Mobile Filter Sheet Functions
+let activeFilters = { status: 'all', business: 'all', date: 'all', amount: 'all' };
+
+function openFilterSheet() {
+  document.getElementById('filter-sheet-backdrop').classList.add('active');
+  document.getElementById('filter-sheet').classList.add('active');
+  // Haptic feedback
+  if ('vibrate' in navigator) navigator.vibrate(10);
+}
+
+function closeFilterSheet() {
+  document.getElementById('filter-sheet-backdrop').classList.remove('active');
+  document.getElementById('filter-sheet').classList.remove('active');
+}
+
+// Filter option click handlers
+document.querySelectorAll('.filter-option').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const filterType = this.dataset.filter;
+    const value = this.dataset.value;
+
+    // Deselect siblings, select this one
+    this.parentElement.querySelectorAll('.filter-option').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+
+    activeFilters[filterType] = value;
+    updateFilterCount();
+
+    // Haptic feedback
+    if ('vibrate' in navigator) navigator.vibrate(5);
+  });
+});
+
+function updateFilterCount() {
+  let count = 0;
+  if (activeFilters.status !== 'all') count++;
+  if (activeFilters.business !== 'all') count++;
+  if (activeFilters.date !== 'all') count++;
+  if (activeFilters.amount !== 'all') count++;
+
+  const badge = document.getElementById('mobile-filter-count');
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'inline';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function clearAllFilters() {
+  activeFilters = { status: 'all', business: 'all', date: 'all', amount: 'all' };
+  document.querySelectorAll('.filter-option').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.dataset.value === 'all') btn.classList.add('active');
+  });
+  updateFilterCount();
+  applyMobileFilters();
+}
+
+function applyMobileFilters() {
+  // Apply status filter
+  if (activeFilters.status !== 'all') {
+    const statusDropdown = document.getElementById('receipt-status-filter');
+    if (statusDropdown) {
+      statusDropdown.value = activeFilters.status;
+      statusDropdown.dispatchEvent(new Event('change'));
+    }
+  }
+
+  // Apply business filter
+  if (activeFilters.business !== 'all') {
+    const bizDropdown = document.getElementById('business-filter');
+    if (bizDropdown) {
+      bizDropdown.value = activeFilters.business;
+      bizDropdown.dispatchEvent(new Event('change'));
+    }
+  }
+
+  // Trigger data refresh if available
+  if (typeof applyFilters === 'function') {
+    applyFilters();
+  }
+
+  closeFilterSheet();
+
+  // Haptic feedback
+  if ('vibrate' in navigator) navigator.vibrate(20);
+}
+
+// Pull to Refresh (simplified implementation)
+let pullStartY = 0;
+let isPulling = false;
+
+if ('ontouchstart' in window) {
+  const tableWrap = document.querySelector('.table-wrap');
+  if (tableWrap) {
+    tableWrap.addEventListener('touchstart', (e) => {
+      if (tableWrap.scrollTop === 0) {
+        pullStartY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    }, { passive: true });
+
+    tableWrap.addEventListener('touchmove', (e) => {
+      if (!isPulling) return;
+      const pullDistance = e.touches[0].clientY - pullStartY;
+      if (pullDistance > 60 && pullDistance < 150) {
+        document.getElementById('pull-refresh-indicator').classList.add('pulling');
+      }
+    }, { passive: true });
+
+    tableWrap.addEventListener('touchend', () => {
+      const indicator = document.getElementById('pull-refresh-indicator');
+      if (indicator.classList.contains('pulling')) {
+        indicator.classList.remove('pulling');
+        indicator.classList.add('refreshing');
+
+        // Haptic feedback
+        if ('vibrate' in navigator) navigator.vibrate([20, 50, 20]);
+
+        // Trigger refresh
+        if (typeof loadData === 'function') {
+          loadData().then(() => {
+            indicator.classList.remove('refreshing');
+          }).catch(() => {
+            indicator.classList.remove('refreshing');
+          });
+        } else {
+          setTimeout(() => indicator.classList.remove('refreshing'), 1000);
+        }
+      }
+      isPulling = false;
+    }, { passive: true });
+  }
+}
+
+// Handle swipe-to-close for filter sheet
+let sheetStartY = 0;
+const filterSheet = document.getElementById('filter-sheet');
+if (filterSheet) {
+  filterSheet.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.filter-sheet-handle') || e.target.closest('.filter-sheet-header')) {
+      sheetStartY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  filterSheet.addEventListener('touchmove', (e) => {
+    if (sheetStartY === 0) return;
+    const diff = e.touches[0].clientY - sheetStartY;
+    if (diff > 0) {
+      filterSheet.style.transform = `translateY(${diff}px)`;
+    }
+  }, { passive: true });
+
+  filterSheet.addEventListener('touchend', (e) => {
+    if (sheetStartY === 0) return;
+    const diff = e.changedTouches[0].clientY - sheetStartY;
+    filterSheet.style.transform = '';
+    if (diff > 100) {
+      closeFilterSheet();
+    }
+    sheetStartY = 0;
+  }, { passive: true });
+}
 </script>
 
 <!-- Mobile Bottom Navigation -->
