@@ -8072,6 +8072,140 @@ def fix_incoming_receipt_dates():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/date-diagnosis", methods=["GET"])
+def diagnose_incoming_dates():
+    """
+    Diagnostic endpoint to analyze date fields for incoming receipts.
+    Shows received_date, transaction_date, receipt_date, and linked transaction dates.
+
+    Query params:
+    - merchants: comma-separated list of merchant names to filter (e.g., "railway,taskade,midjourney")
+    """
+    import pymysql
+
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
+    try:
+        merchants_filter = request.args.get('merchants', '').lower().split(',')
+        merchants_filter = [m.strip() for m in merchants_filter if m.strip()]
+
+        conn, db_type = get_db_connection()
+        if not conn:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        if db_type == 'mysql':
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+        else:
+            cursor = conn.cursor()
+
+        # Get all incoming receipts with their date fields and linked transactions
+        query = '''
+            SELECT
+                ir.id,
+                ir.merchant,
+                ir.amount,
+                ir.received_date as email_date,
+                ir.transaction_date as ocr_date,
+                ir.receipt_date,
+                ir.subject,
+                ir.status,
+                ir.accepted_as_transaction_id as linked_txn_id,
+                t._index as txn_index,
+                t.chase_date as txn_chase_date,
+                t.chase_description,
+                t.amount as txn_amount
+            FROM incoming_receipts ir
+            LEFT JOIN transactions t ON t._index = ir.accepted_as_transaction_id
+            ORDER BY ir.received_date DESC
+            LIMIT 100
+        '''
+
+        cursor.execute(query)
+        raw_rows = cursor.fetchall()
+
+        if db_type == 'sqlite':
+            rows = [dict(r) for r in raw_rows]
+        else:
+            rows = raw_rows
+
+        cursor.close()
+        conn.close()
+
+        # Filter by merchants if specified
+        if merchants_filter:
+            filtered_rows = []
+            for row in rows:
+                merchant = (row.get('merchant') or '').lower()
+                subject = (row.get('subject') or '').lower()
+                for m in merchants_filter:
+                    if m in merchant or m in subject:
+                        filtered_rows.append(row)
+                        break
+            rows = filtered_rows
+
+        # Analyze each row
+        results = []
+        for row in rows:
+            # Convert dates to strings
+            email_date = str(row.get('email_date') or '')[:10]
+            ocr_date = str(row.get('ocr_date') or '')[:10]
+            receipt_date = str(row.get('receipt_date') or '')[:10]
+            txn_chase_date = str(row.get('txn_chase_date') or '')[:10]
+
+            # Determine what date SHOULD be used (email date from Gmail)
+            correct_date = email_date
+
+            # Check for issues
+            issues = []
+            if row.get('linked_txn_id') and txn_chase_date and txn_chase_date != email_date:
+                issues.append(f"Transaction date {txn_chase_date} != email date {email_date}")
+            if ocr_date and ocr_date != email_date:
+                issues.append(f"OCR date {ocr_date} != email date {email_date}")
+
+            results.append({
+                'id': row.get('id'),
+                'merchant': row.get('merchant'),
+                'amount': float(row.get('amount') or 0),
+                'status': row.get('status'),
+                'dates': {
+                    'email_date': email_date,
+                    'ocr_date': ocr_date,
+                    'receipt_date': receipt_date,
+                    'correct_date': correct_date
+                },
+                'linked_transaction': {
+                    'id': row.get('linked_txn_id'),
+                    'chase_date': txn_chase_date,
+                    'description': row.get('chase_description'),
+                    'amount': float(row.get('txn_amount') or 0) if row.get('txn_amount') else None
+                } if row.get('linked_txn_id') else None,
+                'issues': issues,
+                'subject': row.get('subject')
+            })
+
+        # Separate into categories
+        with_issues = [r for r in results if r['issues']]
+
+        return jsonify({
+            'ok': True,
+            'total': len(results),
+            'with_issues': len(with_issues),
+            'merchants_filtered': merchants_filter if merchants_filter else 'all',
+            'results': results,
+            'issues_only': with_issues
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/scan", methods=["POST"])
 def scan_incoming_receipts():
     """
