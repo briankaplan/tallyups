@@ -2011,7 +2011,7 @@ def mobile_upload():
             amount_float = 0.0
 
         # Save receipt file to incoming folder
-        incoming_dir = RECEIPTS_DIR / "incoming"
+        incoming_dir = RECEIPT_DIR / "incoming"
         incoming_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate unique filename
@@ -4748,7 +4748,7 @@ def reports_download_receipts_zip(report_id):
 
                 # Fallback to local file
                 if not file_data and receipt_file:
-                    receipt_path = Path(RECEIPTS_DIR) / receipt_file
+                    receipt_path = Path(RECEIPT_DIR) / receipt_file
                     if receipt_path.exists():
                         with open(receipt_path, 'rb') as f:
                             file_data = f.read()
@@ -4781,7 +4781,7 @@ def reports_download_receipts_zip(report_id):
 @app.route("/reports/<report_id>/receipts/<filename>", methods=["GET"])
 def reports_download_receipt(report_id, filename):
     """Download a specific receipt from a report"""
-    receipt_path = Path(RECEIPTS_DIR) / filename
+    receipt_path = Path(RECEIPT_DIR) / filename
 
     if not receipt_path.exists():
         abort(404, f"Receipt not found: {filename}")
@@ -7714,7 +7714,7 @@ def accept_incoming_receipt():
             if existing_file:
                 # The file is already stored, just use the path
                 # Ensure it has the receipts/ prefix for the full path
-                full_path = RECEIPTS_DIR / existing_file
+                full_path = RECEIPT_DIR / existing_file
                 if full_path.exists():
                     receipt_files = [f"receipts/{existing_file}"]
                     print(f"   📱 Using existing mobile receipt: {existing_file}")
@@ -7770,7 +7770,7 @@ def accept_incoming_receipt():
                 # No Gmail info - check if there's an existing receipt_file path
                 existing_file = get_col('receipt_file')
                 if existing_file:
-                    full_path = RECEIPTS_DIR / existing_file
+                    full_path = RECEIPT_DIR / existing_file
                     if full_path.exists():
                         receipt_files = [f"receipts/{existing_file}"]
                         print(f"   📁 Using existing receipt file: {existing_file}")
