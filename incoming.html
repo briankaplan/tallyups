@@ -1418,7 +1418,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadReceipts() {
   try {
-    const response = await fetch('/api/incoming/receipts?status=all&limit=500');
+    const response = await fetch('/api/incoming/receipts?status=all&limit=500', {
+      credentials: 'include'
+    });
     const data = await response.json();
 
     if (data.ok) {
@@ -1682,6 +1684,7 @@ async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
     const dupResponse = await fetch('/api/incoming/check-duplicate', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({ merchant, amount: amount || 0, date: transDate })
     });
 
@@ -1744,6 +1747,7 @@ async function attachToExisting() {
     const response = await fetch('/api/incoming/attach-to-transaction', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({
         receipt_id: id,
         transaction_id: duplicateId
@@ -1816,6 +1820,7 @@ async function attachToExpense(receiptId, transactionId, btn) {
     const response = await fetch('/api/incoming/attach-to-transaction', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({
         receipt_id: receiptId,
         transaction_id: transactionId
@@ -1889,6 +1894,7 @@ async function doAccept(id, merchant, amount, isRefund, transDate, card, actions
     const response = await fetch('/api/incoming/accept', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({
         receipt_id: id,
         merchant: merchant,
@@ -1958,6 +1964,7 @@ async function mobileReject(id, btn) {
     const response = await fetch('/api/incoming/reject', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({ receipt_id: id })
     });
 
@@ -2118,6 +2125,7 @@ async function quickAccept(id, merchant, amount, isRefund = false, receiptDate =
     const response = await fetch('/api/incoming/accept', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({
         receipt_id: id,
         merchant: merchant,
@@ -2177,6 +2185,7 @@ async function quickReject(id) {
     const response = await fetch('/api/incoming/reject', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({ receipt_id: id })
     });
 
@@ -2243,6 +2252,7 @@ async function scanForNew() {
     const response = await fetch('/api/incoming/scan', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({})
     });
 
@@ -2265,7 +2275,8 @@ async function clearFiltered() {
 
   try {
     const response = await fetch('/api/incoming/clear-rejected', {
-      method: 'POST'
+      method: 'POST',
+      credentials: 'include'
     });
 
     const data = await response.json();
@@ -2288,6 +2299,7 @@ async function reprocessMissing() {
     const response = await fetch('/api/incoming/reprocess-missing', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({})
     });
 
@@ -2317,6 +2329,7 @@ async function fixDates() {
     const dryRunResponse = await fetch('/api/incoming/fix-dates', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({ dry_run: true })
     });
 
@@ -2346,6 +2359,7 @@ async function fixDates() {
     const response = await fetch('/api/incoming/fix-dates', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
       body: JSON.stringify({ dry_run: false })
     });
 
