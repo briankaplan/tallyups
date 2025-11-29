@@ -418,22 +418,42 @@ def parse_email_date(date_str: str) -> str:
     except:
         pass
 
-    # Handle truncated formats like "Wed, 27 Aug 202" or "Wed, 27 Aug"
-    # Extract day, month from the string
-    month_map = {
-        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-        'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
-    }
+    # Handle truncated formats like "Wed, 27 Aug 202", "Wed, 27 Aug", or "Wed, 27 Au"
+    # Gmail sometimes truncates month names (Au for August, Oc for October, Se for September)
+    # Build month_map to support 2-4 character prefixes
+    month_map = {}
+    for prefix, month_num in [
+        ('ja', 1), ('jan', 1),
+        ('fe', 2), ('feb', 2),
+        ('ma', 3), ('mar', 3),  # Note: also catches May but May is 'may'
+        ('ap', 4), ('apr', 4),
+        ('may', 5),
+        ('ju', 6), ('jun', 6),  # Note: also catches July but we check 'jul' first
+        ('jul', 7),
+        ('au', 8), ('aug', 8),
+        ('se', 9), ('sep', 9),
+        ('oc', 10), ('oct', 10),
+        ('no', 11), ('nov', 11),
+        ('de', 12), ('dec', 12)
+    ]:
+        month_map[prefix] = month_num
 
     try:
-        # Pattern: day month year (with possible day name prefix)
-        match = re.search(r'(\d{1,2})\s+([a-zA-Z]{3})\s*(\d{2,4})?', date_str)
+        # Pattern: day month year - month can be 2-4+ chars (for truncated names like "Au", "Oc", "Se")
+        match = re.search(r'(\d{1,2})\s+([a-zA-Z]{2,})\s*(\d{2,4})?', date_str)
         if match:
             day = int(match.group(1))
             month_str = match.group(2).lower()
             year_str = match.group(3)
 
+            # Try to find month - check exact match first, then try prefixes
             month = month_map.get(month_str)
+            if not month:
+                # Try using just first 3 chars (standard abbreviation)
+                month = month_map.get(month_str[:3])
+            if not month:
+                # Try first 2 chars (truncated like "au", "oc", "se")
+                month = month_map.get(month_str[:2])
             if month:
                 # Determine year
                 if year_str:
@@ -8302,6 +8322,212 @@ def diagnose_incoming_dates():
 
     except Exception as e:
         import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/refetch-gmail-dates", methods=["POST"])
+def refetch_gmail_dates():
+    """
+    Re-fetch the correct dates from Gmail for incoming receipts.
+    Uses the stored email_id to query Gmail API and get the actual Date header.
+
+    This fixes receipts where the received_date was stored with wrong year (2025 instead of 2024).
+
+    Body (optional):
+    {
+        "dry_run": true,  // Preview changes without applying them
+        "merchants": ["railway", "taskade", "midjourney"],  // specific merchants to fix
+        "limit": 50  // max number of receipts to process
+    }
+    """
+    import traceback
+    import pymysql
+    from email.utils import parsedate_to_datetime
+
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json() or {}
+        dry_run = data.get('dry_run', False)
+        merchants_filter = data.get('merchants', [])
+        limit = min(data.get('limit', 50), 100)  # Max 100 at a time
+
+        conn, db_type = get_db_connection()
+        if not conn:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        if db_type == 'mysql':
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+        else:
+            cursor = conn.cursor()
+
+        # Find receipts with potentially wrong dates (2025 in date string or needs fix)
+        # Focus on receipts that have email_id stored
+        if db_type == 'mysql':
+            query = '''
+                SELECT id, email_id, gmail_account, merchant, subject, received_date
+                FROM incoming_receipts
+                WHERE email_id IS NOT NULL
+                AND email_id != ''
+                AND (received_date LIKE '%2025%' OR received_date NOT LIKE '____-__-__')
+                ORDER BY id DESC
+                LIMIT %s
+            '''
+            cursor.execute(query, (limit,))
+        else:
+            query = '''
+                SELECT id, email_id, gmail_account, merchant, subject, received_date
+                FROM incoming_receipts
+                WHERE email_id IS NOT NULL
+                AND email_id != ''
+                AND (received_date LIKE '%2025%' OR received_date NOT LIKE '____-__-__')
+                ORDER BY id DESC
+                LIMIT ?
+            '''
+            cursor.execute(query, (limit,))
+
+        raw_rows = cursor.fetchall()
+
+        # Convert to dicts for SQLite compatibility
+        if db_type == 'sqlite':
+            rows = [dict(r) for r in raw_rows]
+        else:
+            rows = list(raw_rows)
+
+        if not rows:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'ok': True,
+                'message': 'No receipts with potentially wrong dates found',
+                'processed': 0
+            })
+
+        # Filter by merchant if specified
+        if merchants_filter:
+            merchants_lower = [m.lower() for m in merchants_filter]
+            rows = [r for r in rows if any(
+                m in (r.get('merchant') or '').lower() or
+                m in (r.get('subject') or '').lower()
+                for m in merchants_lower
+            )]
+
+        results = []
+        fixed_count = 0
+        errors = []
+
+        # Group by gmail_account to minimize service creation
+        by_account = {}
+        for row in rows:
+            account = row.get('gmail_account', 'kaplan.brian@gmail.com')
+            if account not in by_account:
+                by_account[account] = []
+            by_account[account].append(row)
+
+        for account_email, account_rows in by_account.items():
+            # Get Gmail service for this account
+            service, error = get_gmail_service(account_email)
+            if not service:
+                errors.append({
+                    'account': account_email,
+                    'error': f'Could not get Gmail service: {error}',
+                    'affected_count': len(account_rows)
+                })
+                continue
+
+            for row in account_rows:
+                email_id = row.get('email_id')
+                old_date = row.get('received_date')
+
+                result = {
+                    'id': row.get('id'),
+                    'email_id': email_id,
+                    'merchant': row.get('merchant') or row.get('subject', '')[:50],
+                    'old_date': old_date,
+                    'new_date': None,
+                    'fixed': False
+                }
+
+                try:
+                    # Fetch the email from Gmail
+                    msg = service.users().messages().get(
+                        userId='me',
+                        id=email_id,
+                        format='metadata',
+                        metadataHeaders=['Date']
+                    ).execute()
+
+                    # Extract the Date header
+                    headers = msg.get('payload', {}).get('headers', [])
+                    date_header = None
+                    for h in headers:
+                        if h.get('name', '').lower() == 'date':
+                            date_header = h.get('value')
+                            break
+
+                    if date_header:
+                        # Parse the RFC 2822 date to get proper datetime
+                        try:
+                            dt = parsedate_to_datetime(date_header)
+                            new_date = dt.strftime('%Y-%m-%d')
+                            result['new_date'] = new_date
+                            result['raw_gmail_date'] = date_header
+
+                            if not dry_run:
+                                # Update the incoming_receipt with correct date
+                                if db_type == 'mysql':
+                                    cursor.execute('''
+                                        UPDATE incoming_receipts
+                                        SET received_date = %s
+                                        WHERE id = %s
+                                    ''', (new_date, row.get('id')))
+                                else:
+                                    cursor.execute('''
+                                        UPDATE incoming_receipts
+                                        SET received_date = ?
+                                        WHERE id = ?
+                                    ''', (new_date, row.get('id')))
+
+                                fixed_count += 1
+                                result['fixed'] = True
+                        except Exception as parse_err:
+                            result['error'] = f'Date parse error: {parse_err}'
+                    else:
+                        result['error'] = 'No Date header found in email'
+
+                except Exception as gmail_err:
+                    error_str = str(gmail_err)
+                    if '404' in error_str or 'not found' in error_str.lower():
+                        result['error'] = 'Email not found in Gmail (may be deleted)'
+                    else:
+                        result['error'] = f'Gmail API error: {gmail_err}'
+
+                results.append(result)
+
+        if not dry_run and fixed_count > 0:
+            conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'message': f'{"Would fix" if dry_run else "Fixed"} {fixed_count} of {len(rows)} receipts',
+            'dry_run': dry_run,
+            'fixed': fixed_count,
+            'processed': len(results),
+            'results': results,
+            'errors': errors if errors else None
+        })
+
+    except Exception as e:
+        print(f"❌ Error refetching Gmail dates: {e}")
         traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
