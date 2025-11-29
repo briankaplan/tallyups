@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0b0d10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Incoming Receipts - Tallyups</title>
+<title>Inbox - Tallyups</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
 <style>
 /* Tallyups Theme - Black & Green */
@@ -733,6 +733,43 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   color: var(--bad);
 }
 
+/* Match Badge for Expense Matching */
+.inbox-card-match {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.inbox-card-match .match-icon {
+  font-size: 16px;
+}
+.inbox-card-match.found {
+  background: rgba(0,255,136,0.12);
+  color: var(--ok);
+  border: 1px solid rgba(0,255,136,0.25);
+}
+.inbox-card-match.none {
+  background: rgba(255,216,94,0.1);
+  color: var(--warn);
+  border: 1px solid rgba(255,216,94,0.2);
+}
+
+/* Match button styling */
+.inbox-card-btn.match {
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #000;
+  box-shadow: 0 2px 8px rgba(0,255,136,0.3);
+}
+.inbox-card-btn.create {
+  background: rgba(59,130,246,0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59,130,246,0.3);
+}
+
 /* Empty state */
 .inbox-empty {
   text-align: center;
@@ -1070,6 +1107,71 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
     align-items: center;
   }
 }
+
+/* Safe Area Support */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile Bottom Navigation */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + var(--safe-bottom));
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--edge);
+  justify-content: space-around;
+  align-items: flex-start;
+  padding-top: 8px;
+  z-index: 100;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 16px;
+  transition: color 0.2s;
+}
+
+.mobile-nav-item.active {
+  color: var(--brand);
+}
+
+.mobile-nav-item svg {
+  width: 24px;
+  height: 24px;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+
+  body {
+    padding-bottom: calc(70px + var(--safe-bottom));
+  }
+
+  .toast {
+    bottom: calc(80px + var(--safe-bottom));
+  }
+
+  /* Hide desktop nav on mobile */
+  .nav-buttons {
+    display: none;
+  }
+}
 </style>
 </head>
 <body>
@@ -1082,10 +1184,11 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   </div>
   <div class="nav-buttons">
     <button class="nav-btn" onclick="window.location.href='/'">🏠 Home</button>
-    <button class="nav-btn active">📬 Incoming</button>
+    <button class="nav-btn active">📥 Inbox</button>
     <button class="nav-btn" onclick="window.location.href='/scanner'">📷 Scan</button>
     <button class="nav-btn" onclick="window.location.href='/?page=reports'">📊 Reports</button>
     <button class="nav-btn" onclick="window.location.href='/?page=stats'">📈 Stats</button>
+    <button class="nav-btn" onclick="window.location.href='/library'">📚 Library</button>
   </div>
   <div class="controls">
     <button class="btn-ghost btn-sm" onclick="clearFiltered()">🗑️ Clear Rejected</button>
@@ -1098,15 +1201,15 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
 <!-- Stats Dashboard -->
 <div class="dashboard">
   <div class="stat">
-    <div class="stat-label">Pending</div>
+    <div class="stat-label">In Inbox</div>
     <div class="stat-value" id="stat-pending">0</div>
   </div>
   <div class="stat">
-    <div class="stat-label">Accepted</div>
+    <div class="stat-label">Matched</div>
     <div class="stat-value" id="stat-accepted">0</div>
   </div>
   <div class="stat">
-    <div class="stat-label">Rejected</div>
+    <div class="stat-label">Dismissed</div>
     <div class="stat-value" id="stat-rejected">0</div>
   </div>
   <div class="stat">
@@ -1122,11 +1225,11 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
     <span class="chip-count" id="chip-pending">0</span>
   </div>
   <div class="chip" onclick="filterStatus('accepted')" data-filter="accepted">
-    <span class="chip-icon">📁</span> Archive
+    <span class="chip-icon">🔗</span> Matched
     <span class="chip-count" id="chip-accepted">0</span>
   </div>
   <div class="chip" onclick="filterStatus('rejected')" data-filter="rejected">
-    <span class="chip-icon">🗑️</span> Dismissed
+    <span class="chip-icon">✕</span> Dismissed
     <span class="chip-count" id="chip-rejected">0</span>
   </div>
   <div class="chip" onclick="filterStatus('all')" data-filter="all">
@@ -1193,9 +1296,117 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   </div>
 </div>
 
+<!-- Duplicate Warning Modal -->
+<div id="duplicate-modal" class="duplicate-modal">
+  <div class="duplicate-content">
+    <div class="duplicate-icon">⚠️</div>
+    <div class="duplicate-title">Possible Duplicate</div>
+    <div class="duplicate-subtitle">This receipt may match an existing transaction</div>
+    <div class="duplicate-match" id="duplicate-match-info">
+      <div class="duplicate-match-row">
+        <span class="duplicate-match-label">Merchant</span>
+        <span id="dup-merchant">—</span>
+      </div>
+      <div class="duplicate-match-row">
+        <span class="duplicate-match-label">Amount</span>
+        <span id="dup-amount">—</span>
+      </div>
+      <div class="duplicate-match-row">
+        <span class="duplicate-match-label">Date</span>
+        <span id="dup-date">—</span>
+      </div>
+      <div class="duplicate-match-row">
+        <span class="duplicate-match-label">Has Receipt</span>
+        <span id="dup-has-receipt">—</span>
+      </div>
+    </div>
+    <div class="duplicate-actions">
+      <button class="duplicate-btn secondary" onclick="closeDuplicateModal();pendingAccept?.callback(true)">Add Anyway</button>
+      <button class="duplicate-btn primary" onclick="closeDuplicateModal();attachToExisting()">Attach to Existing</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .duplicate-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(10px);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .duplicate-modal.visible { display: flex; }
+  .duplicate-content {
+    background: var(--surface);
+    border: 2px solid #ffaa00;
+    border-radius: 20px;
+    padding: 24px;
+    max-width: 360px;
+    width: 100%;
+    text-align: center;
+  }
+  .duplicate-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+  .duplicate-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .duplicate-subtitle {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  .duplicate-match {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 20px;
+    text-align: left;
+  }
+  .duplicate-match-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .duplicate-match-row:last-child { margin-bottom: 0; }
+  .duplicate-match-label { color: var(--text-dim); }
+  .duplicate-actions {
+    display: flex;
+    gap: 12px;
+  }
+  .duplicate-btn {
+    flex: 1;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+  }
+  .duplicate-btn.secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .duplicate-btn.primary {
+    background: #ffaa00;
+    color: #000;
+  }
+</style>
+
 <script>
 let allReceipts = [];
 let currentFilter = 'pending';  // Default to inbox
+let pendingAccept = null; // Store pending accept data for duplicate handling
 
 // Load receipts on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -1289,13 +1500,29 @@ function renderMobileCards() {
   });
 
   if (filtered.length === 0) {
+    let emptyTitle = 'No Receipts';
+    let emptyText = 'No receipts found';
+    let emptyIcon = '📬';
+
+    if (currentFilter === 'pending') {
+      emptyTitle = 'Inbox Clear';
+      emptyText = 'All receipts matched to expenses';
+      emptyIcon = '✨';
+    } else if (currentFilter === 'accepted') {
+      emptyTitle = 'No Matched Receipts';
+      emptyText = 'Match receipts from your inbox to expenses';
+      emptyIcon = '🔗';
+    } else if (currentFilter === 'rejected') {
+      emptyTitle = 'Nothing Dismissed';
+      emptyText = 'Dismissed receipts will appear here';
+      emptyIcon = '✕';
+    }
+
     container.innerHTML = `
       <div class="inbox-empty">
-        <div class="inbox-empty-icon">📬</div>
-        <div class="inbox-empty-title">${currentFilter === 'pending' ? 'Inbox Empty' : 'No Receipts'}</div>
-        <div class="inbox-empty-text">${currentFilter === 'pending'
-          ? 'Scan Gmail to find new receipts'
-          : `No ${currentFilter} receipts found`}</div>
+        <div class="inbox-empty-icon">${emptyIcon}</div>
+        <div class="inbox-empty-title">${emptyTitle}</div>
+        <div class="inbox-empty-text">${emptyText}</div>
       </div>
     `;
     return;
@@ -1342,22 +1569,58 @@ function renderMobileCard(receipt) {
   // Actions based on status
   let actionsHTML = '';
   if (receipt.status === 'pending') {
+    // Check for potential expense matches
+    const bestMatch = receipt.best_match;
+    const hasMatch = bestMatch && bestMatch.score >= 50;
+
+    let matchBadge = '';
+    let primaryAction = '';
+
+    if (hasMatch) {
+      // Found a matching expense - show "Attach" as primary action
+      const matchMerchant = bestMatch.merchant || 'Expense';
+      const matchAmount = Math.abs(bestMatch.amount).toFixed(2);
+      matchBadge = `
+        <div class="inbox-card-match found">
+          <span class="match-icon">🔗</span>
+          <span>Matches: ${escapeHtml(matchMerchant)} $${matchAmount}</span>
+        </div>
+      `;
+      primaryAction = `
+        <button class="inbox-card-btn accept match" onclick="event.stopPropagation();attachToExpense(${receipt.id}, ${bestMatch.id}, this)">
+          🔗 Attach
+        </button>
+      `;
+    } else {
+      // No match found
+      matchBadge = `
+        <div class="inbox-card-match none">
+          <span class="match-icon">❓</span>
+          <span>No matching expense</span>
+        </div>
+      `;
+      primaryAction = `
+        <button class="inbox-card-btn accept create" onclick="event.stopPropagation();mobileAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}', this)">
+          + New Expense
+        </button>
+      `;
+    }
+
     actionsHTML = `
+      ${matchBadge}
       <div class="inbox-card-actions">
         <button class="inbox-card-btn preview" onclick="event.stopPropagation();showPreview(${receipt.id})">
           👁️
         </button>
         <button class="inbox-card-btn reject" onclick="event.stopPropagation();mobileReject(${receipt.id}, this)">
-          ✕ Reject
+          ✕ Not Receipt
         </button>
-        <button class="inbox-card-btn accept" onclick="event.stopPropagation();mobileAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}', this)">
-          ✓ Accept
-        </button>
+        ${primaryAction}
       </div>
     `;
   } else {
     const statusIcon = receipt.status === 'accepted' ? '✓' : '✕';
-    const statusText = receipt.status === 'accepted' ? 'Accepted' : 'Rejected';
+    const statusText = receipt.status === 'accepted' ? 'Matched' : 'Dismissed';
     actionsHTML = `
       <div class="inbox-card-status ${receipt.status}">
         ${statusIcon} ${statusText}
@@ -1400,7 +1663,7 @@ function formatDateFull(dateStr) {
   }
 }
 
-// Mobile accept with visual feedback
+// Mobile accept with visual feedback and duplicate detection
 async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
   const card = btn.closest('.inbox-card');
   const actionsDiv = card.querySelector('.inbox-card-actions');
@@ -1408,11 +1671,219 @@ async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
   // Show loading state
   actionsDiv.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--brand)">
-      <span class="spinner"></span> Processing...
+      <span class="spinner"></span> Checking...
     </div>
   `;
 
   const transDate = receiptDate ? receiptDate.split('T')[0] : new Date().toISOString().split('T')[0];
+
+  try {
+    // First check for duplicates
+    const dupResponse = await fetch('/api/incoming/check-duplicate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ merchant, amount: amount || 0, date: transDate })
+    });
+
+    const dupData = await dupResponse.json();
+
+    if (dupData.has_duplicates && dupData.duplicates.length > 0) {
+      // Show duplicate warning modal
+      const dup = dupData.duplicates[0];
+      document.getElementById('dup-merchant').textContent = dup.merchant;
+      document.getElementById('dup-amount').textContent = '$' + parseFloat(dup.amount).toFixed(2);
+      document.getElementById('dup-date').textContent = dup.date;
+      document.getElementById('dup-has-receipt').textContent = dup.has_receipt ? 'Yes ✓' : 'No';
+
+      // Store pending accept data
+      pendingAccept = {
+        id, merchant, amount, isRefund, transDate, card, actionsDiv,
+        duplicateId: dup.id,
+        callback: (forceAccept) => {
+          if (forceAccept) {
+            doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv);
+          } else {
+            renderMobileCards();
+          }
+        }
+      };
+
+      document.getElementById('duplicate-modal').classList.add('visible');
+      return;
+    }
+
+    // No duplicates - proceed with accept
+    await doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv);
+
+  } catch (e) {
+    console.error('Accept error:', e);
+    showToast('Error accepting', 'error');
+    renderMobileCards();
+  }
+}
+
+// Close duplicate modal
+function closeDuplicateModal() {
+  document.getElementById('duplicate-modal').classList.remove('visible');
+}
+
+// Attach receipt to existing transaction
+async function attachToExisting() {
+  if (!pendingAccept) return;
+
+  const { id, duplicateId, card, actionsDiv, merchant } = pendingAccept;
+
+  actionsDiv.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--brand)">
+      <span class="spinner"></span> Attaching...
+    </div>
+  `;
+
+  try {
+    // Call API to attach receipt to existing transaction
+    const response = await fetch('/api/incoming/attach-to-transaction', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        receipt_id: id,
+        transaction_id: duplicateId
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      card.style.transition = 'all 0.3s ease';
+      card.style.background = 'rgba(0,255,136,0.1)';
+      card.classList.remove('pending');
+      card.classList.add('accepted');
+
+      actionsDiv.innerHTML = `
+        <div class="inbox-card-status accepted">
+          ✓ Attached to #${duplicateId}
+        </div>
+      `;
+
+      showToast(`✓ Receipt attached to existing transaction`, 'success');
+
+      const receipt = allReceipts.find(r => r.id === id);
+      if (receipt) receipt.status = 'accepted';
+
+      if (currentFilter === 'pending') {
+        setTimeout(() => {
+          card.style.opacity = '0';
+          card.style.transform = 'translateX(100px)';
+          setTimeout(() => card.remove(), 300);
+        }, 500);
+      }
+
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Failed to attach', 'error');
+      renderMobileCards();
+    }
+  } catch (e) {
+    console.error('Attach error:', e);
+    showToast('Error attaching receipt', 'error');
+    renderMobileCards();
+  }
+
+  pendingAccept = null;
+}
+
+// Attach receipt to a matched expense (from match badge)
+async function attachToExpense(receiptId, transactionId, btn) {
+  const card = btn.closest('.inbox-card');
+  const actionsDiv = card.querySelector('.inbox-card-actions');
+  const matchBadge = card.querySelector('.inbox-card-match');
+
+  // Show loading state
+  if (actionsDiv) {
+    actionsDiv.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--brand)">
+        <span class="spinner"></span> Attaching...
+      </div>
+    `;
+  }
+  if (matchBadge) {
+    matchBadge.innerHTML = `
+      <span class="match-icon">⏳</span>
+      <span>Linking receipt to expense...</span>
+    `;
+  }
+
+  try {
+    const response = await fetch('/api/incoming/attach-to-transaction', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        receipt_id: receiptId,
+        transaction_id: transactionId
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      // Success animation
+      card.style.transition = 'all 0.3s ease';
+      card.style.background = 'rgba(0,255,136,0.1)';
+      card.classList.remove('pending');
+      card.classList.add('accepted');
+
+      // Update match badge to show success
+      if (matchBadge) {
+        matchBadge.className = 'inbox-card-match found';
+        matchBadge.innerHTML = `
+          <span class="match-icon">✓</span>
+          <span>Linked to expense #${transactionId}</span>
+        `;
+      }
+
+      // Update actions to show completed status
+      if (actionsDiv) {
+        actionsDiv.innerHTML = `
+          <div class="inbox-card-status accepted">
+            ✓ Matched
+          </div>
+        `;
+      }
+
+      showToast(`✓ Receipt attached to expense #${transactionId}`, 'success');
+
+      // Update local data
+      const receipt = allReceipts.find(r => r.id === receiptId);
+      if (receipt) receipt.status = 'accepted';
+
+      // Fade out if viewing pending only
+      if (currentFilter === 'pending') {
+        setTimeout(() => {
+          card.style.opacity = '0';
+          card.style.transform = 'translateX(100px)';
+          setTimeout(() => card.remove(), 300);
+        }, 800);
+      }
+
+      // Refresh to update stats
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Failed to attach', 'error');
+      renderMobileCards();
+    }
+  } catch (e) {
+    console.error('Attach error:', e);
+    showToast('Error attaching receipt', 'error');
+    renderMobileCards();
+  }
+}
+
+// Perform the actual accept
+async function doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv) {
+  actionsDiv.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--brand)">
+      <span class="spinner"></span> Processing...
+    </div>
+  `;
 
   try {
     const response = await fetch('/api/incoming/accept', {
@@ -2183,6 +2654,39 @@ function showKeyboardHelp() {
   document.body.insertAdjacentHTML('beforeend', helpHtml);
 }
 </script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="/" class="mobile-nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    Dashboard
+  </a>
+  <a href="/library" class="mobile-nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+      <path d="M9 12h6M9 16h6"/>
+    </svg>
+    Library
+  </a>
+  <a href="/incoming" class="mobile-nav-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+    </svg>
+    Inbox
+  </a>
+  <a href="/scanner" class="mobile-nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <line x1="3" y1="9" x2="21" y2="9"/>
+    </svg>
+    Scanner
+  </a>
+</nav>
 
 </body>
 </html>

@@ -2377,6 +2377,13 @@
       </svg>
       <span>Inbox</span>
     </a>
+    <a href="/library" class="nav-item" data-view="library">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+      </svg>
+      <span>Library</span>
+    </a>
   </nav>
 
   <!-- Processing Overlay -->
@@ -2417,6 +2424,55 @@
     <span class="toast-text" id="toast-text">Saved!</span>
   </div>
 
+  <!-- Receipt Detail Modal -->
+  <div class="receipt-detail-modal" id="receipt-detail-modal">
+    <div class="receipt-detail-header">
+      <span class="receipt-detail-title">Receipt Details</span>
+      <button class="receipt-detail-close" onclick="closeReceiptDetail()">×</button>
+    </div>
+    <div class="receipt-detail-body">
+      <img class="receipt-detail-image" id="detail-image" src="" alt="Receipt">
+      <div class="receipt-detail-data">
+        <div class="receipt-detail-merchant" id="detail-merchant">—</div>
+        <div class="receipt-detail-amount" id="detail-amount">$0.00</div>
+        <div class="receipt-detail-row">
+          <span class="receipt-detail-label">Date</span>
+          <span class="receipt-detail-value" id="detail-date">—</span>
+        </div>
+        <div class="receipt-detail-row">
+          <span class="receipt-detail-label">Business</span>
+          <span class="receipt-detail-value" id="detail-business">—</span>
+        </div>
+        <div class="receipt-detail-row">
+          <span class="receipt-detail-label">Status</span>
+          <span class="receipt-detail-value" id="detail-status">—</span>
+        </div>
+        <div class="receipt-detail-row">
+          <span class="receipt-detail-label">Scanned</span>
+          <span class="receipt-detail-value" id="detail-scanned">—</span>
+        </div>
+        <div class="receipt-detail-notes" id="detail-notes" style="display:none;"></div>
+      </div>
+    </div>
+    <div class="receipt-detail-footer">
+      <button class="receipt-detail-btn delete" onclick="deleteCurrentReceipt()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Delete
+      </button>
+      <button class="receipt-detail-btn sync" id="detail-sync-btn" onclick="resyncReceipt()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        Sync
+      </button>
+    </div>
+  </div>
+
   <script>
     // ========================================
     // CONFIGURATION
@@ -2438,6 +2494,7 @@
     let db = null;
     let cameraStream = null;
     let flashEnabled = false;
+    let currentDetailReceipt = null;
 
     // Enhanced capture state
     let captureLocation = null;
@@ -3768,7 +3825,7 @@
       $('status-text').textContent = 'Connected';
 
       if (synced > 0) {
-        showToast(`Synced ${synced} receipt${synced > 1 ? 's' : ''}`, 'success');
+        showToast(`${synced} receipt${synced > 1 ? 's' : ''} sent to Inbox`, 'success');
         hapticFeedback('success');
       }
 
@@ -3818,8 +3875,8 @@
         return;
       }
 
-      $('history-list').innerHTML = history.slice(0, 30).map(item => `
-        <div class="history-item">
+      $('history-list').innerHTML = history.slice(0, 30).map((item, index) => `
+        <div class="history-item" onclick="openReceiptDetail(${index})">
           <img class="history-thumb" src="${item.thumbnail}" alt="" loading="lazy">
           <div class="history-content">
             <div class="history-row">
@@ -3829,13 +3886,177 @@
             <div class="history-meta">
               <span>${formatRelativeDate(item.timestamp)}</span>
               ${item.business ? `<span>${item.business}</span>` : ''}
-              <span class="history-status ${item.synced ? '' : 'pending'}">${item.synced ? 'Synced' : 'Pending'}</span>
+              <span class="history-status ${item.synced ? '' : 'pending'}">${item.synced ? 'In Inbox' : 'Pending'}</span>
             </div>
           </div>
+          <span class="history-delete-hint">Tap to view</span>
         </div>
       `).join('');
 
       updatePendingBadge();
+    }
+
+    // ========================================
+    // RECEIPT DETAIL MODAL
+    // ========================================
+    function openReceiptDetail(index) {
+      hapticFeedback('light');
+      const item = history[index];
+      if (!item) return;
+
+      currentDetailReceipt = { ...item, index };
+
+      // Populate the modal
+      $('detail-image').src = item.thumbnail || item.image || '';
+      $('detail-merchant').textContent = item.merchant || 'Unknown';
+      $('detail-amount').textContent = '$' + parseFloat(item.amount || 0).toFixed(2);
+      $('detail-date').textContent = item.date ? formatFullDate(item.date) : formatFullDate(item.timestamp);
+      $('detail-business').textContent = item.business || 'Personal';
+      $('detail-status').textContent = item.synced ? 'In Inbox' : 'Pending sync';
+      $('detail-scanned').textContent = formatFullDate(item.timestamp);
+
+      // Notes
+      if (item.notes) {
+        $('detail-notes').style.display = 'block';
+        $('detail-notes').textContent = item.notes;
+      } else {
+        $('detail-notes').style.display = 'none';
+      }
+
+      // Update sync button state
+      const syncBtn = $('detail-sync-btn');
+      if (item.synced) {
+        syncBtn.classList.remove('sync');
+        syncBtn.classList.add('synced');
+        syncBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          In Inbox
+        `;
+      } else {
+        syncBtn.classList.add('sync');
+        syncBtn.classList.remove('synced');
+        syncBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Sync Now
+        `;
+      }
+
+      // Show modal
+      $('receipt-detail-modal').classList.add('visible');
+    }
+
+    function closeReceiptDetail() {
+      $('receipt-detail-modal').classList.remove('visible');
+      currentDetailReceipt = null;
+    }
+
+    function formatFullDate(dateStr) {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    }
+
+    async function deleteCurrentReceipt() {
+      if (!currentDetailReceipt) return;
+
+      hapticFeedback('medium');
+
+      // Confirm deletion
+      if (!confirm('Delete this receipt? This cannot be undone.')) {
+        return;
+      }
+
+      try {
+        // Delete from IndexedDB
+        if (db && currentDetailReceipt.id) {
+          await deleteFromIndexedDB(currentDetailReceipt.id);
+        }
+
+        // Remove from history array
+        history.splice(currentDetailReceipt.index, 1);
+
+        // Also remove from localStorage backup
+        localStorage.setItem('receiptHistory', JSON.stringify(history));
+
+        hapticFeedback('success');
+        showToast('Receipt deleted', 'success');
+        closeReceiptDetail();
+        renderHistory();
+      } catch (e) {
+        console.error('Delete error:', e);
+        hapticFeedback('error');
+        showToast('Failed to delete', 'error');
+      }
+    }
+
+    async function deleteFromIndexedDB(id) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('receipts', 'readwrite');
+        const store = tx.objectStore('receipts');
+        const request = store.delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function resyncReceipt() {
+      if (!currentDetailReceipt || currentDetailReceipt.synced) return;
+
+      hapticFeedback('medium');
+      const syncBtn = $('detail-sync-btn');
+      const originalHtml = syncBtn.innerHTML;
+      syncBtn.innerHTML = `<span style="display:inline-block;animation:spin 1s linear infinite;">↻</span> Syncing...`;
+      syncBtn.disabled = true;
+
+      try {
+        // Try to sync the pending data
+        if (currentDetailReceipt.pendingData) {
+          const formData = new FormData();
+          if (currentDetailReceipt.pendingData.blob) {
+            formData.append('receipt', currentDetailReceipt.pendingData.blob, 'receipt.jpg');
+          }
+          formData.append('merchant', currentDetailReceipt.merchant || '');
+          formData.append('amount', currentDetailReceipt.amount || '');
+          formData.append('date', currentDetailReceipt.date || '');
+          formData.append('notes', currentDetailReceipt.notes || '');
+          formData.append('business', currentDetailReceipt.business || '');
+          formData.append('source', SOURCE_TAG);
+
+          const response = await fetch(`${API_BASE}/api/scanner/upload`, {
+            method: 'POST',
+            body: formData
+          });
+
+          if (response.ok) {
+            await updateReceiptSync(currentDetailReceipt.id, true);
+            currentDetailReceipt.synced = true;
+            history[currentDetailReceipt.index].synced = true;
+            hapticFeedback('success');
+            showToast('Receipt synced!', 'success');
+            openReceiptDetail(currentDetailReceipt.index); // Refresh modal
+            renderHistory();
+          } else {
+            throw new Error('Sync failed');
+          }
+        }
+      } catch (e) {
+        console.error('Resync error:', e);
+        hapticFeedback('error');
+        showToast('Sync failed - try again later', 'error');
+        syncBtn.innerHTML = originalHtml;
+        syncBtn.disabled = false;
+      }
     }
 
     // ========================================

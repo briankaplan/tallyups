@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="Tallyups Report Builder - Review and build expense reports">
+<meta name="theme-color" content="#0b0d10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Report Builder - Tallyups</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<style>
+:root {
+  --bg: #000000;
+  --panel: #111111;
+  --panel2: #0a0a0a;
+  --edge: #222;
+  --ink: #f0f0f0;
+  --muted: #888;
+  --brand: #00ff88;
+  --ok: #00ff88;
+  --bad: #ff4e6a;
+  --warn: #ffd85e;
+  --glow: rgba(0,255,136,.35);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Header */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.9) 100%);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--edge);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  z-index: 100;
+  gap: 16px;
+}
+
+.header-back {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: var(--ink);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.header-back:hover { background: rgba(255,255,255,0.15); }
+
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.header-progress {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-bar {
+  width: 200px;
+  height: 6px;
+  background: var(--panel);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand), #00cc6a);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Main Layout */
+.main {
+  margin-top: 60px;
+  height: calc(100vh - 60px);
+  display: flex;
+}
+
+/* Setup Panel (shown when no report selected) */
+.setup-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.setup-card {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 500px;
+  width: 100%;
+}
+
+.setup-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--brand);
+}
+
+.setup-subtitle {
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.form-input, .form-select {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  color: var(--ink);
+  font-size: 15px;
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--glow);
+}
+
+.btn-start {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--brand), #00cc6a);
+  color: #000;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(0,255,136,0.3);
+}
+.btn-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,255,136,0.4);
+}
+
+/* Review Panel */
+.review-panel {
+  flex: 1;
+  display: none;
+  flex-direction: column;
+}
+
+.review-panel.active {
+  display: flex;
+}
+
+/* Split View - Transaction | Receipt */
+.split-view {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Transaction Side */
+.transaction-panel {
+  background: var(--panel);
+  border-right: 1px solid var(--edge);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--edge);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Transaction Card */
+.tx-card {
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.tx-merchant {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.tx-date {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.tx-amount {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--brand);
+  margin-bottom: 20px;
+}
+
+.tx-details {
+  display: grid;
+  gap: 12px;
+}
+
+.tx-detail {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  background: var(--panel);
+  border-radius: 8px;
+}
+
+.tx-detail-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tx-detail-value {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tx-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tx-status-badge.good {
+  background: rgba(0,255,136,0.15);
+  color: var(--ok);
+}
+.tx-status-badge.bad {
+  background: rgba(255,78,106,0.15);
+  color: var(--bad);
+}
+.tx-status-badge.missing {
+  background: rgba(255,216,94,0.15);
+  color: var(--warn);
+}
+
+/* Receipt Side */
+.receipt-panel {
+  background: var(--panel2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.receipt-image-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+  background: repeating-conic-gradient(var(--panel) 0% 25%, var(--bg) 0% 50%) 50% / 20px 20px;
+}
+
+.receipt-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  cursor: zoom-in;
+  transition: transform 0.2s;
+}
+
+.receipt-image:hover {
+  transform: scale(1.02);
+}
+
+.receipt-placeholder {
+  text-align: center;
+  color: var(--muted);
+}
+
+.receipt-placeholder-icon {
+  font-size: 64px;
+  opacity: 0.5;
+  margin-bottom: 16px;
+}
+
+.receipt-placeholder-text {
+  font-size: 16px;
+}
+
+/* Action Bar */
+.action-bar {
+  background: var(--panel);
+  border-top: 1px solid var(--edge);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.action-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-nav {
+  padding: 12px 20px;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-nav:hover:not(:disabled) {
+  background: var(--panel2);
+  border-color: var(--brand);
+}
+.btn-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.action-main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.btn-action {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-add {
+  background: linear-gradient(135deg, var(--brand), #00cc6a);
+  color: #000;
+  box-shadow: 0 4px 16px rgba(0,255,136,0.3);
+}
+.btn-add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,255,136,0.4);
+}
+
+.btn-skip {
+  background: rgba(255,255,255,0.1);
+  color: var(--ink);
+}
+.btn-skip:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.btn-bad {
+  background: rgba(255,78,106,0.2);
+  color: var(--bad);
+}
+.btn-bad:hover {
+  background: rgba(255,78,106,0.3);
+}
+
+.action-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.shortcut-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.shortcut-hint .kbd {
+  display: inline-block;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-family: monospace;
+  margin: 0 2px;
+}
+
+/* Report Summary */
+.report-summary {
+  background: var(--panel);
+  border-top: 1px solid var(--edge);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.summary-stat {
+  text-align: center;
+}
+
+.summary-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.summary-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.btn-finish {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-finish:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+}
+
+/* Receipt Modal (zoomed view) */
+.receipt-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.95);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 40px;
+}
+
+.receipt-modal.active {
+  display: flex;
+}
+
+.receipt-modal img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.modal-close:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--brand);
+}
+
+.empty-text {
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+/* Toast notifications */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1001;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.toast.success {
+  border-color: var(--ok);
+}
+
+.toast.error {
+  border-color: var(--bad);
+}
+
+.toast-icon {
+  font-size: 20px;
+}
+
+.toast-message {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--edge);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Safe Area Support */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile responsive */
+@media (max-width: 900px) {
+  .split-view {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  .transaction-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--edge);
+  }
+
+  .progress-bar {
+    width: 120px;
+  }
+
+  .action-bar {
+    flex-wrap: wrap;
+  }
+
+  .action-shortcuts {
+    display: none;
+  }
+}
+
+/* Mobile Bottom Navigation */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + var(--safe-bottom));
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--edge);
+  justify-content: space-around;
+  align-items: flex-start;
+  padding-top: 8px;
+  z-index: 100;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 16px;
+  transition: color 0.2s;
+}
+
+.mobile-nav-item.active {
+  color: var(--brand);
+}
+
+.mobile-nav-item svg {
+  width: 24px;
+  height: 24px;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+
+  body {
+    padding-bottom: calc(70px + var(--safe-bottom));
+  }
+
+  .header {
+    padding-top: calc(12px + var(--safe-top));
+  }
+
+  .toast {
+    bottom: calc(80px + var(--safe-bottom));
+  }
+
+  .main {
+    height: calc(100vh - 60px - 70px - var(--safe-top) - var(--safe-bottom));
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <button class="header-back" onclick="goBack()">← Back</button>
+  <div class="header-title">📊 Report Builder</div>
+  <div class="header-progress" id="progress-section" style="display:none">
+    <div class="progress-bar">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <span class="progress-text" id="progress-text">0 / 0</span>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="main">
+  <!-- Setup Panel -->
+  <div class="setup-panel" id="setup-panel">
+    <div class="setup-card">
+      <div class="setup-title">Create New Report</div>
+      <div class="setup-subtitle">Review expenses one by one and add them to your report</div>
+
+      <div class="form-group">
+        <label class="form-label">Report Name</label>
+        <input type="text" class="form-input" id="report-name-input" placeholder="e.g., Q4 2024 Music City Rodeo">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Business Entity</label>
+        <select class="form-select" id="business-filter">
+          <option value="">All Businesses</option>
+          <option value="Music City Rodeo">Music City Rodeo</option>
+          <option value="Down Home">Down Home</option>
+          <option value="Personal">Personal</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label class="form-label">From Date</label>
+          <input type="date" class="form-input" id="date-from">
+        </div>
+        <div>
+          <label class="form-label">To Date</label>
+          <input type="date" class="form-input" id="date-to">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Filter By Status</label>
+        <select class="form-select" id="status-filter">
+          <option value="good">Good Receipts (Reviewed)</option>
+          <option value="has-receipt">Has Receipt (Any)</option>
+          <option value="all">All Expenses</option>
+        </select>
+      </div>
+
+      <button class="btn-start" onclick="startReview()">
+        Start Review →
+      </button>
+
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--edge)">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Or continue existing report:</div>
+        <select class="form-select" id="existing-reports" onchange="loadExistingReport(this.value)">
+          <option value="">Select a draft report...</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review Panel -->
+  <div class="review-panel" id="review-panel">
+    <div class="split-view">
+      <!-- Transaction Side -->
+      <div class="transaction-panel">
+        <div class="panel-header">
+          <span class="panel-title">Transaction</span>
+          <span id="tx-index-label" style="margin-left:auto;font-size:13px;color:var(--muted)">#1</span>
+        </div>
+        <div class="panel-content">
+          <div class="tx-card" id="tx-card">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Receipt Side -->
+      <div class="receipt-panel">
+        <div class="panel-header">
+          <span class="panel-title">Receipt</span>
+          <button onclick="openReceiptModal()" style="margin-left:auto;background:var(--bg);border:1px solid var(--edge);color:var(--ink);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px">
+            🔍 Zoom
+          </button>
+        </div>
+        <div class="receipt-image-container" id="receipt-container">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <div class="action-nav">
+        <button class="btn-nav" onclick="prevTransaction()" id="btn-prev" disabled>
+          ← Prev
+        </button>
+        <button class="btn-nav" onclick="nextTransaction()" id="btn-next">
+          Next →
+        </button>
+      </div>
+
+      <div class="action-main">
+        <button class="btn-action btn-bad" onclick="markBad()">
+          ✕ Bad Match
+        </button>
+        <button class="btn-action btn-skip" onclick="skipTransaction()">
+          Skip
+        </button>
+        <button class="btn-action btn-add" onclick="addToReport()">
+          ✓ Add to Report
+        </button>
+      </div>
+
+      <div class="action-shortcuts">
+        <div class="shortcut-hint"><span class="kbd">A</span> Add</div>
+        <div class="shortcut-hint"><span class="kbd">S</span> Skip</div>
+        <div class="shortcut-hint"><span class="kbd">X</span> Bad</div>
+        <div class="shortcut-hint"><span class="kbd">← →</span> Nav</div>
+      </div>
+    </div>
+
+    <!-- Report Summary -->
+    <div class="report-summary">
+      <div class="summary-stat">
+        <div class="summary-label">In Report</div>
+        <div class="summary-value" id="report-count">0</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-label">Total Amount</div>
+        <div class="summary-value" id="report-total">$0.00</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-label">Skipped</div>
+        <div class="summary-value" style="color:var(--muted)" id="skipped-count">0</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-label">Remaining</div>
+        <div class="summary-value" style="color:var(--warn)" id="remaining-count">0</div>
+      </div>
+      <div class="summary-actions">
+        <button class="btn-finish" onclick="finishReport()">
+          📤 Finish & Export
+        </button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Receipt Modal -->
+<div class="receipt-modal" id="receipt-modal" onclick="closeReceiptModal()">
+  <button class="modal-close" onclick="closeReceiptModal()">×</button>
+  <img id="receipt-modal-img" src="" alt="Receipt">
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toast-icon">✓</span>
+  <span class="toast-message" id="toast-message"></span>
+</div>
+
+<script>
+// ============================================
+// STATE
+// ============================================
+let allTransactions = [];
+let filteredTransactions = [];
+let currentIndex = 0;
+let reportItems = [];
+let skippedItems = new Set();
+let reportName = '';
+
+// ============================================
+// INITIALIZATION
+// ============================================
+document.addEventListener('DOMContentLoaded', async () => {
+  // Set default dates (last 30 days)
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  document.getElementById('date-to').value = today.toISOString().split('T')[0];
+  document.getElementById('date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
+
+  // Load existing draft reports
+  loadDraftReports();
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', handleKeyboard);
+});
+
+// ============================================
+// REPORT SETUP
+// ============================================
+async function startReview() {
+  reportName = document.getElementById('report-name-input').value || 'Unnamed Report';
+  const business = document.getElementById('business-filter').value;
+  const dateFrom = document.getElementById('date-from').value;
+  const dateTo = document.getElementById('date-to').value;
+  const statusFilter = document.getElementById('status-filter').value;
+
+  // Load transactions
+  showToast('Loading transactions...', 'info');
+
+  try {
+    const response = await fetch('/load_data');
+    const data = await response.json();
+    allTransactions = data;
+
+    // Filter transactions
+    filteredTransactions = allTransactions.filter(tx => {
+      // Skip already submitted
+      const submitted = (tx['Already Submitted'] || '').toLowerCase().trim();
+      if (submitted === 'yes') return false;
+
+      // Business filter
+      if (business && tx['Business Type'] !== business) return false;
+
+      // Date filter
+      const txDate = tx['Chase Date'] || tx['date'] || '';
+      if (dateFrom && txDate < dateFrom) return false;
+      if (dateTo && txDate > dateTo) return false;
+
+      // Status filter
+      const status = (tx['Review Status'] || '').toLowerCase();
+      const hasReceipt = !!(tx['Receipt File'] || tx['receipt_file'] || tx['R2 URL'] || tx['r2_url'] || tx['receipt_url']);
+
+      if (statusFilter === 'good') {
+        return status === 'good' && hasReceipt;
+      } else if (statusFilter === 'has-receipt') {
+        return hasReceipt;
+      }
+      // 'all' - show everything
+      return true;
+    });
+
+    if (filteredTransactions.length === 0) {
+      showToast('No transactions match your filters', 'error');
+      return;
+    }
+
+    // Sort by date descending
+    filteredTransactions.sort((a, b) => {
+      const dateA = a['Chase Date'] || a['date'] || '';
+      const dateB = b['Chase Date'] || b['date'] || '';
+      return dateB.localeCompare(dateA);
+    });
+
+    // Initialize
+    currentIndex = 0;
+    reportItems = [];
+    skippedItems = new Set();
+
+    // Show review panel
+    document.getElementById('setup-panel').style.display = 'none';
+    document.getElementById('review-panel').classList.add('active');
+    document.getElementById('progress-section').style.display = 'flex';
+
+    // Render first transaction
+    renderCurrentTransaction();
+    updateProgress();
+    updateSummary();
+
+    showToast(`${filteredTransactions.length} transactions to review`, 'success');
+
+  } catch (e) {
+    console.error('Error loading:', e);
+    showToast('Failed to load transactions', 'error');
+  }
+}
+
+function loadDraftReports() {
+  // Load from localStorage
+  const drafts = JSON.parse(localStorage.getItem('tallyups_draft_reports') || '[]');
+  const select = document.getElementById('existing-reports');
+
+  drafts.forEach(draft => {
+    const opt = document.createElement('option');
+    opt.value = draft.id;
+    opt.textContent = `${draft.name} (${draft.items.length} items, ${draft.date})`;
+    select.appendChild(opt);
+  });
+}
+
+function loadExistingReport(id) {
+  if (!id) return;
+
+  const drafts = JSON.parse(localStorage.getItem('tallyups_draft_reports') || '[]');
+  const draft = drafts.find(d => d.id === id);
+
+  if (draft) {
+    reportName = draft.name;
+    reportItems = draft.items;
+    skippedItems = new Set(draft.skipped || []);
+
+    // Set filters
+    document.getElementById('report-name-input').value = draft.name;
+    if (draft.business) document.getElementById('business-filter').value = draft.business;
+    if (draft.dateFrom) document.getElementById('date-from').value = draft.dateFrom;
+    if (draft.dateTo) document.getElementById('date-to').value = draft.dateTo;
+
+    showToast('Draft loaded! Click Start Review to continue.', 'success');
+  }
+}
+
+// ============================================
+// TRANSACTION RENDERING
+// ============================================
+function renderCurrentTransaction() {
+  if (currentIndex >= filteredTransactions.length) {
+    showCompletionState();
+    return;
+  }
+
+  const tx = filteredTransactions[currentIndex];
+  const txCard = document.getElementById('tx-card');
+  const receiptContainer = document.getElementById('receipt-container');
+
+  // Transaction details
+  const merchant = tx['MI Merchant'] || tx['merchant'] || tx['Chase Description'] || 'Unknown';
+  const date = tx['Chase Date'] || tx['date'] || '';
+  const amount = parseFloat(tx['Chase Amount'] || tx['amount'] || 0);
+  const category = tx['Chase Category'] || tx['MI Category'] || tx['category'] || '';
+  const businessType = tx['Business Type'] || '';
+  const status = tx['Review Status'] || '';
+  const card = tx['card'] || '';
+  const aiNotes = tx['ai_notes'] || tx['AI Notes'] || '';
+
+  let statusBadge = '';
+  if (status === 'good' || status === 'Good') {
+    statusBadge = '<span class="tx-status-badge good">✓ Good</span>';
+  } else if (status === 'bad' || status === 'Bad') {
+    statusBadge = '<span class="tx-status-badge bad">✕ Bad</span>';
+  } else if (!status) {
+    statusBadge = '<span class="tx-status-badge missing">? Needs Review</span>';
+  }
+
+  txCard.innerHTML = `
+    <div class="tx-merchant">${escapeHtml(merchant)}</div>
+    <div class="tx-date">${formatDate(date)}</div>
+    <div class="tx-amount">${formatMoney(amount)}</div>
+    <div class="tx-details">
+      <div class="tx-detail">
+        <span class="tx-detail-label">Category</span>
+        <span class="tx-detail-value">${escapeHtml(category) || '—'}</span>
+      </div>
+      <div class="tx-detail">
+        <span class="tx-detail-label">Business</span>
+        <span class="tx-detail-value">${escapeHtml(businessType) || '—'}</span>
+      </div>
+      ${card ? `
+      <div class="tx-detail">
+        <span class="tx-detail-label">Card</span>
+        <span class="tx-detail-value">${escapeHtml(card)}</span>
+      </div>
+      ` : ''}
+      <div class="tx-detail">
+        <span class="tx-detail-label">Review Status</span>
+        <span class="tx-detail-value">${statusBadge}</span>
+      </div>
+      ${aiNotes ? `
+      <div class="tx-detail" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <span class="tx-detail-label">AI Notes</span>
+        <span class="tx-detail-value" style="font-size:13px;font-weight:400;color:var(--muted)">${escapeHtml(aiNotes)}</span>
+      </div>
+      ` : ''}
+    </div>
+  `;
+
+  // Receipt image
+  const receiptUrl = tx['R2 URL'] || tx['r2_url'] || tx['receipt_url'] || tx['Receipt File'] || tx['receipt_file'] || '';
+
+  if (receiptUrl) {
+    let imgSrc = receiptUrl;
+    // Handle local files
+    if (!receiptUrl.startsWith('http') && !receiptUrl.startsWith('data:')) {
+      imgSrc = '/receipts/' + receiptUrl.replace(/^receipts\//, '');
+    }
+
+    receiptContainer.innerHTML = `
+      <img class="receipt-image" src="${imgSrc}" alt="Receipt" onclick="openReceiptModal()" onerror="this.parentNode.innerHTML='<div class=\\'receipt-placeholder\\'><div class=\\'receipt-placeholder-icon\\'>⚠️</div><div class=\\'receipt-placeholder-text\\'>Failed to load receipt</div></div>'">
+    `;
+    document.getElementById('receipt-modal-img').src = imgSrc;
+  } else {
+    receiptContainer.innerHTML = `
+      <div class="receipt-placeholder">
+        <div class="receipt-placeholder-icon">📄</div>
+        <div class="receipt-placeholder-text">No receipt attached</div>
+      </div>
+    `;
+  }
+
+  // Update index label
+  document.getElementById('tx-index-label').textContent = `#${currentIndex + 1}`;
+
+  // Update nav buttons
+  document.getElementById('btn-prev').disabled = currentIndex === 0;
+  document.getElementById('btn-next').disabled = currentIndex >= filteredTransactions.length - 1;
+}
+
+function showCompletionState() {
+  document.getElementById('tx-card').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">🎉</div>
+      <div class="empty-title">Review Complete!</div>
+      <div class="empty-text">You've reviewed all ${filteredTransactions.length} transactions</div>
+    </div>
+  `;
+
+  document.getElementById('receipt-container').innerHTML = `
+    <div class="receipt-placeholder">
+      <div class="receipt-placeholder-icon">✓</div>
+      <div class="receipt-placeholder-text">All done!</div>
+    </div>
+  `;
+}
+
+// ============================================
+// ACTIONS
+// ============================================
+async function addToReport() {
+  if (currentIndex >= filteredTransactions.length) return;
+
+  const tx = filteredTransactions[currentIndex];
+  const txId = tx['_index'] || tx['id'];
+
+  // Check if already in report
+  if (reportItems.find(item => item.id === txId)) {
+    showToast('Already in report', 'info');
+    nextTransaction();
+    return;
+  }
+
+  // Add to report
+  reportItems.push({
+    id: txId,
+    merchant: tx['MI Merchant'] || tx['merchant'] || tx['Chase Description'],
+    amount: parseFloat(tx['Chase Amount'] || tx['amount'] || 0),
+    date: tx['Chase Date'] || tx['date'],
+    category: tx['Chase Category'] || tx['MI Category'] || tx['category'],
+    business: tx['Business Type'],
+    hasReceipt: !!(tx['Receipt File'] || tx['R2 URL'] || tx['receipt_url'])
+  });
+
+  // Remove from skipped if was there
+  skippedItems.delete(txId);
+
+  // Visual feedback
+  showToast('Added to report!', 'success');
+
+  // Save draft
+  saveDraft();
+
+  // Update UI and move to next
+  updateSummary();
+  updateProgress();
+  nextTransaction();
+}
+
+function skipTransaction() {
+  if (currentIndex >= filteredTransactions.length) return;
+
+  const tx = filteredTransactions[currentIndex];
+  const txId = tx['_index'] || tx['id'];
+
+  skippedItems.add(txId);
+
+  showToast('Skipped', 'info');
+  saveDraft();
+  updateSummary();
+  nextTransaction();
+}
+
+async function markBad() {
+  if (currentIndex >= filteredTransactions.length) return;
+
+  const tx = filteredTransactions[currentIndex];
+  const txId = tx['_index'] || tx['id'];
+
+  // Call API to mark as bad
+  try {
+    const response = await fetch('/save_row', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        _index: txId,
+        patches: [{'Review Status': 'Bad'}]
+      })
+    });
+
+    showToast('Marked as bad match', 'error');
+    skippedItems.add(txId);
+    saveDraft();
+    updateSummary();
+    nextTransaction();
+  } catch (e) {
+    console.error('Error:', e);
+    showToast('Failed to mark as bad', 'error');
+  }
+}
+
+function nextTransaction() {
+  if (currentIndex < filteredTransactions.length - 1) {
+    currentIndex++;
+    renderCurrentTransaction();
+    updateProgress();
+  } else if (currentIndex === filteredTransactions.length - 1) {
+    currentIndex++;
+    showCompletionState();
+    updateProgress();
+  }
+}
+
+function prevTransaction() {
+  if (currentIndex > 0) {
+    currentIndex--;
+    renderCurrentTransaction();
+    updateProgress();
+  }
+}
+
+// ============================================
+// REPORT FINALIZATION
+// ============================================
+async function finishReport() {
+  if (reportItems.length === 0) {
+    showToast('No items in report yet', 'error');
+    return;
+  }
+
+  // Mark all report items as submitted
+  showToast('Submitting report...', 'info');
+
+  try {
+    for (const item of reportItems) {
+      await fetch('/save_row', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          _index: item.id,
+          patches: [{'Already Submitted': 'yes'}]
+        })
+      });
+    }
+
+    // Generate CSV
+    const csvContent = generateReportCSV();
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${reportName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    // Clear draft
+    clearDraft();
+
+    showToast(`Report "${reportName}" submitted with ${reportItems.length} items!`, 'success');
+
+    // Return to setup after delay
+    setTimeout(() => {
+      document.getElementById('review-panel').classList.remove('active');
+      document.getElementById('setup-panel').style.display = 'flex';
+      document.getElementById('progress-section').style.display = 'none';
+
+      // Reset state
+      reportItems = [];
+      skippedItems = new Set();
+      currentIndex = 0;
+    }, 2000);
+
+  } catch (e) {
+    console.error('Error submitting:', e);
+    showToast('Failed to submit report', 'error');
+  }
+}
+
+function generateReportCSV() {
+  const headers = ['Date', 'Merchant', 'Amount', 'Category', 'Business', 'Has Receipt'];
+  const rows = reportItems.map(item => [
+    item.date,
+    `"${(item.merchant || '').replace(/"/g, '""')}"`,
+    item.amount.toFixed(2),
+    `"${(item.category || '').replace(/"/g, '""')}"`,
+    item.business || '',
+    item.hasReceipt ? 'Yes' : 'No'
+  ]);
+
+  return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+}
+
+// ============================================
+// DRAFT MANAGEMENT
+// ============================================
+function saveDraft() {
+  const drafts = JSON.parse(localStorage.getItem('tallyups_draft_reports') || '[]');
+
+  // Find or create draft
+  const existingIndex = drafts.findIndex(d => d.name === reportName);
+  const draft = {
+    id: existingIndex >= 0 ? drafts[existingIndex].id : Date.now().toString(),
+    name: reportName,
+    date: new Date().toLocaleDateString(),
+    items: reportItems,
+    skipped: Array.from(skippedItems),
+    business: document.getElementById('business-filter').value,
+    dateFrom: document.getElementById('date-from').value,
+    dateTo: document.getElementById('date-to').value,
+    currentIndex: currentIndex
+  };
+
+  if (existingIndex >= 0) {
+    drafts[existingIndex] = draft;
+  } else {
+    drafts.push(draft);
+  }
+
+  localStorage.setItem('tallyups_draft_reports', JSON.stringify(drafts));
+}
+
+function clearDraft() {
+  const drafts = JSON.parse(localStorage.getItem('tallyups_draft_reports') || '[]');
+  const filtered = drafts.filter(d => d.name !== reportName);
+  localStorage.setItem('tallyups_draft_reports', JSON.stringify(filtered));
+}
+
+// ============================================
+// UI UPDATES
+// ============================================
+function updateProgress() {
+  const reviewed = reportItems.length + skippedItems.size;
+  const total = filteredTransactions.length;
+  const percent = total > 0 ? (reviewed / total) * 100 : 0;
+
+  document.getElementById('progress-fill').style.width = percent + '%';
+  document.getElementById('progress-text').textContent = `${reviewed} / ${total}`;
+}
+
+function updateSummary() {
+  const total = reportItems.reduce((sum, item) => sum + item.amount, 0);
+
+  document.getElementById('report-count').textContent = reportItems.length;
+  document.getElementById('report-total').textContent = formatMoney(total);
+  document.getElementById('skipped-count').textContent = skippedItems.size;
+  document.getElementById('remaining-count').textContent =
+    filteredTransactions.length - reportItems.length - skippedItems.size;
+}
+
+// ============================================
+// KEYBOARD SHORTCUTS
+// ============================================
+function handleKeyboard(e) {
+  // Don't handle if typing in input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+    return;
+  }
+
+  // Only handle in review mode
+  if (!document.getElementById('review-panel').classList.contains('active')) {
+    return;
+  }
+
+  switch(e.key.toLowerCase()) {
+    case 'a':
+      e.preventDefault();
+      addToReport();
+      break;
+    case 's':
+      e.preventDefault();
+      skipTransaction();
+      break;
+    case 'x':
+      e.preventDefault();
+      markBad();
+      break;
+    case 'arrowleft':
+      e.preventDefault();
+      prevTransaction();
+      break;
+    case 'arrowright':
+      e.preventDefault();
+      nextTransaction();
+      break;
+    case 'escape':
+      closeReceiptModal();
+      break;
+  }
+}
+
+// ============================================
+// RECEIPT MODAL
+// ============================================
+function openReceiptModal() {
+  const img = document.getElementById('receipt-modal-img');
+  if (img.src && !img.src.includes('undefined')) {
+    document.getElementById('receipt-modal').classList.add('active');
+  }
+}
+
+function closeReceiptModal() {
+  document.getElementById('receipt-modal').classList.remove('active');
+}
+
+// ============================================
+// NAVIGATION
+// ============================================
+function goBack() {
+  if (reportItems.length > 0) {
+    if (confirm('You have unsaved work. Save as draft before leaving?')) {
+      saveDraft();
+    }
+  }
+  window.location.href = '/?page=reports';
+}
+
+// ============================================
+// UTILITIES
+// ============================================
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatMoney(amount) {
+  const absAmount = Math.abs(amount);
+  const formatted = absAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return amount < 0 ? `-$${formatted}` : `$${formatted}`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+let toastTimeout;
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  const icon = document.getElementById('toast-icon');
+  const msg = document.getElementById('toast-message');
+
+  icon.textContent = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ️';
+  msg.textContent = message;
+
+  toast.className = 'toast ' + type;
+
+  // Clear any existing timeout
+  clearTimeout(toastTimeout);
+
+  // Show toast
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+
+  // Hide after delay
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2500);
+}
+</script>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a href="/" class="mobile-nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    Dashboard
+  </a>
+  <a href="/library" class="mobile-nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+      <path d="M9 12h6M9 16h6"/>
+    </svg>
+    Library
+  </a>
+  <a href="/incoming" class="mobile-nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M22 12h-6l-2 3h-4l-2-3H2"/>
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+    </svg>
+    Inbox
+  </a>
+  <a href="/scanner" class="mobile-nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <line x1="3" y1="9" x2="21" y2="9"/>
+    </svg>
+    Scanner
+  </a>
+</nav>
+
+</body>
+</html>
