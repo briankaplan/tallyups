@@ -6683,13 +6683,17 @@ def get_library_receipts():
                 if tx_id and any(r['type'] == 'transaction' and r['transaction_id'] == tx_id for r in all_receipts):
                     continue
 
+                # For incoming receipts, use received_date (email date) as the authoritative date
+                # receipt_date/transaction_date are OCR-extracted and may be wrong
+                receipt_date = inc.get('received_date') or inc.get('receipt_date') or ''
+
                 receipt = {
                     'id': f"inc_{inc.get('id')}",
                     'type': 'incoming',
                     'incoming_id': inc.get('id'),
                     'merchant': inc.get('merchant') or inc.get('sender') or 'Unknown',
                     'amount': float(inc.get('amount') or 0),
-                    'date': str(inc.get('receipt_date') or ''),
+                    'date': str(receipt_date),
                     'receipt_url': inc.get('receipt_url') or inc.get('receipt_file'),
                     'thumbnail': inc.get('receipt_url') or inc.get('receipt_file'),
                     'source': receipt_source,
@@ -6699,7 +6703,7 @@ def get_library_receipts():
                     'status': inc.get('status'),
                     'confidence': inc.get('confidence_score') or 0,
                     'sender': inc.get('sender') or '',
-                    'created_at': str(inc.get('created_at') or inc.get('receipt_date') or '')
+                    'created_at': str(inc.get('created_at') or receipt_date or '')
                 }
                 all_receipts.append(receipt)
         except Exception as e:
@@ -6945,10 +6949,11 @@ def get_incoming_receipts():
             subject = receipt.get('subject', '')
             original_merchant = receipt.get('merchant', '')
 
-            # Ensure receipt_date is set (use transaction_date > receipt_date > received_date)
-            # transaction_date is the OCR-extracted date, receipt_date is the alias, received_date is email date
+            # Ensure receipt_date is set - use received_date (email date) as authoritative
+            # received_date is when the email was received, which is the correct date for Gmail receipts
+            # transaction_date is OCR-extracted and may be wrong (e.g., Nov 20 shown on a Nov 28 email)
             if not receipt.get('receipt_date'):
-                receipt['receipt_date'] = receipt.get('transaction_date') or receipt.get('received_date') or ''
+                receipt['receipt_date'] = receipt.get('received_date') or receipt.get('transaction_date') or ''
 
             # Try to extract merchant from subject
             extracted = extract_merchant_from_subject(subject)
@@ -8013,8 +8018,8 @@ def fix_incoming_receipt_dates():
         fixed_count = 0
 
         for row in rows:
-            # Use receipt_date if available, otherwise received_date
-            correct_date = row['receipt_date'] or row['correct_date']
+            # Use received_date (email date) as authoritative - it's the correct_date column in our query
+            correct_date = row['correct_date'] or row['receipt_date']
             if correct_date:
                 # Ensure it's a string in YYYY-MM-DD format
                 if hasattr(correct_date, 'strftime'):
