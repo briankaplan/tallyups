@@ -123,6 +123,96 @@
       white-space: nowrap;
     }
 
+    /* iOS Install Modal */
+    .ios-install-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .ios-install-modal.visible { display: flex; }
+    .ios-install-content {
+      background: var(--bg-elevated);
+      border-radius: 24px;
+      padding: 32px 24px;
+      max-width: 340px;
+      width: 100%;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .ios-install-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--accent);
+      border-radius: 20px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ios-install-icon svg { width: 40px; height: 40px; color: #000; }
+    .ios-install-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .ios-install-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+    .ios-install-steps {
+      text-align: left;
+      margin-bottom: 24px;
+    }
+    .ios-step {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .ios-step:last-child { border-bottom: none; }
+    .ios-step-num {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      color: #000;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .ios-step-text {
+      font-size: 15px;
+      line-height: 1.4;
+    }
+    .ios-step-text svg {
+      width: 18px;
+      height: 18px;
+      vertical-align: middle;
+      margin: 0 2px;
+    }
+    .ios-install-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
     .install-banner-close {
       position: absolute;
       top: -8px;
@@ -1293,6 +1383,36 @@
     <button class="install-banner-btn" onclick="installApp()">Install</button>
   </div>
 
+  <!-- iOS Install Modal -->
+  <div class="ios-install-modal" id="ios-install-modal" onclick="closeIosInstall(event)">
+    <div class="ios-install-content" onclick="event.stopPropagation()">
+      <div class="ios-install-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </div>
+      <div class="ios-install-title">Add to Home Screen</div>
+      <div class="ios-install-subtitle">Install Tallyups for the best experience</div>
+      <div class="ios-install-steps">
+        <div class="ios-step">
+          <div class="ios-step-num">1</div>
+          <div class="ios-step-text">Tap the <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> Share button below</div>
+        </div>
+        <div class="ios-step">
+          <div class="ios-step-num">2</div>
+          <div class="ios-step-text">Scroll down and tap <strong>"Add to Home Screen"</strong></div>
+        </div>
+        <div class="ios-step">
+          <div class="ios-step-num">3</div>
+          <div class="ios-step-text">Tap <strong>"Add"</strong> in the top right</div>
+        </div>
+      </div>
+      <button class="ios-install-btn" onclick="closeIosInstall()">Got it</button>
+    </div>
+  </div>
+
   <!-- Header -->
   <header class="header">
     <div class="header-content">
@@ -1720,7 +1840,11 @@
           .catch(err => console.log('[PWA] SW registration failed:', err));
       }
 
-      // Install prompt
+      // Detect iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+      // Install prompt (Android/Chrome)
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
@@ -1733,16 +1857,31 @@
         }
       });
 
+      // For iOS: Show install banner after delay (since beforeinstallprompt doesn't fire)
+      if (isIOS && !isInStandaloneMode && !localStorage.getItem('installDismissed')) {
+        setTimeout(() => {
+          $('install-banner').classList.add('visible');
+        }, 3000);
+      }
+
       // Detect if running as PWA
-      if (window.matchMedia('(display-mode: standalone)').matches) {
+      if (isInStandaloneMode) {
         console.log('[PWA] Running in standalone mode');
       }
     }
 
+    // iOS detection helper
+    const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
     window.installApp = async () => {
       if (!deferredPrompt) {
-        // iOS instructions
-        showToast('Tap Share → Add to Home Screen', 'info');
+        // iOS - show the install guide modal
+        if (isIOS()) {
+          $('ios-install-modal').classList.add('visible');
+          $('install-banner').classList.remove('visible');
+        } else {
+          showToast('Use browser menu to install', 'info');
+        }
         return;
       }
 
@@ -1756,6 +1895,12 @@
 
       deferredPrompt = null;
       $('install-banner').classList.remove('visible');
+    };
+
+    window.closeIosInstall = (e) => {
+      if (e && e.target !== e.currentTarget) return;
+      $('ios-install-modal').classList.remove('visible');
+      localStorage.setItem('installDismissed', 'true');
     };
 
     window.dismissInstall = () => {
