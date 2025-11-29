@@ -1078,7 +1078,7 @@ async function startReview() {
     // Handle auth errors
     if (response.status === 401) {
       showToast('Session expired - redirecting to login', 'error');
-      window.location.href = '/login?next=/report-builder';
+      window.location.href = '/login?next=/reports';
       return;
     }
 

@@ -3499,7 +3499,7 @@
       if (!isOnline) return false;
 
       try {
-        const response = await fetch(`${API_BASE}/csv`);
+        const response = await fetch(`${API_BASE}/api/transactions`);
         if (!response.ok) return false;
 
         const transactions = await response.json();
@@ -3650,7 +3650,7 @@
       if (!isOnline) return;
 
       try {
-        const response = await fetch(`${API_BASE}/csv`);
+        const response = await fetch(`${API_BASE}/api/transactions`);
         if (!response.ok) return;
 
         const transactions = await response.json();

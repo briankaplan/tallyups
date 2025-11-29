@@ -2098,16 +2098,14 @@ def mobile_upload():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/csv")
 @app.route("/api/transactions")
 @login_required
 def get_transactions():
     """
-    Return all transactions as JSON from SQLite.
+    Return all transactions as JSON from MySQL.
 
     Routes:
-    - /api/transactions (preferred)
-    - /csv (legacy, kept for backwards compatibility)
+    - /api/transactions
 
     PURE SQL MODE: Always reads fresh from database, no caching!
 
