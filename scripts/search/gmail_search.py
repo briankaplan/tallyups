@@ -66,6 +66,9 @@ try:
     SCREENSHOT_AVAILABLE = True
 except ImportError:
     try:
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent.parent / "misc"))
         from email_screenshot import create_email_receipt_screenshot
         SCREENSHOT_AVAILABLE = True
     except ImportError:

@@ -1,0 +1,26 @@
+# Core dependencies
+numpy>=1.24.0
+opencv-python>=4.8.0
+pandas>=2.0.0
+Pillow>=10.0.0
+
+# OCR
+paddleocr>=2.7.0
+paddlepaddle>=2.5.0
+
+# Vision Model (optional backends)
+requests>=2.31.0
+
+# Transformers backend (optional)
+# transformers>=4.35.0
+# torch>=2.1.0
+
+# Date parsing
+dateparser>=1.1.8
+
+# Flask integration
+Flask>=3.0.0
+Flask-CORS>=4.0.0
+
+# Utilities
+python-dotenv>=1.0.0
