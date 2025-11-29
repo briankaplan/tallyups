@@ -1488,6 +1488,262 @@
       height: 14px;
       color: var(--accent);
     }
+
+    /* Duplicate Warning Modal */
+    .duplicate-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      backdrop-filter: blur(10px);
+      z-index: 250;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .duplicate-modal.visible { display: flex; }
+    .duplicate-content {
+      background: var(--bg-card);
+      border: 2px solid var(--warning);
+      border-radius: 24px;
+      padding: 24px;
+      max-width: 340px;
+      width: 100%;
+      text-align: center;
+    }
+    .duplicate-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(255, 170, 0, 0.2);
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .duplicate-icon svg { width: 32px; height: 32px; color: var(--warning); }
+    .duplicate-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .duplicate-subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
+    .duplicate-match {
+      background: var(--bg-elevated);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .duplicate-match-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .duplicate-match-row:last-child { margin-bottom: 0; }
+    .duplicate-match-label { color: var(--text-secondary); }
+    .duplicate-actions { display: flex; gap: 12px; }
+    .duplicate-btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+    .duplicate-btn.secondary {
+      background: var(--bg-elevated);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .duplicate-btn.primary {
+      background: var(--warning);
+      color: #000;
+    }
+
+    /* Quality Warning */
+    .quality-warning {
+      background: rgba(255, 68, 68, 0.15);
+      border: 1px solid var(--error);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+    }
+    .quality-warning.visible { display: flex; }
+    .quality-warning svg { width: 20px; height: 20px; color: var(--error); flex-shrink: 0; }
+    .quality-warning-text { font-size: 13px; color: var(--text); }
+
+    /* Split Receipt Section */
+    .split-section {
+      background: var(--bg-elevated);
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 16px;
+      border: 1px solid var(--border);
+    }
+    .split-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .split-header span { font-size: 14px; font-weight: 600; }
+    .split-toggle {
+      width: 44px;
+      height: 24px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      position: relative;
+      cursor: pointer;
+    }
+    .split-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+    .split-toggle.active { background: var(--accent-dim); border-color: var(--accent); }
+    .split-toggle.active::after { left: 22px; background: var(--accent); }
+    .split-options { display: none; gap: 8px; margin-top: 12px; }
+    .split-options.visible { display: flex; flex-wrap: wrap; }
+    .split-chip {
+      padding: 8px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .split-chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .split-chip input {
+      width: 50px;
+      background: transparent;
+      border: none;
+      color: inherit;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    /* Voice Notes */
+    .voice-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .voice-btn {
+      width: 48px;
+      height: 48px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .voice-btn svg { width: 20px; height: 20px; color: var(--text); }
+    .voice-btn.recording {
+      background: var(--error);
+      border-color: var(--error);
+      animation: pulse 1s infinite;
+    }
+    .voice-btn.recording svg { color: #fff; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    .voice-status {
+      flex: 1;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .voice-status.recording { color: var(--error); font-weight: 600; }
+    .voice-playback {
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .voice-playback.visible { display: flex; }
+    .voice-play {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .voice-play svg { width: 14px; height: 14px; color: #000; }
+    .voice-duration { font-size: 12px; color: var(--text-secondary); }
+    .voice-delete {
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .voice-delete svg { width: 16px; height: 16px; color: var(--text-dim); }
+
+    /* Quick Templates */
+    .templates-section {
+      position: absolute;
+      bottom: calc(70px + var(--safe-bottom));
+      left: 0;
+      right: 0;
+      padding: 0 16px 16px;
+      display: none;
+    }
+    .templates-section.visible { display: block; }
+    .templates-header {
+      font-size: 12px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .templates-grid {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .template-card {
+      flex-shrink: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 18px;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 100px;
+      text-align: center;
+    }
+    .template-card:active {
+      transform: scale(0.95);
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .template-card:active * { color: #000 !important; }
+    .template-icon { font-size: 24px; margin-bottom: 6px; }
+    .template-name { font-size: 13px; font-weight: 600; }
+    .template-amount { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -1523,6 +1779,39 @@
       <div class="install-banner-desc">Add to home screen for the best experience</div>
     </div>
     <button class="install-banner-btn" onclick="installApp()">Install</button>
+  </div>
+
+  <!-- Duplicate Warning Modal -->
+  <div class="duplicate-modal" id="duplicate-modal">
+    <div class="duplicate-content">
+      <div class="duplicate-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+      <div class="duplicate-title">Possible Duplicate</div>
+      <div class="duplicate-subtitle">This receipt may already exist</div>
+      <div class="duplicate-match">
+        <div class="duplicate-match-row">
+          <span class="duplicate-match-label">Merchant</span>
+          <span id="dup-merchant">—</span>
+        </div>
+        <div class="duplicate-match-row">
+          <span class="duplicate-match-label">Amount</span>
+          <span id="dup-amount">—</span>
+        </div>
+        <div class="duplicate-match-row">
+          <span class="duplicate-match-label">Date</span>
+          <span id="dup-date">—</span>
+        </div>
+      </div>
+      <div class="duplicate-actions">
+        <button class="duplicate-btn secondary" onclick="closeDuplicateModal()">Save Anyway</button>
+        <button class="duplicate-btn primary" onclick="useDuplicate()">Use Existing</button>
+      </div>
+    </div>
   </div>
 
   <!-- iOS Install Modal -->
@@ -1648,6 +1937,43 @@
         </button>
       </div>
 
+      <!-- Quick Templates -->
+      <div class="templates-section visible" id="templates-section">
+        <div class="templates-header">Quick Add</div>
+        <div class="templates-grid">
+          <div class="template-card" onclick="useTemplate('Coffee', 5.50, 'Meals')">
+            <div class="template-icon">☕</div>
+            <div class="template-name">Coffee</div>
+            <div class="template-amount">~$5.50</div>
+          </div>
+          <div class="template-card" onclick="useTemplate('Parking', 20, 'Travel')">
+            <div class="template-icon">🅿️</div>
+            <div class="template-name">Parking</div>
+            <div class="template-amount">~$20</div>
+          </div>
+          <div class="template-card" onclick="useTemplate('Gas', 50, 'Travel')">
+            <div class="template-icon">⛽</div>
+            <div class="template-name">Gas</div>
+            <div class="template-amount">~$50</div>
+          </div>
+          <div class="template-card" onclick="useTemplate('Uber', 25, 'Travel')">
+            <div class="template-icon">🚗</div>
+            <div class="template-name">Uber</div>
+            <div class="template-amount">~$25</div>
+          </div>
+          <div class="template-card" onclick="useTemplate('Lunch', 15, 'Meals')">
+            <div class="template-icon">🍽️</div>
+            <div class="template-name">Lunch</div>
+            <div class="template-amount">~$15</div>
+          </div>
+          <div class="template-card" onclick="useTemplate('Supplies', 30, 'Supplies')">
+            <div class="template-icon">📦</div>
+            <div class="template-name">Supplies</div>
+            <div class="template-amount">~$30</div>
+          </div>
+        </div>
+      </div>
+
       <input type="file" id="file-input" accept="image/*,application/pdf">
       <input type="file" id="batch-input" accept="image/*" multiple>
     </section>
@@ -1661,6 +1987,16 @@
           <path d="M2 12l10 5 10-5"></path>
         </svg>
         AI Extracted
+      </div>
+
+      <!-- Quality Warning -->
+      <div class="quality-warning" id="quality-warning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span class="quality-warning-text" id="quality-text">Image may be blurry - results might be less accurate</span>
       </div>
 
       <div class="extraction-card">
@@ -1749,6 +2085,47 @@
             <button class="purpose-btn" onclick="setPurpose('Travel')">✈️ Travel</button>
             <button class="purpose-btn" onclick="setPurpose('Supplies')">📦 Supplies</button>
             <button class="purpose-btn" onclick="setPurpose('', 'Personal')">👤 Personal</button>
+          </div>
+        </div>
+
+        <!-- Split Receipt Section -->
+        <div class="split-section" id="split-section">
+          <div class="split-header">
+            <span>📊 Split Between Businesses</span>
+            <div class="split-toggle" id="split-toggle" onclick="toggleSplit()"></div>
+          </div>
+          <div class="split-options" id="split-options">
+            <div class="split-chip active" data-biz="Down Home" onclick="selectSplit(this)">
+              🏠 DH <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent(this)">
+            </div>
+            <div class="split-chip active" data-biz="Music City Rodeo" onclick="selectSplit(this)">
+              🎸 MCR <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent(this)">
+            </div>
+          </div>
+        </div>
+
+        <!-- Voice Notes Section -->
+        <div class="voice-section" id="voice-section">
+          <button class="voice-btn" id="voice-record-btn" onclick="toggleVoiceRecording()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            </svg>
+          </button>
+          <span class="voice-status" id="voice-status">Tap to add voice note</span>
+          <div class="voice-playback" id="voice-playback">
+            <button class="voice-play" id="voice-play" onclick="playVoiceNote()">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </button>
+            <span class="voice-duration" id="voice-duration">0:00</span>
+            <button class="voice-delete" onclick="deleteVoiceNote()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -2351,6 +2728,27 @@
         $('camera-frame').classList.add('has-image');
         $('retake-btn').classList.add('visible');
 
+        // Hide templates when image captured
+        const templatesSection = $('templates-section');
+        if (templatesSection) templatesSection.classList.remove('visible');
+
+        // Analyze image quality
+        try {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.min(img.width, 800); // Downsample for analysis
+            canvas.height = Math.min(img.height, 800);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const quality = analyzeImageQuality(canvas);
+            showQualityWarning(quality.issues);
+          };
+          img.src = currentImage.data;
+        } catch (e) {
+          console.log('Quality check skipped:', e);
+        }
+
         await processOCR();
       };
       reader.readAsDataURL(file);
@@ -2600,6 +2998,11 @@
           const speedMsg = ocrTime < 2000 ? '⚡ Super fast!' : ocrTime < 4000 ? '✓ Done' : '✓ Complete';
           showToast(`${speedMsg} (${(ocrTime/1000).toFixed(1)}s)`, 'success');
 
+          // Check for duplicates after OCR extraction
+          if (data.merchant && data.total && data.date) {
+            checkForDuplicate(data.merchant, data.total, formatDateForInput(data.date));
+          }
+
           hapticFeedback('success');
         } else {
           showToast('Could not read receipt. Fill manually.', 'error');
@@ -2660,6 +3063,346 @@
       if (business) selectedBusiness = business;
       $('purpose-prompt').style.display = 'none';
       hapticFeedback('light');
+    }
+
+    // ========================================
+    // QUICK TEMPLATES
+    // ========================================
+    function useTemplate(merchant, amount, category) {
+      hapticFeedback('medium');
+
+      // Fill in the form fields
+      $('merchant-input').value = merchant;
+      $('amount-input').value = amount.toFixed(2);
+      $('category-select').value = category;
+
+      // Set current date
+      const today = new Date().toISOString().split('T')[0];
+      $('date-input').value = today;
+
+      // Show extraction panel without image
+      showExtractionPanel();
+
+      // Hide templates section
+      const templatesSection = $('templates-section');
+      if (templatesSection) templatesSection.classList.remove('visible');
+
+      // Check for duplicates
+      checkForDuplicate(merchant, amount, today);
+
+      showToast(`📝 ${merchant} template loaded`);
+    }
+
+    // ========================================
+    // SPLIT RECEIPT
+    // ========================================
+    let splitEnabled = false;
+    let splitPercentages = { 'Down Home': 50, 'Music City Rodeo': 50 };
+
+    function toggleSplit() {
+      splitEnabled = !splitEnabled;
+      const toggle = $('split-toggle');
+      const options = $('split-options');
+
+      if (toggle) toggle.classList.toggle('active', splitEnabled);
+      if (options) options.style.display = splitEnabled ? 'flex' : 'none';
+
+      hapticFeedback('light');
+    }
+
+    function selectSplit(chip) {
+      chip.classList.toggle('active');
+      updateSplitDisplay();
+      hapticFeedback('light');
+    }
+
+    function updateSplitPercent(business, value) {
+      const percent = parseInt(value) || 0;
+      splitPercentages[business] = Math.min(100, Math.max(0, percent));
+
+      // Auto-adjust other business if only two
+      const businesses = Object.keys(splitPercentages);
+      if (businesses.length === 2) {
+        const other = businesses.find(b => b !== business);
+        splitPercentages[other] = 100 - splitPercentages[business];
+
+        // Update the other input
+        const otherChip = document.querySelector(`.split-chip[data-biz="${other}"] input`);
+        if (otherChip) otherChip.value = splitPercentages[other] + '%';
+      }
+    }
+
+    function updateSplitDisplay() {
+      const activeChips = document.querySelectorAll('.split-chip.active');
+      const count = activeChips.length;
+
+      if (count > 0) {
+        const equalSplit = Math.floor(100 / count);
+        activeChips.forEach((chip, i) => {
+          const input = chip.querySelector('input');
+          const biz = chip.dataset.biz;
+          const percent = i === count - 1 ? 100 - (equalSplit * (count - 1)) : equalSplit;
+          if (input) input.value = percent + '%';
+          if (biz) splitPercentages[biz] = percent;
+        });
+      }
+    }
+
+    function getSplitData() {
+      if (!splitEnabled) return null;
+
+      const result = {};
+      document.querySelectorAll('.split-chip.active').forEach(chip => {
+        const biz = chip.dataset.biz;
+        const input = chip.querySelector('input');
+        if (biz && input) {
+          result[biz] = parseInt(input.value) || 0;
+        }
+      });
+
+      return Object.keys(result).length > 0 ? result : null;
+    }
+
+    // ========================================
+    // VOICE NOTES
+    // ========================================
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let voiceNoteBlob = null;
+    let voiceNoteUrl = null;
+    let isRecording = false;
+    let recordingStartTime = null;
+
+    async function toggleVoiceRecording() {
+      if (isRecording) {
+        stopVoiceRecording();
+      } else {
+        await startVoiceRecording();
+      }
+    }
+
+    async function startVoiceRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          voiceNoteBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          voiceNoteUrl = URL.createObjectURL(voiceNoteBlob);
+
+          // Update UI
+          $('voice-playback').style.display = 'flex';
+          $('voice-status').textContent = 'Voice note recorded';
+
+          const duration = Math.round((Date.now() - recordingStartTime) / 1000);
+          $('voice-duration').textContent = `0:${duration.toString().padStart(2, '0')}`;
+
+          // Stop all tracks
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        recordingStartTime = Date.now();
+
+        $('voice-record-btn').classList.add('recording');
+        $('voice-status').textContent = 'Recording...';
+        $('voice-playback').style.display = 'none';
+
+        hapticFeedback('medium');
+      } catch (err) {
+        console.error('Voice recording error:', err);
+        showToast('❌ Microphone access denied');
+      }
+    }
+
+    function stopVoiceRecording() {
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        $('voice-record-btn').classList.remove('recording');
+        hapticFeedback('light');
+      }
+    }
+
+    function playVoiceNote() {
+      if (voiceNoteUrl) {
+        const audio = new Audio(voiceNoteUrl);
+        audio.play();
+        hapticFeedback('light');
+      }
+    }
+
+    function deleteVoiceNote() {
+      if (voiceNoteUrl) {
+        URL.revokeObjectURL(voiceNoteUrl);
+      }
+      voiceNoteBlob = null;
+      voiceNoteUrl = null;
+
+      $('voice-playback').style.display = 'none';
+      $('voice-status').textContent = 'Tap to add voice note';
+
+      hapticFeedback('light');
+      showToast('🗑️ Voice note deleted');
+    }
+
+    // ========================================
+    // DUPLICATE DETECTION
+    // ========================================
+    let duplicateTransaction = null;
+
+    async function checkForDuplicate(merchant, amount, date) {
+      if (!isOnline) return false;
+
+      try {
+        const response = await fetch(`${API_BASE}/csv`);
+        if (!response.ok) return false;
+
+        const transactions = await response.json();
+        const searchMerchant = (merchant || '').toLowerCase().trim();
+        const searchAmount = parseFloat(amount) || 0;
+        const searchDate = date || '';
+
+        // Look for similar transactions
+        const duplicates = transactions.filter(t => {
+          const txMerchant = (t['Chase Description'] || t['Merchant'] || '').toLowerCase();
+          const txAmount = Math.abs(parseFloat(t['Chase Amount'] || t['Amount'] || 0));
+          const txDate = t['Chase Date'] || t['Date'] || '';
+          const hasReceipt = t['Receipt File'] && t['Receipt File'].trim();
+
+          // Match criteria: similar merchant, same amount, same date, already has receipt
+          const merchantMatch = txMerchant.includes(searchMerchant) || searchMerchant.includes(txMerchant);
+          const amountMatch = Math.abs(txAmount - searchAmount) < 0.02;
+          const dateMatch = txDate === searchDate || !searchDate;
+
+          return merchantMatch && amountMatch && hasReceipt;
+        });
+
+        if (duplicates.length > 0) {
+          duplicateTransaction = duplicates[0];
+          showDuplicateModal(duplicateTransaction);
+          return true;
+        }
+
+        return false;
+      } catch (err) {
+        console.error('Duplicate check error:', err);
+        return false;
+      }
+    }
+
+    function showDuplicateModal(transaction) {
+      $('dup-merchant').textContent = transaction['Chase Description'] || transaction['Merchant'] || '—';
+      $('dup-amount').textContent = '$' + Math.abs(parseFloat(transaction['Chase Amount'] || transaction['Amount'] || 0)).toFixed(2);
+      $('dup-date').textContent = transaction['Chase Date'] || transaction['Date'] || '—';
+
+      $('duplicate-modal').classList.add('show');
+      hapticFeedback('warning');
+    }
+
+    function closeDuplicateModal() {
+      $('duplicate-modal').classList.remove('show');
+      duplicateTransaction = null;
+    }
+
+    function useDuplicate() {
+      // Link to existing transaction instead of creating new
+      if (duplicateTransaction) {
+        matchedTransaction = duplicateTransaction;
+        $('match-section').style.display = 'block';
+        $('match-merchant').textContent = duplicateTransaction['Chase Description'] || 'Unknown';
+        $('match-meta').textContent = duplicateTransaction['Chase Date'] || '';
+        $('match-amount').textContent = '$' + Math.abs(parseFloat(duplicateTransaction['Chase Amount'])).toFixed(2);
+      }
+      closeDuplicateModal();
+      showToast('✅ Using existing transaction');
+    }
+
+    // ========================================
+    // IMAGE QUALITY CHECK
+    // ========================================
+    function analyzeImageQuality(canvas) {
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      let brightness = 0;
+      let contrast = 0;
+      let blurScore = 0;
+
+      // Calculate average brightness
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        brightness += (r + g + b) / 3;
+      }
+      brightness = brightness / (data.length / 4);
+
+      // Simple edge detection for blur (Laplacian variance)
+      const width = canvas.width;
+      const height = canvas.height;
+      let edgeSum = 0;
+      let edgeCount = 0;
+
+      for (let y = 1; y < height - 1; y += 2) {
+        for (let x = 1; x < width - 1; x += 2) {
+          const idx = (y * width + x) * 4;
+          const center = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+
+          const top = (data[idx - width * 4] + data[idx - width * 4 + 1] + data[idx - width * 4 + 2]) / 3;
+          const bottom = (data[idx + width * 4] + data[idx + width * 4 + 1] + data[idx + width * 4 + 2]) / 3;
+          const left = (data[idx - 4] + data[idx - 3] + data[idx - 2]) / 3;
+          const right = (data[idx + 4] + data[idx + 5] + data[idx + 6]) / 3;
+
+          const laplacian = Math.abs(4 * center - top - bottom - left - right);
+          edgeSum += laplacian;
+          edgeCount++;
+        }
+      }
+
+      blurScore = edgeCount > 0 ? edgeSum / edgeCount : 0;
+
+      const issues = [];
+
+      // Too dark
+      if (brightness < 50) {
+        issues.push('Image is too dark');
+      }
+      // Too bright / overexposed
+      else if (brightness > 220) {
+        issues.push('Image is overexposed');
+      }
+
+      // Blurry (low edge variance)
+      if (blurScore < 10) {
+        issues.push('Image may be blurry');
+      }
+
+      return {
+        brightness,
+        blurScore,
+        issues,
+        isGood: issues.length === 0
+      };
+    }
+
+    function showQualityWarning(issues) {
+      const warning = $('quality-warning');
+      const text = $('quality-text');
+
+      if (issues.length > 0 && warning && text) {
+        text.textContent = issues.join(' • ');
+        warning.style.display = 'flex';
+      } else if (warning) {
+        warning.style.display = 'none';
+      }
     }
 
     // ========================================
@@ -2750,6 +3493,17 @@
           formData.append('business', selectedBusiness);
           formData.append('notes', $('notes-input').value || '');
           formData.append('source', SOURCE_TAG);
+
+          // Add split data if enabled
+          const splitData = getSplitData();
+          if (splitData) {
+            formData.append('split', JSON.stringify(splitData));
+          }
+
+          // Add voice note if recorded
+          if (voiceNoteBlob) {
+            formData.append('voice_note', voiceNoteBlob, `voice_${Date.now()}.webm`);
+          }
 
           updateProcessing('Saving receipt...', 'Processing data');
 
@@ -2960,6 +3714,7 @@
     function resetScanner() {
       currentImage = { data: null, blob: null };
       matchedTransaction = null;
+      duplicateTransaction = null;
       selectedBusiness = '';
 
       $('image-preview').style.display = 'none';
@@ -2983,6 +3738,22 @@
       $('notes-label').innerHTML = 'Notes';
       $$('.biz-chip').forEach(c => c.classList.remove('selected'));
       $('file-input').value = '';
+
+      // Reset new features
+      deleteVoiceNote();
+      splitEnabled = false;
+      const splitToggle = $('split-toggle');
+      const splitOptions = $('split-options');
+      if (splitToggle) splitToggle.classList.remove('active');
+      if (splitOptions) splitOptions.style.display = 'none';
+
+      // Hide quality warning
+      const qualityWarning = $('quality-warning');
+      if (qualityWarning) qualityWarning.style.display = 'none';
+
+      // Show templates section again
+      const templatesSection = $('templates-section');
+      if (templatesSection) templatesSection.classList.add('visible');
     }
 
     async function checkConnection() {
