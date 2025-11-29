@@ -1131,6 +1131,175 @@
       color: var(--warning);
     }
 
+    /* Receipt Detail Modal */
+    .receipt-detail-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    .receipt-detail-modal.visible {
+      display: flex;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .receipt-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .receipt-detail-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .receipt-detail-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: none;
+      color: var(--text);
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .receipt-detail-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .receipt-detail-image {
+      width: 100%;
+      max-height: 50vh;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .receipt-detail-data {
+      padding: 20px;
+      background: var(--bg);
+    }
+
+    .receipt-detail-merchant {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .receipt-detail-amount {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .receipt-detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .receipt-detail-label {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .receipt-detail-value {
+      font-size: 14px;
+      font-weight: 600;
+      text-align: right;
+      max-width: 60%;
+    }
+
+    .receipt-detail-notes {
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
+
+    .receipt-detail-footer {
+      padding: 16px 20px;
+      padding-bottom: calc(16px + env(safe-area-inset-bottom));
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+    }
+
+    .receipt-detail-btn {
+      flex: 1;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s;
+    }
+
+    .receipt-detail-btn:active {
+      transform: scale(0.96);
+    }
+
+    .receipt-detail-btn.delete {
+      background: rgba(255, 78, 106, 0.15);
+      color: var(--error);
+    }
+
+    .receipt-detail-btn.sync {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .receipt-detail-btn.synced {
+      background: var(--bg-card);
+      color: var(--text-secondary);
+    }
+
+    /* Swipe-to-delete indicator */
+    .history-item {
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .history-delete-hint {
+      position: absolute;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 12px;
+      color: var(--text-dim);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .history-item:active .history-delete-hint {
+      opacity: 1;
+    }
+
     /* Empty state */
     .empty-state {
       text-align: center;

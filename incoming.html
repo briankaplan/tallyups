@@ -547,6 +547,529 @@ tbody tr:nth-child(2) { animation-delay: 0.04s; }
 tbody tr:nth-child(3) { animation-delay: 0.06s; }
 tbody tr:nth-child(4) { animation-delay: 0.08s; }
 tbody tr:nth-child(5) { animation-delay: 0.1s; }
+
+/* ============================================
+   MOBILE-FIRST INBOX UI
+   ============================================ */
+
+/* Safe area support */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile Card Container */
+.mobile-inbox {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  padding-bottom: calc(16px + var(--safe-bottom));
+}
+
+/* Receipt Card */
+.inbox-card {
+  background: var(--panel);
+  border-radius: 20px;
+  padding: 18px;
+  border: 1px solid var(--edge);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.inbox-card:active {
+  transform: scale(0.98);
+  background: rgba(0,255,136,0.03);
+}
+.inbox-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 20px 0 0 20px;
+}
+.inbox-card.pending::before { background: var(--brand); }
+.inbox-card.accepted::before { background: var(--ok); opacity: 0.5; }
+.inbox-card.rejected::before { background: var(--bad); opacity: 0.5; }
+
+/* Card Header */
+.inbox-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.inbox-card-date {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.inbox-card-score {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.inbox-card-score.high { background: rgba(0,255,136,0.15); color: var(--ok); }
+.inbox-card-score.medium { background: rgba(255,216,94,0.15); color: var(--warn); }
+.inbox-card-score.low { background: rgba(255,78,106,0.15); color: var(--bad); }
+
+/* Card Body */
+.inbox-card-merchant {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+.inbox-card-amount {
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'SF Mono', monospace;
+  margin-bottom: 12px;
+}
+.inbox-card-amount.charge { color: var(--bad); }
+.inbox-card-amount.refund { color: var(--ok); }
+
+/* Card Meta Row */
+.inbox-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.inbox-card-sender {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.inbox-card-sender-icon {
+  font-size: 14px;
+}
+
+/* Card Description */
+.inbox-card-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Card Subject */
+.inbox-card-subject {
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 12px;
+}
+
+/* Card Footer Actions */
+.inbox-card-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.inbox-card-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s;
+}
+.inbox-card-btn:active { transform: scale(0.95); }
+.inbox-card-btn.accept {
+  background: var(--brand);
+  color: #000;
+}
+.inbox-card-btn.reject {
+  background: rgba(255,78,106,0.15);
+  color: var(--bad);
+}
+.inbox-card-btn.preview {
+  background: rgba(59,130,246,0.15);
+  color: #60a5fa;
+  flex: 0.5;
+}
+
+/* Card Status for non-pending */
+.inbox-card-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.inbox-card-status.accepted {
+  background: rgba(0,255,136,0.1);
+  color: var(--ok);
+}
+.inbox-card-status.rejected {
+  background: rgba(255,78,106,0.1);
+  color: var(--bad);
+}
+
+/* Empty state */
+.inbox-empty {
+  text-align: center;
+  padding: 60px 24px;
+}
+.inbox-empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+.inbox-empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+.inbox-empty-text {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  /* Prevent horizontal overflow at body level */
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  /* Hide table, show cards */
+  .content table { display: none !important; }
+  .mobile-inbox { display: flex !important; }
+
+  /* Clean mobile header */
+  header {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    padding-top: calc(10px + var(--safe-top));
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .brand {
+    order: 1;
+    flex-shrink: 0;
+  }
+  .brand h1 {
+    font-size: 15px;
+  }
+  .version {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+
+  /* Navigation - horizontal scroll with fade edges */
+  .nav-buttons {
+    order: 3;
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+    padding: 4px 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x proximity;
+  }
+  .nav-buttons::-webkit-scrollbar { display: none; }
+
+  .nav-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    border-radius: 8px;
+  }
+  .nav-btn::before { display: none; } /* Remove underline animation */
+
+  /* Controls - compact */
+  .controls {
+    order: 2;
+    gap: 6px;
+    margin-left: auto;
+  }
+  .controls button {
+    padding: 6px 10px;
+    font-size: 11px;
+    border-radius: 8px;
+  }
+  .controls .btn-ghost.btn-sm { display: none; }
+  .controls .btn-primary {
+    padding: 8px 12px;
+  }
+
+  /* Compact dashboard - 2x2 grid */
+  .dashboard {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .stat {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+  .stat-value {
+    font-size: 20px;
+  }
+  .stat-label {
+    font-size: 10px;
+  }
+
+  /* Compact filters - scrollable */
+  .filters {
+    padding: 8px 12px;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+
+  .chip {
+    padding: 8px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border-radius: 10px;
+  }
+  .chip-icon { display: none; }
+
+  /* Content area */
+  .content {
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Mobile cards - proper containment */
+  .mobile-inbox {
+    padding: 12px;
+    padding-bottom: calc(16px + var(--safe-bottom));
+    gap: 10px;
+    overflow-x: hidden;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .inbox-card {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 16px;
+    padding: 14px;
+  }
+
+  .inbox-card-header {
+    margin-bottom: 8px;
+  }
+  .inbox-card-date {
+    font-size: 11px;
+  }
+  .inbox-card-score {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+  .inbox-card-merchant {
+    font-size: 16px;
+    margin-bottom: 4px;
+    word-break: break-word;
+  }
+  .inbox-card-amount {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+  .inbox-card-meta {
+    margin-bottom: 8px;
+  }
+  .inbox-card-sender {
+    font-size: 12px;
+  }
+  .inbox-card-desc {
+    font-size: 12px;
+    margin-bottom: 10px;
+    -webkit-line-clamp: 2;
+  }
+
+  /* Card action buttons */
+  .inbox-card-actions {
+    padding-top: 10px;
+    gap: 8px;
+  }
+  .inbox-card-btn {
+    padding: 10px 12px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+  .inbox-card-btn.preview {
+    flex: 0 0 44px;
+    padding: 10px;
+  }
+
+  /* Preview modal mobile - bottom sheet */
+  .preview-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: 20px 20px 0 0;
+    max-height: 90vh;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    animation: slideUpMobile 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @keyframes slideUpMobile {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  .preview-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .preview-header {
+    padding: 12px 16px;
+    padding-top: 8px;
+  }
+  .preview-header::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--edge);
+    border-radius: 2px;
+    margin: 0 auto 10px;
+  }
+  .preview-title {
+    font-size: 16px;
+  }
+  .preview-close {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+  .preview-body {
+    padding: 12px 16px;
+    max-height: 45vh;
+    overflow-y: auto;
+  }
+  .preview-meta {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .preview-meta-item {
+    padding: 10px 12px;
+  }
+  .preview-meta-value.large {
+    font-size: 20px;
+  }
+  .preview-footer {
+    padding: 10px 16px;
+    padding-bottom: calc(10px + var(--safe-bottom));
+    flex-direction: column;
+    gap: 8px;
+  }
+  .preview-actions {
+    width: 100%;
+    gap: 8px;
+  }
+  .preview-actions button {
+    flex: 1;
+    padding: 12px;
+    font-size: 14px;
+  }
+}
+
+/* Very small screens (iPhone SE, etc) */
+@media (max-width: 380px) {
+  header {
+    padding: 8px 10px;
+    padding-top: calc(8px + var(--safe-top));
+  }
+  .brand h1 {
+    font-size: 14px;
+  }
+
+  .dashboard {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .stat {
+    padding: 8px 10px;
+  }
+  .stat-value {
+    font-size: 18px;
+  }
+
+  .mobile-inbox {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .inbox-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+  .inbox-card-merchant {
+    font-size: 15px;
+  }
+  .inbox-card-amount {
+    font-size: 18px;
+  }
+  .inbox-card-btn {
+    padding: 10px;
+    font-size: 12px;
+  }
+}
+
+/* Touch-friendly targets */
+@media (pointer: coarse) {
+  .inbox-card-btn {
+    min-height: 44px;
+  }
+  .chip, .nav-btn {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+  }
+}
 </style>
 </head>
 <body>
@@ -614,6 +1137,11 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
 <!-- Content -->
 <div class="content" id="content">
   <div class="loading">Loading receipts...</div>
+</div>
+
+<!-- Mobile Card View -->
+<div class="mobile-inbox" id="mobile-inbox">
+  <!-- Cards rendered by JavaScript -->
 </div>
 
 <!-- Toast -->
@@ -721,6 +1249,7 @@ function renderTable() {
         <p>Click "Scan Now" to search for new receipts in your Gmail accounts.</p>
       </div>
     `;
+    renderMobileCards(); // Also render mobile empty state
     return;
   }
 
@@ -744,7 +1273,256 @@ function renderTable() {
   `;
 
   content.innerHTML = tableHTML;
+  renderMobileCards(); // Render mobile cards too
   applyFilter();
+}
+
+// Mobile Card Rendering
+function renderMobileCards() {
+  const container = document.getElementById('mobile-inbox');
+  if (!container) return;
+
+  // Filter receipts based on current filter
+  const filtered = allReceipts.filter(r => {
+    if (currentFilter === 'all') return true;
+    return r.status === currentFilter;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="inbox-empty">
+        <div class="inbox-empty-icon">📬</div>
+        <div class="inbox-empty-title">${currentFilter === 'pending' ? 'Inbox Empty' : 'No Receipts'}</div>
+        <div class="inbox-empty-text">${currentFilter === 'pending'
+          ? 'Scan Gmail to find new receipts'
+          : `No ${currentFilter} receipts found`}</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(r => renderMobileCard(r)).join('');
+}
+
+function renderMobileCard(receipt) {
+  const merchant = receipt.merchant || extractMerchantFromSubject(receipt.subject);
+  const amount = parseFloat(receipt.amount) || 0;
+  const isRefund = receipt.is_refund || (receipt.subject || '').toLowerCase().includes('refund');
+
+  // Format date as "Month Day, Year"
+  const dateStr = receipt.receipt_date || receipt.received_date || '';
+  const formattedDate = formatDateFull(dateStr);
+
+  // Sender name
+  const senderName = extractSenderName(receipt.from_email);
+
+  // Amount display
+  let amountDisplay = '';
+  let amountClass = '';
+  if (amount > 0) {
+    if (isRefund) {
+      amountDisplay = `+$${amount.toFixed(2)}`;
+      amountClass = 'refund';
+    } else {
+      amountDisplay = `-$${amount.toFixed(2)}`;
+      amountClass = 'charge';
+    }
+  }
+
+  // Confidence score
+  const score = receipt.confidence_score || 0;
+  const scoreClass = score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low';
+
+  // Description (AI analysis or subject snippet)
+  const description = receipt.description || receipt.body_snippet || '';
+
+  // Receipt date for accept function
+  const receiptDate = receipt.receipt_date || receipt.received_date || '';
+
+  // Actions based on status
+  let actionsHTML = '';
+  if (receipt.status === 'pending') {
+    actionsHTML = `
+      <div class="inbox-card-actions">
+        <button class="inbox-card-btn preview" onclick="event.stopPropagation();showPreview(${receipt.id})">
+          👁️
+        </button>
+        <button class="inbox-card-btn reject" onclick="event.stopPropagation();mobileReject(${receipt.id}, this)">
+          ✕ Reject
+        </button>
+        <button class="inbox-card-btn accept" onclick="event.stopPropagation();mobileAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}', this)">
+          ✓ Accept
+        </button>
+      </div>
+    `;
+  } else {
+    const statusIcon = receipt.status === 'accepted' ? '✓' : '✕';
+    const statusText = receipt.status === 'accepted' ? 'Accepted' : 'Rejected';
+    actionsHTML = `
+      <div class="inbox-card-status ${receipt.status}">
+        ${statusIcon} ${statusText}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="inbox-card ${receipt.status}" data-id="${receipt.id}" onclick="showPreview(${receipt.id})">
+      <div class="inbox-card-header">
+        <div class="inbox-card-date">${formattedDate}</div>
+        <div class="inbox-card-score ${scoreClass}">${score}%</div>
+      </div>
+      <div class="inbox-card-merchant">${escapeHtml(merchant)}</div>
+      ${amountDisplay ? `<div class="inbox-card-amount ${amountClass}">${amountDisplay}</div>` : ''}
+      <div class="inbox-card-meta">
+        <div class="inbox-card-sender">
+          <span class="inbox-card-sender-icon">✉️</span>
+          ${escapeHtml(senderName)}
+        </div>
+      </div>
+      ${description ? `<div class="inbox-card-desc">${escapeHtml(description)}</div>` : ''}
+      ${actionsHTML}
+    </div>
+  `;
+}
+
+// Format date as "Month Day, Year"
+function formatDateFull(dateStr) {
+  if (!dateStr) return 'Unknown Date';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+// Mobile accept with visual feedback
+async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
+  const card = btn.closest('.inbox-card');
+  const actionsDiv = card.querySelector('.inbox-card-actions');
+
+  // Show loading state
+  actionsDiv.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--brand)">
+      <span class="spinner"></span> Processing...
+    </div>
+  `;
+
+  const transDate = receiptDate ? receiptDate.split('T')[0] : new Date().toISOString().split('T')[0];
+
+  try {
+    const response = await fetch('/api/incoming/accept', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        receipt_id: id,
+        merchant: merchant,
+        amount: amount || 0,
+        is_refund: isRefund,
+        date: transDate,
+        business_type: 'Personal'
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      // Success animation
+      card.style.transition = 'all 0.3s ease';
+      card.style.background = 'rgba(0,255,136,0.1)';
+      card.classList.remove('pending');
+      card.classList.add('accepted');
+
+      actionsDiv.innerHTML = `
+        <div class="inbox-card-status accepted">
+          ✓ Accepted ${data.transaction_id ? `#${data.transaction_id}` : ''}
+        </div>
+      `;
+
+      showToast(`✓ ${merchant} accepted!`, 'success');
+
+      // Update local data
+      const receipt = allReceipts.find(r => r.id === id);
+      if (receipt) receipt.status = 'accepted';
+
+      // Fade out if viewing pending only
+      if (currentFilter === 'pending') {
+        setTimeout(() => {
+          card.style.opacity = '0';
+          card.style.transform = 'translateX(100px)';
+          setTimeout(() => card.remove(), 300);
+        }, 500);
+      }
+
+      // Refresh stats
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Failed', 'error');
+      renderMobileCards();
+    }
+  } catch (e) {
+    console.error('Accept error:', e);
+    showToast('Error accepting', 'error');
+    renderMobileCards();
+  }
+}
+
+// Mobile reject with visual feedback
+async function mobileReject(id, btn) {
+  const card = btn.closest('.inbox-card');
+  const actionsDiv = card.querySelector('.inbox-card-actions');
+
+  // Show loading state
+  actionsDiv.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--muted)">
+      <span class="spinner"></span> Rejecting...
+    </div>
+  `;
+
+  try {
+    const response = await fetch('/api/incoming/reject', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ receipt_id: id })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      // Fade out animation
+      card.style.transition = 'all 0.3s ease';
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(-100px)';
+
+      setTimeout(() => {
+        card.remove();
+
+        // Update local data
+        const receipt = allReceipts.find(r => r.id === id);
+        if (receipt) receipt.status = 'rejected';
+
+        // Check if list is now empty
+        const container = document.getElementById('mobile-inbox');
+        if (container && container.children.length === 0) {
+          renderMobileCards();
+        }
+      }, 300);
+
+      showToast('Rejected', 'info');
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Failed', 'error');
+      renderMobileCards();
+    }
+  } catch (e) {
+    console.error('Reject error:', e);
+    showToast('Error rejecting', 'error');
+    renderMobileCards();
+  }
 }
 
 function renderRow(receipt) {
@@ -972,6 +1750,7 @@ function filterStatus(status) {
 }
 
 function applyFilter() {
+  // Apply to table rows
   const rows = document.querySelectorAll('tbody tr');
   rows.forEach(row => {
     const rowStatus = row.getAttribute('data-status');
@@ -981,6 +1760,9 @@ function applyFilter() {
       row.classList.add('hidden');
     }
   });
+
+  // Also re-render mobile cards
+  renderMobileCards();
 }
 
 async function scanForNew() {
