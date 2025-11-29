@@ -1216,6 +1216,370 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   object-fit:contain;
 }
 .ocr-preview.show{display:block}
+
+/* ============================================
+   MOBILE CARD VIEW FOR TRANSACTIONS
+   ============================================ */
+
+/* Mobile card container - hidden on desktop */
+.mobile-cards {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  max-height: calc(100vh - 260px);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Transaction card */
+.tx-card {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.tx-card:active {
+  transform: scale(0.98);
+  background: rgba(0,255,136,0.05);
+}
+.tx-card.selected {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(0,255,136,0.2);
+}
+.tx-card.has-receipt::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--ok);
+  border-radius: 16px 0 0 16px;
+}
+.tx-card.no-receipt::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--bad);
+  border-radius: 16px 0 0 16px;
+}
+
+/* Card header row */
+.tx-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.tx-card-merchant {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+  margin-right: 12px;
+  line-height: 1.3;
+}
+.tx-card-amount {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'SF Mono', monospace;
+  white-space: nowrap;
+}
+.tx-card-amount.positive { color: var(--pos); }
+.tx-card-amount.negative { color: var(--ink); }
+.tx-card-amount.refund { color: var(--pos); }
+
+/* Card body row */
+.tx-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tx-card-date {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.tx-card-category {
+  font-size: 11px;
+  padding: 4px 10px;
+  background: rgba(0,255,136,0.1);
+  color: var(--brand);
+  border-radius: 20px;
+  font-weight: 600;
+}
+.tx-card-business {
+  font-size: 11px;
+  padding: 4px 10px;
+  background: rgba(59,130,246,0.1);
+  color: #60a5fa;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+/* Card footer */
+.tx-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.tx-card-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tx-card-receipt-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.tx-card-receipt-icon.has { background: rgba(0,255,136,0.15); }
+.tx-card-receipt-icon.missing { background: rgba(255,78,106,0.15); }
+.tx-card-arrow {
+  color: var(--muted);
+  font-size: 20px;
+}
+
+/* Empty state for cards */
+.mobile-cards-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--muted);
+}
+.mobile-cards-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+.mobile-cards-empty-text {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Mobile-only: show cards, hide table */
+@media (max-width: 768px) {
+  .table-wrap { display: none !important; }
+  .mobile-cards { display: flex !important; }
+
+  /* Compact dashboard on mobile */
+  .dashboard {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+  .stat {
+    padding: 12px !important;
+  }
+  .stat-value {
+    font-size: 18px !important;
+  }
+  .stat-label {
+    font-size: 10px !important;
+  }
+
+  /* Compact filters */
+  .filters {
+    padding: 8px 12px !important;
+  }
+
+  /* Mobile toolbar */
+  .toolbar {
+    padding: 8px 12px !important;
+    gap: 6px !important;
+  }
+  .toolbar button {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
+}
+
+/* Tablet: Show table but with optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .mobile-cards { display: none !important; }
+  .table-wrap { display: block !important; }
+}
+
+/* Transaction Detail Drawer for Mobile */
+.tx-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+  z-index: 3000;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--safe-bottom);
+}
+.tx-drawer.active {
+  transform: translateY(0);
+}
+.tx-drawer-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--edge);
+  border-radius: 2px;
+  margin: 12px auto;
+  cursor: grab;
+}
+.tx-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px 16px;
+  border-bottom: 1px solid var(--edge);
+}
+.tx-drawer-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.tx-drawer-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: var(--ink);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tx-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  -webkit-overflow-scrolling: touch;
+}
+.tx-drawer-receipt {
+  width: 100%;
+  aspect-ratio: 3/4;
+  background: repeating-conic-gradient(#0a0a0a 0% 25%, #0f0f0f 0% 50%) 50%/20px 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tx-drawer-receipt img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.tx-drawer-receipt-placeholder {
+  text-align: center;
+  color: var(--muted);
+}
+.tx-drawer-receipt-placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+.tx-drawer-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tx-drawer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.tx-drawer-row:last-child {
+  border-bottom: none;
+}
+.tx-drawer-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.tx-drawer-value {
+  font-size: 15px;
+  color: var(--ink);
+  font-weight: 600;
+  text-align: right;
+}
+.tx-drawer-value.amount {
+  font-family: 'SF Mono', monospace;
+  font-size: 18px;
+}
+.tx-drawer-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--edge);
+  background: var(--panel2);
+}
+.tx-drawer-btn {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+.tx-drawer-btn.primary {
+  background: var(--brand);
+  color: #000;
+}
+.tx-drawer-btn.secondary {
+  background: rgba(255,255,255,0.1);
+  color: var(--ink);
+}
+.tx-drawer-btn:active {
+  transform: scale(0.95);
+}
+
+/* Drawer backdrop */
+.tx-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 2999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.tx-drawer-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
 </style>
 </head>
 <body>
@@ -1417,6 +1781,11 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
         </thead>
         <tbody id="tbody"></tbody>
       </table>
+    </div>
+
+    <!-- Mobile Card View (shown on phones only) -->
+    <div class="mobile-cards" id="mobile-cards">
+      <!-- Cards are rendered by JavaScript -->
     </div>
   </div>
 
@@ -3632,6 +4001,246 @@ function renderTable() {
   // Single DOM update - much faster than individual appendChild calls
   tbody.innerHTML = '';
   tbody.appendChild(fragment);
+
+  // Also render mobile cards
+  renderMobileCards();
+}
+
+// Render mobile card view
+function renderMobileCards() {
+  const mobileCards = document.getElementById('mobile-cards');
+  if (!mobileCards) return;
+
+  if (filteredData.length === 0) {
+    mobileCards.innerHTML = `
+      <div class="mobile-cards-empty">
+        <div class="mobile-cards-empty-icon">📭</div>
+        <div class="mobile-cards-empty-text">No transactions match your filters</div>
+      </div>`;
+    return;
+  }
+
+  const selectedIndex = selectedRow ? selectedRow._index : null;
+  let html = '';
+
+  filteredData.forEach(row => {
+    const rowIndex = row._index;
+    const isSelected = selectedIndex !== null && rowIndex === selectedIndex;
+
+    // Amount
+    const amt = parseFloat(row['Chase Amount'] || row['Amount'] || 0);
+    const isRefund = amt < 0 || row['Review Status'] === 'refund';
+    const amtClass = isRefund ? 'refund' : (amt > 0 ? 'negative' : 'positive');
+    const amtSign = amt > 0 ? '-' : '+';
+    const amtDisplay = `${amtSign}$${Math.abs(amt).toFixed(2)}`;
+
+    // Date
+    const dateStr = row['Chase Date'] || '';
+    let dateDisplay = dateStr;
+    if (dateStr) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3 && parts[0].length === 4) {
+        const month = MONTHS[parseInt(parts[1]) - 1] || parts[1];
+        const day = parseInt(parts[2]);
+        dateDisplay = `${month} ${day}, ${parts[0]}`;
+      }
+    }
+
+    // Fields
+    const merchant = row['MI Merchant'] || row['Chase Description'] || 'Unknown';
+    const category = row['MI Category'] || row['Chase Category'] || '';
+    const business = row['Business Type'] || '';
+    const status = row['Review Status'] || 'pending';
+
+    // Receipt check
+    const receiptFile = row['Receipt File'] || '';
+    const r2Url = row['r2_url'] || row['R2 URL'] || row['receipt_url'] || '';
+    const hasReceipt = receiptFile || r2Url;
+    const receiptClass = hasReceipt ? 'has-receipt' : 'no-receipt';
+    const receiptIcon = hasReceipt ? '✓' : '!';
+    const receiptIconClass = hasReceipt ? 'has' : 'missing';
+
+    // Status badge
+    let statusHtml = '';
+    if (isRefund) {
+      statusHtml = '<span class="badge badge-refund" style="font-size:10px;padding:3px 8px">Refund</span>';
+    } else if (status === 'good') {
+      statusHtml = '<span class="badge badge-good" style="font-size:10px;padding:3px 8px">Good</span>';
+    } else if (status === 'bad') {
+      statusHtml = '<span class="badge badge-bad" style="font-size:10px;padding:3px 8px">Bad</span>';
+    }
+
+    html += `
+      <div class="tx-card ${receiptClass}${isSelected ? ' selected' : ''}"
+           data-index="${rowIndex}"
+           onclick="openMobileDrawer(${rowIndex})">
+        <div class="tx-card-header">
+          <div class="tx-card-merchant">${merchant}</div>
+          <div class="tx-card-amount ${amtClass}">${amtDisplay}</div>
+        </div>
+        <div class="tx-card-body">
+          <div class="tx-card-date">${dateDisplay}</div>
+          ${category ? `<div class="tx-card-category">${category}</div>` : ''}
+          ${business ? `<div class="tx-card-business">${business}</div>` : ''}
+        </div>
+        <div class="tx-card-footer">
+          <div class="tx-card-status">
+            <div class="tx-card-receipt-icon ${receiptIconClass}">${receiptIcon}</div>
+            ${statusHtml}
+          </div>
+          <div class="tx-card-arrow">›</div>
+        </div>
+      </div>`;
+  });
+
+  mobileCards.innerHTML = html;
+}
+
+// Mobile drawer functions
+let currentDrawerRow = null;
+
+function openMobileDrawer(rowIndex) {
+  const row = csvData.find(r => r._index === rowIndex);
+  if (!row) return;
+
+  currentDrawerRow = row;
+  selectedRow = row;
+
+  // Create drawer if not exists
+  let drawer = document.getElementById('tx-drawer');
+  let backdrop = document.getElementById('tx-drawer-backdrop');
+
+  if (!drawer) {
+    backdrop = document.createElement('div');
+    backdrop.id = 'tx-drawer-backdrop';
+    backdrop.className = 'tx-drawer-backdrop';
+    backdrop.onclick = closeMobileDrawer;
+    document.body.appendChild(backdrop);
+
+    drawer = document.createElement('div');
+    drawer.id = 'tx-drawer';
+    drawer.className = 'tx-drawer';
+    document.body.appendChild(drawer);
+  }
+
+  // Get data
+  const amt = parseFloat(row['Chase Amount'] || row['Amount'] || 0);
+  const isRefund = amt < 0 || row['Review Status'] === 'refund';
+  const amtSign = amt > 0 ? '-' : '+';
+  const amtDisplay = `${amtSign}$${Math.abs(amt).toFixed(2)}`;
+  const amtClass = isRefund ? 'color:var(--pos)' : (amt > 0 ? '' : 'color:var(--pos)');
+
+  const dateStr = row['Chase Date'] || '';
+  let dateDisplay = dateStr;
+  if (dateStr) {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const month = MONTHS[parseInt(parts[1]) - 1] || parts[1];
+      dateDisplay = `${month} ${parseInt(parts[2])}, ${parts[0]}`;
+    }
+  }
+
+  const merchant = row['MI Merchant'] || row['Chase Description'] || 'Unknown';
+  const category = row['MI Category'] || row['Chase Category'] || 'Uncategorized';
+  const business = row['Business Type'] || 'Unassigned';
+  const status = row['Review Status'] || 'pending';
+  const description = row['Chase Description'] || '';
+  const notes = row['MI Description'] || row['Notes'] || '';
+
+  // Receipt
+  const receiptFile = row['Receipt File'] || '';
+  const r2Url = row['r2_url'] || row['R2 URL'] || row['receipt_url'] || '';
+  const hasReceipt = receiptFile || r2Url;
+
+  let receiptHtml = '';
+  if (hasReceipt) {
+    const imgUrl = r2Url || `/receipts/${encodeURIComponent(receiptFile)}`;
+    receiptHtml = `<img src="${imgUrl}" alt="Receipt" onerror="this.parentElement.innerHTML='<div class=tx-drawer-receipt-placeholder><div class=tx-drawer-receipt-placeholder-icon>⚠️</div><div>Failed to load receipt</div></div>'">`;
+  } else {
+    receiptHtml = `
+      <div class="tx-drawer-receipt-placeholder">
+        <div class="tx-drawer-receipt-placeholder-icon">📄</div>
+        <div>No receipt attached</div>
+      </div>`;
+  }
+
+  drawer.innerHTML = `
+    <div class="tx-drawer-handle"></div>
+    <div class="tx-drawer-header">
+      <div class="tx-drawer-title">${merchant}</div>
+      <button class="tx-drawer-close" onclick="closeMobileDrawer()">×</button>
+    </div>
+    <div class="tx-drawer-body">
+      <div class="tx-drawer-receipt">${receiptHtml}</div>
+      <div class="tx-drawer-details">
+        <div class="tx-drawer-row">
+          <div class="tx-drawer-label">Amount</div>
+          <div class="tx-drawer-value amount" style="${amtClass}">${amtDisplay}</div>
+        </div>
+        <div class="tx-drawer-row">
+          <div class="tx-drawer-label">Date</div>
+          <div class="tx-drawer-value">${dateDisplay}</div>
+        </div>
+        <div class="tx-drawer-row">
+          <div class="tx-drawer-label">Category</div>
+          <div class="tx-drawer-value">${category}</div>
+        </div>
+        <div class="tx-drawer-row">
+          <div class="tx-drawer-label">Business</div>
+          <div class="tx-drawer-value">${business}</div>
+        </div>
+        <div class="tx-drawer-row">
+          <div class="tx-drawer-label">Status</div>
+          <div class="tx-drawer-value">${status.charAt(0).toUpperCase() + status.slice(1)}</div>
+        </div>
+        ${description ? `<div class="tx-drawer-row"><div class="tx-drawer-label">Description</div><div class="tx-drawer-value" style="font-size:13px">${description}</div></div>` : ''}
+        ${notes ? `<div class="tx-drawer-row"><div class="tx-drawer-label">Notes</div><div class="tx-drawer-value" style="font-size:13px">${notes}</div></div>` : ''}
+      </div>
+    </div>
+    <div class="tx-drawer-actions">
+      <button class="tx-drawer-btn secondary" onclick="markMobileStatus('good')">✓ Good</button>
+      <button class="tx-drawer-btn secondary" onclick="markMobileStatus('bad')">✗ Bad</button>
+      ${!hasReceipt ? `<button class="tx-drawer-btn primary" onclick="closeMobileDrawer();window.location.href='/scanner'" style="grid-column:span 2">📷 Add Receipt</button>` : ''}
+    </div>`;
+
+  // Show drawer
+  setTimeout(() => {
+    backdrop.classList.add('active');
+    drawer.classList.add('active');
+  }, 10);
+
+  // Update card selection
+  renderMobileCards();
+}
+
+function closeMobileDrawer() {
+  const drawer = document.getElementById('tx-drawer');
+  const backdrop = document.getElementById('tx-drawer-backdrop');
+  if (drawer) drawer.classList.remove('active');
+  if (backdrop) backdrop.classList.remove('active');
+  currentDrawerRow = null;
+}
+
+async function markMobileStatus(status) {
+  if (!currentDrawerRow) return;
+
+  try {
+    await fetch('/update_row', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        _index: currentDrawerRow._index,
+        patch: {'Review Status': status}
+      })
+    });
+
+    currentDrawerRow['Review Status'] = status;
+    showToast(`Marked as ${status}`, '✓');
+    closeMobileDrawer();
+    renderTable();
+  } catch (e) {
+    showToast('Failed to update: ' + e.message, '❌');
+  }
 }
 
 function getStatusBadge(status, isRefund) {
