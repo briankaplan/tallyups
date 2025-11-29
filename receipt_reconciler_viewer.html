@@ -566,9 +566,16 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
 .no-receipt-text{font-size:14px}
 
 /* Receipt indicator in table */
-.receipt-indicator{font-weight:bold;font-size:14px}
+.receipt-indicator{font-weight:bold;font-size:14px;display:inline-block;width:20px;text-align:center}
 .receipt-indicator.has-receipt{color:var(--ok)}
-.receipt-indicator.no-receipt{color:var(--muted);opacity:0.5}
+.receipt-indicator.no-receipt{color:var(--muted);opacity:0.3;font-size:10px}
+
+/* Amount column - right align with padding */
+td:nth-child(3){text-align:right;padding-right:16px !important}
+
+/* Receipt column - center with left border for visual separation */
+td:nth-child(7){text-align:center;padding-left:12px !important;border-left:1px solid var(--edge)}
+th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 
 /* Zoom Controls */
 .zoom-controls{
@@ -3594,7 +3601,7 @@ function renderTable() {
     const hasReceipt = receiptFile || r2Url;
     const receiptHtml = hasReceipt
       ? `<span class="receipt-indicator has-receipt" title="${receiptFile || r2Url}">✓</span>`
-      : `<span class="receipt-indicator no-receipt">✗</span>`;
+      : `<span class="receipt-indicator no-receipt">–</span>`;
 
     tr.innerHTML = `
       <td>${dateHtml}</td>
