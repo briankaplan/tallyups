@@ -1533,65 +1533,83 @@ def dashboard_stats():
     try:
         conn, db_type = get_db_connection()
     except Exception as e:
+        print(f"Dashboard stats DB connection error: {e}")
         return jsonify({
             "total_receipts": 0,
             "pending": 0,
             "month_total": 0,
             "match_rate": 0,
-            "error": str(e)
+            "error": f"DB connection: {str(e)}"
         })
-
-    cursor = conn.cursor()
 
     try:
         # Total receipts with receipt_url (matched)
-        cursor.execute("SELECT COUNT(*) as count FROM transactions WHERE receipt_url IS NOT NULL AND receipt_url != ''")
-        total_matched = cursor.fetchone()[0]
+        cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM transactions WHERE receipt_url IS NOT NULL AND receipt_url != ''")
+        row = cursor.fetchone()
+        total_matched = row[0] if row else 0
+        cursor.close()
 
         # Total transactions
-        cursor.execute("SELECT COUNT(*) as count FROM transactions")
-        total_transactions = cursor.fetchone()[0]
+        cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM transactions")
+        row = cursor.fetchone()
+        total_transactions = row[0] if row else 0
+        cursor.close()
 
         # Pending incoming receipts (handle if table doesn't exist)
+        pending = 0
         try:
-            cursor.execute("SELECT COUNT(*) as count FROM incoming_receipts WHERE status = 'pending'")
-            pending = cursor.fetchone()[0]
-        except:
+            cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM incoming_receipts WHERE status = 'pending'")
+            row = cursor.fetchone()
+            pending = row[0] if row else 0
+            cursor.close()
+        except Exception as pe:
+            print(f"Pending count error (table may not exist): {pe}")
             pending = 0
 
-        # This month's spending
-        cursor.execute("""
-            SELECT COALESCE(SUM(ABS(amount)), 0) as total
-            FROM transactions
-            WHERE MONTH(date) = MONTH(CURRENT_DATE())
-            AND YEAR(date) = YEAR(CURRENT_DATE())
-            AND amount < 0
-        """)
-        month_total = float(cursor.fetchone()[0] or 0)
+        # This month's spending - use simpler query that works with MySQL
+        month_total = 0.0
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT COALESCE(SUM(ABS(amount)), 0)
+                FROM transactions
+                WHERE date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
+                AND amount < 0
+            """)
+            row = cursor.fetchone()
+            month_total = float(row[0]) if row and row[0] else 0.0
+            cursor.close()
+        except Exception as me:
+            print(f"Month total error: {me}")
+            month_total = 0.0
 
         # Calculate match rate
         match_rate = round((total_matched / total_transactions * 100) if total_transactions > 0 else 0)
 
         return jsonify({
-            "total_receipts": total_matched,
-            "pending": pending,
+            "total_receipts": int(total_matched),
+            "pending": int(pending),
             "month_total": round(month_total, 2),
-            "match_rate": match_rate,
-            "total_transactions": total_transactions
+            "match_rate": int(match_rate),
+            "total_transactions": int(total_transactions),
+            "ok": True
         })
 
     except Exception as e:
+        import traceback
         print(f"Dashboard stats error: {e}")
+        traceback.print_exc()
         return jsonify({
             "total_receipts": 0,
             "pending": 0,
             "month_total": 0,
             "match_rate": 0,
-            "error": str(e)
+            "error": f"Query error: {str(e)}"
         })
     finally:
-        cursor.close()
-        conn.close()
+        try:
+            conn.close()
+        except:
+            pass
 
 
 @app.route("/api/location/nearby")
