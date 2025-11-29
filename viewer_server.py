@@ -2099,7 +2099,6 @@ def mobile_upload():
 
 
 @app.route("/api/transactions")
-@login_required
 def get_transactions():
     """
     Return all transactions as JSON from MySQL.
@@ -2111,7 +2110,15 @@ def get_transactions():
 
     Query params:
     - show_submitted=true: Include submitted transactions (default: hide them)
+    - admin_key: API key for authentication (or use session login)
     """
+    # Auth check: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'error': 'Authentication required'}), 401
+
     if USE_DATABASE and db:
         try:
             # Check if we should show submitted transactions
