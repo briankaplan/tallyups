@@ -1531,12 +1531,12 @@ def dashboard_stats():
 
     try:
         # Total receipts with receipt_url (matched)
-        cursor.execute("SELECT COUNT(*) as count FROM expenses WHERE receipt_url IS NOT NULL AND receipt_url != ''")
+        cursor.execute("SELECT COUNT(*) as count FROM transactions WHERE receipt_url IS NOT NULL AND receipt_url != ''")
         total_matched = cursor.fetchone()[0]
 
-        # Total expenses
-        cursor.execute("SELECT COUNT(*) as count FROM expenses")
-        total_expenses = cursor.fetchone()[0]
+        # Total transactions
+        cursor.execute("SELECT COUNT(*) as count FROM transactions")
+        total_transactions = cursor.fetchone()[0]
 
         # Pending incoming receipts
         cursor.execute("SELECT COUNT(*) as count FROM incoming_receipts WHERE status = 'pending'")
@@ -1545,7 +1545,7 @@ def dashboard_stats():
         # This month's spending
         cursor.execute("""
             SELECT COALESCE(SUM(ABS(amount)), 0) as total
-            FROM expenses
+            FROM transactions
             WHERE MONTH(date) = MONTH(CURRENT_DATE())
             AND YEAR(date) = YEAR(CURRENT_DATE())
             AND amount < 0
@@ -1553,14 +1553,14 @@ def dashboard_stats():
         month_total = float(cursor.fetchone()[0] or 0)
 
         # Calculate match rate
-        match_rate = round((total_matched / total_expenses * 100) if total_expenses > 0 else 0)
+        match_rate = round((total_matched / total_transactions * 100) if total_transactions > 0 else 0)
 
         return jsonify({
             "total_receipts": total_matched,
             "pending": pending,
             "month_total": round(month_total, 2),
             "match_rate": match_rate,
-            "total_expenses": total_expenses
+            "total_transactions": total_transactions
         })
 
     except Exception as e:
