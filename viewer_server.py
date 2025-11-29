@@ -385,6 +385,86 @@ def parse_date_fuzzy(s: str | None) -> date | None:
         return None
 
 
+def parse_email_date(date_str: str) -> str:
+    """
+    Parse RFC 2822 email date headers to YYYY-MM-DD format.
+    Handles formats like:
+    - "Wed, 27 Aug 2024 14:35:22 -0400"
+    - "27 Aug 2024 10:00:00"
+    - "Wed, 27 Aug" (truncated - try to infer year)
+    - Already formatted dates like "2024-08-27"
+
+    Returns: YYYY-MM-DD string or empty string if parsing fails
+    """
+    if not date_str:
+        return ''
+
+    date_str = str(date_str).strip()
+    if not date_str:
+        return ''
+
+    # If already in YYYY-MM-DD format, return as-is
+    if len(date_str) >= 10 and date_str[4] == '-' and date_str[7] == '-':
+        return date_str[:10]
+
+    import email.utils
+    from datetime import datetime
+    import re
+
+    try:
+        # Try standard email date parsing first
+        parsed = email.utils.parsedate_to_datetime(date_str)
+        return parsed.strftime('%Y-%m-%d')
+    except:
+        pass
+
+    # Handle truncated formats like "Wed, 27 Aug 202" or "Wed, 27 Aug"
+    # Extract day, month from the string
+    month_map = {
+        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+        'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+    }
+
+    try:
+        # Pattern: day month year (with possible day name prefix)
+        match = re.search(r'(\d{1,2})\s+([a-zA-Z]{3})\s*(\d{2,4})?', date_str)
+        if match:
+            day = int(match.group(1))
+            month_str = match.group(2).lower()
+            year_str = match.group(3)
+
+            month = month_map.get(month_str)
+            if month:
+                # Determine year
+                if year_str:
+                    year = int(year_str)
+                    if year < 100:
+                        year += 2000  # "24" -> 2024
+                    elif year < 1000:
+                        # Truncated year like "202" -> 2024/2025
+                        year = int(str(year) + '4')  # Assume recent year
+                else:
+                    # No year - use current year or previous if month is in future
+                    now = datetime.now()
+                    year = now.year
+                    if month > now.month:
+                        year -= 1
+
+                return f"{year:04d}-{month:02d}-{day:02d}"
+    except:
+        pass
+
+    # Try pandas as final fallback
+    try:
+        d = pd.to_datetime(date_str, errors="coerce")
+        if not pd.isna(d):
+            return d.strftime('%Y-%m-%d')
+    except:
+        pass
+
+    return ''
+
+
 def gpt4_vision_extract(receipt_path):
     """
     Extract receipt data using Llama 3.2 Vision via Ollama.
@@ -6681,7 +6761,9 @@ def get_library_receipts():
 
                 # For incoming receipts, use received_date (email date) as the authoritative date
                 # receipt_date/transaction_date are OCR-extracted and may be wrong
-                receipt_date = inc.get('received_date') or inc.get('receipt_date') or ''
+                # Parse the email date from RFC 2822 format to YYYY-MM-DD
+                raw_date = inc.get('received_date') or inc.get('receipt_date') or ''
+                receipt_date = parse_email_date(raw_date) or raw_date
 
                 # If linked to a transaction, update that transaction's date with correct email date
                 tx_id = inc.get('transaction_id') or inc.get('accepted_as_transaction_id')
