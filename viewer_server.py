@@ -8370,12 +8370,13 @@ def refetch_gmail_dates():
         # Find receipts with potentially wrong dates (2025 in date string or needs fix)
         # Focus on receipts that have email_id stored
         if db_type == 'mysql':
+            # Note: %% escapes % in Python string formatting for pymysql
             query = '''
                 SELECT id, email_id, gmail_account, merchant, subject, received_date
                 FROM incoming_receipts
                 WHERE email_id IS NOT NULL
                 AND email_id != ''
-                AND (received_date LIKE '%2025%' OR received_date NOT LIKE '____-__-__')
+                AND (received_date LIKE '%%2025%%' OR received_date NOT LIKE '____-__-__')
                 ORDER BY id DESC
                 LIMIT %s
             '''
