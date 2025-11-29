@@ -2838,18 +2838,21 @@
         switchView('history');
       };
 
-      // Navigation
+      // Navigation - allow all hrefs to navigate naturally
       $$('.nav-item').forEach(item => {
         item.onclick = e => {
-          const view = item.dataset.view;
-          // Allow actual navigation for external links (home, inbox)
-          if (view === 'home' || view === 'inbox') {
+          const href = item.getAttribute('href');
+          // Allow actual navigation - don't prevent default for real links
+          if (href && href !== '#' && href !== '/scanner') {
             hapticFeedback('light');
             return; // Let the href navigate
           }
-          e.preventDefault();
-          hapticFeedback('light');
-          switchView(view);
+          // Only prevent default for internal scanner views
+          if (item.dataset.view) {
+            e.preventDefault();
+            hapticFeedback('light');
+            switchView(item.dataset.view);
+          }
         };
       });
 
