@@ -5526,14 +5526,21 @@ def get_oauth_redirect_uri():
 
 
 @app.route("/api/gmail/authorize/<account_email>", methods=["GET"])
-@login_required
 def gmail_authorize(account_email):
     """
     Start Gmail OAuth authorization flow.
     Redirects user to Google's consent screen.
+    Supports both login-based auth and admin_key authentication.
     """
     import secrets
     from urllib.parse import urlencode
+
+    # Auth check: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return redirect(url_for('login', next=request.url))
 
     try:
         from datetime import datetime, timedelta
