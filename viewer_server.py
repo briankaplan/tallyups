@@ -6945,6 +6945,11 @@ def get_incoming_receipts():
             subject = receipt.get('subject', '')
             original_merchant = receipt.get('merchant', '')
 
+            # Ensure receipt_date is set (use transaction_date > receipt_date > received_date)
+            # transaction_date is the OCR-extracted date, receipt_date is the alias, received_date is email date
+            if not receipt.get('receipt_date'):
+                receipt['receipt_date'] = receipt.get('transaction_date') or receipt.get('received_date') or ''
+
             # Try to extract merchant from subject
             extracted = extract_merchant_from_subject(subject)
 
