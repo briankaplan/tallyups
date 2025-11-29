@@ -1544,23 +1544,23 @@ def dashboard_stats():
 
     try:
         # Total receipts with receipt_url (matched)
-        cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM transactions WHERE receipt_url IS NOT NULL AND receipt_url != ''")
+        cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM transactions WHERE receipt_url IS NOT NULL AND receipt_url != ''")
         row = cursor.fetchone()
-        total_matched = row[0] if row else 0
+        total_matched = row['cnt'] if row else 0
         cursor.close()
 
         # Total transactions
-        cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM transactions")
+        cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM transactions")
         row = cursor.fetchone()
-        total_transactions = row[0] if row else 0
+        total_transactions = row['cnt'] if row else 0
         cursor.close()
 
         # Pending incoming receipts (handle if table doesn't exist)
         pending = 0
         try:
-            cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM incoming_receipts WHERE status = 'pending'")
+            cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM incoming_receipts WHERE status = 'pending'")
             row = cursor.fetchone()
-            pending = row[0] if row else 0
+            pending = row['cnt'] if row else 0
             cursor.close()
         except Exception as pe:
             print(f"Pending count error (table may not exist): {pe}")
@@ -1570,13 +1570,13 @@ def dashboard_stats():
         month_total = 0.0
         try:
             cursor = db_execute(conn, db_type, """
-                SELECT COALESCE(SUM(ABS(amount)), 0)
+                SELECT COALESCE(SUM(ABS(amount)), 0) AS total
                 FROM transactions
                 WHERE date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
                 AND amount < 0
             """)
             row = cursor.fetchone()
-            month_total = float(row[0]) if row and row[0] else 0.0
+            month_total = float(row['total']) if row and row['total'] else 0.0
             cursor.close()
         except Exception as me:
             print(f"Month total error: {me}")
