@@ -2838,22 +2838,10 @@
         switchView('history');
       };
 
-      // Navigation - allow all hrefs to navigate naturally
+      // Navigation - let native <a> tags work without interference
+      // Only add haptic feedback, don't block navigation
       $$('.nav-item').forEach(item => {
-        item.onclick = e => {
-          const href = item.getAttribute('href');
-          // Allow actual navigation - don't prevent default for real links
-          if (href && href !== '#' && href !== '/scanner') {
-            hapticFeedback('light');
-            return; // Let the href navigate
-          }
-          // Only prevent default for internal scanner views
-          if (item.dataset.view) {
-            e.preventDefault();
-            hapticFeedback('light');
-            switchView(item.dataset.view);
-          }
-        };
+        item.addEventListener('click', () => hapticFeedback('light'));
       });
 
       // Voice capture
