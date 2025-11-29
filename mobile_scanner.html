@@ -2479,6 +2479,7 @@
     // ========================================
     const API_BASE = window.location.origin;
     const SOURCE_TAG = 'mobile_scanner_pwa';
+    const ADMIN_KEY = 'tallyups-admin-2024';  // For API authentication
     const DB_NAME = 'TallyupsDB';
     const DB_VERSION = 1;
 
@@ -3719,6 +3720,7 @@
           formData.append('business', selectedBusiness);
           formData.append('notes', $('notes-input').value || '');
           formData.append('source', SOURCE_TAG);
+          formData.append('admin_key', ADMIN_KEY);  // For API authentication
 
           // Add split data if enabled
           const splitData = getSplitData();
@@ -3804,6 +3806,7 @@
           formData.append('business', item.business || '');
           formData.append('notes', item.pendingData.notes || '');
           formData.append('source', SOURCE_TAG);
+          formData.append('admin_key', ADMIN_KEY);  // For API authentication
 
           const uploadResponse = await fetch(`${API_BASE}/mobile-upload`, {
             method: 'POST',
@@ -4032,6 +4035,7 @@
           formData.append('notes', currentDetailReceipt.notes || '');
           formData.append('business', currentDetailReceipt.business || '');
           formData.append('source', SOURCE_TAG);
+          formData.append('admin_key', ADMIN_KEY);  // For API authentication
 
           const response = await fetch(`${API_BASE}/api/scanner/upload`, {
             method: 'POST',

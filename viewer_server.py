@@ -1834,12 +1834,22 @@ Return ONLY valid JSON, no explanation."""
 
 
 @app.route("/mobile-upload", methods=["POST"])
-@login_required
 def mobile_upload():
     """
     Handle receipt uploads from mobile scanner PWA.
     Creates an incoming receipt entry tagged with source=mobile_scanner.
+
+    Supports authentication via:
+    - Session login (web browser)
+    - admin_key in form data or query params or header
     """
+    # Auth check: admin_key OR login
+    admin_key = request.form.get('admin_key') or request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not current_user.is_authenticated:
+            return jsonify({'error': 'Authentication required. Include admin_key in form data.'}), 401
+
     if 'file' not in request.files:
         return jsonify({"error": "No file provided"}), 400
 
@@ -1907,23 +1917,25 @@ def mobile_upload():
                 # For MySQL, the table is created in db_mysql._init_schema()
 
                 # Insert the incoming receipt
+                now_iso = datetime.now().isoformat()
                 cursor = db_execute(conn, db_type, '''
                     INSERT INTO incoming_receipts
-                    (source, sender, subject, receipt_date, merchant, amount, category,
+                    (source, sender, subject, receipt_date, received_date, merchant, amount, category,
                      business_type, receipt_file, status, notes, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
                 ''', (
                     source,
                     'Mobile Scanner',
                     f'Receipt from {merchant}',
                     date_str,
+                    now_iso,  # received_date = when uploaded
                     merchant,
                     amount_float,
                     category,
                     business,
                     f"incoming/{filename}",
                     notes,
-                    datetime.now().isoformat()
+                    now_iso
                 ))
 
                 receipt_id = cursor.lastrowid
