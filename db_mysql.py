@@ -202,6 +202,8 @@ class MySQLReceiptDatabase:
                     mi_processed_at DATETIME,
                     is_refund BOOLEAN,
                     already_submitted VARCHAR(50),
+                    deleted BOOLEAN DEFAULT FALSE,
+                    deleted_by_user BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_index (_index),
@@ -317,11 +319,45 @@ class MySQLReceiptDatabase:
             """)
 
             self.conn.commit()
+
+            # Run schema migrations to add columns that might be missing
+            self._run_migrations()
+
             print(f"✅ MySQL schema initialized", flush=True)
 
         except Exception as e:
             print(f"⚠️  Schema initialization failed: {e}", flush=True)
             self.conn.rollback()
+
+    def _run_migrations(self):
+        """Add any missing columns to existing tables"""
+        try:
+            cursor = self.conn.cursor()
+
+            # Check and add missing columns to transactions table
+            migrations = [
+                ("deleted", "ALTER TABLE transactions ADD COLUMN deleted BOOLEAN DEFAULT FALSE"),
+                ("deleted_by_user", "ALTER TABLE transactions ADD COLUMN deleted_by_user BOOLEAN DEFAULT FALSE"),
+                ("receipt_url", "ALTER TABLE transactions ADD COLUMN receipt_url VARCHAR(1000)"),
+                ("r2_url", "ALTER TABLE transactions ADD COLUMN r2_url VARCHAR(1000)"),
+            ]
+
+            # Get existing columns
+            cursor.execute("SHOW COLUMNS FROM transactions")
+            existing_cols = {row['Field'] for row in cursor.fetchall()}
+
+            for col_name, alter_sql in migrations:
+                if col_name not in existing_cols:
+                    try:
+                        cursor.execute(alter_sql)
+                        print(f"  ✅ Added column: {col_name}")
+                    except Exception as e:
+                        if "Duplicate column" not in str(e):
+                            print(f"  ⚠️  Migration for {col_name}: {e}")
+
+            self.conn.commit()
+        except Exception as e:
+            print(f"⚠️  Migrations error: {e}", flush=True)
 
     def get_all_transactions(self) -> pd.DataFrame:
         """Get all transactions as DataFrame (with UI-friendly column names)"""
@@ -359,7 +395,11 @@ class MySQLReceiptDatabase:
             'mi_subscription_name': 'MI Subscription Name',
             'mi_processed_at': 'MI Processed At',
             'is_refund': 'Is Refund',
-            'already_submitted': 'Already Submitted'
+            'already_submitted': 'Already Submitted',
+            'deleted': 'deleted',
+            'deleted_by_user': 'deleted_by_user',
+            'receipt_url': 'Receipt URL',
+            'r2_url': 'R2 URL'
         }
 
         df = df.rename(columns=column_map)

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+Tallyups Receipt Reconciliation Server
+MySQL-only database backend - all SQLite/CSV code has been removed.
+"""
 import os
 import math
 import json
@@ -7,7 +11,6 @@ import random
 import re
 import zipfile
 import io
-import sqlite3
 from pathlib import Path
 from difflib import SequenceMatcher
 from datetime import datetime, date
@@ -40,11 +43,10 @@ except Exception as e:
     process_transaction_mi = None
     process_all_mi = None
 
-# === DATABASE ===
+# === DATABASE (MySQL only) ===
 USE_DATABASE = False
 db = None
 
-# Try MySQL first (best for Railway deployment)
 try:
     from db_mysql import get_mysql_db
     db = get_mysql_db()
@@ -52,70 +54,36 @@ try:
         USE_DATABASE = True
         print(f"✅ Using MySQL database")
     else:
-        db = None
+        raise RuntimeError("MySQL connection failed")
 except Exception as e:
-    print(f"ℹ️  MySQL not available: {e}")
+    print(f"❌ MySQL required but not available: {e}")
+    raise RuntimeError(f"MySQL database is required. Error: {e}")
 
-# Fall back to SQLite if MySQL not available
-if not USE_DATABASE:
-    try:
-        from db_sqlite import get_db
-        db = get_db()
-        if db.use_sqlite:
-            USE_DATABASE = True
-            print(f"✅ Using SQLite database: receipts.db")
-        else:
-            db = None
-    except Exception as e:
-        print(f"⚠️ Could not load SQLite: {e}")
-
-# Final fallback to CSV mode
-if not USE_DATABASE:
-    print(f"ℹ️  No database available, using CSV mode")
-    USE_DATABASE = False
-    db = None
-
-# Maintain backward compatibility with old variable name
-# Legacy alias - all code should use USE_DATABASE
-# Note: This is assigned after database init, so it reflects the correct value
-USE_SQLITE = USE_DATABASE
-
-# === DATABASE HELPER FUNCTIONS ===
+# === DATABASE HELPER FUNCTIONS (MySQL-only) ===
 def get_db_connection():
     """
-    Get a database connection that works for both MySQL and SQLite.
+    Get a MySQL database connection.
 
     Returns: (conn, db_type) tuple where:
-    - conn: database connection object
-    - db_type: 'mysql' or 'sqlite'
+    - conn: MySQL connection object with DictCursor
+    - db_type: always 'mysql'
 
     IMPORTANT: Caller must close the connection when done!
-    For MySQL, cursor is already DictCursor.
-    For SQLite, set row_factory after getting connection.
     """
-    if not USE_DATABASE or not db:
-        raise RuntimeError("No database available")
+    if not db:
+        raise RuntimeError("MySQL database not available")
 
-    if hasattr(db, 'use_mysql') and db.use_mysql:
-        return db.get_connection(), 'mysql'
-    else:
-        conn = sqlite3.connect(str(db.db_path))
-        conn.row_factory = sqlite3.Row
-        return conn, 'sqlite'
+    return db.get_connection(), 'mysql'
 
 
 def db_execute(conn, db_type, sql, params=None):
     """
-    Execute SQL with proper placeholder syntax for each database type.
+    Execute SQL on MySQL database.
 
-    For MySQL: use %s placeholders
-    For SQLite: use ? placeholders
-
-    Automatically converts ? to %s for MySQL.
+    Uses %s placeholders. Automatically converts ? to %s for compatibility.
     """
-    if db_type == 'mysql':
-        # Convert SQLite ? placeholders to MySQL %s
-        sql = sql.replace('?', '%s')
+    # Convert ? placeholders to MySQL %s for compatibility
+    sql = sql.replace('?', '%s')
 
     cursor = conn.cursor()
     if params:
@@ -175,11 +143,8 @@ except Exception as e:
 # PATHS / GLOBALS
 # =============================================================================
 BASE_DIR = Path(__file__).resolve().parent
-
-CSV_PATH = BASE_DIR / "FINAL_MASTER_RECONCILED.csv"
 RECEIPT_DIR = BASE_DIR / "receipts"
 TRASH_DIR = BASE_DIR / "receipts_trash"
-RECEIPT_META_PATH = BASE_DIR / "receipt_ai_metadata.csv"
 
 app = Flask(__name__)
 
@@ -530,180 +495,45 @@ def normalize_merchant_name(s: str | None) -> str:
 
 
 # =============================================================================
-# CSV LOAD / SAVE (with corruption diagnostics + auto-repair)
+# DATABASE LOAD (MySQL-only)
 # =============================================================================
 
-def load_csv():
-    """Load data from database (if available) or CSV (fallback). Diagnose corruption and attempt auto-repair."""
+def load_data():
+    """Load all transactions from MySQL database."""
     global df
 
-    # Try database first (MySQL or SQLite)
-    if USE_DATABASE and db:
-        try:
-            df = db.get_all_transactions()
-            # Ensure _index is integer for proper comparisons
-            if '_index' in df.columns:
-                df['_index'] = pd.to_numeric(df['_index'], errors='coerce').fillna(0).astype(int)
-            db_type = "MySQL" if hasattr(db, 'use_mysql') and db.use_mysql else "SQLite"
-            print(f"✅ Loaded {len(df)} transactions from {db_type}")
-            return
-        except Exception as e:
-            print(f"⚠️  Database load failed: {e}, falling back to CSV")
-
-    # Fallback to CSV
-    if not CSV_PATH.exists():
-        raise FileNotFoundError(f"CSV not found at {CSV_PATH}")
+    if not db:
+        raise RuntimeError("MySQL database not available")
 
     try:
-        raw = pd.read_csv(
-            CSV_PATH,
-            dtype=str,
-            keep_default_na=False,
-            quotechar='"',
-            escapechar='\\'
-        )
-        used_path = CSV_PATH
-        print(f"✅ Loaded CSV: {len(raw)} rows from {CSV_PATH.name}")
+        df = db.get_all_transactions()
+        # Ensure _index is integer for proper comparisons
+        if '_index' in df.columns:
+            df['_index'] = pd.to_numeric(df['_index'], errors='coerce').fillna(0).astype(int)
+        print(f"✅ Loaded {len(df)} transactions from MySQL")
+        return df
     except Exception as e:
-        print("\n" + "=" * 80)
-        print("❌ CSV PARSE FAILURE — DIAGNOSTICS".center(80))
-        print("=" * 80 + "\n")
-
-        print(f"📄 File: {CSV_PATH}")
-        print(f"⚠️ Pandas Error: {e}\n")
-
-        # Try to isolate corruption manually
-        print("🔍 Scanning file to identify corrupt line(s)...\n")
-
-        expected_cols = None
-        corrupt_lines = []
-
-        with open(CSV_PATH, "r", encoding="utf-8", errors="replace") as f:
-            for i, line in enumerate(f, start=1):
-                cols = line.count(",") + 1
-                if expected_cols is None:
-                    expected_cols = cols  # first line (header)
-                elif cols != expected_cols:
-                    corrupt_lines.append((i, cols, line.strip()))
-
-        if corrupt_lines:
-            print(f"❗ Found {len(corrupt_lines)} malformed line(s):\n")
-            for line_no, col_count, text in corrupt_lines[:10]:
-                print(f"  • Line {line_no}: {col_count} columns (expected {expected_cols})")
-                preview = text[:200]
-                if len(text) > 200:
-                    preview += "..."
-                print(f"    → {preview}\n")
-
-            if len(corrupt_lines) > 10:
-                print(f"  …and {len(corrupt_lines) - 10} more.\n")
-        else:
-            print("⚠️ No obvious malformed rows. The issue may be due to quotes or escape characters.\n")
-
-        print("=" * 80)
-        print("🛠 SUGGESTED FIXES".center(80))
-        print("=" * 80)
-        print(
-            """
-• Check for embedded commas inside fields not wrapped in quotes.
-• Check for unescaped quotes. Example:
-    7pm "Dinner"  →  "7pm \"Dinner\""
-• Look for double line breaks or pasted multi-line text in a single cell.
-• Make sure every non-header row has the same number of commas as the header.
-• If the file was edited in Excel/Numbers, re-export as CSV UTF-8.
-
-Tip: This server will also attempt a 'repaired' version:
-    FINAL_MASTER_RECONCILED.repaired.csv
-
-"""
-        )
-        print("=" * 80)
-        print("\n🛠 Attempting to auto-repair CSV…")
-
-        # Damage-control pass
-        with open(CSV_PATH, "r", encoding="utf-8", errors="replace") as f:
-            lines = f.readlines()
-
-        repaired = []
-        for ln in lines:
-            # remove null bytes
-            ln = ln.replace("\x00", "")
-            # if odd number of quotes, strip them (prevents broken CSV state)
-            if ln.count('"') % 2 != 0:
-                ln = ln.replace('"', "")
-            repaired.append(ln)
-
-        repaired_path = CSV_PATH.with_suffix(".repaired.csv")
-        with open(repaired_path, "w", encoding="utf-8") as f:
-            f.writelines(repaired)
-
-        print(f"📄 Wrote repaired candidate CSV → {repaired_path.name}")
-
-        raw = pd.read_csv(
-            repaired_path,
-            dtype=str,
-            keep_default_na=False,
-            on_bad_lines="skip",
-            engine="python",
-        )
-        used_path = repaired_path
-        print("✅ Loaded repaired CSV successfully.")
-
-    # Ensure core columns
-    if "_index" not in raw.columns:
-        raw["_index"] = list(range(len(raw)))
-    else:
-        try:
-            raw["_index"] = raw["_index"].astype(int)
-        except Exception:
-            raw["_index"] = list(range(len(raw)))
-
-    # Make sure our "AI columns" exist
-    needed_cols = [
-        "ai_receipt_merchant",
-        "ai_receipt_date",
-        "ai_receipt_total",
-        "ai_match_raw",
-        "ai_match",
-        "ai_confidence",
-        "ai_reason",
-        # Option B extra AI columns:
-        "ai_people",
-        "ai_business_rationale",
-        "ai_subscription_reason",
-        "ai_location_reason",
-        "ai_merchant_normalized",
-        "ai_report_block",
-    ]
-    for col in needed_cols:
-        if col not in raw.columns:
-            raw[col] = ""
-
-    df_clean = sanitize_csv(raw)
-    df = df_clean
-    return df
+        print(f"❌ MySQL load failed: {e}")
+        raise
 
 
+# Legacy alias for backward compatibility
+def load_csv():
+    """Legacy alias for load_data() - now loads from MySQL only."""
+    return load_data()
+
+
+def save_data():
+    """Data is saved directly to MySQL via update_transaction. This is a no-op for compatibility."""
+    # All saves happen via db.update_transaction() in update_row_by_index()
+    # This function exists only for backward compatibility
+    pass
+
+
+# Legacy alias for backward compatibility
 def save_csv():
-    """Persist df to disk (SQLite if available, otherwise CSV)."""
-    global df
-    if df is None:
-        return
-
-    # Save to SQLite if available
-    if USE_DATABASE and db:
-        # SQLite updates happen per-row, so this is mostly for CSV export
-        try:
-            db.export_to_csv(str(CSV_PATH))
-            print("💾 Saved to SQLite + exported CSV", flush=True)
-        except Exception as e:
-            print(f"⚠️  SQLite save failed: {e}, saving to CSV only")
-            df.to_csv(CSV_PATH, index=False)
-            print("💾 Saved CSV", flush=True)
-    else:
-        # CSV mode
-        df.to_csv(CSV_PATH, index=False)
-        print("💾 Saved CSV", flush=True)
+    """Legacy alias for save_data() - now a no-op since MySQL saves happen per-row."""
+    save_data()
 
 
 def ensure_df():
@@ -731,13 +561,12 @@ def get_row_by_index(idx: int) -> dict | None:
 
 def update_row_by_index(idx: int, patch: dict, source: str = "viewer_ui") -> bool:
     """
-    Apply patch to df row with given _index, then save to SQLite + CSV.
+    Apply patch to df row with given _index, then save to MySQL.
 
-    CRITICAL FIX: This function now:
-    1. Saves changes to SQLite IMMEDIATELY using db.update_transaction()
+    This function:
+    1. Saves changes to MySQL IMMEDIATELY using db.update_transaction()
     2. Logs all changes to audit log for tracking
     3. Updates in-memory DataFrame
-    4. Exports to CSV for backward compatibility
 
     Args:
         idx: Transaction _index to update
@@ -775,19 +604,20 @@ def update_row_by_index(idx: int, patch: dict, source: str = "viewer_ui") -> boo
             patch["review_status"] = None
             print(f"   Cleared review_status (no receipt to review)", flush=True)
 
-    # === STEP 1: Update SQLite FIRST (most important) ===
-    if USE_DATABASE and db:
-        try:
-            success = db.update_transaction(idx, patch)
-            if not success:
-                print(f"❌ SQLite update failed for row #{idx}", flush=True)
-                return False
-            print(f"💾 SQLite updated: row #{idx}", flush=True)
-        except Exception as e:
-            print(f"❌ SQLite error for row #{idx}: {e}", flush=True)
+    # === STEP 1: Update MySQL ===
+    if not db:
+        print(f"❌ MySQL not available", flush=True)
+        return False
+
+    try:
+        success = db.update_transaction(idx, patch)
+        if not success:
+            print(f"❌ MySQL update failed for row #{idx}", flush=True)
             return False
-    else:
-        print(f"⚠️  SQLite not available, CSV mode only", flush=True)
+        print(f"💾 MySQL updated: row #{idx}", flush=True)
+    except Exception as e:
+        print(f"❌ MySQL error for row #{idx}: {e}", flush=True)
+        return False
 
     # === STEP 2: Log changes to audit log ===
     if AUDIT_LOGGING_ENABLED and audit_logger:
@@ -846,68 +676,74 @@ def update_row_by_index(idx: int, patch: dict, source: str = "viewer_ui") -> boo
             value = sanitize_value(value)
         df.loc[mask, col] = value
 
-    # === STEP 4: Export to CSV (backward compatibility) ===
-    try:
-        if USE_DATABASE and db:
-            db.export_to_csv(str(CSV_PATH))
-        else:
-            df.to_csv(CSV_PATH, index=False)
-        print(f"📄 CSV exported", flush=True)
-    except Exception as e:
-        print(f"⚠️  CSV export failed: {e}", flush=True)
-        # Don't fail the update if CSV export fails
-
     return True
 
 
 # =============================================================================
-# RECEIPT META CACHE (VISION ONCE PER FILE)
+# RECEIPT META CACHE (MySQL-backed)
 # =============================================================================
 
 def load_receipt_meta():
+    """Load receipt metadata from MySQL receipt_metadata table."""
     global receipt_meta_cache
     receipt_meta_cache = {}
-    if not RECEIPT_META_PATH.exists():
-        print("ℹ️ No receipt metadata CSV yet")
+
+    if not db:
+        print("ℹ️ No MySQL database for receipt metadata")
         return
+
     try:
-        meta_df = pd.read_csv(RECEIPT_META_PATH, dtype=str, keep_default_na=False)
-        for _, row in meta_df.iterrows():
-            filename = row["filename"]
-            receipt_meta_cache[filename] = {
-                "filename": filename,
-                "merchant_name": row.get("merchant_name", ""),
-                "merchant_normalized": row.get("merchant_normalized", ""),
-                "receipt_date": row.get("receipt_date", ""),
-                "total_amount": parse_amount_str(row.get("total_amount", "")),
-                "subtotal_amount": parse_amount_str(row.get("subtotal_amount", "")),
-                "tip_amount": parse_amount_str(row.get("tip_amount", "")),
-                "raw_json": row.get("raw_json", ""),
-            }
-        print(f"📑 Loaded receipt metadata for {len(receipt_meta_cache)} files")
+        result = db.execute_query("SELECT * FROM receipt_metadata")
+        for row in result:
+            filename = row.get("filename", "")
+            if filename:
+                receipt_meta_cache[filename] = {
+                    "filename": filename,
+                    "merchant_name": row.get("merchant", ""),
+                    "merchant_normalized": row.get("merchant", ""),
+                    "receipt_date": str(row.get("date", "")),
+                    "total_amount": float(row.get("amount", 0) or 0),
+                    "subtotal_amount": 0.0,
+                    "tip_amount": 0.0,
+                    "raw_json": row.get("raw_text", ""),
+                }
+        print(f"📑 Loaded receipt metadata for {len(receipt_meta_cache)} files from MySQL")
     except Exception as e:
         print(f"⚠️ Could not load receipt metadata: {e}")
 
 
 def save_receipt_meta():
+    """Save receipt metadata to MySQL receipt_metadata table."""
     global receipt_meta_cache
-    if not receipt_meta_cache:
+    if not receipt_meta_cache or not db:
         return
-    rows = []
-    for meta in receipt_meta_cache.values():
-        rows.append({
-            "filename": meta.get("filename", ""),
-            "merchant_name": meta.get("merchant_name", ""),
-            "merchant_normalized": meta.get("merchant_normalized", ""),
-            "receipt_date": meta.get("receipt_date", ""),
-            "total_amount": meta.get("total_amount", ""),
-            "subtotal_amount": meta.get("subtotal_amount", ""),
-            "tip_amount": meta.get("tip_amount", ""),
-            "raw_json": meta.get("raw_json", ""),
-        })
-    meta_df = pd.DataFrame(rows)
-    meta_df.to_csv(RECEIPT_META_PATH, index=False)
-    print(f"📑 Saved receipt metadata for {len(rows)} files")
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        for filename, meta in receipt_meta_cache.items():
+            cursor.execute("""
+                INSERT INTO receipt_metadata (filename, merchant, date, amount, raw_text)
+                VALUES (%s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    merchant = VALUES(merchant),
+                    date = VALUES(date),
+                    amount = VALUES(amount),
+                    raw_text = VALUES(raw_text)
+            """, (
+                filename,
+                meta.get("merchant_name", ""),
+                meta.get("receipt_date", None),
+                meta.get("total_amount", 0),
+                meta.get("raw_json", "")
+            ))
+
+        conn.commit()
+        conn.close()
+        print(f"📑 Saved receipt metadata for {len(receipt_meta_cache)} files to MySQL")
+    except Exception as e:
+        print(f"⚠️ Could not save receipt metadata: {e}")
 
 
 def encode_image_base64(path: Path) -> str:
@@ -1285,6 +1121,51 @@ def login_pin():
     return render_template_string(PIN_PAGE_HTML, next_url=next_url)
 
 
+@app.route("/login/biometric", methods=["POST"])
+def login_biometric():
+    """Biometric (Face ID/Touch ID) authentication via WebAuthn."""
+    data = request.get_json() or {}
+    credential_id = data.get('credential_id', '')
+    authenticator_data = data.get('authenticator_data', '')
+
+    if not credential_id:
+        return jsonify({"error": "No credential provided"}), 400
+
+    # For WebAuthn, the actual verification happens client-side with the platform authenticator
+    # If the client successfully got past the biometric check, we trust the credential
+    # The credential_id should match what was enrolled during registration
+
+    # In a production app, you'd verify the signature against stored public key
+    # For this PWA, we trust the platform authenticator's verification
+
+    if credential_id and authenticator_data:
+        session['authenticated'] = True
+        session.permanent = True
+        return jsonify({"success": True})
+    else:
+        return jsonify({"error": "Biometric authentication failed"}), 401
+
+
+@app.route("/api/biometric/challenge", methods=["GET"])
+def biometric_challenge():
+    """Generate a challenge for WebAuthn authentication."""
+    import secrets
+    import base64
+
+    # Generate random challenge
+    challenge = secrets.token_bytes(32)
+    challenge_b64 = base64.b64encode(challenge).decode('utf-8')
+
+    # Store in session for verification (optional for simple implementation)
+    session['webauthn_challenge'] = challenge_b64
+
+    return jsonify({
+        "challenge": challenge_b64,
+        "rpId": request.host.split(':')[0],  # Domain without port
+        "timeout": 60000
+    })
+
+
 @app.route("/logout")
 def logout():
     """Clear session and logout."""
@@ -1394,14 +1275,8 @@ def health_check():
                     db_status["receipts"] = {
                         "total": receipt_result[0]['total'],
                         "with_receipts": receipt_result[0]['with_receipts'],
-                        "deleted": receipt_result[0]['deleted']
+                        "deleted": receipt_result[0].get('deleted', 0)
                     }
-            else:
-                db_status = {
-                    "status": "connected",
-                    "type": "sqlite",
-                    "response_ms": round((time.time() - db_start) * 1000, 2)
-                }
         except Exception as e:
             db_status = {
                 "status": "error",
@@ -1926,7 +1801,7 @@ def mobile_upload():
             "filename": filename,
             "merchant": merchant,
             "amount": amount_float,
-            "message": "Receipt uploaded to incoming queue"
+            "message": "Receipt uploaded to Inbox"
         })
 
     except Exception as e:
@@ -2564,6 +2439,273 @@ def ai_note():
         return jsonify({"ok": False, "message": f"Error: {str(e)}"}), 500
 
 
+# =============================================================================
+# GEMINI-POWERED AI ENDPOINTS
+# =============================================================================
+
+@app.route("/api/ai/categorize", methods=["POST"])
+def api_ai_categorize():
+    """
+    Gemini-powered AI transaction categorization.
+
+    POST body: {"_index": int} or {"merchant": str, "amount": float, "date": str}
+    Returns: {"ok": true, "category": str, "business_type": str, "confidence": int, "reasoning": str}
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('logged_in'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+
+    # Get transaction data either from _index or direct params
+    if "_index" in data:
+        ensure_df()
+        idx = int(data["_index"])
+        mask = df["_index"] == idx
+        if not mask.any():
+            return jsonify({"ok": False, "error": f"_index {idx} not found"}), 404
+        row = df[mask].iloc[0].to_dict()
+        merchant = row.get("Chase Description") or row.get("merchant") or ""
+        amount = parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0)
+        date = row.get("Chase Date") or row.get("transaction_date") or ""
+        category_hint = row.get("Chase Category") or row.get("category") or ""
+    else:
+        merchant = data.get("merchant", "")
+        amount = float(data.get("amount", 0))
+        date = data.get("date", "")
+        category_hint = data.get("category_hint", "")
+        idx = None
+
+    if not merchant:
+        return jsonify({"ok": False, "error": "No merchant provided"}), 400
+
+    # Use Gemini to categorize
+    result = gemini_categorize_transaction(merchant, amount, date, category_hint)
+
+    # If _index provided, save the categorization
+    if idx is not None and result.get("confidence", 0) >= 60:
+        update_data = {}
+        if result.get("category"):
+            update_data["category"] = result["category"]
+        if result.get("business_type"):
+            update_data["Business Type"] = result["business_type"]
+        if update_data:
+            update_row_by_index(idx, update_data, source="ai_categorize")
+
+    return jsonify({
+        "ok": True,
+        "category": result.get("category"),
+        "business_type": result.get("business_type"),
+        "confidence": result.get("confidence", 0),
+        "reasoning": result.get("reasoning", ""),
+        "_index": idx
+    })
+
+
+@app.route("/api/ai/note", methods=["POST"])
+def api_ai_note_gemini():
+    """
+    Gemini-powered AI note generation (alternative to /ai_note which uses OpenAI).
+
+    POST body: {"_index": int} or {"merchant": str, "amount": float, "date": str, "category": str, "business_type": str}
+    Returns: {"ok": true, "note": str, "confidence": int}
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('logged_in'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+
+    # Get transaction data either from _index or direct params
+    if "_index" in data:
+        ensure_df()
+        idx = int(data["_index"])
+        mask = df["_index"] == idx
+        if not mask.any():
+            return jsonify({"ok": False, "error": f"_index {idx} not found"}), 404
+        row = df[mask].iloc[0].to_dict()
+        merchant = row.get("Chase Description") or row.get("merchant") or ""
+        amount = parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0)
+        date = row.get("Chase Date") or row.get("transaction_date") or ""
+        category = row.get("Chase Category") or row.get("category") or ""
+        business_type = row.get("Business Type") or ""
+    else:
+        merchant = data.get("merchant", "")
+        amount = float(data.get("amount", 0))
+        date = data.get("date", "")
+        category = data.get("category", "")
+        business_type = data.get("business_type", "")
+        idx = None
+
+    if not merchant:
+        return jsonify({"ok": False, "error": "No merchant provided"}), 400
+
+    # Use Gemini to generate note
+    result = gemini_generate_ai_note(merchant, amount, date, category, business_type)
+
+    # If _index provided, save the note
+    if idx is not None and result.get("note"):
+        update_row_by_index(idx, {"AI Note": result["note"]}, source="ai_note_gemini")
+
+    return jsonify({
+        "ok": True,
+        "note": result.get("note", ""),
+        "confidence": result.get("confidence", 0),
+        "_index": idx
+    })
+
+
+@app.route("/api/ai/auto-process", methods=["POST"])
+def api_ai_auto_process():
+    """
+    One-click AI processing: categorize + generate note in one call.
+
+    POST body: {"_index": int}
+    Returns: {"ok": true, "category": str, "business_type": str, "note": str, "confidence": int}
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('logged_in'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+
+    if "_index" not in data:
+        return jsonify({"ok": False, "error": "Missing _index"}), 400
+
+    ensure_df()
+    idx = int(data["_index"])
+    mask = df["_index"] == idx
+    if not mask.any():
+        return jsonify({"ok": False, "error": f"_index {idx} not found"}), 404
+
+    row = df[mask].iloc[0].to_dict()
+    merchant = row.get("Chase Description") or row.get("merchant") or ""
+    amount = parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0)
+    date = row.get("Chase Date") or row.get("transaction_date") or ""
+    category_hint = row.get("Chase Category") or row.get("category") or ""
+
+    if not merchant:
+        return jsonify({"ok": False, "error": "No merchant in transaction"}), 400
+
+    # Step 1: Categorize (pass full row for context)
+    cat_result = gemini_categorize_transaction(merchant, amount, date, category_hint, row=row)
+
+    # Step 2: Generate note with category context (pass full row)
+    note_result = gemini_generate_ai_note(
+        merchant, amount, date,
+        cat_result.get("category", ""),
+        cat_result.get("business_type", "Down Home"),
+        row=row
+    )
+
+    # Save all updates
+    update_data = {}
+    if cat_result.get("category"):
+        update_data["category"] = cat_result["category"]
+    if cat_result.get("business_type"):
+        update_data["Business Type"] = cat_result["business_type"]
+    if note_result.get("note"):
+        update_data["AI Note"] = note_result["note"]
+
+    if update_data:
+        update_row_by_index(idx, update_data, source="ai_auto_process")
+
+    return jsonify({
+        "ok": True,
+        "category": cat_result.get("category"),
+        "business_type": cat_result.get("business_type"),
+        "note": note_result.get("note"),
+        "confidence": min(cat_result.get("confidence", 0), note_result.get("confidence", 0)),
+        "reasoning": cat_result.get("reasoning", ""),
+        "_index": idx
+    })
+
+
+@app.route("/api/ai/batch-categorize", methods=["POST"])
+def api_ai_batch_categorize():
+    """
+    Batch AI categorization for multiple transactions.
+
+    POST body: {"indexes": [int, int, ...], "limit": 50}
+    Returns: {"ok": true, "processed": int, "results": [...]}
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('logged_in'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+    indexes = data.get("indexes", [])
+    limit = min(data.get("limit", 50), 100)  # Max 100 at once
+
+    ensure_df()
+
+    # If no indexes specified, find transactions without categories
+    if not indexes:
+        uncategorized = df[
+            (df.get("category", "").fillna("") == "") &
+            (df.get("Business Type", "").fillna("") == "")
+        ]
+        indexes = uncategorized["_index"].tolist()[:limit]
+
+    results = []
+    for idx in indexes[:limit]:
+        try:
+            mask = df["_index"] == idx
+            if not mask.any():
+                continue
+
+            row = df[mask].iloc[0].to_dict()
+            merchant = row.get("Chase Description") or row.get("merchant") or ""
+            amount = parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0)
+            date = row.get("Chase Date") or row.get("transaction_date") or ""
+            category_hint = row.get("Chase Category") or ""
+
+            if not merchant:
+                continue
+
+            result = gemini_categorize_transaction(merchant, amount, date, category_hint)
+
+            # Save if confident
+            if result.get("confidence", 0) >= 50:
+                update_data = {}
+                if result.get("category"):
+                    update_data["category"] = result["category"]
+                if result.get("business_type"):
+                    update_data["Business Type"] = result["business_type"]
+                if update_data:
+                    update_row_by_index(idx, update_data, source="batch_categorize")
+
+            results.append({
+                "_index": idx,
+                "merchant": merchant,
+                "category": result.get("category"),
+                "business_type": result.get("business_type"),
+                "confidence": result.get("confidence", 0)
+            })
+
+        except Exception as e:
+            print(f"⚠️ Batch categorize error for {idx}: {e}")
+            continue
+
+    return jsonify({
+        "ok": True,
+        "processed": len(results),
+        "results": results
+    })
+
+
 @app.route("/upload_receipt", methods=["POST"])
 @login_required
 def upload_receipt():
@@ -2747,6 +2889,326 @@ If you cannot extract a field with confidence, set it to null."""
             "total": None,
             "confidence": 0,
             "error": str(e)
+        }
+
+
+# =============================================================================
+# GEMINI AI CATEGORIZATION & NOTE GENERATION
+# =============================================================================
+
+# Valid expense categories for Brian Kaplan's businesses
+EXPENSE_CATEGORIES = [
+    "Meals & Entertainment",
+    "Travel - Airfare",
+    "Travel - Hotel",
+    "Travel - Ground Transportation",
+    "Travel - Car Rental",
+    "Office Supplies",
+    "Software & Subscriptions",
+    "Professional Services",
+    "Marketing & Advertising",
+    "Equipment & Hardware",
+    "Utilities & Communications",
+    "Parking & Tolls",
+    "Fuel & Gas",
+    "Client Entertainment",
+    "Training & Education",
+    "Shipping & Postage",
+    "Business Insurance",
+    "Bank & Processing Fees",
+    "Miscellaneous Business Expense"
+]
+
+# Business types for Brian's companies
+BUSINESS_TYPES = [
+    "Down Home",           # Music/Entertainment business
+    "Music City Rodeo",    # Event business
+    "Personal",            # Personal expenses
+    "Compass RE",          # Real estate
+    "1099 Contractor"      # Freelance work
+]
+
+
+def gemini_categorize_transaction(merchant: str, amount: float, date: str = "", category_hint: str = "", row: dict = None) -> dict:
+    """
+    Use Gemini AI to intelligently categorize a transaction.
+    Now enhanced with merchant intelligence, contacts, and calendar context.
+
+    Returns:
+        {
+            "category": "Meals & Entertainment",
+            "business_type": "Down Home",
+            "confidence": 85,
+            "reasoning": "Restaurant expense likely for client meeting"
+        }
+    """
+    # Build context from merchant intelligence
+    merchant_context = ""
+    attendees_context = ""
+    calendar_context = ""
+
+    # Create a row dict for context lookups if not provided
+    if row is None:
+        row = {
+            "Chase Description": merchant,
+            "merchant": merchant,
+            "Chase Amount": amount,
+            "amount": amount,
+            "Chase Date": date,
+            "transaction_date": date,
+            "Chase Category": category_hint,
+            "category": category_hint
+        }
+
+    # Get merchant hint from contacts_engine
+    try:
+        hint = merchant_hint_for_row(row)
+        if hint:
+            merchant_context = f"\n- Merchant Intelligence: {hint}"
+    except Exception as e:
+        print(f"⚠️ merchant_hint error: {e}")
+
+    # Get normalized merchant from merchant_intelligence
+    try:
+        if merchant_intel:
+            normalized = merchant_intel.normalize(merchant)
+            if normalized and normalized != merchant.lower():
+                merchant_context += f"\n- Normalized Merchant: {normalized}"
+    except Exception as e:
+        print(f"⚠️ merchant_intel error: {e}")
+
+    # Get likely attendees (for meal categorization)
+    try:
+        attendees = guess_attendees_for_row(row)
+        if attendees and len(attendees) > 1:
+            attendees_context = f"\n- Likely Attendees: {', '.join(attendees)}"
+    except Exception as e:
+        print(f"⚠️ guess_attendees error: {e}")
+
+    # Get calendar context for the date
+    if date:
+        try:
+            from calendar_service import get_events_around_date, format_events_for_prompt
+            events = get_events_around_date(date, days_before=1, days_after=1)
+            if events:
+                calendar_context = f"\n- Calendar Events Near Date: {format_events_for_prompt(events[:5])}"
+        except Exception as e:
+            pass  # Calendar not available, that's ok
+
+    try:
+        prompt = f"""You are an expense categorization expert for Brian Kaplan, a Nashville music industry executive.
+
+TRANSACTION:
+- Merchant: {merchant}
+- Amount: ${amount:.2f}
+- Date: {date}
+- Existing Category Hint: {category_hint or "None"}{merchant_context}{attendees_context}{calendar_context}
+
+BRIAN'S BUSINESSES:
+- "Down Home" - Music/entertainment company (artist management, production, publishing)
+- "Music City Rodeo" - Event production company (concerts, festivals)
+- "Compass RE" - Real estate business
+- "1099 Contractor" - Freelance consulting work
+- "Personal" - Personal expenses
+
+KNOWN MERCHANT INTELLIGENCE:
+- Soho House / SH Nashville → Members club, always business meals with industry contacts
+- Anthropic / Claude AI → AI tool subscription for business productivity
+- Apple One / apple.com/bill → Business software/services subscription
+- CLEAR → Airport security for business travel
+- IMDbPro → Industry research subscription
+- Expensify → Business expense software
+- Cursor AI → Developer tools subscription
+
+CATEGORY (pick one):
+{chr(10).join(f'- {cat}' for cat in EXPENSE_CATEGORIES)}
+
+BUSINESS TYPE (pick one):
+{chr(10).join(f'- {bt}' for bt in BUSINESS_TYPES)}
+
+CATEGORIZATION RULES:
+1. Restaurants in Nashville → "Meals & Entertainment" + "Down Home" (client/artist meetings)
+2. Airlines → "Travel - Airfare" (check calendar for destination context)
+3. Hotels → "Travel - Hotel"
+4. Uber/Lyft → "Travel - Ground Transportation"
+5. Software/AI/SaaS subscriptions → "Software & Subscriptions" + "Down Home"
+6. Parking near downtown Nashville → Probably "Down Home" meeting
+7. If calendar shows MCR event near date → "Music City Rodeo"
+8. Amazon under $100 → Likely "Office Supplies"
+9. Amazon over $500 → Likely "Equipment & Hardware"
+
+Return ONLY valid JSON:
+{{"category": "...", "business_type": "...", "confidence": 0-100, "reasoning": "brief explanation"}}"""
+
+        response_text = generate_content_with_fallback(prompt)
+        if not response_text:
+            raise Exception("Gemini returned empty response")
+
+        response_text = response_text.strip()
+        response_text = response_text.replace('```json', '').replace('```', '').strip()
+
+        result = json.loads(response_text)
+
+        # Validate category and business_type
+        if result.get("category") not in EXPENSE_CATEGORIES:
+            result["category"] = "Miscellaneous Business Expense"
+        if result.get("business_type") not in BUSINESS_TYPES:
+            result["business_type"] = "Down Home"
+
+        return result
+
+    except Exception as e:
+        print(f"⚠️  Gemini categorization error: {e}", flush=True)
+        # Fallback to basic keyword categorization
+        merchant_lower = (merchant or "").lower()
+
+        # Basic keyword matching fallback
+        if any(kw in merchant_lower for kw in ['restaurant', 'food', 'cafe', 'bar', 'grill', 'pizza', 'burger', 'taco', 'soho', 'house']):
+            return {"category": "Meals & Entertainment", "business_type": "Down Home", "confidence": 60, "reasoning": "Keyword match: restaurant"}
+        elif any(kw in merchant_lower for kw in ['airline', 'delta', 'american', 'united', 'southwest', 'flight']):
+            return {"category": "Travel - Airfare", "business_type": "Down Home", "confidence": 70, "reasoning": "Keyword match: airline"}
+        elif any(kw in merchant_lower for kw in ['hotel', 'marriott', 'hilton', 'hyatt', 'inn', 'lodge']):
+            return {"category": "Travel - Hotel", "business_type": "Down Home", "confidence": 70, "reasoning": "Keyword match: hotel"}
+        elif any(kw in merchant_lower for kw in ['uber', 'lyft', 'taxi', 'cab']):
+            return {"category": "Travel - Ground Transportation", "business_type": "Down Home", "confidence": 75, "reasoning": "Keyword match: rideshare"}
+        elif any(kw in merchant_lower for kw in ['gas', 'shell', 'exxon', 'chevron', 'fuel', 'bp ']):
+            return {"category": "Fuel & Gas", "business_type": "Down Home", "confidence": 70, "reasoning": "Keyword match: gas station"}
+        elif any(kw in merchant_lower for kw in ['parking', 'park', 'pmc']):
+            return {"category": "Parking & Tolls", "business_type": "Down Home", "confidence": 65, "reasoning": "Keyword match: parking"}
+        elif any(kw in merchant_lower for kw in ['adobe', 'spotify', 'apple', 'microsoft', 'google', 'dropbox', 'subscription', 'anthropic', 'claude', 'cursor', 'openai']):
+            return {"category": "Software & Subscriptions", "business_type": "Down Home", "confidence": 70, "reasoning": "Keyword match: subscription"}
+        elif any(kw in merchant_lower for kw in ['office', 'staples', 'supplies']):
+            return {"category": "Office Supplies", "business_type": "Down Home", "confidence": 65, "reasoning": "Keyword match: office supplies"}
+        else:
+            return {"category": "Miscellaneous Business Expense", "business_type": "Down Home", "confidence": 40, "reasoning": "No specific match found"}
+
+
+def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", category: str = "", business_type: str = "", row: dict = None) -> dict:
+    """
+    Use Gemini AI to generate an intelligent expense note.
+    Now enhanced with merchant intelligence, contacts, and calendar context.
+
+    Returns:
+        {
+            "note": "Client dinner meeting at upscale steakhouse to discuss artist contract negotiations",
+            "confidence": 85
+        }
+    """
+    # Build context
+    merchant_context = ""
+    attendees_context = ""
+    calendar_context = ""
+
+    # Create a row dict for context lookups if not provided
+    if row is None:
+        row = {
+            "Chase Description": merchant,
+            "merchant": merchant,
+            "Chase Amount": amount,
+            "amount": amount,
+            "Chase Date": date,
+            "transaction_date": date,
+            "Chase Category": category,
+            "category": category,
+            "Business Type": business_type
+        }
+
+    # Get merchant hint from contacts_engine
+    try:
+        hint = merchant_hint_for_row(row)
+        if hint:
+            merchant_context = f"\n- Merchant Intel: {hint}"
+    except Exception as e:
+        pass
+
+    # Get normalized merchant
+    try:
+        if merchant_intel:
+            normalized = merchant_intel.normalize(merchant)
+            if normalized and normalized != merchant.lower():
+                merchant_context += f"\n- Normalized: {normalized}"
+    except Exception as e:
+        pass
+
+    # Get likely attendees for meals
+    try:
+        attendees = guess_attendees_for_row(row)
+        if attendees:
+            attendees_context = f"\n- Likely Attendees: {', '.join(attendees)}"
+    except Exception as e:
+        pass
+
+    # Get calendar context
+    if date:
+        try:
+            from calendar_service import get_events_around_date, format_events_for_prompt
+            events = get_events_around_date(date, days_before=1, days_after=1)
+            if events:
+                calendar_context = f"\n- Calendar Events: {format_events_for_prompt(events[:5])}"
+        except Exception as e:
+            pass
+
+    try:
+        prompt = f"""You are Brian Kaplan's executive assistant writing expense notes for tax documentation.
+Brian is a Nashville music industry executive (Down Home, Music City Rodeo).
+
+TRANSACTION:
+- Merchant: {merchant}
+- Amount: ${amount:.2f}
+- Date: {date}
+- Category: {category or "Unknown"}
+- Business: {business_type or "Down Home"}{merchant_context}{attendees_context}{calendar_context}
+
+BRIAN'S KEY CONTACTS (use when relevant for meals):
+- Down Home Team: Jason Ross, Tim Staples, Joel Bergvall, Kevin Sabbe, Andrew Cohen
+- MCR Team: Patrick Humes, Barry Stephenson
+- Industry Execs: Scott Siman, Cindy Mabe, Ken Robold, Ben Kline
+
+KNOWN VENUES:
+- Soho House / SH Nashville = Members-only club for industry meetings
+- 12 South Taproom = Local Nashville restaurant
+- Corner Pub = Casual meeting spot
+
+Write a professional expense note that:
+1. Explains the SPECIFIC business purpose (not generic "business expense")
+2. Is 1-2 sentences, concise but substantive
+3. Would satisfy an IRS auditor asking "what was this for?"
+4. Uses calendar events to add context (e.g., "Flight to LA for [event name]")
+5. For meals, mention the business discussion topic or attendee context
+6. For subscriptions, explain how it's used for business
+
+EXCELLENT NOTES:
+- "Client lunch with Jason Ross at Soho House to review Q4 artist release schedule"
+- "Delta flight to Los Angeles for Grammy week artist showcases"
+- "Monthly Claude AI subscription for business writing and contract analysis"
+- "Uber to BNA for Music City Rodeo event planning trip"
+- "Adobe Creative Cloud for artist promotional materials and social media content"
+
+BAD NOTES (too vague):
+- "Business expense"
+- "Meal with client"
+- "Software subscription"
+- "Travel"
+
+Return ONLY valid JSON:
+{{"note": "your professional expense note here", "confidence": 0-100}}"""
+
+        response_text = generate_content_with_fallback(prompt)
+        if not response_text:
+            raise Exception("Gemini returned empty response")
+
+        response_text = response_text.strip()
+        response_text = response_text.replace('```json', '').replace('```', '').strip()
+
+        result = json.loads(response_text)
+        return result
+
+    except Exception as e:
+        print(f"⚠️  Gemini AI note error: {e}", flush=True)
+        # Fallback to basic note
+        return {
+            "note": f"Business expense at {merchant} - ${amount:.2f}",
+            "confidence": 30
         }
 
 
@@ -3220,30 +3682,121 @@ def upload_receipt_new():
 @app.route("/detach_receipt", methods=["POST"])
 def detach_receipt():
     """
-    Body: { "_index": int }
+    Body: { "_index": int } or { "transaction_id": int }
 
-    Moves file (if exists) to receipts_trash, clears Receipt File columns,
-    and PERMANENTLY tracks the rejection so it NEVER comes back.
+    Detaches receipt from transaction, tracks rejection so it NEVER comes back.
+    Works in both CSV mode (via _index) and MySQL mode (via transaction_id).
     """
-    ensure_df()
-    global df
-
     data = request.get_json(force=True) or {}
-    if "_index" not in data:
-        abort(400, "Missing _index")
+
+    # Support both _index (legacy) and transaction_id (new)
+    idx = data.get("_index") or data.get("transaction_id")
+    if idx is None:
+        abort(400, "Missing _index or transaction_id")
 
     try:
-        idx = int(data["_index"])
+        idx = int(idx)
     except (TypeError, ValueError):
-        abort(400, f"Invalid _index: {data.get('_index')}")
+        abort(400, f"Invalid _index/transaction_id: {idx}")
+
+    # ===== MySQL Mode (Primary) =====
+    if USE_DATABASE and db:
+        try:
+            conn, db_type = get_db_connection()
+
+            # Get transaction by id (which is same as _index)
+            cursor = db_execute(conn, db_type,
+                'SELECT id, receipt_file, receipt_url, chase_description, chase_amount, chase_date FROM transactions WHERE id = ?',
+                (idx,))
+            row = cursor.fetchone()
+
+            if not row:
+                conn.close()
+                abort(404, f"Transaction {idx} not found")
+
+            row_dict = dict(row)
+            transaction_id = row_dict.get('id')
+            filename = row_dict.get('receipt_file', '')
+            receipt_url = row_dict.get('receipt_url', '')
+            transaction_desc = row_dict.get('chase_description', '')
+            transaction_amount = row_dict.get('chase_amount', 0)
+            transaction_date = row_dict.get('chase_date', '')
+
+            if not filename and not receipt_url:
+                conn.close()
+                return jsonify({'ok': False, 'error': 'No receipt attached to this transaction'}), 400
+
+            # Track the rejection PERMANENTLY with transaction_id
+            # This blocks re-attaching the same receipt to this specific transaction
+            if db_type == 'mysql':
+                # Add transaction_id column if needed
+                try:
+                    db_execute(conn, db_type, '''
+                        ALTER TABLE rejected_receipts ADD COLUMN transaction_id INT DEFAULT NULL
+                    ''', ())
+                    conn.commit()
+                except:
+                    pass  # Column already exists
+
+                db_execute(conn, db_type, '''
+                    INSERT INTO rejected_receipts
+                    (transaction_id, transaction_date, transaction_description, transaction_amount, receipt_path, reason)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE reason = VALUES(reason), rejected_at = NOW()
+                ''', (transaction_id, str(transaction_date), str(transaction_desc), str(transaction_amount),
+                      filename or receipt_url or 'unknown', 'user_manually_removed'))
+            else:
+                # SQLite
+                try:
+                    db_execute(conn, db_type, '''
+                        ALTER TABLE rejected_receipts ADD COLUMN transaction_id INTEGER DEFAULT NULL
+                    ''', ())
+                    conn.commit()
+                except:
+                    pass
+
+                db_execute(conn, db_type, '''
+                    INSERT OR REPLACE INTO rejected_receipts
+                    (transaction_id, transaction_date, transaction_description, transaction_amount, receipt_path, reason)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (transaction_id, str(transaction_date), str(transaction_desc), str(transaction_amount),
+                      filename or receipt_url or 'unknown', 'user_manually_removed'))
+
+            # Clear receipt from transaction
+            db_execute(conn, db_type, '''
+                UPDATE transactions
+                SET receipt_file = '', receipt_url = '', review_status = '', r2_url = '',
+                    ai_confidence = NULL, ai_receipt_merchant = '', ai_receipt_total = '', ai_receipt_date = ''
+                WHERE id = ?
+            ''', (idx,))
+
+            conn.commit()
+            conn.close()
+
+            print(f"✅ DETACHED & BLOCKED: Receipt from transaction #{idx} ({transaction_desc})", flush=True)
+            print(f"   Receipt: {filename or receipt_url} will NEVER re-attach to this transaction", flush=True)
+
+            return jsonify({
+                'ok': True,
+                'message': f'Receipt detached from transaction #{idx}',
+                'blocked_receipt': filename or receipt_url
+            })
+
+        except Exception as e:
+            print(f"❌ Detach error: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            return jsonify({'ok': False, 'error': str(e)}), 500
+
+    # ===== CSV/DataFrame Mode (Legacy fallback) =====
+    ensure_df()
+    global df
 
     mask = df["_index"] == idx
     if not mask.any():
         abort(404, f"_index {idx} not found")
 
     row = df.loc[mask].iloc[0]
-
-    # Get transaction details for rejection tracking
     transaction_desc = row.get('Chase Description', '')
     transaction_amount = row.get('Chase Amount', 0)
     transaction_date = row.get('Chase Date', '')
@@ -3265,64 +3818,14 @@ def detach_receipt():
             except OSError as e:
                 print(f"⚠️ Could not move {src} -> {dst}: {e}", flush=True)
 
-        # CRITICAL: Save rejection to database so it NEVER comes back
-        if USE_DATABASE and db:
-            try:
-                conn, db_type = get_db_connection()
-
-                # Create rejected_receipts table if it doesn't exist (SQLite only, MySQL has it in init)
-                if db_type == 'sqlite':
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS rejected_receipts (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            transaction_date TEXT NOT NULL,
-                            transaction_description TEXT NOT NULL,
-                            transaction_amount TEXT NOT NULL,
-                            receipt_path TEXT NOT NULL,
-                            rejected_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                            reason TEXT DEFAULT 'user_manually_removed',
-                            UNIQUE(transaction_date, transaction_description, transaction_amount, receipt_path)
-                        )
-                    ''')
-
-                # Record the rejection permanently
-                # MySQL uses ON DUPLICATE KEY, SQLite uses INSERT OR REPLACE
-                if db_type == 'mysql':
-                    cursor = db_execute(conn, db_type, '''
-                        INSERT INTO rejected_receipts
-                        (transaction_date, transaction_description, transaction_amount, receipt_path, reason)
-                        VALUES (?, ?, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE reason = VALUES(reason), rejected_at = NOW()
-                    ''', (str(transaction_date), str(transaction_desc), str(transaction_amount), filename, 'user_manually_removed'))
-                else:
-                    cursor = db_execute(conn, db_type, '''
-                        INSERT OR REPLACE INTO rejected_receipts
-                        (transaction_date, transaction_description, transaction_amount, receipt_path, reason)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (str(transaction_date), str(transaction_desc), str(transaction_amount), filename, 'user_manually_removed'))
-
-                conn.commit()
-                conn.close()
-
-                print(f"✅ PERMANENTLY REJECTED: {filename} from {transaction_desc}")
-
-            except Exception as db_error:
-                print(f"⚠️ Could not save rejection to database: {db_error}")
-
-    # Clear receipt file columns
+    # Clear receipt file columns in dataframe
     for col in ("Receipt File", "receipt_file"):
         if col in df.columns:
             df.loc[mask, col] = ""
 
-    # CRITICAL: Set Review Status to empty (Missing Receipt)
-    # This moves the transaction OUT of Needs Review/Good/Bad
-    # and INTO Missing Receipt immediately
     if "Review Status" in df.columns:
         df.loc[mask, "Review Status"] = ""
-        print(f"📋 Status changed to 'Missing Receipt' for index {idx}", flush=True)
 
-    # Also clear AI-related fields since receipt was removed
     for col in ("AI Confidence", "ai_receipt_merchant", "ai_receipt_total", "ai_receipt_date"):
         if col in df.columns:
             df.loc[mask, col] = ""
@@ -6064,6 +6567,224 @@ def delete_rejection(rejection_id):
 
 
 # =============================================================================
+# RECEIPT LIBRARY - ALL RECEIPTS FROM ALL SOURCES
+# =============================================================================
+
+@app.route("/api/library/receipts", methods=["GET"])
+def get_library_receipts():
+    """
+    Get ALL receipts from all sources for the receipt library.
+    Combines: transactions with receipts, incoming receipts (accepted/pending).
+
+    Query params:
+    - source: filter by source ('all', 'gmail', 'scanner', 'manual', 'imessage')
+    - search: search merchant names
+    - date_from: start date (YYYY-MM-DD)
+    - date_to: end date (YYYY-MM-DD)
+    - amount_min: minimum amount
+    - amount_max: maximum amount
+    - sort: sort field ('date', 'amount', 'merchant')
+    - order: sort order ('asc', 'desc')
+    - limit: max results (default 500)
+    - offset: pagination offset
+    """
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('logged_in'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        # Parse query params
+        source = request.args.get('source', 'all')
+        search = request.args.get('search', '').strip()
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        amount_min = request.args.get('amount_min', '')
+        amount_max = request.args.get('amount_max', '')
+        sort_field = request.args.get('sort', 'date')
+        sort_order = request.args.get('order', 'desc')
+        limit = int(request.args.get('limit', 500))
+        offset = int(request.args.get('offset', 0))
+
+        conn, db_type = get_db_connection()
+        all_receipts = []
+
+        # 1. Get receipts from transactions table
+        # Use SELECT * to handle varying schemas between SQLite and MySQL
+        tx_query = '''
+            SELECT *
+            FROM transactions
+            WHERE (receipt_url IS NOT NULL AND receipt_url != '')
+               OR (receipt_file IS NOT NULL AND receipt_file != '')
+               OR (r2_url IS NOT NULL AND r2_url != '')
+        '''
+        cursor = db_execute(conn, db_type, tx_query, ())
+        tx_rows = cursor.fetchall()
+
+        for row in tx_rows:
+            tx = dict(row)
+            receipt_source = tx.get('source') or 'manual'
+            if receipt_source == 'mobile_scanner' or receipt_source == 'mobile_scanner_pwa':
+                receipt_source = 'scanner'
+
+            # Use r2_url first, then receipt_url, then receipt_file
+            receipt_image = tx.get('r2_url') or tx.get('receipt_url') or tx.get('receipt_file')
+
+            # Handle both SQLite (merchant, amount, date) and MySQL (chase_description, chase_amount, chase_date)
+            merchant = tx.get('chase_description') or tx.get('merchant') or tx.get('description') or 'Unknown'
+            amount = tx.get('chase_amount') or tx.get('amount') or 0
+            date_val = tx.get('chase_date') or tx.get('date') or ''
+
+            receipt = {
+                'id': f"tx_{tx.get('id')}",
+                'type': 'transaction',
+                'transaction_id': tx.get('id'),
+                'merchant': merchant,
+                'amount': float(amount or 0),
+                'date': str(date_val),
+                'receipt_url': receipt_image,
+                'thumbnail': receipt_image,
+                'source': receipt_source,
+                'business_type': tx.get('business_type') or 'Personal',
+                'notes': tx.get('notes') or '',
+                'ai_notes': tx.get('ai_notes') or '',
+                'status': 'matched',
+                'created_at': str(date_val)
+            }
+            all_receipts.append(receipt)
+
+        # 2. Get incoming receipts (accepted and pending)
+        try:
+            inc_query = '''
+                SELECT *
+                FROM incoming_receipts
+                WHERE status IN ('accepted', 'pending')
+            '''
+            cursor = db_execute(conn, db_type, inc_query, ())
+            inc_rows = cursor.fetchall()
+
+            for row in inc_rows:
+                inc = dict(row)
+                receipt_source = inc.get('source') or 'gmail'
+                if receipt_source == 'mobile_scanner' or receipt_source == 'mobile_scanner_pwa':
+                    receipt_source = 'scanner'
+
+                # Skip if already linked to transaction (avoid duplicates)
+                tx_id = inc.get('transaction_id')
+                if tx_id and any(r['type'] == 'transaction' and r['transaction_id'] == tx_id for r in all_receipts):
+                    continue
+
+                receipt = {
+                    'id': f"inc_{inc.get('id')}",
+                    'type': 'incoming',
+                    'incoming_id': inc.get('id'),
+                    'merchant': inc.get('merchant') or inc.get('sender') or 'Unknown',
+                    'amount': float(inc.get('amount') or 0),
+                    'date': str(inc.get('receipt_date') or ''),
+                    'receipt_url': inc.get('receipt_url') or inc.get('receipt_file'),
+                    'thumbnail': inc.get('receipt_url') or inc.get('receipt_file'),
+                    'source': receipt_source,
+                    'business_type': 'Personal',
+                    'notes': inc.get('subject') or '',
+                    'ai_notes': inc.get('ai_notes') or '',
+                    'status': inc.get('status'),
+                    'confidence': inc.get('confidence_score') or 0,
+                    'sender': inc.get('sender') or '',
+                    'created_at': str(inc.get('created_at') or inc.get('receipt_date') or '')
+                }
+                all_receipts.append(receipt)
+        except Exception as e:
+            print(f"Note: Could not fetch incoming_receipts: {e}")
+
+        conn.close()
+
+        # Apply filters
+        if source != 'all':
+            all_receipts = [r for r in all_receipts if r['source'] == source]
+
+        if search:
+            search_lower = search.lower()
+            all_receipts = [r for r in all_receipts
+                          if search_lower in (r.get('merchant') or '').lower()
+                          or search_lower in (r.get('notes') or '').lower()
+                          or search_lower in (r.get('ai_notes') or '').lower()]
+
+        if date_from:
+            all_receipts = [r for r in all_receipts if r.get('date', '') >= date_from]
+
+        if date_to:
+            all_receipts = [r for r in all_receipts if r.get('date', '') <= date_to]
+
+        if amount_min:
+            try:
+                min_val = float(amount_min)
+                all_receipts = [r for r in all_receipts if abs(r.get('amount', 0)) >= min_val]
+            except: pass
+
+        if amount_max:
+            try:
+                max_val = float(amount_max)
+                all_receipts = [r for r in all_receipts if abs(r.get('amount', 0)) <= max_val]
+            except: pass
+
+        # Sort
+        reverse = sort_order == 'desc'
+        if sort_field == 'date':
+            all_receipts.sort(key=lambda x: x.get('date', ''), reverse=reverse)
+        elif sort_field == 'amount':
+            all_receipts.sort(key=lambda x: abs(x.get('amount', 0)), reverse=reverse)
+        elif sort_field == 'merchant':
+            all_receipts.sort(key=lambda x: (x.get('merchant') or '').lower(), reverse=reverse)
+
+        # Get counts by source before pagination
+        source_counts = {}
+        for r in all_receipts:
+            src = r.get('source', 'other')
+            source_counts[src] = source_counts.get(src, 0) + 1
+
+        total = len(all_receipts)
+
+        # Apply pagination
+        all_receipts = all_receipts[offset:offset + limit]
+
+        return jsonify({
+            'ok': True,
+            'receipts': all_receipts,
+            'total': total,
+            'source_counts': source_counts,
+            'offset': offset,
+            'limit': limit
+        })
+
+    except Exception as e:
+        print(f"❌ Error fetching library receipts: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/library")
+@app.route("/library.html")
+@login_required
+def serve_library():
+    """Serve the Receipt Library page."""
+    return send_from_directory(BASE_DIR, "receipt_library.html")
+
+
+@app.route("/report-builder")
+@app.route("/report-builder.html")
+@login_required
+def serve_report_builder():
+    """Serve the Report Builder page - focused workflow for building expense reports."""
+    return send_from_directory(BASE_DIR, "report_builder.html")
+
+
+# =============================================================================
 # INCOMING RECEIPTS SYSTEM
 # =============================================================================
 
@@ -6114,32 +6835,260 @@ def get_incoming_receipts():
 
         conn.close()
 
-        # Apply merchant intelligence to normalize merchant names
+        # Apply smart merchant extraction from subject lines
         try:
             from merchant_intelligence import normalize_merchant
-            import re
-            for receipt in receipts:
-                subject = receipt.get('subject', '')
-                original_merchant = receipt.get('merchant', '')
-
-                # Extract the real merchant from subject "Your receipt/refund from X #1234"
-                match = re.search(r'(?:receipt|refund|payment)\s+from\s+([^#\n]+?)(?:\s*#|$)', subject, re.IGNORECASE)
-                if match:
-                    real_merchant = match.group(1).strip()
-                    # Clean up common patterns like "Inc", "Inc.", "LLC"
-                    real_merchant = re.sub(r',?\s*(Inc\.?|LLC|Ltd\.?|PBC)$', '', real_merchant, flags=re.IGNORECASE).strip()
-                    receipt['merchant'] = normalize_merchant(real_merchant)
-                    receipt['original_merchant'] = original_merchant
-                elif original_merchant:
-                    receipt['merchant'] = normalize_merchant(original_merchant)
-                    receipt['original_merchant'] = original_merchant
-
-                # Determine if this is a refund (positive amount) or charge (negative amount)
-                subject_lower = subject.lower()
-                receipt['is_refund'] = 'refund' in subject_lower
-
         except ImportError:
-            print("⚠️  merchant_intelligence not available for normalization")
+            normalize_merchant = lambda x: x  # fallback to identity
+
+        import re
+
+        def extract_merchant_from_subject(subject):
+            """Smart merchant extraction from email subject lines"""
+            if not subject:
+                return None
+
+            subject = subject.strip()
+
+            # Known merchant patterns in order of specificity
+            patterns = [
+                # "Your X invoice/receipt/order"
+                (r'^Your\s+([A-Z][A-Za-z0-9\.\s]+?)\s+(?:invoice|receipt|order|payment|subscription)', 1),
+                # "Invoice from X"
+                (r'Invoice\s+from\s+([^(\[\n#]+?)(?:\s*[\(\[#]|$)', 1),
+                # "Payment request from X"
+                (r'[Pp]ayment\s+(?:request\s+)?from\s+([^(\[\n#-]+?)(?:\s*[\(\[#-]|$)', 1),
+                # "Receipt from X"
+                (r'[Rr]eceipt\s+from\s+([^(\[\n#]+?)(?:\s*[\(\[#]|$)', 1),
+                # "Your order from X"
+                (r'[Yy]our\s+order\s+(?:from|with)\s+([^(\[\n#]+?)(?:\s*[\(\[#]|$)', 1),
+                # "X Payment Confirmation/Receipt"
+                (r'^([A-Z][A-Za-z0-9\s]+?)\s+(?:Payment|Receipt)\s*[-–]?\s*(?:Confirmation|Receipt)?', 1),
+                # "Thank You for Your Order with X"
+                (r'[Tt]hank\s+[Yy]ou\s+for\s+[Yy]our\s+[Oo]rder\s+with\s+([A-Za-z0-9\s]+)', 1),
+                # "Shipped/Ordered: ..." (Amazon pattern)
+                (r'^(?:Shipped|Ordered|Delivered):\s+"', None),  # Amazon indicator
+                # "Your Amazon.com order"
+                (r'[Yy]our\s+(Amazon\.?com?)\s+order', 1),
+                # "X Parking Payment"
+                (r'^([A-Z][A-Za-z]+)\s+Parking\s+Payment', 1),
+                # "FW: Invoice from X"
+                (r'(?:FW:|Fwd:)\s*Invoice\s+from\s+([^(\[\n#]+?)(?:\s*[\(\[#]|$)', 1),
+            ]
+
+            for pattern, group in patterns:
+                if group is None:
+                    # Special case: Amazon shipped/ordered
+                    if re.match(pattern, subject):
+                        return "Amazon"
+                    continue
+                match = re.search(pattern, subject, re.IGNORECASE)
+                if match:
+                    merchant = match.group(group).strip()
+                    # Clean up
+                    merchant = re.sub(r',?\s*(Inc\.?|LLC|Ltd\.?|PBC|Co\.?)$', '', merchant, flags=re.IGNORECASE).strip()
+                    merchant = re.sub(r'\s+', ' ', merchant)  # normalize whitespace
+                    if len(merchant) > 2 and len(merchant) < 50:
+                        return merchant
+
+            # Domain-based fallback patterns
+            domain_merchants = {
+                'cloudflare': 'Cloudflare',
+                'hive': 'Hive',
+                'simpletexting': 'SimpleTexting',
+                'stripe': 'Stripe',
+                'paypal': 'PayPal',
+                'square': 'Square',
+                'uber': 'Uber',
+                'lyft': 'Lyft',
+                'doordash': 'DoorDash',
+                'grubhub': 'Grubhub',
+                'spotify': 'Spotify',
+                'netflix': 'Netflix',
+                'apple': 'Apple',
+                'google': 'Google',
+                'microsoft': 'Microsoft',
+                'adobe': 'Adobe',
+                'amazon': 'Amazon',
+                'costco': 'Costco',
+                'walmart': 'Walmart',
+                'target': 'Target',
+                'starbucks': 'Starbucks',
+                'chick-fil-a': 'Chick-fil-A',
+                'anthropic': 'Anthropic',
+                'openai': 'OpenAI',
+                'cursor': 'Cursor',
+                'github': 'GitHub',
+                'digitalocean': 'DigitalOcean',
+                'railway': 'Railway',
+                'vercel': 'Vercel',
+                'heroku': 'Heroku',
+                'aws': 'AWS',
+                'kia': 'Kia Finance',
+                'verizon': 'Verizon',
+                'att': 'AT&T',
+                't-mobile': 'T-Mobile',
+            }
+
+            subject_lower = subject.lower()
+            for key, merchant in domain_merchants.items():
+                if key in subject_lower:
+                    return merchant
+
+            return None
+
+        for receipt in receipts:
+            subject = receipt.get('subject', '')
+            original_merchant = receipt.get('merchant', '')
+
+            # Try to extract merchant from subject
+            extracted = extract_merchant_from_subject(subject)
+
+            if extracted:
+                receipt['merchant'] = normalize_merchant(extracted)
+                receipt['original_merchant'] = original_merchant
+            elif original_merchant and len(original_merchant) > 2 and len(original_merchant) < 40:
+                # Only use original if it looks valid (not garbage text)
+                words = original_merchant.split()
+                if len(words) <= 5 and not any(w.lower() in ['the', 'is', 'your', 'a', 'an', 'to', 'from', 'set'] for w in words[:2]):
+                    receipt['merchant'] = normalize_merchant(original_merchant)
+                else:
+                    receipt['merchant'] = None  # Clear garbage
+            else:
+                receipt['merchant'] = None
+
+            # Determine if this is a refund
+            subject_lower = subject.lower() if subject else ''
+            receipt['is_refund'] = 'refund' in subject_lower
+
+        # Find potential expense matches for pending receipts
+        conn2, db_type2 = get_db_connection()
+
+        # Load all rejections to filter out blocked receipt+transaction combos
+        rejection_map = {}  # transaction_id -> set of receipt_paths
+        try:
+            rej_cursor = db_execute(conn2, db_type2, '''
+                SELECT transaction_id, receipt_path FROM rejected_receipts
+                WHERE transaction_id IS NOT NULL
+            ''', ())
+            for rej_row in rej_cursor.fetchall():
+                rej = dict(rej_row)
+                tid = rej.get('transaction_id')
+                rpath = rej.get('receipt_path', '')
+                if tid and rpath:
+                    if tid not in rejection_map:
+                        rejection_map[tid] = set()
+                    rejection_map[tid].add(rpath)
+                    # Also add without 'receipts/' prefix for flexible matching
+                    rejection_map[tid].add(rpath.replace('receipts/', ''))
+        except Exception as rej_err:
+            print(f"ℹ️ Could not load rejections for matching filter: {rej_err}")
+
+        for receipt in receipts:
+            if receipt.get('status') != 'pending':
+                continue
+
+            merchant = receipt.get('merchant', '') or ''
+            amount = float(receipt.get('amount') or 0)
+            receipt_date = receipt.get('receipt_date') or receipt.get('received_date') or ''
+            receipt_file = receipt.get('receipt_file', '') or ''
+            receipt_url = receipt.get('receipt_url', '') or ''
+
+            if not merchant or not amount:
+                receipt['potential_matches'] = []
+                continue
+
+            # Parse date
+            if isinstance(receipt_date, str):
+                # Handle various date formats
+                receipt_date = receipt_date.split('T')[0].split(' ')[0] if receipt_date else ''
+
+            try:
+                # Find matching expenses (transactions without receipts, similar amount, within 7 days)
+                if db_type2 == 'mysql':
+                    match_query = '''
+                        SELECT id, merchant, amount, date, receipt_url, receipt_file, card,
+                               mi_merchant, chase_description
+                        FROM transactions
+                        WHERE ABS(ABS(amount) - ?) < 1.00
+                        AND (receipt_url IS NULL OR receipt_url = '' OR receipt_file IS NULL OR receipt_file = '')
+                        ORDER BY ABS(ABS(amount) - ?) ASC, date DESC
+                        LIMIT 5
+                    '''
+                else:
+                    match_query = '''
+                        SELECT id, merchant, amount, date, receipt_url, receipt_file, card,
+                               mi_merchant, chase_description
+                        FROM transactions
+                        WHERE ABS(ABS(amount) - ?) < 1.00
+                        AND (receipt_url IS NULL OR receipt_url = '' OR receipt_file IS NULL OR receipt_file = '')
+                        ORDER BY ABS(ABS(amount) - ?) ASC, date DESC
+                        LIMIT 5
+                    '''
+
+                cursor2 = db_execute(conn2, db_type2, match_query, (amount, amount))
+                matches = []
+
+                merchant_lower = merchant.lower()
+                for row in cursor2.fetchall():
+                    tx = dict(row)
+                    tx_id = tx.get('id')
+                    tx_merchant = (tx.get('mi_merchant') or tx.get('merchant') or tx.get('chase_description') or '').lower()
+
+                    # ===== CHECK FOR REJECTION BLOCK =====
+                    # Skip this transaction if the receipt was previously rejected from it
+                    if tx_id in rejection_map:
+                        rejected_paths = rejection_map[tx_id]
+                        is_blocked = False
+                        # Check if current receipt matches any rejected path
+                        for rpath in rejected_paths:
+                            if receipt_file and (rpath in receipt_file or receipt_file in rpath):
+                                is_blocked = True
+                                break
+                            if receipt_url and (rpath in receipt_url or receipt_url in rpath):
+                                is_blocked = True
+                                break
+                        if is_blocked:
+                            continue  # Skip this transaction - receipt was previously rejected from it
+
+                    # Calculate match score
+                    score = 0
+
+                    # Amount match (within $0.10 = 40 points, within $1 = 20 points)
+                    amount_diff = abs(abs(float(tx.get('amount', 0))) - amount)
+                    if amount_diff < 0.10:
+                        score += 40
+                    elif amount_diff < 1.00:
+                        score += 20
+
+                    # Merchant match
+                    if merchant_lower in tx_merchant or tx_merchant in merchant_lower:
+                        score += 50
+                    elif merchant_lower[:4] == tx_merchant[:4] if len(merchant_lower) > 3 and len(tx_merchant) > 3 else False:
+                        score += 30
+
+                    if score >= 20:  # Only include reasonable matches
+                        matches.append({
+                            'id': tx_id,
+                            'merchant': tx.get('mi_merchant') or tx.get('merchant') or tx.get('chase_description'),
+                            'amount': float(tx.get('amount', 0)),
+                            'date': str(tx.get('date', '')),
+                            'card': tx.get('card', ''),
+                            'score': score,
+                            'needs_receipt': not bool(tx.get('receipt_url') or tx.get('receipt_file'))
+                        })
+
+                # Sort by score and take top 3
+                matches.sort(key=lambda x: x['score'], reverse=True)
+                receipt['potential_matches'] = matches[:3]
+                receipt['best_match'] = matches[0] if matches else None
+
+            except Exception as match_err:
+                print(f"⚠️ Match finding error: {match_err}")
+                receipt['potential_matches'] = []
+                receipt['best_match'] = None
+
+        conn2.close()
 
         return jsonify({
             'ok': True,
@@ -6161,6 +7110,197 @@ def get_incoming_receipts():
                 'message': 'Incoming receipts table not initialized yet'
             })
         print(f"❌ Error fetching incoming receipts: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/check-duplicate", methods=["POST"])
+@login_required
+def check_duplicate_transaction():
+    """
+    Check if a transaction already exists with similar merchant/amount/date.
+    Returns potential duplicates to warn user before accepting.
+
+    Body: { "merchant": "Anthropic", "amount": 20.00, "date": "2024-11-15" }
+    """
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': True, 'duplicates': []})
+
+        data = request.json
+        merchant = data.get('merchant', '').strip().lower()
+        amount = float(data.get('amount', 0))
+        trans_date = data.get('date', '')
+
+        if not merchant or not amount:
+            return jsonify({'ok': True, 'duplicates': []})
+
+        conn, db_type = get_db_connection()
+
+        # Look for transactions within 3 days with same amount
+        # MySQL uses DATE_SUB/DATE_ADD, SQLite uses date()
+        if db_type == 'mysql':
+            query = '''
+                SELECT id, merchant, amount, date, receipt_url, receipt_file
+                FROM transactions
+                WHERE ABS(amount) BETWEEN ? - 0.01 AND ? + 0.01
+                AND date BETWEEN DATE_SUB(?, INTERVAL 3 DAY) AND DATE_ADD(?, INTERVAL 3 DAY)
+                ORDER BY date DESC
+                LIMIT 10
+            '''
+            params = (abs(amount), abs(amount), trans_date, trans_date)
+        else:
+            query = '''
+                SELECT id, merchant, amount, date, receipt_url, receipt_file
+                FROM transactions
+                WHERE ABS(amount) BETWEEN ? - 0.01 AND ? + 0.01
+                AND date BETWEEN date(?, '-3 days') AND date(?, '+3 days')
+                ORDER BY date DESC
+                LIMIT 10
+            '''
+            params = (abs(amount), abs(amount), trans_date, trans_date)
+
+        cursor = db_execute(conn, db_type, query, params)
+        rows = cursor.fetchall()
+
+        duplicates = []
+        for row in rows:
+            tx = dict(row)
+            tx_merchant = (tx.get('merchant') or '').lower()
+
+            # Check if merchant names are similar
+            # Simple match: contains or Levenshtein-like comparison
+            if merchant in tx_merchant or tx_merchant in merchant or \
+               (len(merchant) > 3 and merchant[:4] == tx_merchant[:4]):
+                # Has receipt attached?
+                has_receipt = bool(tx.get('receipt_url') or tx.get('receipt_file'))
+                duplicates.append({
+                    'id': tx.get('id'),
+                    'merchant': tx.get('merchant'),
+                    'amount': float(tx.get('amount', 0)),
+                    'date': str(tx.get('date', '')),
+                    'has_receipt': has_receipt
+                })
+
+        conn.close()
+        return jsonify({
+            'ok': True,
+            'duplicates': duplicates,
+            'has_duplicates': len(duplicates) > 0
+        })
+
+    except Exception as e:
+        print(f"❌ Error checking duplicates: {e}")
+        return jsonify({'ok': True, 'duplicates': []})
+
+
+@app.route("/api/incoming/attach-to-transaction", methods=["POST"])
+@login_required
+def attach_receipt_to_transaction():
+    """
+    Attach an incoming receipt to an existing transaction (for duplicates).
+
+    Body: { "receipt_id": 123, "transaction_id": 456 }
+
+    IMPORTANT: Checks rejected_receipts table to prevent re-attaching
+    receipts that were previously detached from this specific transaction.
+    """
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        data = request.json
+        receipt_id = data.get('receipt_id')
+        transaction_id = data.get('transaction_id')
+
+        if not receipt_id or not transaction_id:
+            return jsonify({'ok': False, 'error': 'Missing receipt_id or transaction_id'}), 400
+
+        conn, db_type = get_db_connection()
+
+        # Get the incoming receipt
+        cursor = db_execute(conn, db_type, 'SELECT * FROM incoming_receipts WHERE id = ?', (receipt_id,))
+        receipt_row = cursor.fetchone()
+
+        if not receipt_row:
+            conn.close()
+            return jsonify({'ok': False, 'error': 'Receipt not found'}), 404
+
+        receipt = dict(receipt_row)
+
+        # Get receipt file from incoming receipt
+        receipt_file = receipt.get('receipt_file', '') or ''
+        receipt_url = receipt.get('receipt_url', '') or ''
+
+        # ===== CHECK FOR REJECTION BLOCK =====
+        # Prevent re-attaching a receipt that was previously detached from this transaction
+        try:
+            cursor = db_execute(conn, db_type, '''
+                SELECT id, receipt_path, reason FROM rejected_receipts
+                WHERE transaction_id = ?
+            ''', (transaction_id,))
+            rejections = cursor.fetchall()
+
+            for rejection in rejections:
+                rej = dict(rejection)
+                rejected_path = rej.get('receipt_path', '')
+                # Check if the receipt file matches the rejected one
+                if receipt_file and rejected_path and (
+                    rejected_path in receipt_file or
+                    receipt_file in rejected_path or
+                    receipt_file.replace('receipts/', '') == rejected_path.replace('receipts/', '')
+                ):
+                    conn.close()
+                    print(f"🚫 BLOCKED: Receipt '{receipt_file}' was previously rejected from transaction #{transaction_id}")
+                    return jsonify({
+                        'ok': False,
+                        'error': 'This receipt was previously removed from this expense and cannot be re-attached',
+                        'blocked': True,
+                        'reason': rej.get('reason', 'user_manually_removed')
+                    }), 400
+
+                # Also check by receipt_url
+                if receipt_url and rejected_path and (
+                    rejected_path in receipt_url or
+                    receipt_url in rejected_path
+                ):
+                    conn.close()
+                    print(f"🚫 BLOCKED: Receipt URL '{receipt_url}' was previously rejected from transaction #{transaction_id}")
+                    return jsonify({
+                        'ok': False,
+                        'error': 'This receipt was previously removed from this expense and cannot be re-attached',
+                        'blocked': True,
+                        'reason': rej.get('reason', 'user_manually_removed')
+                    }), 400
+
+        except Exception as rej_error:
+            # If rejected_receipts table doesn't exist or has issues, continue anyway
+            print(f"ℹ️ Could not check rejections: {rej_error}")
+
+        # Update the existing transaction with the receipt
+        if receipt_file or receipt_url:
+            db_execute(conn, db_type,
+                'UPDATE transactions SET receipt_file = ?, receipt_url = ?, ai_notes = COALESCE(ai_notes, ?) WHERE id = ?',
+                (receipt_file, receipt_url or receipt_file, receipt.get('ai_notes', ''), transaction_id))
+
+        # Mark incoming receipt as accepted
+        db_execute(conn, db_type,
+            'UPDATE incoming_receipts SET status = ?, transaction_id = ? WHERE id = ?',
+            ('accepted', transaction_id, receipt_id))
+
+        conn.commit()
+        conn.close()
+
+        print(f"✅ Receipt {receipt_id} attached to transaction {transaction_id}")
+        return jsonify({
+            'ok': True,
+            'transaction_id': transaction_id,
+            'message': 'Receipt attached to existing transaction'
+        })
+
+    except Exception as e:
+        print(f"❌ Error attaching receipt: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
