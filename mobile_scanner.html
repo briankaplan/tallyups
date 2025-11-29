@@ -1346,6 +1346,148 @@
     .haptic-flash.active {
       opacity: 0.15;
     }
+
+    /* Tip Section */
+    .tip-section {
+      background: var(--bg-elevated);
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .tip-header {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--accent);
+    }
+
+    .tip-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 15px;
+    }
+
+    .tip-label {
+      color: var(--text-secondary);
+    }
+
+    .tip-percent {
+      margin-left: 8px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .tip-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .tip-btn {
+      flex: 1;
+      padding: 10px 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tip-btn:active {
+      transform: scale(0.95);
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    .tip-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    /* Purpose Prompt */
+    .purpose-prompt {
+      background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 255, 136, 0.05));
+      border: 1px solid var(--accent);
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .purpose-header {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .purpose-header span {
+      color: var(--accent);
+    }
+
+    .purpose-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .purpose-btn {
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .purpose-btn:active {
+      transform: scale(0.95);
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    /* OCR Speed Indicator */
+    .ocr-speed {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Location Badge */
+    .location-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+
+    .location-badge svg {
+      width: 14px;
+      height: 14px;
+      color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -1576,6 +1718,40 @@
           <input type="text" class="field-input" id="notes-input" placeholder="Add context...">
         </div>
 
+        <!-- Tip Section (shows when tip detected) -->
+        <div class="tip-section" id="tip-section" style="display: none;">
+          <div class="tip-header">
+            <span>💰 Tip Detected</span>
+          </div>
+          <div class="tip-row">
+            <span class="tip-label">Subtotal:</span>
+            <span id="tip-subtotal">$0.00</span>
+          </div>
+          <div class="tip-row">
+            <span class="tip-label">Tip:</span>
+            <span id="tip-amount">$0.00</span>
+            <span id="tip-percent" class="tip-percent">0%</span>
+          </div>
+          <div class="tip-buttons">
+            <button class="tip-btn" onclick="adjustTip(15)">15%</button>
+            <button class="tip-btn" onclick="adjustTip(18)">18%</button>
+            <button class="tip-btn" onclick="adjustTip(20)">20%</button>
+            <button class="tip-btn" onclick="adjustTip(25)">25%</button>
+          </div>
+        </div>
+
+        <!-- Purpose Prompt (shows when category unknown) -->
+        <div class="purpose-prompt" id="purpose-prompt" style="display: none;">
+          <div class="purpose-header">What is <span id="purpose-merchant">this</span> for?</div>
+          <div class="purpose-buttons">
+            <button class="purpose-btn" onclick="setPurpose('Meals', 'Music City Rodeo')">🍽️ MCR Meal</button>
+            <button class="purpose-btn" onclick="setPurpose('Meals', 'Down Home')">🏠 DH Meal</button>
+            <button class="purpose-btn" onclick="setPurpose('Travel')">✈️ Travel</button>
+            <button class="purpose-btn" onclick="setPurpose('Supplies')">📦 Supplies</button>
+            <button class="purpose-btn" onclick="setPurpose('', 'Personal')">👤 Personal</button>
+          </div>
+        </div>
+
         <!-- Transaction Match -->
         <div class="match-section" id="match-section" style="display: none;">
           <div class="match-header">
@@ -1716,6 +1892,13 @@
     let db = null;
     let cameraStream = null;
     let flashEnabled = false;
+
+    // Enhanced capture state
+    let captureLocation = null;
+    let calendarEvents = [];
+    let tipAmount = 0;
+    let subtotal = 0;
+    let ocrStartTime = 0;
 
     // ========================================
     // DOM ELEMENTS
@@ -2144,12 +2327,23 @@
       const file = e.target.files[0];
       if (!file) return;
 
+      ocrStartTime = performance.now();
       hapticFeedback('medium');
+
+      // Start geolocation capture immediately (parallel)
+      captureGeolocation();
+
+      // Start calendar fetch (parallel)
+      fetchTodayCalendarEvents();
 
       const reader = new FileReader();
       reader.onload = async (ev) => {
         currentImage.data = ev.target.result;
         currentImage.blob = file;
+
+        // Optimize image before display (resize for speed)
+        const optimizedBlob = await optimizeImage(file);
+        if (optimizedBlob) currentImage.blob = optimizedBlob;
 
         $('image-preview').src = currentImage.data;
         $('image-preview').style.display = 'block';
@@ -2163,6 +2357,118 @@
     }
 
     // ========================================
+    // GEOLOCATION CAPTURE
+    // ========================================
+    async function captureGeolocation() {
+      if (!navigator.geolocation) return;
+
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 5000,
+            maximumAge: 300000 // 5 min cache
+          });
+        });
+
+        captureLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: new Date().toISOString()
+        };
+
+        // Reverse geocode for location name (non-blocking)
+        reverseGeocode(captureLocation.lat, captureLocation.lng);
+
+        console.log('[Location] Captured:', captureLocation);
+      } catch (err) {
+        console.log('[Location] Not available:', err.message);
+        captureLocation = null;
+      }
+    }
+
+    async function reverseGeocode(lat, lng) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.address) {
+            captureLocation.name = data.address.amenity || data.address.shop || data.address.restaurant || data.address.road || '';
+            captureLocation.city = data.address.city || data.address.town || data.address.village || '';
+            if (captureLocation.name) {
+              console.log('[Location] Resolved:', captureLocation.name);
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // ========================================
+    // IMAGE OPTIMIZATION
+    // ========================================
+    async function optimizeImage(file) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxSize = 1600; // Max dimension for speed
+          let w = img.width, h = img.height;
+
+          if (w > maxSize || h > maxSize) {
+            if (w > h) { h = (h / w) * maxSize; w = maxSize; }
+            else { w = (w / h) * maxSize; h = maxSize; }
+          }
+
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+
+          canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
+        };
+        img.onerror = () => resolve(null);
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    // ========================================
+    // CALENDAR INTEGRATION
+    // ========================================
+    async function fetchTodayCalendarEvents() {
+      if (!isOnline) return;
+
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`${API_BASE}/api/calendar/events?date=${today}`);
+        if (res.ok) {
+          const data = await res.json();
+          calendarEvents = data.events || [];
+          console.log('[Calendar] Events today:', calendarEvents.length);
+        }
+      } catch (e) {
+        console.log('[Calendar] Not available');
+        calendarEvents = [];
+      }
+    }
+
+    function findCalendarContext(merchant, date) {
+      if (!calendarEvents.length) return null;
+
+      // Try to match calendar event with merchant/receipt
+      const lowerMerchant = (merchant || '').toLowerCase();
+      for (const event of calendarEvents) {
+        const title = (event.title || '').toLowerCase();
+        const location = (event.location || '').toLowerCase();
+        if (title.includes(lowerMerchant) || lowerMerchant.includes(title) ||
+            location.includes(lowerMerchant)) {
+          return event;
+        }
+      }
+      return null;
+    }
+
+    // ========================================
     // OCR PROCESSING
     // ========================================
     async function processOCR() {
@@ -2172,12 +2478,22 @@
         const formData = new FormData();
         formData.append('file', currentImage.blob);
 
+        // Add location data if available
+        if (captureLocation) {
+          formData.append('location_lat', captureLocation.lat);
+          formData.append('location_lng', captureLocation.lng);
+          if (captureLocation.name) formData.append('location_name', captureLocation.name);
+        }
+
         updateProcessing('Analyzing receipt...', 'Running AI extraction');
 
         const response = await fetch(`${API_BASE}/ocr`, {
           method: 'POST',
           body: formData
         });
+
+        const ocrTime = Math.round(performance.now() - ocrStartTime);
+        console.log(`[Speed] OCR completed in ${ocrTime}ms`);
 
         if (response.ok) {
           const data = await response.json();
@@ -2189,19 +2505,47 @@
           if (data.merchant) {
             $('merchant-input').value = data.merchant;
             $('merchant-input').classList.add('ai-filled');
+
+            // Try to match with calendar event
+            const calEvent = findCalendarContext(data.merchant, data.date);
+            if (calEvent && !data.note) {
+              data.note = `📅 ${calEvent.title}`;
+            }
+
+            // Use location name if merchant not found
+            if (!data.merchant && captureLocation?.name) {
+              $('merchant-input').value = captureLocation.name;
+              $('merchant-input').classList.add('ai-filled');
+            }
           }
+
           if (data.total) {
             const amt = parseFloat(data.total);
             $('amount-input').value = '$' + amt.toFixed(2);
             $('amount-input').classList.add('ai-filled');
+
+            // Store subtotal for tip calculation
+            if (data.subtotal) {
+              subtotal = parseFloat(data.subtotal);
+              tipAmount = amt - subtotal;
+              if (tipAmount > 0) {
+                showTipSection(subtotal, tipAmount, amt);
+              }
+            }
+
             findMatchingTransaction(amt);
           }
+
           if (data.date) {
             $('date-input').value = formatDateForInput(data.date);
             $('date-input').classList.add('ai-filled');
           }
+
           if (data.category) {
             $('category-select').value = data.category;
+          } else {
+            // Show purpose prompt if category unclear
+            showPurposePrompt(data.merchant);
           }
 
           // Calendar context note
@@ -2211,6 +2555,10 @@
             $('notes-label').innerHTML = 'Notes <span style="font-size:10px;background:var(--accent);color:#000;padding:2px 6px;border-radius:4px;margin-left:6px;">📅 Calendar</span>';
             showToast('Calendar context added!', 'success');
           }
+
+          // Show speed feedback
+          const speedMsg = ocrTime < 2000 ? '⚡ Super fast!' : ocrTime < 4000 ? '✓ Done' : '✓ Complete';
+          showToast(`${speedMsg} (${(ocrTime/1000).toFixed(1)}s)`, 'success');
 
           hapticFeedback('success');
         } else {
@@ -2225,6 +2573,53 @@
 
       hideProcessing();
       $('extraction-panel').classList.add('visible');
+    }
+
+    // ========================================
+    // TIP SECTION
+    // ========================================
+    function showTipSection(sub, tip, total) {
+      const tipSection = $('tip-section');
+      if (!tipSection) return;
+
+      tipSection.style.display = 'block';
+      $('tip-subtotal').textContent = '$' + sub.toFixed(2);
+      $('tip-amount').textContent = '$' + tip.toFixed(2);
+      $('tip-percent').textContent = Math.round((tip / sub) * 100) + '%';
+    }
+
+    function adjustTip(percent) {
+      if (!subtotal) return;
+
+      tipAmount = subtotal * (percent / 100);
+      const newTotal = subtotal + tipAmount;
+
+      $('tip-amount').textContent = '$' + tipAmount.toFixed(2);
+      $('tip-percent').textContent = percent + '%';
+      $('amount-input').value = '$' + newTotal.toFixed(2);
+
+      hapticFeedback('light');
+    }
+
+    // ========================================
+    // PURPOSE PROMPT
+    // ========================================
+    function showPurposePrompt(merchant) {
+      const prompt = $('purpose-prompt');
+      if (!prompt) return;
+
+      // Only show for uncategorized
+      if ($('category-select').value) return;
+
+      prompt.style.display = 'block';
+      $('purpose-merchant').textContent = merchant || 'this purchase';
+    }
+
+    function setPurpose(category, business) {
+      $('category-select').value = category || '';
+      if (business) selectedBusiness = business;
+      $('purpose-prompt').style.display = 'none';
+      hapticFeedback('light');
     }
 
     // ========================================
