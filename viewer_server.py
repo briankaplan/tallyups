@@ -1360,6 +1360,20 @@ def mobile_scanner():
     return send_from_directory(BASE_DIR, "mobile_scanner.html")
 
 
+@app.route("/library")
+@login_required
+def library_page():
+    """Serve the Receipt Library page."""
+    return send_from_directory(BASE_DIR, "receipt_library.html")
+
+
+@app.route("/reports")
+@login_required
+def reports_page():
+    """Serve the Reports page."""
+    return send_from_directory(BASE_DIR, "report_builder.html")
+
+
 @app.route("/manifest.json")
 def pwa_manifest():
     """Serve PWA manifest for Add to Home Screen support."""
