@@ -8578,6 +8578,13 @@ def recategorize_transactions():
                 if new_cat:
                     break
 
+            # Apply DH: prefix ONLY for Down Home business transactions
+            # For non-DH businesses, use base category without prefix
+            if new_cat and new_cat.startswith('DH: '):
+                if not is_dh:
+                    # Remove DH: prefix for non-Down Home transactions
+                    new_cat = new_cat.replace('DH: ', '')
+
             # Special logic for meals - check if client-related
             if new_cat == 'Company Meetings and Meals' and is_client:
                 if is_dh:
