@@ -683,6 +683,17 @@
       font-size: 14px;
     }
 
+    .category-chip.add-category-chip {
+      background: transparent;
+      border: 1px dashed var(--purple);
+      color: var(--purple);
+    }
+
+    .category-chip.add-category-chip:hover {
+      background: rgba(139, 92, 246, 0.1);
+      border-style: solid;
+    }
+
     /* Load All button */
     .load-all-btn {
       display: block;
@@ -2811,8 +2822,8 @@
     let lastSearchQuery = '';
     let currentCategoryFilter = null;
 
-    // Industry Categories Definition
-    const INDUSTRY_CATEGORIES = [
+    // Industry Categories Definition (base categories)
+    const BASE_CATEGORIES = [
       { id: 'music-industry', name: 'Music Industry', icon: '🎵', keywords: ['music', 'band', 'artist', 'producer', 'label', 'recording', 'songwriter', 'musician', 'dj'] },
       { id: 'tv-film', name: 'TV/Film', icon: '🎬', keywords: ['film', 'tv', 'television', 'movie', 'production', 'director', 'actor', 'actress', 'entertainment'] },
       { id: 'friends', name: 'Friends', icon: '👥', keywords: ['friend', 'personal'] },
@@ -2827,6 +2838,127 @@
       { id: 'government', name: 'Government', icon: '🏛️', keywords: ['government', 'federal', 'state', 'city', 'council', 'senator', 'official', 'public'] },
       { id: 'general', name: 'General', icon: '📋', keywords: [] }
     ];
+
+    // Custom categories stored in localStorage
+    let customCategories = JSON.parse(localStorage.getItem('atlas_custom_categories') || '[]');
+
+    // Combined categories (base + custom)
+    let INDUSTRY_CATEGORIES = [...BASE_CATEGORIES];
+    function refreshCategories() {
+      customCategories = JSON.parse(localStorage.getItem('atlas_custom_categories') || '[]');
+      INDUSTRY_CATEGORIES = [...BASE_CATEGORIES.filter(c => c.id !== 'general'), ...customCategories, BASE_CATEGORIES.find(c => c.id === 'general')];
+    }
+    refreshCategories();
+
+    // Add a new custom category
+    function addCustomCategory(name, icon = '🏷️') {
+      const id = 'custom-' + name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+      // Check if already exists
+      if (INDUSTRY_CATEGORIES.find(c => c.id === id || c.name.toLowerCase() === name.toLowerCase())) {
+        alert('Category already exists!');
+        return false;
+      }
+
+      const newCat = { id, name, icon, keywords: [name.toLowerCase()], custom: true };
+      customCategories.push(newCat);
+      localStorage.setItem('atlas_custom_categories', JSON.stringify(customCategories));
+      refreshCategories();
+      renderCategoryChips();
+      return true;
+    }
+
+    // Remove a custom category
+    function removeCustomCategory(id) {
+      customCategories = customCategories.filter(c => c.id !== id);
+      localStorage.setItem('atlas_custom_categories', JSON.stringify(customCategories));
+      refreshCategories();
+      renderCategoryChips();
+    }
+
+    // Show modal to add custom category
+    function showAddCategoryModal() {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay visible';
+      modal.id = 'addCategoryModal';
+      modal.innerHTML = `
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 400px;">
+          <div class="modal-header" style="padding-bottom: 10px;">
+            <button class="modal-close" onclick="closeAddCategoryModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+            <div class="modal-name" style="font-size: 20px;">Add Custom Category</div>
+          </div>
+          <div class="modal-body" style="padding: 16px;">
+            <div class="form-group">
+              <label>Category Name</label>
+              <input type="text" id="newCategoryName" class="form-input" placeholder="e.g., Investors, Contractors..." maxlength="30">
+            </div>
+            <div class="form-group">
+              <label>Icon (emoji)</label>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                ${['🏷️', '⭐', '💼', '🎯', '🔧', '📱', '🎨', '🏢', '✈️', '🎓', '🏃', '🎭'].map(e =>
+                  `<button type="button" class="emoji-pick" onclick="document.getElementById('newCategoryIcon').value='${e}'" style="font-size: 20px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer;">${e}</button>`
+                ).join('')}
+              </div>
+              <input type="text" id="newCategoryIcon" class="form-input" value="🏷️" maxlength="2" style="width: 60px; text-align: center; font-size: 20px;">
+            </div>
+            <div class="form-actions" style="margin-top: 16px;">
+              <button type="button" class="btn-secondary" onclick="closeAddCategoryModal()">Cancel</button>
+              <button type="button" class="btn-primary" onclick="saveNewCategory()">Add Category</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.onclick = (e) => { if (e.target === modal) closeAddCategoryModal(); };
+      document.getElementById('newCategoryName').focus();
+    }
+
+    function closeAddCategoryModal() {
+      const modal = document.getElementById('addCategoryModal');
+      if (modal) modal.remove();
+    }
+
+    function saveNewCategory() {
+      const name = document.getElementById('newCategoryName').value.trim();
+      const icon = document.getElementById('newCategoryIcon').value.trim() || '🏷️';
+
+      if (!name) {
+        alert('Please enter a category name');
+        return;
+      }
+
+      if (addCustomCategory(name, icon)) {
+        closeAddCategoryModal();
+        // Update the edit modal dropdown if it's open
+        updateCategoryDropdown();
+      }
+    }
+
+    // Update the category dropdown in edit modal
+    function updateCategoryDropdown() {
+      const select = document.getElementById('editCategory');
+      if (!select) return;
+
+      const currentValue = select.value;
+      select.innerHTML = INDUSTRY_CATEGORIES.map(cat =>
+        `<option value="${cat.name}">${cat.icon} ${cat.name}</option>`
+      ).join('') + '<option value="__add_new__">+ Add New Category...</option>';
+      select.value = currentValue;
+    }
+
+    // Handle category dropdown change - trigger add category modal if "Add New" selected
+    function handleCategoryChange(select) {
+      if (select.value === '__add_new__') {
+        // Reset to previous value temporarily
+        select.value = 'General';
+        showAddCategoryModal();
+      }
+    }
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
@@ -3354,7 +3486,7 @@
           `;
         }).join('');
 
-      // Add "All Categories" at the beginning
+      // Add "All Categories" at the beginning and "+ Add" at the end
       const allActive = !currentCategoryFilter;
       container.innerHTML = `
         <div class="category-chip ${allActive ? 'active' : ''}"
@@ -3363,7 +3495,12 @@
           <span class="cat-icon">*</span>
           All Categories
         </div>
-      ` + chipsHtml;
+      ` + chipsHtml + `
+        <div class="category-chip add-category-chip" onclick="showAddCategoryModal()">
+          <span class="cat-icon">+</span>
+          Add
+        </div>
+      `;
     }
 
     // Set category filter
@@ -3778,27 +3915,8 @@
                 <div class="form-row">
                   <div class="form-group">
                     <label>Category</label>
-                    <select id="editCategory" class="form-input">
-                      <option value="General">General</option>
-                      <option value="Business">Business</option>
-                      <option value="Personal">Personal</option>
-                      <option value="Family">Family</option>
-                      <option value="Friends">Friends</option>
-                      <option value="Music Industry">Music Industry</option>
-                      <option value="TV/Film Industry">TV/Film Industry</option>
-                      <option value="Tech Industry">Tech Industry</option>
-                      <option value="Executive/Leadership">Executive</option>
-                      <option value="Sales/Marketing">Sales</option>
-                      <option value="Technical">Technical</option>
-                      <option value="Finance">Finance</option>
-                      <option value="Legal">Legal</option>
-                      <option value="Media/Press">Media</option>
-                      <option value="Healthcare">Healthcare</option>
-                      <option value="Real Estate">Real Estate</option>
-                      <option value="Hospitality">Hospitality</option>
-                      <option value="Government">Government</option>
-                      <option value="Investor">Investor</option>
-                      <option value="Vendor">Vendor</option>
+                    <select id="editCategory" class="form-input" onchange="handleCategoryChange(this)">
+                      <!-- Dynamically populated -->
                     </select>
                   </div>
                   <div class="form-group">
@@ -3849,7 +3967,13 @@
       document.getElementById('editTitle').value = contact.title || contact.job_title || '';
       document.getElementById('editEmail').value = contact.email || '';
       document.getElementById('editPhone').value = contact.phone || '';
-      document.getElementById('editCategory').value = contact.category || 'General';
+      // Populate category dropdown dynamically
+      const categorySelect = document.getElementById('editCategory');
+      const allCategories = [...INDUSTRY_CATEGORIES];
+      categorySelect.innerHTML = allCategories.map(cat =>
+        `<option value="${cat.name}">${cat.icon} ${cat.name}</option>`
+      ).join('') + '<option value="__add_new__">+ Add New Category...</option>';
+      categorySelect.value = contact.category || 'General';
       document.getElementById('editPriority').value = contact.priority || 'Normal';
       document.getElementById('editNotes').value = contact.notes || '';
 
