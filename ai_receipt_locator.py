@@ -39,6 +39,14 @@ try:
 except Exception:
     merchant_intel = None
 
+# Import Gemini Vision for cloud OCR fallback (cheaper than GPT-4.1)
+try:
+    from gemini_utils import analyze_receipt_image
+    GEMINI_AVAILABLE = True
+except Exception:
+    GEMINI_AVAILABLE = False
+    analyze_receipt_image = None
+
 # =============================================================================
 # CONFIG
 # =============================================================================
@@ -390,12 +398,47 @@ def vision_extract(path: Path):
                 return meta
             else:
                 print(f"   ⚠️ Local OCR failed: {local_result.get('error', 'Unknown error')}")
-                print(f"   🔄 Falling back to GPT-4.1 Vision...")
+                print(f"   🔄 Falling back to Gemini Vision...")
         except Exception as e:
             print(f"   ⚠️ Local OCR exception: {e}")
+            print(f"   🔄 Falling back to Gemini Vision...")
+
+    # FALLBACK 1: Gemini Vision (FREE with API keys, faster than GPT-4.1)
+    if GEMINI_AVAILABLE and analyze_receipt_image:
+        try:
+            from PIL import Image
+            print(f"   🔄 Using Gemini Vision (free, fast)...")
+            img = Image.open(path)
+            gemini_result = analyze_receipt_image(img)
+
+            if gemini_result and gemini_result.get("merchant"):
+                merchant = gemini_result.get("merchant", "").strip()
+                norm = normalize_merchant(merchant)
+                date_s = gemini_result.get("date", "") or ""
+                total = parse_amount(gemini_result.get("amount", 0))
+
+                meta = {
+                    "filename": path.name,
+                    "merchant_name": merchant,
+                    "merchant_normalized": norm,
+                    "receipt_date": date_s,
+                    "subtotal_amount": 0.0,
+                    "tip_amount": 0.0,
+                    "total_amount": total,
+                    "raw_json": json.dumps(gemini_result, ensure_ascii=False),
+                    "ocr_source": "gemini_vision",
+                    "confidence_score": 0.85,  # Gemini is fairly reliable
+                }
+
+                print(f"   ✅ Gemini Vision success: {merchant} · ${total:.2f} · {date_s}")
+                return meta
+            else:
+                print(f"   ⚠️ Gemini returned no merchant, falling back to GPT-4.1...")
+        except Exception as e:
+            print(f"   ⚠️ Gemini Vision error: {e}")
             print(f"   🔄 Falling back to GPT-4.1 Vision...")
 
-    # Fallback to GPT-4.1 Vision (API cost, but more reliable)
+    # FALLBACK 2: GPT-4.1 Vision (API cost, but most reliable)
     b64 = encode_image(path)
 
     try:
