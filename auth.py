@@ -271,7 +271,52 @@ PIN_PAGE_HTML = '''
             padding: 20px;
         }
         h1 { font-size: 24px; margin-bottom: 8px; }
-        p { color: #666; margin-bottom: 40px; }
+        p { color: #666; margin-bottom: 24px; }
+
+        /* Face ID Button */
+        .faceid-btn {
+            width: 100%;
+            max-width: 280px;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            border: none;
+            border-radius: 16px;
+            color: #000;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 0 auto 24px;
+            transition: all 0.2s;
+        }
+        .faceid-btn:hover { transform: scale(1.02); }
+        .faceid-btn:active { transform: scale(0.98); }
+        .faceid-btn.visible { display: flex; }
+        .faceid-icon {
+            width: 28px;
+            height: 28px;
+        }
+
+        .divider {
+            display: none;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+            color: #444;
+            font-size: 13px;
+        }
+        .divider.visible { display: flex; }
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #333;
+        }
+
         .pin-display {
             display: flex;
             gap: 12px;
@@ -326,12 +371,35 @@ PIN_PAGE_HTML = '''
             color: #666;
             text-decoration: none;
         }
+
+        /* Touch ID success animation */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .faceid-success {
+            animation: pulse 0.3s ease;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Enter PIN</h1>
-        <p>Quick unlock</p>
+        <h1>Unlock Tallyups</h1>
+        <p id="subtitle">Use Face ID or enter PIN</p>
+
+        <!-- Face ID Button -->
+        <button class="faceid-btn" id="faceid-btn" onclick="tryFaceID()">
+            <svg class="faceid-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <circle cx="9" cy="10" r="1" fill="currentColor"/>
+                <circle cx="15" cy="10" r="1" fill="currentColor"/>
+                <path d="M9 15c.5 1.5 2 2 3 2s2.5-.5 3-2" stroke-linecap="round"/>
+            </svg>
+            <span id="faceid-text">Use Face ID</span>
+        </button>
+
+        <div class="divider" id="divider">or enter PIN</div>
 
         <div class="pin-display">
             <div class="pin-dot" id="dot-0"></div>
@@ -365,6 +433,122 @@ PIN_PAGE_HTML = '''
     <script>
         let pin = '';
         const maxLength = 4;
+        const BIOMETRIC_KEY = 'tallyups_biometric_enabled';
+        const BIOMETRIC_CRED = 'tallyups_biometric_cred';
+
+        // Check if WebAuthn is available and biometrics enrolled
+        async function checkBiometricSupport() {
+            // Check for WebAuthn support
+            if (!window.PublicKeyCredential) {
+                console.log('WebAuthn not supported');
+                return false;
+            }
+
+            // Check if platform authenticator (Face ID/Touch ID) is available
+            try {
+                const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+                if (!available) {
+                    console.log('Platform authenticator not available');
+                    return false;
+                }
+            } catch (e) {
+                console.log('Platform auth check failed:', e);
+                return false;
+            }
+
+            // Check if user has enabled biometrics
+            const biometricEnabled = localStorage.getItem(BIOMETRIC_KEY);
+            return biometricEnabled === 'true';
+        }
+
+        // Initialize - check for biometric support
+        async function init() {
+            const canUseBiometric = await checkBiometricSupport();
+
+            if (canUseBiometric) {
+                document.getElementById('faceid-btn').classList.add('visible');
+                document.getElementById('divider').classList.add('visible');
+
+                // Auto-trigger Face ID on load
+                setTimeout(() => tryFaceID(), 500);
+            } else {
+                document.getElementById('subtitle').textContent = 'Enter your PIN';
+            }
+        }
+
+        // Try Face ID authentication
+        async function tryFaceID() {
+            const btn = document.getElementById('faceid-btn');
+            const text = document.getElementById('faceid-text');
+
+            try {
+                text.textContent = 'Authenticating...';
+                btn.disabled = true;
+
+                // Get stored credential ID
+                const storedCred = localStorage.getItem(BIOMETRIC_CRED);
+
+                if (!storedCred) {
+                    // No credential stored - need to enroll first (done after PIN/password login)
+                    text.textContent = 'Use Face ID';
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Request authentication
+                const challenge = new Uint8Array(32);
+                crypto.getRandomValues(challenge);
+
+                const credential = await navigator.credentials.get({
+                    publicKey: {
+                        challenge: challenge,
+                        rpId: window.location.hostname,
+                        allowCredentials: [{
+                            id: Uint8Array.from(atob(storedCred), c => c.charCodeAt(0)),
+                            type: 'public-key',
+                            transports: ['internal']
+                        }],
+                        userVerification: 'required',
+                        timeout: 60000
+                    }
+                });
+
+                if (credential) {
+                    // Success! Verify with server
+                    btn.classList.add('faceid-success');
+                    text.textContent = 'Verified!';
+
+                    // Extract authenticator data from the response
+                    const authData = credential.response.authenticatorData;
+                    const authDataB64 = btoa(String.fromCharCode(...new Uint8Array(authData)));
+
+                    const response = await fetch('/login/biometric', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            credential_id: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+                            authenticator_data: authDataB64
+                        })
+                    });
+
+                    if (response.ok) {
+                        window.location.href = '{{ next_url }}';
+                    } else {
+                        text.textContent = 'Verification failed';
+                        btn.disabled = false;
+                    }
+                }
+            } catch (e) {
+                console.log('Face ID error:', e);
+                text.textContent = 'Use Face ID';
+                btn.disabled = false;
+
+                // User cancelled or error - show PIN instead
+                if (e.name === 'NotAllowedError') {
+                    // User denied - that's fine, use PIN
+                }
+            }
+        }
 
         function updateDots() {
             for (let i = 0; i < maxLength; i++) {
@@ -396,13 +580,96 @@ PIN_PAGE_HTML = '''
             });
 
             if (response.ok) {
-                window.location.href = '{{ next_url }}';
+                // After successful PIN login, prompt to enable Face ID
+                promptEnableBiometric();
             } else {
                 document.getElementById('error').style.display = 'block';
                 pin = '';
                 updateDots();
             }
         }
+
+        // Prompt user to enable biometrics after successful login
+        async function promptEnableBiometric() {
+            // Check if platform authenticator is available and not already enrolled
+            if (!window.PublicKeyCredential) {
+                window.location.href = '{{ next_url }}';
+                return;
+            }
+
+            const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            const alreadyEnabled = localStorage.getItem(BIOMETRIC_KEY) === 'true';
+
+            if (!available || alreadyEnabled) {
+                window.location.href = '{{ next_url }}';
+                return;
+            }
+
+            // Ask user if they want to enable Face ID
+            if (confirm('Enable Face ID for faster login?')) {
+                try {
+                    await enrollBiometric();
+                } catch (e) {
+                    console.log('Biometric enrollment failed:', e);
+                }
+            }
+
+            window.location.href = '{{ next_url }}';
+        }
+
+        // Enroll biometric credential
+        async function enrollBiometric() {
+            const challenge = new Uint8Array(32);
+            crypto.getRandomValues(challenge);
+
+            const userId = new Uint8Array(16);
+            crypto.getRandomValues(userId);
+
+            const credential = await navigator.credentials.create({
+                publicKey: {
+                    challenge: challenge,
+                    rp: {
+                        name: 'Tallyups',
+                        id: window.location.hostname
+                    },
+                    user: {
+                        id: userId,
+                        name: 'user@tallyups',
+                        displayName: 'Tallyups User'
+                    },
+                    pubKeyCredParams: [
+                        { type: 'public-key', alg: -7 },  // ES256
+                        { type: 'public-key', alg: -257 } // RS256
+                    ],
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'required',
+                        residentKey: 'discouraged'
+                    },
+                    timeout: 60000,
+                    attestation: 'none'
+                }
+            });
+
+            if (credential) {
+                // Store the credential ID locally
+                const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+                localStorage.setItem(BIOMETRIC_CRED, credId);
+                localStorage.setItem(BIOMETRIC_KEY, 'true');
+
+                // Register with server
+                await fetch('/api/biometric/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        credential_id: credId
+                    })
+                });
+            }
+        }
+
+        // Initialize on load
+        init();
     </script>
 </body>
 </html>
