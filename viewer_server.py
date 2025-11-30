@@ -4467,6 +4467,741 @@ def atlas_contact_delete(contact_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route("/api/atlas/contacts/find-incomplete", methods=["POST"])
+def atlas_contacts_find_incomplete():
+    """Find incomplete contacts for cleanup"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+
+        results = {
+            'phone_only': [],      # Has phone but no email AND no company
+            'name_only': [],       # Has name but no phone AND no email
+            'no_contact_info': [], # No phone AND no email
+            'uncategorized': []    # Category is NULL or 'General'
+        }
+
+        # Phone only - has phone but no email and no company
+        cursor.execute("""
+            SELECT id, display_name as name, first_name, last_name, company, job_title as title,
+                   email, phone, category, notes
+            FROM contacts
+            WHERE phone IS NOT NULL AND phone != ''
+              AND (email IS NULL OR email = '')
+              AND (company IS NULL OR company = '')
+            ORDER BY display_name
+            LIMIT 200
+        """)
+        results['phone_only'] = cursor.fetchall() if db_type == 'mysql' else [dict(row) for row in cursor.fetchall()]
+
+        # Name only - has name but no phone and no email
+        cursor.execute("""
+            SELECT id, display_name as name, first_name, last_name, company, job_title as title,
+                   email, phone, category, notes
+            FROM contacts
+            WHERE (phone IS NULL OR phone = '')
+              AND (email IS NULL OR email = '')
+              AND display_name IS NOT NULL AND display_name != ''
+            ORDER BY display_name
+            LIMIT 200
+        """)
+        results['name_only'] = cursor.fetchall() if db_type == 'mysql' else [dict(row) for row in cursor.fetchall()]
+
+        # No contact info - no phone and no email
+        cursor.execute("""
+            SELECT id, display_name as name, first_name, last_name, company, job_title as title,
+                   email, phone, category, notes
+            FROM contacts
+            WHERE (phone IS NULL OR phone = '')
+              AND (email IS NULL OR email = '')
+            ORDER BY display_name
+            LIMIT 200
+        """)
+        results['no_contact_info'] = cursor.fetchall() if db_type == 'mysql' else [dict(row) for row in cursor.fetchall()]
+
+        # Uncategorized - category is NULL or 'General'
+        cursor.execute("""
+            SELECT id, display_name as name, first_name, last_name, company, job_title as title,
+                   email, phone, category, notes
+            FROM contacts
+            WHERE category IS NULL OR category = '' OR category = 'General'
+            ORDER BY display_name
+            LIMIT 200
+        """)
+        results['uncategorized'] = cursor.fetchall() if db_type == 'mysql' else [dict(row) for row in cursor.fetchall()]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'results': results,
+            'counts': {
+                'phone_only': len(results['phone_only']),
+                'name_only': len(results['name_only']),
+                'no_contact_info': len(results['no_contact_info']),
+                'uncategorized': len(results['uncategorized'])
+            }
+        })
+
+    except Exception as e:
+        print(f"ATLAS find incomplete contacts error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/bulk-delete", methods=["POST"])
+def atlas_contacts_bulk_delete():
+    """Bulk delete contacts by ID list"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        contact_ids = data.get('ids', [])
+        if not contact_ids:
+            return jsonify({'error': 'No contact IDs provided'}), 400
+
+        if len(contact_ids) > 500:
+            return jsonify({'error': 'Maximum 500 contacts can be deleted at once'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Build placeholders for IN clause
+        placeholders = ','.join(['%s'] * len(contact_ids))
+
+        # Delete from contacts table
+        cursor.execute(f"DELETE FROM contacts WHERE id IN ({placeholders})", tuple(contact_ids))
+        deleted_count = cursor.rowcount
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'message': f'Successfully deleted {deleted_count} contacts',
+            'deleted_count': deleted_count
+        })
+
+    except Exception as e:
+        print(f"ATLAS bulk delete contacts error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/upcoming-events", methods=["GET"])
+def atlas_contacts_upcoming_events():
+    """Get contacts with upcoming birthdays and anniversaries"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        days_ahead = int(request.args.get('days', 30))
+        event_type = request.args.get('type', 'all')  # birthday, anniversary, or all
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+
+        results = {
+            'birthdays': [],
+            'anniversaries': []
+        }
+
+        from datetime import datetime, timedelta
+        today = datetime.now()
+        this_year = today.year
+
+        # Get contacts with birthdays/anniversaries
+        if event_type in ['birthday', 'all']:
+            cursor.execute("""
+                SELECT id, name, first_name, last_name, email, phone, birthday, company, category
+                FROM contacts
+                WHERE birthday IS NOT NULL
+            """)
+            rows = cursor.fetchall()
+            if db_type == 'sqlite':
+                rows = [dict(zip([d[0] for d in cursor.description], row)) for row in rows]
+
+            for contact in rows:
+                bday = contact.get('birthday')
+                if bday:
+                    try:
+                        if isinstance(bday, str):
+                            bday = datetime.strptime(bday.split('T')[0], '%Y-%m-%d')
+                        # Calculate next occurrence
+                        next_bday = datetime(this_year, bday.month, bday.day)
+                        if next_bday.date() < today.date():
+                            next_bday = datetime(this_year + 1, bday.month, bday.day)
+                        days_until = (next_bday.date() - today.date()).days
+                        if days_until <= days_ahead:
+                            age = this_year - bday.year
+                            if next_bday.year > this_year:
+                                age += 1
+                            results['birthdays'].append({
+                                'id': contact['id'],
+                                'name': contact['name'] or f"{contact.get('first_name', '')} {contact.get('last_name', '')}".strip(),
+                                'email': contact.get('email'),
+                                'phone': contact.get('phone'),
+                                'company': contact.get('company'),
+                                'category': contact.get('category'),
+                                'date': bday.strftime('%Y-%m-%d'),
+                                'days_until': days_until,
+                                'turning_age': age
+                            })
+                    except Exception as e:
+                        print(f"Birthday parse error for {contact.get('name')}: {e}")
+
+        if event_type in ['anniversary', 'all']:
+            cursor.execute("""
+                SELECT id, name, first_name, last_name, email, phone, anniversary, company, category
+                FROM contacts
+                WHERE anniversary IS NOT NULL
+            """)
+            rows = cursor.fetchall()
+            if db_type == 'sqlite':
+                rows = [dict(zip([d[0] for d in cursor.description], row)) for row in rows]
+
+            for contact in rows:
+                anni = contact.get('anniversary')
+                if anni:
+                    try:
+                        if isinstance(anni, str):
+                            anni = datetime.strptime(anni.split('T')[0], '%Y-%m-%d')
+                        # Calculate next occurrence
+                        next_anni = datetime(this_year, anni.month, anni.day)
+                        if next_anni.date() < today.date():
+                            next_anni = datetime(this_year + 1, anni.month, anni.day)
+                        days_until = (next_anni.date() - today.date()).days
+                        if days_until <= days_ahead:
+                            years = this_year - anni.year
+                            if next_anni.year > this_year:
+                                years += 1
+                            results['anniversaries'].append({
+                                'id': contact['id'],
+                                'name': contact['name'] or f"{contact.get('first_name', '')} {contact.get('last_name', '')}".strip(),
+                                'email': contact.get('email'),
+                                'phone': contact.get('phone'),
+                                'company': contact.get('company'),
+                                'category': contact.get('category'),
+                                'date': anni.strftime('%Y-%m-%d'),
+                                'days_until': days_until,
+                                'years': years
+                            })
+                    except Exception as e:
+                        print(f"Anniversary parse error for {contact.get('name')}: {e}")
+
+        cursor.close()
+        conn.close()
+
+        # Sort by days_until
+        results['birthdays'].sort(key=lambda x: x['days_until'])
+        results['anniversaries'].sort(key=lambda x: x['days_until'])
+
+        return jsonify({
+            'ok': True,
+            'days_ahead': days_ahead,
+            'birthdays': results['birthdays'],
+            'anniversaries': results['anniversaries'],
+            'counts': {
+                'birthdays': len(results['birthdays']),
+                'anniversaries': len(results['anniversaries']),
+                'total': len(results['birthdays']) + len(results['anniversaries'])
+            }
+        })
+
+    except Exception as e:
+        print(f"ATLAS upcoming events error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# ATLAS CONTACT SYNC ENDPOINTS
+# =============================================================================
+
+@app.route("/api/atlas/sync/status", methods=["GET"])
+def atlas_sync_status():
+    """Get sync status for all contacts"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+
+        # Ensure sync columns exist
+        try:
+            cursor.execute("""
+                ALTER TABLE contacts
+                ADD COLUMN IF NOT EXISTS sync_status VARCHAR(20) DEFAULT 'synced',
+                ADD COLUMN IF NOT EXISTS last_synced_at DATETIME,
+                ADD COLUMN IF NOT EXISTS local_modified_at DATETIME,
+                ADD COLUMN IF NOT EXISTS google_resource_name VARCHAR(255),
+                ADD COLUMN IF NOT EXISTS google_etag VARCHAR(255)
+            """)
+            conn.commit()
+        except Exception as e:
+            # Columns may already exist
+            pass
+
+        # Get sync statistics
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN sync_status = 'synced' OR sync_status IS NULL THEN 1 ELSE 0 END) as synced,
+                SUM(CASE WHEN sync_status = 'pending_push' THEN 1 ELSE 0 END) as pending_push,
+                SUM(CASE WHEN sync_status = 'conflict' THEN 1 ELSE 0 END) as conflicts,
+                SUM(CASE WHEN google_resource_name IS NOT NULL THEN 1 ELSE 0 END) as google_linked,
+                MAX(last_synced_at) as last_sync
+            FROM contacts
+        """)
+
+        row = cursor.fetchone()
+        if db_type != 'mysql':
+            row = dict(zip([desc[0] for desc in cursor.description], row)) if row else {}
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'total_contacts': row.get('total', 0) or 0,
+            'synced': row.get('synced', 0) or 0,
+            'pending_push': row.get('pending_push', 0) or 0,
+            'conflicts': row.get('conflicts', 0) or 0,
+            'google_linked': row.get('google_linked', 0) or 0,
+            'last_sync': row.get('last_sync').isoformat() if row.get('last_sync') else None
+        })
+
+    except Exception as e:
+        print(f"Sync status error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/sync/pending", methods=["GET"])
+def atlas_sync_pending():
+    """Get contacts pending sync"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+
+        cursor.execute("""
+            SELECT id, display_name, email, phone, company, sync_status,
+                   local_modified_at, last_synced_at, google_resource_name
+            FROM contacts
+            WHERE sync_status IN ('pending_push', 'conflict')
+            ORDER BY local_modified_at DESC
+            LIMIT 100
+        """)
+
+        rows = cursor.fetchall()
+        if db_type != 'mysql':
+            columns = [desc[0] for desc in cursor.description]
+            rows = [dict(zip(columns, row)) for row in rows]
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'contacts': rows,
+            'count': len(rows)
+        })
+
+    except Exception as e:
+        print(f"Sync pending error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/sync/mark-modified", methods=["POST"])
+def atlas_sync_mark_modified():
+    """Mark a contact as modified (pending sync)"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json()
+        contact_id = data.get('contact_id')
+
+        if not contact_id:
+            return jsonify({'error': 'contact_id required'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE contacts
+            SET sync_status = 'pending_push',
+                local_modified_at = NOW()
+            WHERE id = %s
+        """, (contact_id,))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'ok': True, 'contact_id': contact_id, 'status': 'pending_push'})
+
+    except Exception as e:
+        print(f"Mark modified error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/sync/google/push", methods=["POST"])
+def atlas_sync_google_push():
+    """Push local changes to Google Contacts"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        # Get Gmail token
+        gmail_token = os.getenv('GMAIL_TOKEN_BRIAN_DOWNHOME_COM') or os.getenv('GMAIL_TOKEN_BRIAN_MUSICCITYRODEO_COM')
+        if not gmail_token:
+            return jsonify({'error': 'No Google token configured', 'success': False}), 400
+
+        token_data = json.loads(gmail_token)
+
+        # Check if contacts scope is available
+        scopes = token_data.get('scopes', [])
+        has_contacts_scope = any('contacts' in s for s in scopes)
+
+        if not has_contacts_scope:
+            return jsonify({
+                'error': 'Contacts scope not authorized. Please reauthorize with contacts.readonly scope.',
+                'success': False,
+                'needs_reauth': True
+            }), 400
+
+        creds = Credentials.from_authorized_user_info(token_data)
+        people_service = build('people', 'v1', credentials=creds)
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+
+        # Get contacts pending push
+        cursor.execute("""
+            SELECT id, display_name, first_name, last_name, email, phone, company, job_title,
+                   google_resource_name, google_etag
+            FROM contacts
+            WHERE sync_status = 'pending_push'
+            LIMIT 50
+        """)
+
+        rows = cursor.fetchall()
+        if db_type != 'mysql':
+            columns = [desc[0] for desc in cursor.description]
+            rows = [dict(zip(columns, row)) for row in rows]
+
+        pushed = 0
+        errors = []
+
+        for contact in rows:
+            try:
+                person_data = {
+                    'names': [{
+                        'givenName': contact.get('first_name') or '',
+                        'familyName': contact.get('last_name') or '',
+                        'displayName': contact.get('display_name') or ''
+                    }]
+                }
+
+                if contact.get('email'):
+                    person_data['emailAddresses'] = [{'value': contact['email'], 'type': 'work'}]
+
+                if contact.get('phone'):
+                    person_data['phoneNumbers'] = [{'value': contact['phone'], 'type': 'mobile'}]
+
+                if contact.get('company') or contact.get('job_title'):
+                    person_data['organizations'] = [{
+                        'name': contact.get('company') or '',
+                        'title': contact.get('job_title') or ''
+                    }]
+
+                if contact.get('google_resource_name'):
+                    # Update existing contact
+                    result = people_service.people().updateContact(
+                        resourceName=contact['google_resource_name'],
+                        updatePersonFields='names,emailAddresses,phoneNumbers,organizations',
+                        body=person_data
+                    ).execute()
+                else:
+                    # Create new contact
+                    result = people_service.people().createContact(body=person_data).execute()
+
+                    # Update local record with Google resource name
+                    update_cursor = conn.cursor()
+                    update_cursor.execute("""
+                        UPDATE contacts
+                        SET google_resource_name = %s, google_etag = %s
+                        WHERE id = %s
+                    """, (result.get('resourceName'), result.get('etag'), contact['id']))
+                    update_cursor.close()
+
+                # Mark as synced
+                sync_cursor = conn.cursor()
+                sync_cursor.execute("""
+                    UPDATE contacts
+                    SET sync_status = 'synced', last_synced_at = NOW()
+                    WHERE id = %s
+                """, (contact['id'],))
+                sync_cursor.close()
+
+                pushed += 1
+
+            except Exception as contact_err:
+                errors.append({
+                    'contact_id': contact['id'],
+                    'name': contact.get('display_name'),
+                    'error': str(contact_err)
+                })
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'success': True,
+            'pushed': pushed,
+            'errors': errors,
+            'error_count': len(errors)
+        })
+
+    except Exception as e:
+        print(f"Google push error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'success': False}), 500
+
+
+@app.route("/api/atlas/sync/google/pull", methods=["POST"])
+def atlas_sync_google_pull():
+    """Pull contacts from Google and merge with local database"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        # Get Gmail token
+        gmail_token = os.getenv('GMAIL_TOKEN_BRIAN_DOWNHOME_COM') or os.getenv('GMAIL_TOKEN_BRIAN_MUSICCITYRODEO_COM')
+        if not gmail_token:
+            return jsonify({'error': 'No Google token configured', 'success': False}), 400
+
+        token_data = json.loads(gmail_token)
+        creds = Credentials.from_authorized_user_info(token_data)
+        people_service = build('people', 'v1', credentials=creds)
+
+        # Fetch contacts from Google
+        all_contacts = []
+        page_token = None
+
+        while True:
+            results = people_service.people().connections().list(
+                resourceName='people/me',
+                pageSize=1000,
+                personFields='names,emailAddresses,phoneNumbers,organizations,photos',
+                pageToken=page_token
+            ).execute()
+
+            connections = results.get('connections', [])
+            all_contacts.extend(connections)
+
+            page_token = results.get('nextPageToken')
+            if not page_token:
+                break
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        imported = 0
+        updated = 0
+
+        for person in all_contacts:
+            try:
+                resource_name = person.get('resourceName', '')
+                etag = person.get('etag', '')
+
+                names = person.get('names', [{}])
+                name = names[0] if names else {}
+                display_name = name.get('displayName', '')
+                first_name = name.get('givenName', '')
+                last_name = name.get('familyName', '')
+
+                emails = person.get('emailAddresses', [])
+                email = emails[0].get('value', '').lower() if emails else ''
+
+                phones = person.get('phoneNumbers', [])
+                phone = phones[0].get('value', '') if phones else ''
+
+                orgs = person.get('organizations', [])
+                company = orgs[0].get('name', '') if orgs else ''
+                job_title = orgs[0].get('title', '') if orgs else ''
+
+                photos = person.get('photos', [])
+                photo_url = photos[0].get('url', '') if photos else ''
+
+                if not display_name and not email:
+                    continue
+
+                # Check if contact exists by google_resource_name or email
+                cursor.execute("""
+                    SELECT id FROM contacts
+                    WHERE google_resource_name = %s OR (email = %s AND email != '')
+                    LIMIT 1
+                """, (resource_name, email))
+
+                existing = cursor.fetchone()
+
+                if existing:
+                    # Update existing contact
+                    cursor.execute("""
+                        UPDATE contacts SET
+                            display_name = COALESCE(NULLIF(%s, ''), display_name),
+                            first_name = COALESCE(NULLIF(%s, ''), first_name),
+                            last_name = COALESCE(NULLIF(%s, ''), last_name),
+                            phone = COALESCE(NULLIF(%s, ''), phone),
+                            company = COALESCE(NULLIF(%s, ''), company),
+                            job_title = COALESCE(NULLIF(%s, ''), job_title),
+                            photo_url = COALESCE(NULLIF(%s, ''), photo_url),
+                            google_resource_name = %s,
+                            google_etag = %s,
+                            last_synced_at = NOW(),
+                            sync_status = 'synced'
+                        WHERE id = %s
+                    """, (display_name, first_name, last_name, phone, company, job_title,
+                          photo_url, resource_name, etag, existing[0]))
+                    updated += 1
+                else:
+                    # Insert new contact
+                    cursor.execute("""
+                        INSERT INTO contacts (
+                            display_name, first_name, last_name, email, phone,
+                            company, job_title, photo_url, source,
+                            google_resource_name, google_etag,
+                            sync_status, last_synced_at, created_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'google', %s, %s, 'synced', NOW(), NOW())
+                    """, (display_name, first_name, last_name, email, phone,
+                          company, job_title, photo_url, resource_name, etag))
+                    imported += 1
+
+            except Exception as contact_err:
+                print(f"Error importing contact: {contact_err}")
+                continue
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'success': True,
+            'fetched': len(all_contacts),
+            'imported': imported,
+            'updated': updated
+        })
+
+    except Exception as e:
+        print(f"Google pull error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'success': False}), 500
+
+
+@app.route("/api/atlas/sync/resolve-conflict", methods=["POST"])
+def atlas_sync_resolve_conflict():
+    """Resolve a sync conflict"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json()
+        contact_id = data.get('contact_id')
+        resolution = data.get('resolution')  # 'local' or 'remote'
+
+        if not contact_id or resolution not in ('local', 'remote'):
+            return jsonify({'error': 'contact_id and resolution (local/remote) required'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        if resolution == 'local':
+            # Keep local version, mark for push
+            cursor.execute("""
+                UPDATE contacts
+                SET sync_status = 'pending_push'
+                WHERE id = %s
+            """, (contact_id,))
+        else:
+            # Will pull from remote on next sync
+            cursor.execute("""
+                UPDATE contacts
+                SET sync_status = 'synced',
+                    google_etag = NULL
+                WHERE id = %s
+            """, (contact_id,))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'ok': True, 'contact_id': contact_id, 'resolution': resolution})
+
+    except Exception as e:
+        print(f"Resolve conflict error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/api/atlas/contacts", methods=["POST"])
 def atlas_contact_create():
     """Create a new contact"""
