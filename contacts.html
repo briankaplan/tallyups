@@ -328,6 +328,137 @@
       color: var(--success);
     }
 
+    /* Sync Status Badge */
+    .sync-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sync-status-info {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .sync-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .sync-stat-value {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .sync-stat-label {
+      color: var(--text-secondary);
+    }
+
+    .sync-stat.pending .sync-stat-value {
+      color: var(--warning);
+    }
+
+    .sync-stat.conflict .sync-stat-value {
+      color: var(--danger);
+    }
+
+    .sync-stat.synced .sync-stat-value {
+      color: var(--success);
+    }
+
+    /* Sync Direction Buttons */
+    .sync-direction-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .sync-dir-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-card);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sync-dir-btn:hover {
+      border-color: var(--purple);
+      background: rgba(124, 58, 237, 0.1);
+    }
+
+    .sync-dir-btn.syncing {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .sync-dir-btn .icon {
+      font-size: 18px;
+    }
+
+    .sync-dir-btn .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .sync-dir-btn.pull .icon { color: #22c55e; }
+    .sync-dir-btn.push .icon { color: #3b82f6; }
+    .sync-dir-btn.full .icon { color: #8b5cf6; }
+
+    /* Sync Pending Badge */
+    .sync-pending-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: var(--warning);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+      min-width: 18px;
+      text-align: center;
+    }
+
+    .sync-btn-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    /* Contact Sync Status Indicator */
+    .contact-sync-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+
+    .contact-sync-status.synced {
+      background: var(--success);
+    }
+
+    .contact-sync-status.pending_push {
+      background: var(--warning);
+    }
+
+    .contact-sync-status.conflict {
+      background: var(--danger);
+    }
+
     /* Stats Row */
     .stats-row {
       display: flex;
@@ -363,6 +494,189 @@
     /* Contact List */
     .contact-list {
       padding: 0 16px;
+      padding-right: 40px;
+    }
+
+    /* Alphabet Index Sidebar */
+    .alphabet-index {
+      position: fixed;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 90;
+      padding: 8px 2px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .alpha-letter {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-dim);
+      padding: 2px 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+      border-radius: 4px;
+    }
+
+    .alpha-letter:hover {
+      color: var(--purple);
+      transform: scale(1.2);
+    }
+
+    .alpha-letter.active {
+      color: var(--purple);
+      background: var(--accent-dim);
+    }
+
+    .alpha-letter.has-contacts::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      width: 3px;
+      height: 3px;
+      background: var(--purple);
+      border-radius: 50%;
+    }
+
+    .alpha-letter.no-contacts {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    .alpha-letter.no-contacts:hover {
+      transform: none;
+      color: var(--text-dim);
+    }
+
+    /* Search results indicator */
+    .search-results-count {
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      text-align: center;
+    }
+
+    .search-results-count .highlight {
+      color: var(--purple);
+      font-weight: 600;
+    }
+
+    .search-results-count .query {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* Search input wrapper for clear button */
+    .search-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .search-wrapper .clear-search {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--bg-elevated);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .search-wrapper .clear-search:hover {
+      color: var(--text-primary);
+      background: var(--border);
+    }
+
+    .search-wrapper input:not(:placeholder-shown) + .clear-search {
+      display: block;
+    }
+
+    /* Category Chips Container */
+    .category-chips-container {
+      display: flex;
+      gap: 8px;
+      padding: 0 16px 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .category-chips-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .category-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .category-chip:hover {
+      border-color: var(--purple);
+      color: var(--text-primary);
+    }
+
+    .category-chip.active {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: white;
+    }
+
+    .category-chip .cat-count {
+      font-size: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .category-chip:not(.active) .cat-count {
+      background: var(--bg-elevated);
+    }
+
+    .category-chip .cat-icon {
+      font-size: 14px;
+    }
+
+    /* Load All button */
+    .load-all-btn {
+      display: block;
+      width: calc(100% - 32px);
+      margin: 16px auto;
+      padding: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--purple);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .load-all-btn:hover {
+      background: var(--bg-elevated);
+      border-color: var(--purple);
     }
 
     .section-header {
@@ -1620,6 +1934,304 @@
       font-size: 10px;
       color: var(--purple);
     }
+
+    /* ============================================
+       BATCH CONTACT CLEANUP MODAL
+       ============================================ */
+    .cleanup-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 20px;
+    }
+
+    .cleanup-modal {
+      background: var(--card-bg);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 800px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .cleanup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cleanup-header h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .cleanup-close {
+      background: none;
+      border: none;
+      font-size: 28px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+
+    .cleanup-close:hover {
+      color: var(--text);
+    }
+
+    .cleanup-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .cleanup-loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .cleanup-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .cleanup-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+
+    .cleanup-tab {
+      padding: 8px 16px;
+      background: var(--hover);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .cleanup-tab:hover {
+      background: var(--border);
+    }
+
+    .cleanup-tab.active {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: white;
+    }
+
+    .cleanup-tab .count {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      font-size: 11px;
+    }
+
+    .cleanup-tab.active .count {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .cleanup-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 24px;
+    }
+
+    .cleanup-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+
+    .cleanup-empty svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    .cleanup-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--hover);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      transition: all 0.2s;
+    }
+
+    .cleanup-item:hover {
+      background: var(--border);
+    }
+
+    .cleanup-item.selected {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .cleanup-checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .cleanup-checkbox:hover {
+      border-color: var(--purple);
+    }
+
+    .cleanup-checkbox.checked {
+      background: #ef4444;
+      border-color: #ef4444;
+    }
+
+    .cleanup-checkbox.checked::after {
+      content: '✓';
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .cleanup-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cleanup-name {
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cleanup-details {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cleanup-keep {
+      padding: 6px 12px;
+      background: var(--green);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: opacity 0.2s;
+    }
+
+    .cleanup-keep:hover {
+      opacity: 0.9;
+    }
+
+    .cleanup-actions {
+      display: flex;
+      gap: 12px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .cleanup-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .cleanup-btn.secondary {
+      background: var(--hover);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .cleanup-btn.secondary:hover {
+      background: var(--border);
+    }
+
+    .cleanup-btn.danger {
+      background: #ef4444;
+      border: none;
+      color: white;
+      margin-left: auto;
+    }
+
+    .cleanup-btn.danger:hover:not(:disabled) {
+      background: #dc2626;
+    }
+
+    .cleanup-btn.danger:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Date Helper for Birthday/Anniversary */
+    .date-helper {
+      display: block;
+      font-size: 11px;
+      margin-top: 4px;
+      transition: color 0.2s;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 16px;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -1656,6 +2268,13 @@
             <line x1="16" y1="11" x2="22" y2="11"/>
           </svg>
         </button>
+        <button class="icon-btn" onclick="openCleanupModal()" title="Cleanup Contacts" style="color: #f97316;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -1664,7 +2283,10 @@
         <circle cx="11" cy="11" r="8"/>
         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
-      <input type="text" class="search-input" placeholder="Search contacts, companies..." id="searchInput" oninput="searchContacts()">
+      <div class="search-wrapper">
+        <input type="text" class="search-input" placeholder="Search contacts, companies..." id="searchInput" oninput="searchContacts()">
+        <button class="clear-search" onclick="clearSearch()" title="Clear search">×</button>
+      </div>
     </div>
   </header>
 
@@ -1679,8 +2301,30 @@
         </svg>
       </button>
     </div>
+
+    <!-- Sync Status Bar -->
+    <div class="sync-status-bar" id="syncStatusBar">
+      <div class="sync-status-info">
+        <div class="sync-stat synced">
+          <span class="sync-stat-value" id="syncedCount">0</span>
+          <span class="sync-stat-label">Synced</span>
+        </div>
+        <div class="sync-stat pending">
+          <span class="sync-stat-value" id="pendingCount">0</span>
+          <span class="sync-stat-label">Pending</span>
+        </div>
+        <div class="sync-stat conflict">
+          <span class="sync-stat-value" id="conflictCount">0</span>
+          <span class="sync-stat-label">Conflicts</span>
+        </div>
+      </div>
+      <div class="sync-last-sync" id="lastSyncTime" style="font-size: 11px; color: var(--text-secondary);">
+        Never synced
+      </div>
+    </div>
+
     <div class="sync-sources">
-      <div class="sync-source" onclick="syncGoogle()" id="googleSync">
+      <div class="sync-source" id="googleSync">
         <div class="sync-source-icon google">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
@@ -1688,15 +2332,47 @@
         </div>
         <div class="sync-source-name">Google Contacts</div>
         <div class="sync-source-status" id="googleStatus">Not connected</div>
+
+        <!-- Bidirectional Sync Buttons -->
+        <div class="sync-direction-btns">
+          <button class="sync-dir-btn pull" onclick="syncGooglePull()" title="Pull from Google">
+            <span class="icon">&#x2B07;</span>
+            <span class="label">Pull</span>
+          </button>
+          <button class="sync-dir-btn push" onclick="syncGooglePush()" title="Push to Google">
+            <span class="icon">&#x2B06;</span>
+            <span class="label">Push</span>
+          </button>
+          <button class="sync-dir-btn full" onclick="syncGoogleFull()" title="Full Bidirectional Sync">
+            <span class="icon">&#x21C4;</span>
+            <span class="label">Full</span>
+          </button>
+        </div>
       </div>
-      <div class="sync-source" onclick="syncApple()" id="appleSync">
+      <div class="sync-source" id="appleSync">
         <div class="sync-source-icon apple">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M18.71,19.5C17.88,20.74 17,21.95 15.66,21.97C14.32,22 13.89,21.18 12.37,21.18C10.84,21.18 10.37,21.95 9.1,22C7.79,22.05 6.8,20.68 5.96,19.47C4.25,17 2.94,12.45 4.7,9.39C5.57,7.87 7.13,6.91 8.82,6.88C10.1,6.86 11.32,7.75 12.11,7.75C12.89,7.75 14.37,6.68 15.92,6.84C16.57,6.87 18.39,7.1 19.56,8.82C19.47,8.88 17.39,10.1 17.41,12.63C17.44,15.65 20.06,16.66 20.09,16.67C20.06,16.74 19.67,18.11 18.71,19.5M13,3.5C13.73,2.67 14.94,2.04 15.94,2C16.07,3.17 15.6,4.35 14.9,5.19C14.21,6.04 13.07,6.7 11.95,6.61C11.8,5.46 12.36,4.26 13,3.5Z"/>
           </svg>
         </div>
         <div class="sync-source-name">Apple Contacts</div>
-        <div class="sync-source-status" id="appleStatus">Not connected</div>
+        <div class="sync-source-status" id="appleStatus">Pull only (macOS)</div>
+
+        <!-- Apple Sync - Pull Only -->
+        <div class="sync-direction-btns">
+          <button class="sync-dir-btn pull" onclick="syncApple()" title="Pull from Apple Contacts">
+            <span class="icon">&#x2B07;</span>
+            <span class="label">Pull</span>
+          </button>
+          <button class="sync-dir-btn push" disabled style="opacity: 0.4; cursor: not-allowed;" title="Push requires native macOS app">
+            <span class="icon">&#x2B06;</span>
+            <span class="label">N/A</span>
+          </button>
+          <button class="sync-dir-btn" onclick="exportToVCard()" title="Export as vCard for manual import">
+            <span class="icon">&#x1F4E4;</span>
+            <span class="label">Export</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1763,8 +2439,11 @@
     <div class="filter-chip" data-filter="vip" onclick="setFilter('vip', this)">VIP<span class="count" id="countVip">0</span></div>
     <div class="filter-chip" data-filter="recent" onclick="setFilter('recent', this)">Recent</div>
     <div class="filter-chip" data-filter="needs-attention" onclick="setFilter('needs-attention', this)">Needs Attention</div>
-    <div class="filter-chip" data-filter="business" onclick="setFilter('business', this)">Business</div>
-    <div class="filter-chip" data-filter="personal" onclick="setFilter('personal', this)">Personal</div>
+  </div>
+
+  <!-- Industry Category Chips -->
+  <div class="category-chips-container" id="categoryChips">
+    <!-- Dynamically populated -->
   </div>
 
   <!-- Stats Row -->
@@ -1789,6 +2468,12 @@
       <div class="spinner"></div>
     </div>
   </div>
+
+  <!-- Alphabet Index Sidebar -->
+  <div class="alphabet-index" id="alphabetIndex"></div>
+
+  <!-- Search Results Count -->
+  <div class="search-results-count" id="searchResultsCount" style="display: none;"></div>
 
   <!-- Contact Detail Modal -->
   <div class="modal-overlay" id="contactModal" onclick="closeModal(event)">
@@ -2090,15 +2775,158 @@
     let isLoading = false;
     let hasMoreContacts = true;
     let currentOffset = 0;
-    const BATCH_SIZE = 100;
+    const BATCH_SIZE = 500;
     let totalContactCount = 0;
+    let availableLetters = new Set();
+    let currentActiveLetter = '';
+    let searchDebounceTimer = null;
+    let lastSearchQuery = '';
+    let currentCategoryFilter = null;
+
+    // Industry Categories Definition
+    const INDUSTRY_CATEGORIES = [
+      { id: 'music-industry', name: 'Music Industry', icon: '🎵', keywords: ['music', 'band', 'artist', 'producer', 'label', 'recording', 'songwriter', 'musician', 'dj'] },
+      { id: 'tv-film', name: 'TV/Film', icon: '🎬', keywords: ['film', 'tv', 'television', 'movie', 'production', 'director', 'actor', 'actress', 'entertainment'] },
+      { id: 'friends', name: 'Friends', icon: '👥', keywords: ['friend', 'personal'] },
+      { id: 'family', name: 'Family', icon: '👨‍👩‍👧‍👦', keywords: ['family', 'mom', 'dad', 'sister', 'brother', 'parent', 'relative'] },
+      { id: 'tech', name: 'Tech', icon: '💻', keywords: ['tech', 'software', 'developer', 'engineer', 'startup', 'app', 'digital', 'it', 'programming'] },
+      { id: 'finance', name: 'Finance', icon: '💰', keywords: ['finance', 'bank', 'investment', 'accounting', 'cpa', 'financial', 'advisor'] },
+      { id: 'media-press', name: 'Media/Press', icon: '📰', keywords: ['media', 'press', 'journalist', 'news', 'reporter', 'editor', 'writer', 'publication'] },
+      { id: 'legal', name: 'Legal', icon: '⚖️', keywords: ['legal', 'lawyer', 'attorney', 'law', 'counsel', 'paralegal'] },
+      { id: 'healthcare', name: 'Healthcare', icon: '🏥', keywords: ['health', 'medical', 'doctor', 'nurse', 'hospital', 'clinic', 'physician', 'therapy'] },
+      { id: 'real-estate', name: 'Real Estate', icon: '🏠', keywords: ['real estate', 'realtor', 'property', 'broker', 'realty', 'housing'] },
+      { id: 'hospitality', name: 'Hospitality', icon: '🏨', keywords: ['hotel', 'restaurant', 'hospitality', 'venue', 'catering', 'bar', 'chef'] },
+      { id: 'government', name: 'Government', icon: '🏛️', keywords: ['government', 'federal', 'state', 'city', 'council', 'senator', 'official', 'public'] },
+      { id: 'general', name: 'General', icon: '📋', keywords: [] }
+    ];
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       loadContacts();
       checkSyncStatus();
       setupInfiniteScroll();
+      renderAlphabetIndex();
+      setupAlphabetScrollTracking();
     });
+
+    // Render alphabet index sidebar
+    function renderAlphabetIndex() {
+      const container = document.getElementById('alphabetIndex');
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+
+      container.innerHTML = letters.map(letter => `
+        <span class="alpha-letter" data-letter="${letter}" onclick="jumpToLetter('${letter}')">${letter}</span>
+      `).join('');
+    }
+
+    // Update alphabet index based on loaded contacts
+    function updateAlphabetIndex() {
+      availableLetters.clear();
+
+      contacts.forEach(c => {
+        const name = c.display_name || c.name || '';
+        if (name) {
+          const firstChar = name[0].toUpperCase();
+          if (/[A-Z]/.test(firstChar)) {
+            availableLetters.add(firstChar);
+          } else {
+            availableLetters.add('#');
+          }
+        }
+      });
+
+      document.querySelectorAll('.alpha-letter').forEach(el => {
+        const letter = el.dataset.letter;
+        if (availableLetters.has(letter)) {
+          el.classList.remove('no-contacts');
+          el.classList.add('has-contacts');
+        } else {
+          el.classList.add('no-contacts');
+          el.classList.remove('has-contacts');
+        }
+      });
+    }
+
+    // Jump to letter section
+    function jumpToLetter(letter) {
+      if (!availableLetters.has(letter)) return;
+
+      const section = document.querySelector(`[data-section="${letter}"]`);
+      if (section) {
+        const headerOffset = 180;
+        const elementPosition = section.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+
+        setActiveLetter(letter);
+      }
+    }
+
+    // Set active letter in alphabet index
+    function setActiveLetter(letter) {
+      currentActiveLetter = letter;
+      document.querySelectorAll('.alpha-letter').forEach(el => {
+        el.classList.toggle('active', el.dataset.letter === letter);
+      });
+    }
+
+    // Setup scroll tracking for active letter
+    function setupAlphabetScrollTracking() {
+      let scrollTimeout;
+      window.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          updateActiveLetterOnScroll();
+        }, 50);
+      });
+    }
+
+    // Update active letter based on scroll position
+    function updateActiveLetterOnScroll() {
+      const sections = document.querySelectorAll('[data-section]');
+      const headerOffset = 200;
+
+      for (const section of sections) {
+        const rect = section.getBoundingClientRect();
+        if (rect.top <= headerOffset && rect.bottom > headerOffset) {
+          setActiveLetter(section.dataset.section);
+          return;
+        }
+      }
+    }
+
+    // Load all contacts at once
+    async function loadAllContacts() {
+      if (contacts.length >= totalContactCount) return;
+
+      const btn = document.querySelector('.load-all-btn');
+      if (btn) {
+        btn.textContent = 'Loading all contacts...';
+        btn.disabled = true;
+      }
+
+      try {
+        const response = await fetch(`/api/atlas/contacts?limit=5000&offset=0`);
+        const data = await response.json();
+
+        if (data.contacts && data.contacts.length > 0) {
+          contacts = data.contacts;
+          totalContactCount = data.total || data.contacts.length;
+          hasMoreContacts = false;
+          renderContacts();
+          updateStats(data.stats || { total: totalContactCount });
+          updateAlphabetIndex();
+        }
+      } catch (error) {
+        console.error('Error loading all contacts:', error);
+      }
+
+      if (btn) btn.remove();
+    }
 
     // Setup infinite scroll
     function setupInfiniteScroll() {
@@ -2134,6 +2962,7 @@
           currentOffset = contacts.length;
           updateStats(data.stats || { total: totalContactCount });
           renderContacts();
+          renderCategoryChips();  // Render category filter chips with counts
         } else {
           showEmptyState();
         }
@@ -2161,6 +2990,7 @@
           currentOffset += data.contacts.length;
           hasMoreContacts = currentOffset < (data.total || totalContactCount);
           renderContacts();
+          renderCategoryChips();  // Update category counts with new contacts
           updateLoadedCount();
         } else {
           hasMoreContacts = false;
@@ -2243,7 +3073,8 @@
       // Group by first letter
       const grouped = {};
       filtered.forEach(contact => {
-        const letter = (contact.display_name || contact.name || 'Unknown')[0].toUpperCase();
+        let letter = (contact.display_name || contact.name || 'Unknown')[0].toUpperCase();
+        if (!/[A-Z]/.test(letter)) letter = '#';
         if (!grouped[letter]) grouped[letter] = [];
         grouped[letter].push(contact);
       });
@@ -2251,8 +3082,9 @@
       let html = '';
       Object.keys(grouped).sort().forEach(letter => {
         html += `
-          <div class="section-header">
+          <div class="section-header" data-section="${letter}">
             <span class="section-title">${letter}</span>
+            <span class="section-action">${grouped[letter].length}</span>
           </div>
         `;
 
@@ -2261,7 +3093,17 @@
         });
       });
 
+      // Add Load All button if there are more contacts to load
+      if (hasMoreContacts && contacts.length < totalContactCount) {
+        html += `
+          <button class="load-all-btn" onclick="loadAllContacts()">
+            Load All ${totalContactCount} Contacts
+          </button>
+        `;
+      }
+
       list.innerHTML = html;
+      updateAlphabetIndex();
     }
 
     // Render contact card
@@ -2343,16 +3185,140 @@
           case 'vip': matchesFilter = c.is_vip; break;
           case 'recent': matchesFilter = c.last_interaction && isRecent(c.last_interaction); break;
           case 'needs-attention': matchesFilter = c.needs_attention; break;
-          case 'business': matchesFilter = c.category === 'business'; break;
-          case 'personal': matchesFilter = c.category === 'personal'; break;
         }
 
-        return matchesSearch && matchesFilter;
+        // Category filter
+        let matchesCategory = true;
+        if (currentCategoryFilter) {
+          const contactCategory = detectContactCategory(c);
+          matchesCategory = contactCategory === currentCategoryFilter;
+        }
+
+        return matchesSearch && matchesFilter && matchesCategory;
       });
     }
 
-    // Search
+    // Debounced Live Search
     function searchContacts() {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        const query = document.getElementById('searchInput').value.trim();
+        if (query !== lastSearchQuery) {
+          lastSearchQuery = query;
+          renderContacts();
+          updateSearchResultsCount();
+        }
+      }, 150);
+    }
+
+    // Immediate search (for programmatic calls)
+    function searchContactsImmediate() {
+      const query = document.getElementById('searchInput').value.trim();
+      lastSearchQuery = query;
+      renderContacts();
+      updateSearchResultsCount();
+    }
+
+    // Update search results count display
+    function updateSearchResultsCount() {
+      const search = document.getElementById('searchInput').value.trim();
+      const resultsDiv = document.getElementById('searchResultsCount');
+
+      if (search) {
+        const filtered = filterContacts(contacts);
+        resultsDiv.innerHTML = `<span class="highlight">${filtered.length}</span> results for "<span class="query">${escapeHtml(search)}</span>"`;
+        resultsDiv.style.display = 'block';
+      } else {
+        resultsDiv.style.display = 'none';
+      }
+    }
+
+    // Escape HTML for safe display
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Clear search
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      lastSearchQuery = '';
+      document.getElementById('searchResultsCount').style.display = 'none';
+      renderContacts();
+    }
+
+    // Detect category for a contact based on keywords
+    function detectContactCategory(contact) {
+      const searchText = [
+        contact.company || '',
+        contact.title || '',
+        contact.notes || '',
+        contact.category || ''
+      ].join(' ').toLowerCase();
+
+      for (const cat of INDUSTRY_CATEGORIES) {
+        if (cat.id === 'general') continue;
+        for (const keyword of cat.keywords) {
+          if (searchText.includes(keyword.toLowerCase())) {
+            return cat.id;
+          }
+        }
+      }
+      return 'general';
+    }
+
+    // Render category chips with counts
+    function renderCategoryChips() {
+      const container = document.getElementById('categoryChips');
+      if (!container) return;
+
+      // Count contacts per category
+      const categoryCounts = {};
+      INDUSTRY_CATEGORIES.forEach(cat => categoryCounts[cat.id] = 0);
+
+      contacts.forEach(contact => {
+        const catId = detectContactCategory(contact);
+        if (categoryCounts[catId] !== undefined) {
+          categoryCounts[catId]++;
+        }
+      });
+
+      // Only show categories with contacts (except general)
+      const chipsHtml = INDUSTRY_CATEGORIES
+        .filter(cat => categoryCounts[cat.id] > 0 || cat.id === 'general')
+        .map(cat => {
+          const isActive = currentCategoryFilter === cat.id;
+          const count = categoryCounts[cat.id];
+          return `
+            <div class="category-chip ${isActive ? 'active' : ''}"
+                 data-category="${cat.id}"
+                 onclick="setCategoryFilter('${cat.id}')">
+              <span class="cat-icon">${cat.icon}</span>
+              ${cat.name}
+              <span class="cat-count">${count}</span>
+            </div>
+          `;
+        }).join('');
+
+      // Add "All Categories" at the beginning
+      const allActive = !currentCategoryFilter;
+      container.innerHTML = `
+        <div class="category-chip ${allActive ? 'active' : ''}"
+             data-category="all"
+             onclick="setCategoryFilter(null)">
+          <span class="cat-icon">*</span>
+          All Categories
+        </div>
+      ` + chipsHtml;
+    }
+
+    // Set category filter
+    function setCategoryFilter(categoryId) {
+      currentCategoryFilter = categoryId;
+      document.querySelectorAll('.category-chip').forEach(el => el.classList.remove('active'));
+      const activeChip = document.querySelector(`.category-chip[data-category="${categoryId || 'all'}"]`);
+      if (activeChip) activeChip.classList.add('active');
       renderContacts();
     }
 
@@ -2434,18 +3400,48 @@
         const response = await fetch('/api/atlas/sync/status');
         const data = await response.json();
 
-        if (data.google?.connected) {
-          document.getElementById('googleStatus').textContent = `${data.google.count || 0} contacts`;
-          document.getElementById('googleStatus').classList.add('connected');
+        // Update sync status bar counts
+        if (data.synced !== undefined) {
+          document.getElementById('syncedCount').textContent = data.synced || 0;
+        }
+        if (data.pending_push !== undefined) {
+          document.getElementById('pendingCount').textContent = data.pending_push || 0;
+        }
+        if (data.conflicts !== undefined) {
+          document.getElementById('conflictCount').textContent = data.conflicts || 0;
         }
 
-        if (data.apple?.connected) {
-          document.getElementById('appleStatus').textContent = `${data.apple.count || 0} contacts`;
-          document.getElementById('appleStatus').classList.add('connected');
+        // Update last sync time
+        if (data.last_sync) {
+          const lastSync = new Date(data.last_sync);
+          const now = new Date();
+          const diffMs = now - lastSync;
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHours = Math.floor(diffMins / 60);
+          const diffDays = Math.floor(diffHours / 24);
+
+          let timeAgo;
+          if (diffDays > 0) timeAgo = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+          else if (diffHours > 0) timeAgo = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+          else if (diffMins > 0) timeAgo = `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+          else timeAgo = 'Just now';
+
+          document.getElementById('lastSyncTime').textContent = `Last sync: ${timeAgo}`;
+        }
+
+        // Update Google status
+        if (data.google_linked > 0) {
+          document.getElementById('googleStatus').textContent = `${data.google_linked} linked`;
+          document.getElementById('googleStatus').classList.add('connected');
         }
       } catch (e) {
-        console.log('Sync status not available');
+        console.log('Sync status not available:', e);
       }
+    }
+
+    // Load sync status on page load
+    async function loadSyncStatus() {
+      await checkSyncStatus();
     }
 
     // Sync Google
@@ -2502,6 +3498,145 @@
       }
 
       btn.classList.remove('syncing');
+    }
+
+    // Bidirectional Google Sync - Pull from Google
+    async function syncGooglePull() {
+      const btn = document.querySelector('.sync-dir-btn.pull');
+      btn.classList.add('syncing');
+      document.getElementById('googleStatus').textContent = 'Pulling...';
+
+      try {
+        const response = await fetch('/api/atlas/sync/google/pull', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.ok) {
+          showToast(`Pulled ${data.pulled || 0} contacts, merged ${data.merged || 0}`, 'success');
+          document.getElementById('googleStatus').textContent = `${data.pulled || 0} pulled`;
+          document.getElementById('googleStatus').classList.add('connected');
+          loadContacts();
+          checkSyncStatus();
+        } else {
+          showToast(data.error || 'Pull failed', 'error');
+          document.getElementById('googleStatus').textContent = 'Pull failed';
+        }
+      } catch (e) {
+        showToast('Failed to pull from Google', 'error');
+        document.getElementById('googleStatus').textContent = 'Error';
+      }
+
+      btn.classList.remove('syncing');
+    }
+
+    // Bidirectional Google Sync - Push to Google
+    async function syncGooglePush() {
+      const btn = document.querySelector('.sync-dir-btn.push');
+      btn.classList.add('syncing');
+      document.getElementById('googleStatus').textContent = 'Pushing...';
+
+      try {
+        const response = await fetch('/api/atlas/sync/google/push', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.ok) {
+          showToast(`Pushed ${data.pushed || 0} contacts to Google`, 'success');
+          document.getElementById('googleStatus').textContent = `${data.pushed || 0} pushed`;
+          document.getElementById('googleStatus').classList.add('connected');
+          checkSyncStatus();
+        } else {
+          showToast(data.error || 'Push failed', 'error');
+          document.getElementById('googleStatus').textContent = 'Push failed';
+        }
+      } catch (e) {
+        showToast('Failed to push to Google', 'error');
+        document.getElementById('googleStatus').textContent = 'Error';
+      }
+
+      btn.classList.remove('syncing');
+    }
+
+    // Full Bidirectional Google Sync
+    async function syncGoogleFull() {
+      const btn = document.querySelector('.sync-dir-btn.full');
+      btn.classList.add('syncing');
+      document.getElementById('googleStatus').textContent = 'Full sync...';
+
+      try {
+        // First pull from Google
+        const pullResponse = await fetch('/api/atlas/sync/google/pull', { method: 'POST' });
+        const pullData = await pullResponse.json();
+
+        // Then push local changes
+        const pushResponse = await fetch('/api/atlas/sync/google/push', { method: 'POST' });
+        const pushData = await pushResponse.json();
+
+        if (pullData.ok || pushData.ok) {
+          const pulled = pullData.pulled || 0;
+          const pushed = pushData.pushed || 0;
+          showToast(`Synced: ${pulled} pulled, ${pushed} pushed`, 'success');
+          document.getElementById('googleStatus').textContent = `Synced`;
+          document.getElementById('googleStatus').classList.add('connected');
+          loadContacts();
+          checkSyncStatus();
+        } else {
+          showToast('Full sync had issues', 'error');
+          document.getElementById('googleStatus').textContent = 'Sync issues';
+        }
+      } catch (e) {
+        showToast('Full sync failed', 'error');
+        document.getElementById('googleStatus').textContent = 'Error';
+      }
+
+      btn.classList.remove('syncing');
+    }
+
+    // Export contacts to vCard format (for Apple Contacts import)
+    async function exportToVCard() {
+      try {
+        showToast('Preparing vCard export...', 'info');
+
+        // Get all contacts
+        const response = await fetch('/api/atlas/contacts?limit=10000');
+        const data = await response.json();
+        const contacts = data.contacts || [];
+
+        if (contacts.length === 0) {
+          showToast('No contacts to export', 'error');
+          return;
+        }
+
+        // Generate vCard format
+        let vCardContent = '';
+        contacts.forEach(c => {
+          vCardContent += 'BEGIN:VCARD\n';
+          vCardContent += 'VERSION:3.0\n';
+          vCardContent += `N:${c.last_name || ''};${c.first_name || ''}\n`;
+          vCardContent += `FN:${c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim()}\n`;
+          if (c.company) vCardContent += `ORG:${c.company}\n`;
+          if (c.title) vCardContent += `TITLE:${c.title}\n`;
+          if (c.email) vCardContent += `EMAIL:${c.email}\n`;
+          if (c.phone) vCardContent += `TEL:${c.phone}\n`;
+          if (c.birthday) vCardContent += `BDAY:${c.birthday.split('T')[0]}\n`;
+          if (c.notes) vCardContent += `NOTE:${c.notes.replace(/\n/g, '\\n')}\n`;
+          if (c.category) vCardContent += `CATEGORIES:${c.category}\n`;
+          vCardContent += 'END:VCARD\n\n';
+        });
+
+        // Create download
+        const blob = new Blob([vCardContent], { type: 'text/vcard' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `atlas_contacts_${new Date().toISOString().split('T')[0]}.vcf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast(`Exported ${contacts.length} contacts to vCard`, 'success');
+      } catch (e) {
+        showToast('Export failed: ' + e.message, 'error');
+      }
     }
 
     // Contact actions
@@ -2595,12 +3730,20 @@
                       <option value="Business">Business</option>
                       <option value="Personal">Personal</option>
                       <option value="Family">Family</option>
+                      <option value="Friends">Friends</option>
+                      <option value="Music Industry">Music Industry</option>
+                      <option value="TV/Film Industry">TV/Film Industry</option>
+                      <option value="Tech Industry">Tech Industry</option>
                       <option value="Executive/Leadership">Executive</option>
                       <option value="Sales/Marketing">Sales</option>
                       <option value="Technical">Technical</option>
                       <option value="Finance">Finance</option>
                       <option value="Legal">Legal</option>
                       <option value="Media/Press">Media</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Real Estate">Real Estate</option>
+                      <option value="Hospitality">Hospitality</option>
+                      <option value="Government">Government</option>
                       <option value="Investor">Investor</option>
                       <option value="Vendor">Vendor</option>
                     </select>
@@ -2614,6 +3757,18 @@
                       <option value="High">High</option>
                       <option value="VIP">VIP</option>
                     </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Birthday</label>
+                    <input type="date" id="editBirthday" class="form-input">
+                    <span class="date-helper" id="birthdayHelper"></span>
+                  </div>
+                  <div class="form-group">
+                    <label>Anniversary</label>
+                    <input type="date" id="editAnniversary" class="form-input">
+                    <span class="date-helper" id="anniversaryHelper"></span>
                   </div>
                 </div>
                 <div class="form-group">
@@ -2645,6 +3800,20 @@
       document.getElementById('editPriority').value = contact.priority || 'Normal';
       document.getElementById('editNotes').value = contact.notes || '';
 
+      // Populate birthday and anniversary
+      const birthdayInput = document.getElementById('editBirthday');
+      const anniversaryInput = document.getElementById('editAnniversary');
+      birthdayInput.value = contact.birthday ? contact.birthday.split('T')[0] : '';
+      anniversaryInput.value = contact.anniversary ? contact.anniversary.split('T')[0] : '';
+
+      // Update helper text
+      updateDateHelper('birthday', birthdayInput.value);
+      updateDateHelper('anniversary', anniversaryInput.value);
+
+      // Add event listeners for date changes
+      birthdayInput.onchange = () => updateDateHelper('birthday', birthdayInput.value);
+      anniversaryInput.onchange = () => updateDateHelper('anniversary', anniversaryInput.value);
+
       modal.classList.add('visible');
       modal.onclick = (e) => { if (e.target === modal) closeEditModal(); };
     }
@@ -2660,6 +3829,8 @@
       event.preventDefault();
 
       const contactId = document.getElementById('editContactId').value;
+      const birthdayVal = document.getElementById('editBirthday').value;
+      const anniversaryVal = document.getElementById('editAnniversary').value;
       const data = {
         name: document.getElementById('editName').value,
         first_name: document.getElementById('editFirstName').value,
@@ -2670,7 +3841,9 @@
         phone: document.getElementById('editPhone').value,
         category: document.getElementById('editCategory').value,
         priority: document.getElementById('editPriority').value,
-        notes: document.getElementById('editNotes').value
+        notes: document.getElementById('editNotes').value,
+        birthday: birthdayVal || null,
+        anniversary: anniversaryVal || null
       };
 
       try {
@@ -3489,6 +4662,296 @@
         loadInteractionTimeline(contact.id);
       }
     };
+
+    // ============================================
+    // BIRTHDAY & ANNIVERSARY HELPERS
+    // ============================================
+
+    function updateDateHelper(type, dateStr) {
+      const helper = document.getElementById(`${type}Helper`);
+      if (!helper) return;
+
+      if (!dateStr) {
+        helper.textContent = '';
+        return;
+      }
+
+      const date = new Date(dateStr);
+      const today = new Date();
+      const thisYear = today.getFullYear();
+
+      // Calculate age/years
+      const birthYear = date.getFullYear();
+      let age = thisYear - birthYear;
+
+      // Check if birthday/anniversary has passed this year
+      const thisYearDate = new Date(thisYear, date.getMonth(), date.getDate());
+      if (thisYearDate > today) {
+        age--; // Haven't reached it this year yet
+      }
+
+      // Days until next occurrence
+      let nextDate = new Date(thisYear, date.getMonth(), date.getDate());
+      if (nextDate < today) {
+        nextDate = new Date(thisYear + 1, date.getMonth(), date.getDate());
+      }
+      const daysUntil = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
+
+      if (type === 'birthday') {
+        if (daysUntil === 0) {
+          helper.textContent = `${age} years old - Today!`;
+          helper.style.color = '#22c55e';
+        } else if (daysUntil <= 7) {
+          helper.textContent = `Will be ${age + 1} - In ${daysUntil} days`;
+          helper.style.color = '#f97316';
+        } else if (daysUntil <= 30) {
+          helper.textContent = `Will be ${age + 1} - In ${daysUntil} days`;
+          helper.style.color = '#eab308';
+        } else {
+          helper.textContent = `${age} years old`;
+          helper.style.color = 'var(--text-secondary)';
+        }
+      } else {
+        // Anniversary
+        if (daysUntil === 0) {
+          helper.textContent = `${age} years together - Today!`;
+          helper.style.color = '#22c55e';
+        } else if (daysUntil <= 7) {
+          helper.textContent = `${age + 1} years - In ${daysUntil} days`;
+          helper.style.color = '#f97316';
+        } else if (daysUntil <= 30) {
+          helper.textContent = `${age + 1} years - In ${daysUntil} days`;
+          helper.style.color = '#eab308';
+        } else {
+          helper.textContent = `${age} years together`;
+          helper.style.color = 'var(--text-secondary)';
+        }
+      }
+    }
+
+    // Filter contacts by upcoming birthdays/anniversaries
+    function getUpcomingEvents(eventType, daysAhead = 30) {
+      const today = new Date();
+      const results = [];
+
+      for (const contact of contacts) {
+        const dateField = eventType === 'birthday' ? contact.birthday : contact.anniversary;
+        if (!dateField) continue;
+
+        const date = new Date(dateField);
+        const thisYear = today.getFullYear();
+
+        // Get this year's occurrence
+        let nextDate = new Date(thisYear, date.getMonth(), date.getDate());
+        if (nextDate < today) {
+          nextDate = new Date(thisYear + 1, date.getMonth(), date.getDate());
+        }
+
+        const daysUntil = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
+        if (daysUntil <= daysAhead) {
+          results.push({
+            contact,
+            daysUntil,
+            nextDate,
+            eventType
+          });
+        }
+      }
+
+      // Sort by days until event
+      return results.sort((a, b) => a.daysUntil - b.daysUntil);
+    }
+
+    // ============================================
+    // BATCH CONTACT CLEANUP TOOLS
+    // ============================================
+    let cleanupData = null;
+    let cleanupSelectedIds = new Set();
+
+    async function openCleanupModal() {
+      // Create modal if it doesn't exist
+      let modal = document.getElementById('cleanupModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'cleanupModal';
+        modal.className = 'cleanup-modal-overlay';
+        modal.innerHTML = `
+          <div class="cleanup-modal">
+            <div class="cleanup-header">
+              <h2>Contact Cleanup</h2>
+              <button class="cleanup-close" onclick="closeCleanupModal()">&times;</button>
+            </div>
+            <div class="cleanup-loading" id="cleanupLoading">
+              <div class="spinner"></div>
+              <p>Finding incomplete contacts...</p>
+            </div>
+            <div class="cleanup-content" id="cleanupContent" style="display:none;">
+              <div class="cleanup-tabs" id="cleanupTabs"></div>
+              <div class="cleanup-list" id="cleanupList"></div>
+              <div class="cleanup-actions">
+                <button class="cleanup-btn secondary" onclick="selectAllCleanup()">Select All</button>
+                <button class="cleanup-btn secondary" onclick="deselectAllCleanup()">Deselect All</button>
+                <button class="cleanup-btn danger" onclick="deleteSelectedContacts()" id="deleteSelectedBtn" disabled>
+                  Delete Selected (<span id="selectedCount">0</span>)
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      modal.style.display = 'flex';
+      document.getElementById('cleanupLoading').style.display = 'flex';
+      document.getElementById('cleanupContent').style.display = 'none';
+
+      // Fetch incomplete contacts
+      try {
+        const response = await fetch('/api/atlas/contacts/find-incomplete', { method: 'POST' });
+        cleanupData = await response.json();
+
+        if (cleanupData.ok) {
+          renderCleanupTabs();
+          showCleanupCategory('no_contact_info');
+        } else {
+          alert('Error loading contacts: ' + (cleanupData.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Cleanup error:', error);
+        alert('Error loading incomplete contacts');
+      }
+
+      document.getElementById('cleanupLoading').style.display = 'none';
+      document.getElementById('cleanupContent').style.display = 'flex';
+    }
+
+    function closeCleanupModal() {
+      const modal = document.getElementById('cleanupModal');
+      if (modal) modal.style.display = 'none';
+      cleanupSelectedIds.clear();
+    }
+
+    function renderCleanupTabs() {
+      const tabs = document.getElementById('cleanupTabs');
+      const categories = [
+        { id: 'no_contact_info', label: 'No Contact Info', icon: '!' },
+        { id: 'phone_only', label: 'Phone Only', icon: 'p' },
+        { id: 'name_only', label: 'Name Only', icon: 'n' },
+        { id: 'uncategorized', label: 'Uncategorized', icon: 'u' }
+      ];
+
+      tabs.innerHTML = categories.map(cat => `
+        <button class="cleanup-tab" data-category="${cat.id}" onclick="showCleanupCategory('${cat.id}')">
+          ${cat.label}
+          <span class="cleanup-count">${cleanupData.counts[cat.id] || 0}</span>
+        </button>
+      `).join('');
+    }
+
+    function showCleanupCategory(categoryId) {
+      // Update active tab
+      document.querySelectorAll('.cleanup-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.category === categoryId);
+      });
+
+      // Render contacts for this category
+      const list = document.getElementById('cleanupList');
+      const contacts = cleanupData.results[categoryId] || [];
+
+      if (contacts.length === 0) {
+        list.innerHTML = '<div class="cleanup-empty">No contacts in this category</div>';
+        return;
+      }
+
+      list.innerHTML = contacts.map(contact => `
+        <div class="cleanup-item" data-id="${contact.id}">
+          <label class="cleanup-checkbox">
+            <input type="checkbox" onchange="toggleCleanupSelection(${contact.id})"
+                   ${cleanupSelectedIds.has(contact.id) ? 'checked' : ''}>
+            <span class="checkmark"></span>
+          </label>
+          <div class="cleanup-info">
+            <div class="cleanup-name">${escapeHtml(contact.name || 'No Name')}</div>
+            <div class="cleanup-details">
+              ${contact.phone ? '<span>p: ' + escapeHtml(contact.phone) + '</span>' : ''}
+              ${contact.email ? '<span>e: ' + escapeHtml(contact.email) + '</span>' : ''}
+              ${contact.company ? '<span>c: ' + escapeHtml(contact.company) + '</span>' : ''}
+            </div>
+          </div>
+          <button class="cleanup-keep" onclick="keepContact(${contact.id})" title="Keep this contact">Keep</button>
+        </div>
+      `).join('');
+
+      updateSelectedCount();
+    }
+
+    function toggleCleanupSelection(id) {
+      if (cleanupSelectedIds.has(id)) {
+        cleanupSelectedIds.delete(id);
+      } else {
+        cleanupSelectedIds.add(id);
+      }
+      updateSelectedCount();
+    }
+
+    function selectAllCleanup() {
+      const activeTab = document.querySelector('.cleanup-tab.active');
+      if (!activeTab) return;
+      const categoryId = activeTab.dataset.category;
+      const contacts = cleanupData.results[categoryId] || [];
+      contacts.forEach(c => cleanupSelectedIds.add(c.id));
+      showCleanupCategory(categoryId);
+    }
+
+    function deselectAllCleanup() {
+      cleanupSelectedIds.clear();
+      const activeTab = document.querySelector('.cleanup-tab.active');
+      if (activeTab) showCleanupCategory(activeTab.dataset.category);
+    }
+
+    function updateSelectedCount() {
+      const count = cleanupSelectedIds.size;
+      document.getElementById('selectedCount').textContent = count;
+      document.getElementById('deleteSelectedBtn').disabled = count === 0;
+    }
+
+    function keepContact(id) {
+      cleanupSelectedIds.delete(id);
+      const item = document.querySelector(`.cleanup-item[data-id="${id}"]`);
+      if (item) item.remove();
+      updateSelectedCount();
+    }
+
+    async function deleteSelectedContacts() {
+      if (cleanupSelectedIds.size === 0) return;
+
+      const count = cleanupSelectedIds.size;
+      if (!confirm(`Are you sure you want to permanently delete ${count} contact(s)? This cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/atlas/contacts/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: Array.from(cleanupSelectedIds) })
+        });
+
+        const result = await response.json();
+        if (result.ok) {
+          alert(`Successfully deleted ${result.deleted_count} contacts`);
+          cleanupSelectedIds.clear();
+          // Refresh the cleanup data
+          closeCleanupModal();
+          loadContacts();  // Refresh main contact list
+        } else {
+          alert('Error deleting contacts: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert('Error deleting contacts');
+      }
+    }
   </script>
 </body>
 </html>
