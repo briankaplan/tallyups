@@ -4085,9 +4085,15 @@ def atlas_people_photo(identifier):
 # =============================================================================
 
 @app.route("/api/atlas/contacts", methods=["GET"])
-@login_required
 def atlas_contacts():
     """Get all contacts from database with unified format for UI"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
     try:
         limit = request.args.get('limit', 100, type=int)
         offset = request.args.get('offset', 0, type=int)
@@ -4190,9 +4196,15 @@ def atlas_contacts():
 
 
 @app.route("/api/atlas/contacts/<contact_id>", methods=["GET"])
-@login_required
 def atlas_contact_detail(contact_id):
     """Get detailed contact information"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
     try:
         conn = get_mysql_connection()
         cursor = conn.cursor(dictionary=True)
@@ -4256,9 +4268,15 @@ def atlas_contact_detail(contact_id):
 # =============================================================================
 
 @app.route("/api/atlas/sync/status", methods=["GET"])
-@login_required
 def atlas_sync_status():
     """Get contact sync engine status and available adapters"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
     if not CONTACT_SYNC_AVAILABLE:
         return jsonify({'error': 'Contact Sync Engine not available'}), 503
 
@@ -4309,9 +4327,15 @@ def atlas_sync_status():
 
 
 @app.route("/api/atlas/sync/apple", methods=["POST"])
-@login_required
 def atlas_sync_apple():
     """Sync Apple Contacts to ATLAS"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
     import platform
 
     # Apple Contacts sync only works on macOS
@@ -4365,9 +4389,15 @@ def atlas_sync_apple():
 
 
 @app.route("/api/atlas/sync/google", methods=["POST"])
-@login_required
 def atlas_sync_google():
     """Sync Google Contacts to ATLAS using Google People API"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
     if not ATLAS_AVAILABLE or not GooglePeopleAPI:
         return jsonify({'error': 'Google People API not available', 'success': False}), 503
 
