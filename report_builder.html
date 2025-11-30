@@ -595,6 +595,186 @@ body {
   background: rgba(255,255,255,0.2);
 }
 
+/* Report View Modal */
+.report-view-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.report-view-modal.active {
+  display: flex;
+}
+.report-view-container {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 1000px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.report-view-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--edge);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.report-view-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--brand);
+  margin: 0 0 4px 0;
+}
+.report-view-header p {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+}
+.report-view-header .modal-close {
+  position: static;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+}
+.report-view-summary {
+  padding: 16px 24px;
+  background: var(--bg);
+  display: flex;
+  gap: 40px;
+  border-bottom: 1px solid var(--edge);
+}
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.summary-item .summary-label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.summary-item .summary-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--brand);
+}
+.report-view-table-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.report-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+.report-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--edge);
+}
+.report-table th.amount-col {
+  text-align: right;
+}
+.report-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.report-table tbody tr:hover {
+  background: rgba(0,255,136,0.05);
+}
+.report-table .amount-col {
+  text-align: right;
+  font-weight: 600;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+.report-table .receipt-link {
+  color: var(--brand);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.report-table .receipt-link:hover {
+  text-decoration: underline;
+}
+.report-table .no-receipt {
+  color: var(--muted);
+  font-style: italic;
+}
+.report-view-actions {
+  padding: 16px 24px;
+  border-top: 1px solid var(--edge);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.btn-unsubmit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: rgba(255,78,106,0.15);
+  color: var(--bad);
+  border: 1px solid rgba(255,78,106,0.3);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-unsubmit:hover {
+  background: rgba(255,78,106,0.25);
+  border-color: var(--bad);
+}
+.btn-export, .btn-export-zip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--brand);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.btn-export:hover, .btn-export-zip:hover {
+  background: #00cc6a;
+  transform: translateY(-1px);
+}
+.btn-export-zip {
+  background: rgba(255,255,255,0.1);
+  color: var(--ink);
+}
+.btn-export-zip:hover {
+  background: rgba(255,255,255,0.15);
+}
+
 /* Empty state */
 .empty-state {
   text-align: center;
@@ -949,6 +1129,69 @@ body {
   <img id="receipt-modal-img" src="" alt="Receipt">
 </div>
 
+<!-- Report View Modal -->
+<div class="report-view-modal" id="report-view-modal">
+  <div class="report-view-container">
+    <div class="report-view-header">
+      <div>
+        <h2 id="report-view-title">Report Name</h2>
+        <p id="report-view-meta">Business Type • Created Date</p>
+      </div>
+      <button class="modal-close" onclick="closeReportViewModal()">×</button>
+    </div>
+    <div class="report-view-summary">
+      <div class="summary-item">
+        <span class="summary-label">Expenses</span>
+        <span class="summary-value" id="report-view-count">0</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Total Amount</span>
+        <span class="summary-value" id="report-view-total">$0.00</span>
+      </div>
+    </div>
+    <div class="report-view-table-container">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Merchant</th>
+            <th>Category</th>
+            <th class="amount-col">Amount</th>
+            <th>Receipt</th>
+          </tr>
+        </thead>
+        <tbody id="report-view-tbody">
+        </tbody>
+      </table>
+    </div>
+    <div class="report-view-actions">
+      <button class="btn-unsubmit" onclick="unsubmitCurrentReport()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        Unsubmit Report
+      </button>
+      <div style="display:flex;gap:8px">
+        <a class="btn-export" id="report-export-link" download>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7,10 12,15 17,10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export CSV
+        </a>
+        <a class="btn-export-zip" id="report-zip-link" download>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+          </svg>
+          Download Receipts
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast">
   <span class="toast-icon" id="toast-icon">✓</span>
@@ -1037,20 +1280,117 @@ async function loadSubmittedReports() {
   }
 }
 
+let currentViewingReportId = null;
+
 async function viewReport(reportId) {
   try {
+    showToast('Loading report...', 'info');
+
     const response = await fetch(`/reports/${reportId}`, {
       credentials: 'include'
     });
     const data = await response.json();
-    if (data.expenses && data.expenses.length > 0) {
-      alert(`Report: ${data.report_name || reportId}\n\nExpenses: ${data.expenses.length}\nTotal: $${data.expenses.reduce((sum, e) => sum + Math.abs(parseFloat(e.amount || 0)), 0).toFixed(2)}`);
-    } else {
-      alert('No expenses found in this report');
+
+    if (!data.expenses || data.expenses.length === 0) {
+      showToast('No expenses found in this report', 'error');
+      return;
     }
+
+    currentViewingReportId = reportId;
+
+    // Set header info
+    document.getElementById('report-view-title').textContent = data.report_name || reportId;
+
+    // Try to get business type and date from report metadata
+    const businessType = data.business_type || '';
+    const createdAt = data.created_at ? new Date(data.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    document.getElementById('report-view-meta').textContent = [businessType, createdAt].filter(Boolean).join(' • ') || reportId;
+
+    // Calculate total from expenses
+    const total = data.expenses.reduce((sum, e) => {
+      const amt = parseFloat(e['Chase Amount'] || e.amount || e.chase_amount || 0);
+      return sum + Math.abs(amt);
+    }, 0);
+
+    document.getElementById('report-view-count').textContent = data.expenses.length;
+    document.getElementById('report-view-total').textContent = formatMoney(total);
+
+    // Build table rows
+    const tbody = document.getElementById('report-view-tbody');
+    tbody.innerHTML = data.expenses.map(exp => {
+      const date = exp['Chase Date'] || exp.date || exp.chase_date || '';
+      const merchant = exp['MI Merchant'] || exp['Chase Description'] || exp.merchant || exp.mi_merchant || exp.chase_description || 'Unknown';
+      const category = exp['Chase Category'] || exp['MI Category'] || exp.category || exp.chase_category || exp.mi_category || '';
+      const amount = parseFloat(exp['Chase Amount'] || exp.amount || exp.chase_amount || 0);
+      const receipt = exp['R2 URL'] || exp['receipt_url'] || exp.r2_url || exp['Receipt File'] || exp.receipt_file || '';
+
+      let receiptCell = '';
+      if (receipt) {
+        const receiptUrl = receipt.startsWith('http') ? receipt : '/receipts/' + receipt.replace(/^receipts\//, '');
+        receiptCell = `<a href="${escapeHtml(receiptUrl)}" target="_blank" class="receipt-link">View</a>`;
+      } else {
+        receiptCell = '<span class="no-receipt">None</span>';
+      }
+
+      return `
+        <tr>
+          <td>${formatDate(date)}</td>
+          <td>${escapeHtml(merchant)}</td>
+          <td>${escapeHtml(category)}</td>
+          <td class="amount-col">${formatMoney(Math.abs(amount))}</td>
+          <td>${receiptCell}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // Set export links
+    document.getElementById('report-export-link').href = `/reports/${reportId}/export/downhome`;
+    document.getElementById('report-zip-link').href = `/reports/${reportId}/receipts.zip`;
+
+    // Show modal
+    document.getElementById('report-view-modal').classList.add('active');
+
   } catch (e) {
     console.error('Error viewing report:', e);
     showToast('Error loading report', 'error');
+  }
+}
+
+function closeReportViewModal() {
+  document.getElementById('report-view-modal').classList.remove('active');
+  currentViewingReportId = null;
+}
+
+async function unsubmitCurrentReport() {
+  if (!currentViewingReportId) return;
+
+  const confirmed = confirm('Are you sure you want to unsubmit this report? All transactions will be returned to the main viewer and can be added to a new report.');
+  if (!confirmed) return;
+
+  try {
+    showToast('Unsubmitting report...', 'info');
+
+    const response = await fetch(`/reports/${currentViewingReportId}/unsubmit`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to unsubmit report');
+    }
+
+    const data = await response.json();
+
+    showToast(data.message || 'Report unsubmitted successfully!', 'success');
+
+    // Close modal and refresh list
+    closeReportViewModal();
+    loadSubmittedReports();
+
+  } catch (e) {
+    console.error('Error unsubmitting report:', e);
+    showToast('Failed to unsubmit report: ' + e.message, 'error');
   }
 }
 
@@ -1567,6 +1907,7 @@ function handleKeyboard(e) {
       break;
     case 'escape':
       closeReceiptModal();
+      closeReportViewModal();
       break;
   }
 }

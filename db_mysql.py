@@ -864,6 +864,15 @@ class MySQLReceiptDatabase:
         cursor.execute("SELECT * FROM reports ORDER BY created_at DESC")
         return cursor.fetchall()
 
+    def get_report(self, report_id: str) -> Optional[Dict]:
+        """Get a single report by ID"""
+        if not self.use_mysql or not self.conn:
+            raise RuntimeError("MySQL not available")
+
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM reports WHERE report_id = %s", (report_id,))
+        return cursor.fetchone()
+
     def get_report_expenses(self, report_id: str) -> List[Dict]:
         """Get all expenses for a specific report"""
         if not self.use_mysql or not self.conn:

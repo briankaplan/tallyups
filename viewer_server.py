@@ -4389,16 +4389,25 @@ def reports_list():
 
 @app.route("/reports/<report_id>", methods=["GET"])
 def reports_get(report_id):
-    """Get expenses for a specific report"""
+    """Get expenses for a specific report with metadata"""
     if not USE_DATABASE or not db:
         abort(503, "Reports require database mode")
 
     try:
+        # Get report metadata
+        report_meta = db.get_report(report_id)
+        if not report_meta:
+            abort(404, f"Report {report_id} not found")
+
         expenses = db.get_report_expenses(report_id)
 
         # Convert to UI-friendly format
         converted = []
         for exp in expenses:
+            # Get R2 URL for receipts
+            r2_url = exp.get("r2_url") or ""
+            receipt_file = exp.get("receipt_file") or ""
+
             converted.append({
                 "_index": exp["_index"],
                 "Chase Date": exp["chase_date"],
@@ -4406,7 +4415,9 @@ def reports_get(report_id):
                 "Chase Amount": exp["chase_amount"],
                 "Chase Category": exp["chase_category"],
                 "Chase Type": exp["chase_type"],
-                "Receipt File": exp["receipt_file"],
+                "Receipt File": receipt_file,
+                "R2 URL": r2_url,
+                "receipt_url": r2_url or receipt_file,
                 "Business Type": exp["business_type"],
                 "Notes": exp["notes"],
                 "AI Note": exp["ai_note"],
@@ -4414,7 +4425,9 @@ def reports_get(report_id):
                 "Review Status": exp["review_status"],
                 "Category": exp["category"],
                 "Report ID": exp["report_id"],
-                "Source": exp["source"]
+                "Source": exp["source"],
+                "MI Merchant": exp.get("mi_merchant") or "",
+                "MI Category": exp.get("mi_category") or "",
             })
 
         total_amount = sum(abs(float(e.get("Chase Amount", 0) or 0)) for e in converted)
@@ -4422,6 +4435,9 @@ def reports_get(report_id):
         return jsonify(safe_json({
             "ok": True,
             "report_id": report_id,
+            "report_name": report_meta.get("report_name") or report_id,
+            "business_type": report_meta.get("business_type") or "",
+            "created_at": str(report_meta.get("created_at") or ""),
             "expenses": converted,
             "count": len(converted),
             "total_amount": round(total_amount, 2)
