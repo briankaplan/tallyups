@@ -4099,7 +4099,7 @@ def atlas_contacts():
         offset = request.args.get('offset', 0, type=int)
         search = request.args.get('search', '')
 
-        conn = get_mysql_connection()
+        conn = get_mysql_db()
         cursor = conn.cursor(dictionary=True)
 
         # Try to get contacts from atlas_contacts table first
@@ -4206,7 +4206,7 @@ def atlas_contact_detail(contact_id):
             return jsonify({'error': 'Authentication required'}), 401
 
     try:
-        conn = get_mysql_connection()
+        conn = get_mysql_db()
         cursor = conn.cursor(dictionary=True)
 
         cursor.execute("SELECT * FROM atlas_contacts WHERE id = %s", (contact_id,))
@@ -4410,7 +4410,7 @@ def atlas_sync_google():
         contacts = people.get_all_contacts(limit=limit)
 
         # Store contacts in database
-        conn = get_mysql_connection()
+        conn = get_mysql_db()
         cursor = conn.cursor()
 
         # Create atlas_contacts table if it doesn't exist
