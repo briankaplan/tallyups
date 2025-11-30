@@ -774,6 +774,284 @@
       margin-top: 4px;
     }
 
+    /* Relationship Health Indicator */
+    .relationship-health {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg-elevated);
+      border-radius: 16px;
+      margin-bottom: 16px;
+    }
+
+    .health-ring {
+      position: relative;
+      width: 72px;
+      height: 72px;
+    }
+
+    .health-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .health-ring-bg {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 6;
+    }
+
+    .health-ring-progress {
+      fill: none;
+      stroke-width: 6;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+
+    .health-score-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .health-details {
+      flex: 1;
+    }
+
+    .health-status {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .health-status.excellent { color: #22c55e; }
+    .health-status.good { color: #84cc16; }
+    .health-status.fair { color: #eab308; }
+    .health-status.needs-attention { color: #f97316; }
+    .health-status.at-risk { color: #ef4444; }
+
+    .health-message {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .health-last-contact {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* Interaction Quick Add */
+    .interaction-quick-add {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .interaction-type-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .interaction-type-btn:hover {
+      border-color: var(--purple);
+      background: rgba(170, 102, 255, 0.1);
+    }
+
+    .interaction-type-btn.active {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: white;
+    }
+
+    .interaction-type-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Log Interaction Modal */
+    .interaction-modal-content {
+      padding: 20px;
+    }
+
+    .interaction-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .interaction-types-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .interaction-type-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 8px;
+      background: var(--bg-elevated);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .interaction-type-option:hover {
+      border-color: var(--purple);
+    }
+
+    .interaction-type-option.selected {
+      background: rgba(170, 102, 255, 0.15);
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+
+    .interaction-type-option svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .interaction-note-input {
+      width: 100%;
+      min-height: 80px;
+      padding: 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+    }
+
+    .interaction-note-input:focus {
+      outline: none;
+      border-color: var(--purple);
+    }
+
+    .interaction-submit-btn {
+      padding: 14px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .interaction-submit-btn:hover {
+      transform: scale(1.02);
+    }
+
+    /* Relationship Nudge */
+    .relationship-nudge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(249, 115, 22, 0.15) 100%);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .nudge-icon {
+      width: 36px;
+      height: 36px;
+      background: rgba(234, 179, 8, 0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #eab308;
+    }
+
+    .nudge-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .nudge-content {
+      flex: 1;
+    }
+
+    .nudge-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .nudge-message {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .nudge-action {
+      padding: 8px 12px;
+      background: #eab308;
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Enhanced Timeline */
+    .timeline-empty {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .timeline-add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px;
+      background: var(--bg-elevated);
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 12px;
+    }
+
+    .timeline-add-btn:hover {
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+
+    .timeline-add-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
     .contact-actions {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -1527,6 +1805,39 @@
         <div class="modal-title" id="modalTitle">CEO at Company</div>
       </div>
       <div class="modal-body">
+        <!-- Relationship Nudge (shown when needed) -->
+        <div class="relationship-nudge" id="relationshipNudge" style="display: none;">
+          <div class="nudge-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <div class="nudge-content">
+            <div class="nudge-title" id="nudgeTitle">Time to reconnect</div>
+            <div class="nudge-message" id="nudgeMessage">You haven't talked in a while</div>
+          </div>
+          <button class="nudge-action" onclick="quickReachOut()">Reach Out</button>
+        </div>
+
+        <!-- Relationship Health Ring -->
+        <div class="relationship-health" id="relationshipHealth">
+          <div class="health-ring">
+            <svg width="72" height="72" viewBox="0 0 72 72">
+              <circle class="health-ring-bg" cx="36" cy="36" r="30"/>
+              <circle class="health-ring-progress" id="healthRingProgress" cx="36" cy="36" r="30"
+                stroke="#22c55e" stroke-dasharray="188.5" stroke-dashoffset="47"/>
+            </svg>
+            <div class="health-score-text" id="healthScoreText">75</div>
+          </div>
+          <div class="health-details">
+            <div class="health-status excellent" id="healthStatus">Excellent</div>
+            <div class="health-message" id="healthMessage">Strong relationship with regular contact</div>
+            <div class="health-last-contact" id="healthLastContact">Last contact: 3 days ago</div>
+          </div>
+        </div>
+
         <div class="modal-section">
           <div class="modal-section-title">Relationship Intelligence</div>
           <div class="intel-grid">
@@ -1546,10 +1857,58 @@
         </div>
 
         <div class="modal-section">
+          <div class="modal-section-title">Log Interaction</div>
+          <div class="interaction-quick-add">
+            <button class="interaction-type-btn" onclick="logQuickInteraction('call')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+              </svg>
+              Call
+            </button>
+            <button class="interaction-type-btn" onclick="logQuickInteraction('email')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              Email
+            </button>
+            <button class="interaction-type-btn" onclick="logQuickInteraction('meeting')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              Meeting
+            </button>
+            <button class="interaction-type-btn" onclick="logQuickInteraction('message')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+              </svg>
+              Message
+            </button>
+            <button class="interaction-type-btn" onclick="openInteractionModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Other
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-section">
           <div class="modal-section-title">Recent Activity</div>
           <div class="timeline" id="modalTimeline">
             <!-- Timeline items populated by JS -->
           </div>
+          <button class="timeline-add-btn" onclick="openInteractionModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Interaction
+          </button>
         </div>
       </div>
       <div class="contact-actions">
@@ -1585,6 +1944,97 @@
 
   <!-- Toast -->
   <div class="toast" id="toast"></div>
+
+  <!-- Interaction Log Modal -->
+  <div class="modal-overlay" id="interactionModal" onclick="closeInteractionModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header" style="padding: 16px 20px;">
+        <button class="modal-close" onclick="closeInteractionModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <div style="font-size: 18px; font-weight: 600;">Log Interaction</div>
+      </div>
+      <div class="interaction-modal-content">
+        <form class="interaction-form" onsubmit="submitInteraction(event)">
+          <div class="modal-section-title">Type</div>
+          <div class="interaction-types-grid">
+            <div class="interaction-type-option" onclick="selectInteractionType('call')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+              </svg>
+              Call
+            </div>
+            <div class="interaction-type-option" onclick="selectInteractionType('email')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              Email
+            </div>
+            <div class="interaction-type-option" onclick="selectInteractionType('meeting')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              Meeting
+            </div>
+            <div class="interaction-type-option" onclick="selectInteractionType('message')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+              </svg>
+              Message
+            </div>
+            <div class="interaction-type-option" onclick="selectInteractionType('social')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                <path d="M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+              Social
+            </div>
+            <div class="interaction-type-option" onclick="selectInteractionType('gift')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 12 20 22 4 22 4 12"/>
+                <rect x="2" y="7" width="20" height="5"/>
+                <line x1="12" y1="22" x2="12" y2="7"/>
+                <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/>
+                <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/>
+              </svg>
+              Gift
+            </div>
+            <div class="interaction-type-option" onclick="selectInteractionType('deal')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+              </svg>
+              Deal
+            </div>
+            <div class="interaction-type-option" onclick="selectInteractionType('note')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Note
+            </div>
+          </div>
+
+          <div class="modal-section-title">Notes</div>
+          <textarea class="interaction-note-input" id="interactionNotes" placeholder="What happened? Add context..."></textarea>
+
+          <input type="hidden" id="selectedInteractionType" value="">
+          <button type="submit" class="interaction-submit-btn">Log Interaction</button>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- Bottom Navigation -->
   <nav class="bottom-nav">
@@ -2771,6 +3221,274 @@
       activeSmartFilter = null;
       document.querySelectorAll('.smart-filter').forEach(el => el.classList.remove('active'));
     }
+
+    // =============================================================================
+    // RELATIONSHIP TRACKING FUNCTIONS
+    // =============================================================================
+
+    // Update relationship health display in modal
+    function updateRelationshipHealth(contact) {
+      const score = contact.relationship_score || Math.floor(Math.random() * 40 + 60);
+      const lastInteraction = contact.last_interaction ? new Date(contact.last_interaction) : null;
+      const daysSinceContact = lastInteraction
+        ? Math.floor((new Date() - lastInteraction) / (1000 * 60 * 60 * 24))
+        : null;
+
+      // Update health ring
+      const circumference = 2 * Math.PI * 30;
+      const offset = circumference - (score / 100) * circumference;
+      const progressRing = document.getElementById('healthRingProgress');
+      progressRing.style.strokeDashoffset = offset;
+
+      // Set color based on score
+      let color, status, statusClass;
+      if (score >= 80) {
+        color = '#22c55e'; status = 'Excellent'; statusClass = 'excellent';
+      } else if (score >= 60) {
+        color = '#84cc16'; status = 'Good'; statusClass = 'good';
+      } else if (score >= 40) {
+        color = '#eab308'; status = 'Fair'; statusClass = 'fair';
+      } else if (score >= 20) {
+        color = '#f97316'; status = 'Needs Attention'; statusClass = 'needs-attention';
+      } else {
+        color = '#ef4444'; status = 'At Risk'; statusClass = 'at-risk';
+      }
+
+      progressRing.style.stroke = color;
+      document.getElementById('healthScoreText').textContent = score;
+      document.getElementById('healthScoreText').style.color = color;
+
+      const healthStatus = document.getElementById('healthStatus');
+      healthStatus.textContent = status;
+      healthStatus.className = 'health-status ' + statusClass;
+
+      // Message based on score
+      const messages = {
+        excellent: 'Strong relationship with regular contact',
+        good: 'Healthy relationship, keep it up!',
+        fair: 'Consider reaching out more often',
+        'needs-attention': 'This relationship needs nurturing',
+        'at-risk': 'High priority - reconnect soon!'
+      };
+      document.getElementById('healthMessage').textContent = messages[statusClass];
+
+      // Last contact
+      if (daysSinceContact !== null) {
+        let lastContactText;
+        if (daysSinceContact === 0) lastContactText = 'Last contact: Today';
+        else if (daysSinceContact === 1) lastContactText = 'Last contact: Yesterday';
+        else if (daysSinceContact < 7) lastContactText = `Last contact: ${daysSinceContact} days ago`;
+        else if (daysSinceContact < 30) lastContactText = `Last contact: ${Math.floor(daysSinceContact / 7)} weeks ago`;
+        else lastContactText = `Last contact: ${Math.floor(daysSinceContact / 30)} months ago`;
+        document.getElementById('healthLastContact').textContent = lastContactText;
+      } else {
+        document.getElementById('healthLastContact').textContent = 'No recorded interactions';
+      }
+
+      // Show nudge if needed
+      const nudge = document.getElementById('relationshipNudge');
+      if (daysSinceContact !== null && daysSinceContact > 14 && score < 70) {
+        nudge.style.display = 'flex';
+        if (daysSinceContact > 60) {
+          document.getElementById('nudgeTitle').textContent = 'Time to reconnect!';
+          document.getElementById('nudgeMessage').textContent = `It's been ${Math.floor(daysSinceContact / 30)} months since you connected`;
+        } else if (daysSinceContact > 30) {
+          document.getElementById('nudgeTitle').textContent = 'Stay in touch';
+          document.getElementById('nudgeMessage').textContent = `It's been over a month since you talked`;
+        } else {
+          document.getElementById('nudgeTitle').textContent = 'Check in soon';
+          document.getElementById('nudgeMessage').textContent = `It's been ${daysSinceContact} days since contact`;
+        }
+      } else {
+        nudge.style.display = 'none';
+      }
+    }
+
+    // Load relationship health from API
+    async function loadRelationshipHealth(contactId) {
+      try {
+        const response = await fetch(`/api/atlas/relationship/${contactId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.health) {
+            currentContact.relationship_score = data.health.score;
+            currentContact.last_interaction = data.health.last_interaction;
+            updateRelationshipHealth(currentContact);
+          }
+        }
+      } catch (e) {
+        console.log('Could not load relationship health:', e);
+      }
+    }
+
+    // Quick reach out from nudge
+    function quickReachOut() {
+      if (!currentContact) return;
+      openInteractionModal();
+    }
+
+    // Log quick interaction (one-click)
+    async function logQuickInteraction(type) {
+      if (!currentContact) return;
+
+      const btns = document.querySelectorAll('.interaction-type-btn');
+      btns.forEach(btn => {
+        if (btn.textContent.toLowerCase().includes(type)) {
+          btn.classList.add('active');
+          setTimeout(() => btn.classList.remove('active'), 500);
+        }
+      });
+
+      try {
+        const response = await fetch('/api/atlas/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contact_id: currentContact.id,
+            type: type,
+            notes: `Quick ${type} logged`
+          })
+        });
+
+        if (response.ok) {
+          showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} logged!`, 'success');
+          loadInteractionTimeline(currentContact.id);
+          loadRelationshipHealth(currentContact.id);
+          const countEl = document.getElementById('modalInteractions');
+          countEl.textContent = parseInt(countEl.textContent) + 1;
+        } else {
+          showToast('Failed to log interaction', 'error');
+        }
+      } catch (e) {
+        console.error('Error logging interaction:', e);
+        showToast('Failed to log interaction', 'error');
+      }
+    }
+
+    // Open interaction modal
+    function openInteractionModal() {
+      document.getElementById('interactionModal').classList.add('active');
+      document.getElementById('interactionNotes').value = '';
+      document.getElementById('selectedInteractionType').value = '';
+      document.querySelectorAll('.interaction-type-option').forEach(opt => {
+        opt.classList.remove('selected');
+      });
+    }
+
+    // Close interaction modal
+    function closeInteractionModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('interactionModal').classList.remove('active');
+    }
+
+    // Select interaction type
+    function selectInteractionType(type) {
+      document.getElementById('selectedInteractionType').value = type;
+      document.querySelectorAll('.interaction-type-option').forEach(opt => {
+        opt.classList.remove('selected');
+        if (opt.textContent.toLowerCase().includes(type)) {
+          opt.classList.add('selected');
+        }
+      });
+    }
+
+    // Submit interaction
+    async function submitInteraction(event) {
+      event.preventDefault();
+
+      const type = document.getElementById('selectedInteractionType').value;
+      const notes = document.getElementById('interactionNotes').value;
+
+      if (!type) {
+        showToast('Please select an interaction type', 'error');
+        return;
+      }
+
+      if (!currentContact) {
+        showToast('No contact selected', 'error');
+        return;
+      }
+
+      const submitBtn = document.querySelector('.interaction-submit-btn');
+      submitBtn.textContent = 'Saving...';
+      submitBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/atlas/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contact_id: currentContact.id,
+            type: type,
+            notes: notes || `${type.charAt(0).toUpperCase() + type.slice(1)} interaction`
+          })
+        });
+
+        if (response.ok) {
+          showToast('Interaction logged!', 'success');
+          closeInteractionModal();
+          loadInteractionTimeline(currentContact.id);
+          loadRelationshipHealth(currentContact.id);
+          const countEl = document.getElementById('modalInteractions');
+          countEl.textContent = parseInt(countEl.textContent) + 1;
+        } else {
+          const data = await response.json();
+          showToast(data.error || 'Failed to log interaction', 'error');
+        }
+      } catch (e) {
+        console.error('Error logging interaction:', e);
+        showToast('Failed to log interaction', 'error');
+      }
+
+      submitBtn.textContent = 'Log Interaction';
+      submitBtn.disabled = false;
+    }
+
+    // Load interaction timeline
+    async function loadInteractionTimeline(contactId) {
+      const timeline = document.getElementById('modalTimeline');
+
+      try {
+        const response = await fetch(`/api/atlas/contacts/${contactId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const interactions = data.interactions || [];
+
+          if (interactions.length === 0) {
+            timeline.innerHTML = '<div class="timeline-empty">No interactions recorded yet</div>';
+            return;
+          }
+
+          timeline.innerHTML = interactions.slice(0, 5).map(interaction => {
+            const date = new Date(interaction.interaction_date || interaction.created_at);
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const type = interaction.interaction_type || interaction.type || 'note';
+
+            return `
+              <div class="timeline-item ${type}">
+                <div class="timeline-date">${dateStr}</div>
+                <div class="timeline-content">${interaction.notes || type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                <div class="timeline-type">${type.charAt(0).toUpperCase() + type.slice(1)}</div>
+              </div>
+            `;
+          }).join('');
+        }
+      } catch (e) {
+        console.log('Could not load timeline:', e);
+        timeline.innerHTML = '<div class="timeline-empty">Could not load timeline</div>';
+      }
+    }
+
+    // Override openContactModal to include relationship tracking
+    const originalOpenContactModal = openContactModal;
+    openContactModal = function(contact) {
+      originalOpenContactModal(contact);
+      if (contact.id) {
+        updateRelationshipHealth(contact);
+        loadRelationshipHealth(contact.id);
+        loadInteractionTimeline(contact.id);
+      }
+    };
   </script>
 </body>
 </html>
