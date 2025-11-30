@@ -55,6 +55,34 @@ def get_mysql_config() -> Optional[Dict[str, str]]:
     return None
 
 
+# Standalone connection function for external modules (e.g., relationship_intelligence.py)
+_db_instance = None
+
+def get_db_connection():
+    """
+    Get a MySQL database connection for use by external modules.
+
+    Returns a pymysql connection with DictCursor.
+    Caller is responsible for closing the connection.
+    """
+    global _db_instance
+
+    config = get_mysql_config()
+    if not config:
+        raise RuntimeError("MySQL configuration not available")
+
+    conn = pymysql.connect(
+        host=config['host'],
+        port=config['port'],
+        user=config['user'],
+        password=config['password'],
+        database=config['database'],
+        charset=config.get('charset', 'utf8mb4'),
+        cursorclass=pymysql.cursors.DictCursor
+    )
+    return conn
+
+
 class MySQLReceiptDatabase:
     """MySQL database handler for ReceiptAI"""
 
