@@ -28,19 +28,15 @@ from openai import OpenAI
 try:
     from receipt_ocr_local import extract_receipt_fields_local, validate_extraction
     LOCAL_OCR_AVAILABLE = True
-    print("✅ Local OCR (Donut 97-98% accuracy) enabled with validation")
-except Exception as e:
+except Exception:
     LOCAL_OCR_AVAILABLE = False
     validate_extraction = None
-    print(f"⚠️ Local OCR not available: {e}")
 
 # Import merchant intelligence for perfect normalization
 try:
     from merchant_intelligence import get_merchant_intelligence
     merchant_intel = get_merchant_intelligence()
-    print("✅ Merchant intelligence loaded for AI locator")
-except Exception as e:
-    print(f"⚠️ Merchant intelligence not available: {e}")
+except Exception:
     merchant_intel = None
 
 # =============================================================================

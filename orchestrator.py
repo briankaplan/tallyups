@@ -55,24 +55,21 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 try:
     from ai_receipt_locator import find_best_receipt as find_best_receipt_local
     LOCAL_RECEIPTS_AVAILABLE = True
-except Exception as e:
-    print(f"⚠️ Could not load ai_receipt_locator: {e}")
+except Exception:
     LOCAL_RECEIPTS_AVAILABLE = False
     find_best_receipt_local = None
 
 try:
     from gmail_search import find_best_gmail_receipt_for_row
     GMAIL_SEARCH_AVAILABLE = True
-except Exception as e:
-    print(f"⚠️ Could not load gmail_search: {e}")
+except Exception:
     GMAIL_SEARCH_AVAILABLE = False
     find_best_gmail_receipt_for_row = None
 
 try:
     from imessage_search import search_imessage, download_imessage_receipt
     IMESSAGE_SEARCH_AVAILABLE = True
-except Exception as e:
-    print(f"⚠️ Could not load imessage_search: {e}")
+except Exception:
     IMESSAGE_SEARCH_AVAILABLE = False
     search_imessage = None
     download_imessage_receipt = None
