@@ -4292,6 +4292,149 @@ def add_manual_expense():
     return jsonify(safe_json({"ok": True, "expense": new_expense}))
 
 
+@app.route("/api/bulk_import", methods=["POST"])
+def bulk_import_transactions():
+    """
+    Bulk import transactions from JSON array.
+    Used to sync local SQLite to Railway MySQL.
+    Requires admin_key authentication.
+    Body: {"transactions": [...], "admin_key": "..."}
+    """
+    global df
+
+    data = request.get_json(force=True) or {}
+
+    # Verify admin key
+    admin_key = data.get("admin_key") or request.args.get("admin_key")
+    expected_key = os.getenv("ADMIN_KEY", "bkaplan2025")
+    if admin_key != expected_key:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    transactions = data.get("transactions", [])
+    if not transactions:
+        return jsonify({"error": "No transactions provided"}), 400
+
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    imported = 0
+    updated = 0
+    failed = 0
+
+    columns = [
+        "_index", "chase_date", "chase_description", "chase_amount",
+        "chase_category", "chase_type", "receipt_file", "receipt_url",
+        "business_type", "notes", "ai_note", "ai_confidence",
+        "ai_receipt_merchant", "ai_receipt_date", "ai_receipt_total",
+        "review_status", "category", "report_id", "source",
+        "mi_merchant", "mi_category", "mi_description", "mi_confidence",
+        "mi_is_subscription", "mi_subscription_name", "mi_processed_at",
+        "is_refund", "already_submitted", "deleted", "deleted_by_user"
+    ]
+
+    # Column name mapping from user-facing to database columns
+    col_map = {
+        "_index": "_index",
+        "Chase Date": "chase_date",
+        "Chase Description": "chase_description",
+        "Chase Amount": "chase_amount",
+        "Chase Category": "chase_category",
+        "Chase Type": "chase_type",
+        "Receipt File": "receipt_file",
+        "receipt_url": "receipt_url",
+        "Business Type": "business_type",
+        "Notes": "notes",
+        "AI Note": "ai_note",
+        "AI Confidence": "ai_confidence",
+        "ai_receipt_merchant": "ai_receipt_merchant",
+        "ai_receipt_date": "ai_receipt_date",
+        "ai_receipt_total": "ai_receipt_total",
+        "Review Status": "review_status",
+        "Category": "category",
+        "Report ID": "report_id",
+        "Source": "source",
+        "MI Merchant": "mi_merchant",
+        "MI Category": "mi_category",
+        "MI Description": "mi_description",
+        "MI Confidence": "mi_confidence",
+        "MI Is Subscription": "mi_is_subscription",
+        "MI Subscription Name": "mi_subscription_name",
+        "MI Processed At": "mi_processed_at",
+        "Is Refund": "is_refund",
+        "Already Submitted": "already_submitted",
+        "deleted": "deleted",
+        "deleted_by_user": "deleted_by_user"
+    }
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        for tx in transactions:
+            try:
+                # Map column names
+                db_row = {}
+                for user_col, db_col in col_map.items():
+                    if user_col in tx:
+                        val = tx[user_col]
+                        # Convert empty strings to None for date fields
+                        if db_col in ["chase_date", "ai_receipt_date", "mi_processed_at"]:
+                            if val == "" or val is None:
+                                val = None
+                        db_row[db_col] = val
+
+                if "_index" not in db_row:
+                    failed += 1
+                    continue
+
+                # Build UPSERT statement
+                present_cols = [c for c in columns if c in db_row]
+                present_vals = [db_row[c] for c in present_cols]
+
+                placeholders = ", ".join(["%s"] * len(present_cols))
+                col_names = ", ".join(present_cols)
+
+                # Update clause for ON DUPLICATE KEY
+                update_parts = [f"{c} = VALUES({c})" for c in present_cols if c != "_index"]
+                update_clause = ", ".join(update_parts)
+
+                sql = f"""
+                    INSERT INTO transactions ({col_names})
+                    VALUES ({placeholders})
+                    ON DUPLICATE KEY UPDATE {update_clause}
+                """
+
+                cursor.execute(sql, present_vals)
+
+                if cursor.rowcount == 1:
+                    imported += 1
+                elif cursor.rowcount == 2:  # MySQL returns 2 for updated row
+                    updated += 1
+
+            except Exception as e:
+                failed += 1
+                if failed <= 3:
+                    print(f"   Import error: {e}")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Reload DataFrame
+        df = db.get_all_transactions()
+
+        return jsonify({
+            "ok": True,
+            "imported": imported,
+            "updated": updated,
+            "failed": failed,
+            "total_now": len(df)
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # =============================================================================
 # REPORTS ENDPOINTS
 # =============================================================================
