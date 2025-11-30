@@ -1984,7 +1984,7 @@ def mobile_upload():
     admin_key = request.form.get('admin_key') or request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'error': 'Authentication required. Include admin_key in form data.'}), 401
 
     if 'file' not in request.files:
@@ -2116,7 +2116,7 @@ def get_transactions():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
     if USE_DATABASE and db:
@@ -5468,7 +5468,7 @@ def gmail_refresh_all():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     results = []
@@ -5693,7 +5693,7 @@ def gmail_authorize(account_email):
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return redirect(url_for('login', next=request.url))
 
     try:
@@ -7128,8 +7128,8 @@ def get_incoming_receipts():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
-            return jsonify({'error': 'Authentication required'}), 401
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
         if not USE_DATABASE or not db:
@@ -8246,7 +8246,7 @@ def fix_incoming_receipt_dates():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
@@ -8417,7 +8417,7 @@ def diagnose_incoming_dates():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
@@ -8559,7 +8559,7 @@ def refetch_gmail_dates():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
@@ -8763,7 +8763,7 @@ def scan_incoming_receipts():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
@@ -9016,7 +9016,7 @@ def fix_missing_receipt_urls():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
@@ -9116,7 +9116,7 @@ def run_auto_match():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
@@ -9165,7 +9165,7 @@ def preview_auto_match():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
@@ -9269,7 +9269,7 @@ def check_duplicate_receipt():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
@@ -9312,7 +9312,7 @@ def auto_match_stats():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
     if admin_key != expected_key:
-        if not current_user.is_authenticated:
+        if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
     try:
