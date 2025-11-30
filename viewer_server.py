@@ -4102,7 +4102,79 @@ def atlas_contacts():
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Try to get contacts from atlas_contacts table first
+        # Try to get contacts from contacts table (Apple Contacts import) first,
+        # then fallback to atlas_contacts table if empty
+        try:
+            # Check contacts table first (Apple Contacts data)
+            if search:
+                cursor.execute("""
+                    SELECT * FROM contacts
+                    WHERE name LIKE %s OR email LIKE %s OR company LIKE %s
+                    ORDER BY name
+                    LIMIT %s OFFSET %s
+                """, (f'%{search}%', f'%{search}%', f'%{search}%', limit, offset))
+            else:
+                cursor.execute("""
+                    SELECT * FROM contacts
+                    ORDER BY name
+                    LIMIT %s OFFSET %s
+                """, (limit, offset))
+
+            contacts = cursor.fetchall()
+
+            # Get total count
+            if search:
+                cursor.execute("""
+                    SELECT COUNT(*) as total FROM contacts
+                    WHERE name LIKE %s OR email LIKE %s OR company LIKE %s
+                """, (f'%{search}%', f'%{search}%', f'%{search}%'))
+            else:
+                cursor.execute("SELECT COUNT(*) as total FROM contacts")
+
+            total = cursor.fetchone()['total']
+
+            # If we have contacts, format and return them
+            if contacts:
+                formatted = []
+                for c in contacts:
+                    formatted.append({
+                        "id": c.get('id'),
+                        "name": c.get('name', ''),
+                        "first_name": c.get('first_name', ''),
+                        "last_name": c.get('last_name', ''),
+                        "email": c.get('email', ''),
+                        "phone": c.get('phone', ''),
+                        "company": c.get('company', ''),
+                        "job_title": c.get('title', ''),
+                        "category": c.get('category', ''),
+                        "priority": c.get('priority', ''),
+                        "source": c.get('source', 'Apple Contacts'),
+                        "notes": c.get('notes', ''),
+                        "created_at": str(c.get('created_at', '')) if c.get('created_at') else None,
+                        "updated_at": str(c.get('updated_at', '')) if c.get('updated_at') else None
+                    })
+
+                cursor.close()
+                conn.close()
+
+                return jsonify({
+                    "ok": True,
+                    "contacts": formatted,
+                    "count": len(formatted),
+                    "total": total,
+                    "limit": limit,
+                    "offset": offset,
+                    "source": "contacts_table"
+                })
+
+            # No contacts in contacts table, try atlas_contacts table
+            print("contacts table empty, trying atlas_contacts table...")
+
+        except Exception as table_err:
+            # contacts table might not exist, try atlas_contacts as fallback
+            print(f"contacts query failed: {table_err}, trying atlas_contacts table...")
+
+        # Fallback to atlas_contacts table if contacts table failed or was empty
         try:
             if search:
                 cursor.execute("""
@@ -4131,7 +4203,7 @@ def atlas_contacts():
 
             total = cursor.fetchone()['total']
 
-            # Format contacts for UI
+            # Format atlas_contacts for UI
             formatted = []
             for c in contacts:
                 formatted.append({
@@ -4160,14 +4232,16 @@ def atlas_contacts():
                 "count": len(formatted),
                 "total": total,
                 "limit": limit,
-                "offset": offset
+                "offset": offset,
+                "source": "atlas_contacts_table"
             })
 
-        except Exception as table_err:
-            # Table might not exist, try Google People API as fallback
+        except Exception as atlas_err:
+            print(f"atlas_contacts table query also failed: {atlas_err}")
             cursor.close()
             conn.close()
 
+            # Final fallback: try Google People API
             if ATLAS_AVAILABLE and GooglePeopleAPI:
                 people = GooglePeopleAPI()
                 contacts = people.get_all_contacts(limit=limit)
@@ -4258,6 +4332,200 @@ def atlas_contact_detail(contact_id):
 
     except Exception as e:
         print(f"ATLAS contact detail error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/<contact_id>", methods=["PUT"])
+def atlas_contact_update(contact_id):
+    """Update a contact"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Build update query dynamically based on provided fields
+        update_fields = []
+        values = []
+
+        field_mapping = {
+            'name': 'display_name',
+            'first_name': 'first_name',
+            'last_name': 'last_name',
+            'company': 'company',
+            'title': 'job_title',
+            'email': 'email',
+            'phone': 'phone',
+            'category': 'category',
+            'priority': 'priority',
+            'notes': 'notes'
+        }
+
+        for json_key, db_column in field_mapping.items():
+            if json_key in data:
+                update_fields.append(f"{db_column} = %s")
+                values.append(data[json_key])
+
+        if not update_fields:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'No valid fields to update'}), 400
+
+        # Add updated_at
+        update_fields.append("updated_at = NOW()")
+        values.append(contact_id)
+
+        # Try contacts table first, fall back to atlas_contacts
+        try:
+            query = f"UPDATE contacts SET {', '.join(update_fields)} WHERE id = %s"
+            cursor.execute(query, values)
+            if cursor.rowcount == 0:
+                # Try atlas_contacts
+                query = f"UPDATE atlas_contacts SET {', '.join(update_fields)} WHERE id = %s"
+                cursor.execute(query, values)
+        except Exception:
+            # Try atlas_contacts
+            query = f"UPDATE atlas_contacts SET {', '.join(update_fields)} WHERE id = %s"
+            cursor.execute(query, values)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "message": "Contact updated successfully",
+            "id": contact_id
+        })
+
+    except Exception as e:
+        print(f"ATLAS contact update error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/<contact_id>", methods=["DELETE"])
+def atlas_contact_delete(contact_id):
+    """Delete a contact"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Try contacts table first, fall back to atlas_contacts
+        deleted = False
+        try:
+            cursor.execute("DELETE FROM contacts WHERE id = %s", (contact_id,))
+            if cursor.rowcount > 0:
+                deleted = True
+        except Exception:
+            pass
+
+        if not deleted:
+            try:
+                cursor.execute("DELETE FROM atlas_contacts WHERE id = %s", (contact_id,))
+                if cursor.rowcount > 0:
+                    deleted = True
+            except Exception:
+                pass
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        if deleted:
+            return jsonify({
+                "ok": True,
+                "message": "Contact deleted successfully",
+                "id": contact_id
+            })
+        else:
+            return jsonify({'error': 'Contact not found'}), 404
+
+    except Exception as e:
+        print(f"ATLAS contact delete error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/contacts", methods=["POST"])
+def atlas_contact_create():
+    """Create a new contact"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Require at least a name
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'error': 'Name is required'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Insert into contacts table
+        insert_query = """
+            INSERT INTO contacts (
+                display_name, first_name, last_name, company, job_title,
+                email, phone, category, priority, notes, source, created_at, updated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+        """
+
+        values = (
+            name,
+            data.get('first_name', ''),
+            data.get('last_name', ''),
+            data.get('company', ''),
+            data.get('title', ''),
+            data.get('email', ''),
+            data.get('phone', ''),
+            data.get('category', 'General'),
+            data.get('priority', 'Normal'),
+            data.get('notes', ''),
+            'manual'
+        )
+
+        cursor.execute(insert_query, values)
+        new_id = cursor.lastrowid
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "message": "Contact created successfully",
+            "id": new_id
+        })
+
+    except Exception as e:
+        print(f"ATLAS contact create error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -4485,6 +4753,568 @@ def atlas_sync_google():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e), 'success': False}), 500
+
+
+def _import_contacts_from_json(contacts_data):
+    """Helper function to import contacts from JSON array to MySQL"""
+    error_details = []  # Capture actual error messages
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Create contacts table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100),
+                last_name VARCHAR(100),
+                title TEXT,
+                company VARCHAR(255),
+                category VARCHAR(100),
+                priority VARCHAR(50),
+                notes TEXT,
+                relationship VARCHAR(100),
+                status VARCHAR(100),
+                strategic_notes TEXT,
+                connected_on VARCHAR(100),
+                name_tokens TEXT,
+                email VARCHAR(255),
+                phone VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_name (name(191))
+            )
+        """)
+        conn.commit()
+
+        # Add missing columns if they don't exist (for existing tables)
+        missing_columns = [
+            ("email", "VARCHAR(255)"),
+            ("phone", "VARCHAR(100)"),
+            ("first_name", "VARCHAR(100)"),
+            ("last_name", "VARCHAR(100)"),
+            ("title", "TEXT"),
+            ("company", "VARCHAR(255)"),
+            ("category", "VARCHAR(100)"),
+            ("priority", "VARCHAR(50)"),
+            ("notes", "TEXT"),
+            ("relationship", "VARCHAR(100)"),
+            ("status", "VARCHAR(100)"),
+            ("strategic_notes", "TEXT"),
+            ("connected_on", "VARCHAR(100)"),
+            ("name_tokens", "TEXT"),
+            ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+            ("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+        ]
+        columns_added = []
+        for col_name, col_type in missing_columns:
+            try:
+                cursor.execute(f"ALTER TABLE contacts ADD COLUMN {col_name} {col_type}")
+                conn.commit()
+                columns_added.append(col_name)
+                print(f"Added missing column: {col_name}")
+            except Exception:
+                pass  # Column already exists
+        if columns_added:
+            print(f"Schema migration: Added columns {columns_added}")
+
+        imported = 0
+        updated = 0
+        errors = 0
+
+        # Check which columns actually exist (for backward compatibility)
+        cursor.execute("DESCRIBE contacts")
+        describe_results = cursor.fetchall()
+        # Handle both DictCursor (returns dicts) and regular cursor (returns tuples)
+        if describe_results and isinstance(describe_results[0], dict):
+            existing_cols = {row['Field'] for row in describe_results}
+        else:
+            existing_cols = {row[0] for row in describe_results}
+        has_updated_at = 'updated_at' in existing_cols
+        print(f"Contacts table columns: {sorted(existing_cols)}")
+
+        for contact in contacts_data:
+            name = contact.get('name', '').strip() if isinstance(contact, dict) else ''
+            if not name:
+                errors += 1
+                error_details.append({"name": "(empty)", "error": "Empty name"})
+                continue
+
+            try:
+                # Build INSERT dynamically based on available columns
+                base_cols = ['name', 'first_name', 'last_name', 'title', 'company', 'category', 'priority',
+                             'notes', 'relationship', 'status', 'strategic_notes', 'connected_on', 'name_tokens']
+
+                # Add email and phone if they exist
+                if 'email' in existing_cols:
+                    base_cols.append('email')
+                if 'phone' in existing_cols:
+                    base_cols.append('phone')
+
+                placeholders = ', '.join(['%s'] * len(base_cols))
+                col_list = ', '.join(base_cols)
+
+                # Build ON DUPLICATE KEY UPDATE clause
+                update_parts = [f"{col} = VALUES({col})" for col in base_cols if col != 'name']
+                if has_updated_at:
+                    update_parts.append("updated_at = CURRENT_TIMESTAMP")
+                update_clause = ', '.join(update_parts)
+
+                sql = f"""
+                    INSERT INTO contacts ({col_list})
+                    VALUES ({placeholders})
+                    ON DUPLICATE KEY UPDATE {update_clause}
+                """
+
+                # Build values list matching columns
+                values = [
+                    name,
+                    contact.get('first_name', ''),
+                    contact.get('last_name', ''),
+                    contact.get('title', ''),
+                    contact.get('company', ''),
+                    contact.get('category', ''),
+                    contact.get('priority', ''),
+                    contact.get('notes', ''),
+                    contact.get('relationship', ''),
+                    contact.get('status', ''),
+                    contact.get('strategic_notes', ''),
+                    contact.get('connected_on', ''),
+                    contact.get('name_tokens', '')
+                ]
+                if 'email' in existing_cols:
+                    values.append(contact.get('email', ''))
+                if 'phone' in existing_cols:
+                    values.append(contact.get('phone', ''))
+
+                cursor.execute(sql, tuple(values))
+
+                if cursor.rowcount == 1:
+                    imported += 1
+                else:
+                    updated += 1
+
+            except Exception as row_err:
+                print(f"Error importing contact {name}: {row_err}")
+                errors += 1
+                # Keep only first 10 error details to avoid huge responses
+                if len(error_details) < 10:
+                    error_details.append({"name": name[:50], "error": str(row_err)[:200]})
+                continue
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "success": True,
+            "imported": imported,
+            "updated": updated,
+            "errors": errors,
+            "total": imported + updated,
+            "source": "json_upload",
+            "error_details": error_details if error_details else None
+        })
+
+    except Exception as e:
+        print(f"JSON contact import error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': str(e),
+            'success': False,
+            'error_details': error_details if error_details else None
+        }), 500
+
+
+@app.route("/api/atlas/sync/crm", methods=["POST"])
+def atlas_sync_crm():
+    """Sync contacts from JSON data or CRM CSV file to MySQL contacts table"""
+    import csv
+
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        # Check if JSON data is provided in request body
+        data = request.get_json() if request.is_json else {}
+        contacts_data = data.get('contacts') if data else None
+
+        # If contacts JSON provided, use it directly
+        if contacts_data and isinstance(contacts_data, list):
+            return _import_contacts_from_json(contacts_data)
+
+        # Otherwise try CSV file
+        csv_path = data.get('csv_path') if data else None
+
+        # Default CSV path
+        if not csv_path:
+            default_paths = [
+                'archive/data/contacts.csv',
+                '/app/archive/data/contacts.csv',
+            ]
+            for path in default_paths:
+                if os.path.exists(path):
+                    csv_path = path
+                    break
+
+        if not csv_path or not os.path.exists(csv_path):
+            return jsonify({
+                'error': 'No contacts data provided. Send JSON with "contacts" array or ensure archive/data/contacts.csv exists.',
+                'ok': False
+            }), 404
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Create contacts table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100),
+                last_name VARCHAR(100),
+                title TEXT,
+                company VARCHAR(255),
+                category VARCHAR(100),
+                priority VARCHAR(50),
+                notes TEXT,
+                relationship VARCHAR(100),
+                status VARCHAR(100),
+                strategic_notes TEXT,
+                connected_on VARCHAR(100),
+                name_tokens TEXT,
+                email VARCHAR(255),
+                phone VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_name (name(191))
+            )
+        """)
+        conn.commit()
+
+        imported = 0
+        updated = 0
+        errors = 0
+
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+
+            for row in reader:
+                name = row.get('name', '').strip()
+                if not name:
+                    continue
+
+                try:
+                    # Use INSERT ... ON DUPLICATE KEY UPDATE for upsert
+                    cursor.execute("""
+                        INSERT INTO contacts
+                        (name, first_name, last_name, title, company, category, priority,
+                         notes, relationship, status, strategic_notes, connected_on, name_tokens)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            first_name = VALUES(first_name),
+                            last_name = VALUES(last_name),
+                            title = VALUES(title),
+                            company = VALUES(company),
+                            category = VALUES(category),
+                            priority = VALUES(priority),
+                            notes = VALUES(notes),
+                            relationship = VALUES(relationship),
+                            status = VALUES(status),
+                            strategic_notes = VALUES(strategic_notes),
+                            connected_on = VALUES(connected_on),
+                            name_tokens = VALUES(name_tokens),
+                            updated_at = CURRENT_TIMESTAMP
+                    """, (
+                        name,
+                        row.get('first_name', ''),
+                        row.get('last_name', ''),
+                        row.get('title', ''),
+                        row.get('company', ''),
+                        row.get('category', ''),
+                        row.get('priority', ''),
+                        row.get('notes', ''),
+                        row.get('relationship', ''),
+                        row.get('status', ''),
+                        row.get('strategic_notes', ''),
+                        row.get('connected_on', ''),
+                        row.get('name_tokens', '')
+                    ))
+
+                    if cursor.rowcount == 1:
+                        imported += 1
+                    else:
+                        updated += 1
+
+                except Exception as row_err:
+                    print(f"Error importing contact {name}: {row_err}")
+                    errors += 1
+                    continue
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "success": True,
+            "imported": imported,
+            "updated": updated,
+            "errors": errors,
+            "total": imported + updated,
+            "source": "crm_csv",
+            "csv_path": csv_path
+        })
+
+    except Exception as e:
+        print(f"CRM contact sync error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'success': False}), 500
+
+
+@app.route("/api/atlas/contacts/migrate", methods=["POST"])
+def atlas_contacts_migrate():
+    """Migrate contacts table schema - add missing columns to existing table"""
+    # Check admin_key
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        return jsonify({'error': 'Admin key required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        results = []
+
+        data = request.get_json() or {}
+        force_recreate = data.get('force_recreate', False)
+
+        if force_recreate:
+            # Drop dependent tables first to avoid foreign key constraint errors
+            try:
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+                conn.commit()
+                results.append("Disabled foreign key checks")
+            except Exception as e:
+                results.append(f"Could not disable FK checks: {str(e)}")
+
+            try:
+                cursor.execute("DROP TABLE IF EXISTS contact_emails")
+                conn.commit()
+                results.append("Dropped contact_emails table")
+            except Exception as e:
+                results.append(f"Could not drop contact_emails: {str(e)}")
+
+            try:
+                cursor.execute("DROP TABLE IF EXISTS contacts")
+                conn.commit()
+                results.append("Dropped contacts table")
+            except Exception as e:
+                results.append(f"Could not drop contacts: {str(e)}")
+
+            try:
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+                conn.commit()
+                results.append("Re-enabled foreign key checks")
+            except Exception as e:
+                results.append(f"Could not re-enable FK checks: {str(e)}")
+
+        # Create the table with all columns
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100),
+                last_name VARCHAR(100),
+                title TEXT,
+                company VARCHAR(255),
+                category VARCHAR(100),
+                priority VARCHAR(50),
+                notes TEXT,
+                relationship VARCHAR(100),
+                status VARCHAR(100),
+                strategic_notes TEXT,
+                connected_on VARCHAR(100),
+                name_tokens TEXT,
+                email VARCHAR(255),
+                phone VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_name (name(191))
+            )
+        """)
+        conn.commit()
+        results.append("Created/verified contacts table")
+
+        # Add any missing columns to existing table
+        missing_columns = [
+            ("email", "VARCHAR(255)"),
+            ("phone", "VARCHAR(100)"),
+            ("first_name", "VARCHAR(100)"),
+            ("last_name", "VARCHAR(100)"),
+            ("title", "TEXT"),
+            ("company", "VARCHAR(255)"),
+            ("category", "VARCHAR(100)"),
+            ("priority", "VARCHAR(50)"),
+            ("notes", "TEXT"),
+            ("relationship", "VARCHAR(100)"),
+            ("status", "VARCHAR(100)"),
+            ("strategic_notes", "TEXT"),
+            ("connected_on", "VARCHAR(100)"),
+            ("name_tokens", "TEXT"),
+            ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+            ("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+        ]
+
+        columns_added = []
+        for col_name, col_type in missing_columns:
+            try:
+                cursor.execute(f"ALTER TABLE contacts ADD COLUMN {col_name} {col_type}")
+                conn.commit()
+                columns_added.append(col_name)
+            except Exception:
+                pass  # Column already exists
+
+        if columns_added:
+            results.append(f"Added columns: {columns_added}")
+        else:
+            results.append("No columns needed to be added")
+
+        # Verify columns - DESCRIBE returns dict rows with 'Field' key (using DictCursor)
+        cursor.execute("DESCRIBE contacts")
+        describe_results = cursor.fetchall()
+        # Handle both DictCursor (returns dicts) and regular cursor (returns tuples)
+        if describe_results and isinstance(describe_results[0], dict):
+            existing_cols = {row['Field'] for row in describe_results}
+        else:
+            existing_cols = {row[0] for row in describe_results}
+        results.append(f"Current columns: {sorted(existing_cols)}")
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "success": True,
+            "results": results
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # Get MySQL error details if available
+        error_msg = str(e)
+        if hasattr(e, 'args') and len(e.args) >= 2:
+            error_msg = f"MySQL Error {e.args[0]}: {e.args[1]}"
+        return jsonify({'error': error_msg, 'success': False, 'traceback': traceback.format_exc()}), 500
+
+
+@app.route("/api/atlas/contacts/upload", methods=["POST"])
+def atlas_contacts_upload():
+    """Bulk upload contacts from JSON - used by Apple Contacts sync"""
+    # Check admin_key
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        return jsonify({'error': 'Admin key required'}), 401
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+
+        contacts = data.get('contacts', [])
+        if not contacts:
+            return jsonify({'error': 'No contacts provided', 'imported': 0, 'updated': 0}), 200
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        imported = 0
+        updated = 0
+        errors = []
+
+        for contact in contacts:
+            try:
+                name = (contact.get('name') or '').strip()
+                if not name:
+                    continue
+
+                # Generate name tokens for search
+                name_tokens = name.lower()
+                parts = name_tokens.split()
+                for p in parts:
+                    if len(p) >= 3:
+                        name_tokens += f" {p[:3]}"
+
+                # Build upsert query (INSERT ... ON DUPLICATE KEY UPDATE for MySQL)
+                cursor.execute("""
+                    INSERT INTO contacts (name, first_name, last_name, email, phone, company, title, category, priority, notes, source, name_tokens)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        first_name = COALESCE(VALUES(first_name), first_name),
+                        last_name = COALESCE(VALUES(last_name), last_name),
+                        email = COALESCE(VALUES(email), email),
+                        phone = COALESCE(VALUES(phone), phone),
+                        company = COALESCE(VALUES(company), company),
+                        title = COALESCE(VALUES(title), title),
+                        category = COALESCE(VALUES(category), category),
+                        priority = COALESCE(VALUES(priority), priority),
+                        notes = COALESCE(VALUES(notes), notes),
+                        source = COALESCE(VALUES(source), source),
+                        name_tokens = COALESCE(VALUES(name_tokens), name_tokens),
+                        updated_at = CURRENT_TIMESTAMP
+                """, (
+                    name[:255],
+                    (contact.get('first_name') or '')[:100],
+                    (contact.get('last_name') or '')[:100],
+                    (contact.get('email') or '')[:255],
+                    (contact.get('phone') or '')[:100],
+                    (contact.get('company') or '')[:255],
+                    contact.get('title') or '',
+                    (contact.get('category') or 'General')[:100],
+                    (contact.get('priority') or 'Normal')[:50],
+                    contact.get('notes') or '',
+                    (contact.get('source') or 'Apple Contacts')[:100],
+                    name_tokens[:500]
+                ))
+
+                if cursor.rowcount == 1:
+                    imported += 1
+                else:
+                    updated += 1
+
+            except Exception as contact_err:
+                errors.append(f"Error with '{name}': {str(contact_err)}")
+                continue
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'imported': imported,
+            'updated': updated,
+            'errors': errors[:10] if errors else []  # Only return first 10 errors
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        error_msg = str(e)
+        if hasattr(e, 'args') and len(e.args) >= 2:
+            error_msg = f"MySQL Error {e.args[0]}: {e.args[1]}"
+        return jsonify({'error': error_msg, 'ok': False}), 500
 
 
 @app.route("/api/atlas/sync/linkedin", methods=["POST"])
@@ -9057,24 +9887,25 @@ def get_incoming_receipts():
 
             try:
                 # Find matching expenses (transactions without receipts, similar amount, within 7 days)
+                # Note: Table uses chase_description, chase_amount, chase_date (not merchant, amount, date)
                 if db_type2 == 'mysql':
                     match_query = '''
-                        SELECT id, merchant, amount, date, receipt_url, receipt_file, card,
-                               mi_merchant, chase_description
+                        SELECT id, chase_description as merchant, chase_amount as amount, chase_date as date,
+                               receipt_url, receipt_file, card, mi_merchant, chase_description
                         FROM transactions
-                        WHERE ABS(ABS(amount) - ?) < 1.00
+                        WHERE ABS(ABS(chase_amount) - ?) < 1.00
                         AND (receipt_url IS NULL OR receipt_url = '' OR receipt_file IS NULL OR receipt_file = '')
-                        ORDER BY ABS(ABS(amount) - ?) ASC, date DESC
+                        ORDER BY ABS(ABS(chase_amount) - ?) ASC, chase_date DESC
                         LIMIT 5
                     '''
                 else:
                     match_query = '''
-                        SELECT id, merchant, amount, date, receipt_url, receipt_file, card,
-                               mi_merchant, chase_description
+                        SELECT id, chase_description as merchant, chase_amount as amount, chase_date as date,
+                               receipt_url, receipt_file, card, mi_merchant, chase_description
                         FROM transactions
-                        WHERE ABS(ABS(amount) - ?) < 1.00
+                        WHERE ABS(ABS(chase_amount) - ?) < 1.00
                         AND (receipt_url IS NULL OR receipt_url = '' OR receipt_file IS NULL OR receipt_file = '')
-                        ORDER BY ABS(ABS(amount) - ?) ASC, date DESC
+                        ORDER BY ABS(ABS(chase_amount) - ?) ASC, chase_date DESC
                         LIMIT 5
                     '''
 
@@ -9190,23 +10021,24 @@ def check_duplicate_transaction():
 
         # Look for transactions within 3 days with same amount
         # MySQL uses DATE_SUB/DATE_ADD, SQLite uses date()
+        # Note: Table uses chase_description, chase_amount, chase_date (not merchant, amount, date)
         if db_type == 'mysql':
             query = '''
-                SELECT id, merchant, amount, date, receipt_url, receipt_file
+                SELECT id, chase_description as merchant, chase_amount as amount, chase_date as date, receipt_url, receipt_file
                 FROM transactions
-                WHERE ABS(amount) BETWEEN ? - 0.01 AND ? + 0.01
-                AND date BETWEEN DATE_SUB(?, INTERVAL 3 DAY) AND DATE_ADD(?, INTERVAL 3 DAY)
-                ORDER BY date DESC
+                WHERE ABS(chase_amount) BETWEEN ? - 0.01 AND ? + 0.01
+                AND chase_date BETWEEN DATE_SUB(?, INTERVAL 3 DAY) AND DATE_ADD(?, INTERVAL 3 DAY)
+                ORDER BY chase_date DESC
                 LIMIT 10
             '''
             params = (abs(amount), abs(amount), trans_date, trans_date)
         else:
             query = '''
-                SELECT id, merchant, amount, date, receipt_url, receipt_file
+                SELECT id, chase_description as merchant, chase_amount as amount, chase_date as date, receipt_url, receipt_file
                 FROM transactions
-                WHERE ABS(amount) BETWEEN ? - 0.01 AND ? + 0.01
-                AND date BETWEEN date(?, '-3 days') AND date(?, '+3 days')
-                ORDER BY date DESC
+                WHERE ABS(chase_amount) BETWEEN ? - 0.01 AND ? + 0.01
+                AND chase_date BETWEEN date(?, '-3 days') AND date(?, '+3 days')
+                ORDER BY chase_date DESC
                 LIMIT 10
             '''
             params = (abs(amount), abs(amount), trans_date, trans_date)
@@ -9383,20 +10215,17 @@ def accept_incoming_receipt():
 
         data = request.json
         receipt_id = data.get('receipt_id')
-        merchant = data.get('merchant')
-        amount = float(data.get('amount', 0))
-        trans_date = data.get('date')
-        business_type = data.get('business_type', 'Personal')
 
-        if not all([receipt_id, merchant, amount, trans_date]):
+        # Only receipt_id is required - we'll fetch other data from the receipt itself if not provided
+        if not receipt_id:
             return jsonify({
                 'ok': False,
-                'error': 'Missing required fields'
+                'error': 'Missing required field: receipt_id'
             }), 400
 
         conn, db_type = get_db_connection()
 
-        # Get the receipt data
+        # Get the receipt data first (needed to fill in missing fields)
         cursor = db_execute(conn, db_type, 'SELECT * FROM incoming_receipts WHERE id = ?', (receipt_id,))
         receipt_row = cursor.fetchone()
 
@@ -9407,14 +10236,37 @@ def accept_incoming_receipt():
                 'error': 'Receipt not found'
             }), 404
 
-        # Convert to dict for safe access (handles missing columns)
-        receipt = dict(receipt_row)
+        # Convert to dict for safe access
+        receipt_data = dict(receipt_row)
 
-        # Helper for safe column access
+        # Use provided values or fall back to receipt data
+        merchant = data.get('merchant') or receipt_data.get('merchant') or receipt_data.get('subject', 'Unknown')[:100]
+        amount = float(data.get('amount', 0)) or float(receipt_data.get('amount', 0) or 0)
+        trans_date = data.get('date') or receipt_data.get('received_date', '')
+        if trans_date and 'T' in str(trans_date):
+            trans_date = str(trans_date).split('T')[0]
+        business_type = data.get('business_type', 'Personal')
+
+        # Validate we have minimum required data
+        if not merchant:
+            merchant = "Unknown Merchant"
+        if not amount:
+            amount = 0.01  # Use minimum amount if not provided
+        if not trans_date:
+            trans_date = datetime.now().strftime('%Y-%m-%d')
+
+        # Use receipt_data instead of receipt_row for the rest of the function
+        receipt = receipt_data
+
+        # Helper for safe column access (already have receipt dict)
         def get_col(name, default=None):
             return receipt.get(name) if receipt.get(name) else default
 
-        subject_preview = get_col('subject', 'No subject')[:50]
+        subject_preview = get_col('subject', 'No subject')
+        if subject_preview:
+            subject_preview = subject_preview[:50]
+        else:
+            subject_preview = 'No subject'
         print(f"📧 Processing receipt {receipt_id}: {subject_preview}")
 
         # Check the source to determine how to get receipt files
