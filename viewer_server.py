@@ -4081,6 +4081,177 @@ def atlas_people_photo(identifier):
 
 
 # =============================================================================
+# ATLAS CONTACTS API (UI-friendly endpoints)
+# =============================================================================
+
+@app.route("/api/atlas/contacts", methods=["GET"])
+@login_required
+def atlas_contacts():
+    """Get all contacts from database with unified format for UI"""
+    try:
+        limit = request.args.get('limit', 100, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        search = request.args.get('search', '')
+
+        conn = get_mysql_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Try to get contacts from atlas_contacts table first
+        try:
+            if search:
+                cursor.execute("""
+                    SELECT * FROM atlas_contacts
+                    WHERE display_name LIKE %s OR email LIKE %s OR company LIKE %s
+                    ORDER BY display_name
+                    LIMIT %s OFFSET %s
+                """, (f'%{search}%', f'%{search}%', f'%{search}%', limit, offset))
+            else:
+                cursor.execute("""
+                    SELECT * FROM atlas_contacts
+                    ORDER BY display_name
+                    LIMIT %s OFFSET %s
+                """, (limit, offset))
+
+            contacts = cursor.fetchall()
+
+            # Get total count
+            if search:
+                cursor.execute("""
+                    SELECT COUNT(*) as total FROM atlas_contacts
+                    WHERE display_name LIKE %s OR email LIKE %s OR company LIKE %s
+                """, (f'%{search}%', f'%{search}%', f'%{search}%'))
+            else:
+                cursor.execute("SELECT COUNT(*) as total FROM atlas_contacts")
+
+            total = cursor.fetchone()['total']
+
+            # Format contacts for UI
+            formatted = []
+            for c in contacts:
+                formatted.append({
+                    "id": c.get('id'),
+                    "name": c.get('display_name', ''),
+                    "email": c.get('email', ''),
+                    "phone": c.get('phone', ''),
+                    "company": c.get('company', ''),
+                    "job_title": c.get('job_title', ''),
+                    "photo_url": c.get('photo_url', ''),
+                    "source": c.get('source', 'manual'),
+                    "last_interaction": c.get('last_interaction'),
+                    "interaction_count": c.get('interaction_count', 0),
+                    "tags": c.get('tags', '').split(',') if c.get('tags') else [],
+                    "notes": c.get('notes', ''),
+                    "created_at": str(c.get('created_at', '')) if c.get('created_at') else None,
+                    "updated_at": str(c.get('updated_at', '')) if c.get('updated_at') else None
+                })
+
+            cursor.close()
+            conn.close()
+
+            return jsonify({
+                "ok": True,
+                "contacts": formatted,
+                "count": len(formatted),
+                "total": total,
+                "limit": limit,
+                "offset": offset
+            })
+
+        except Exception as table_err:
+            # Table might not exist, try Google People API as fallback
+            cursor.close()
+            conn.close()
+
+            if ATLAS_AVAILABLE and GooglePeopleAPI:
+                people = GooglePeopleAPI()
+                contacts = people.get_all_contacts(limit=limit)
+
+                return jsonify({
+                    "ok": True,
+                    "contacts": contacts,
+                    "count": len(contacts),
+                    "total": len(contacts),
+                    "source": "google_people_api"
+                })
+            else:
+                return jsonify({
+                    "ok": True,
+                    "contacts": [],
+                    "count": 0,
+                    "total": 0,
+                    "message": "No contacts synced yet. Use Google or Apple sync to import contacts."
+                })
+
+    except Exception as e:
+        print(f"ATLAS contacts error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/<contact_id>", methods=["GET"])
+@login_required
+def atlas_contact_detail(contact_id):
+    """Get detailed contact information"""
+    try:
+        conn = get_mysql_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT * FROM atlas_contacts WHERE id = %s", (contact_id,))
+        contact = cursor.fetchone()
+
+        if not contact:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Contact not found'}), 404
+
+        # Get interaction history if available
+        interactions = []
+        try:
+            cursor.execute("""
+                SELECT * FROM atlas_interactions
+                WHERE contact_id = %s
+                ORDER BY interaction_date DESC
+                LIMIT 50
+            """, (contact_id,))
+            interactions = cursor.fetchall()
+        except:
+            pass  # Table might not exist
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "contact": {
+                "id": contact.get('id'),
+                "name": contact.get('display_name', ''),
+                "email": contact.get('email', ''),
+                "phone": contact.get('phone', ''),
+                "company": contact.get('company', ''),
+                "job_title": contact.get('job_title', ''),
+                "photo_url": contact.get('photo_url', ''),
+                "source": contact.get('source', 'manual'),
+                "last_interaction": str(contact.get('last_interaction', '')) if contact.get('last_interaction') else None,
+                "interaction_count": contact.get('interaction_count', 0),
+                "tags": contact.get('tags', '').split(',') if contact.get('tags') else [],
+                "notes": contact.get('notes', ''),
+                "linkedin_url": contact.get('linkedin_url', ''),
+                "twitter_handle": contact.get('twitter_handle', ''),
+                "created_at": str(contact.get('created_at', '')) if contact.get('created_at') else None,
+                "updated_at": str(contact.get('updated_at', '')) if contact.get('updated_at') else None
+            },
+            "interactions": interactions
+        })
+
+    except Exception as e:
+        print(f"ATLAS contact detail error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
 # CONTACT SYNC ENGINE API ENDPOINTS
 # =============================================================================
 
@@ -4172,6 +4343,96 @@ def atlas_sync_apple():
         return jsonify(result)
     except Exception as e:
         print(f"Apple contact sync error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/sync/google", methods=["POST"])
+@login_required
+def atlas_sync_google():
+    """Sync Google Contacts to ATLAS using Google People API"""
+    if not ATLAS_AVAILABLE or not GooglePeopleAPI:
+        return jsonify({'error': 'Google People API not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        limit = data.get('limit', 200)
+
+        people = GooglePeopleAPI()
+        contacts = people.get_all_contacts(limit=limit)
+
+        # Store contacts in database
+        conn = get_mysql_connection()
+        cursor = conn.cursor()
+
+        # Create atlas_contacts table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS atlas_contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                display_name VARCHAR(255),
+                email VARCHAR(255),
+                phone VARCHAR(100),
+                company VARCHAR(255),
+                job_title VARCHAR(255),
+                photo_url TEXT,
+                source VARCHAR(50) DEFAULT 'google',
+                source_id VARCHAR(255),
+                last_interaction DATETIME,
+                interaction_count INT DEFAULT 0,
+                tags TEXT,
+                notes TEXT,
+                linkedin_url VARCHAR(500),
+                twitter_handle VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_email_source (email, source)
+            )
+        """)
+
+        synced = 0
+        for contact in contacts:
+            try:
+                # Handle both dict and object access patterns
+                name = contact.get('name', '') if isinstance(contact, dict) else getattr(contact, 'name', '')
+                email = contact.get('email', '') if isinstance(contact, dict) else getattr(contact, 'email', '')
+                phone = contact.get('phone', '') if isinstance(contact, dict) else getattr(contact, 'phone', '')
+                company = contact.get('company', '') if isinstance(contact, dict) else getattr(contact, 'company', '')
+                job_title = contact.get('job_title', '') if isinstance(contact, dict) else getattr(contact, 'job_title', '')
+                photo_url = contact.get('photo_url', '') if isinstance(contact, dict) else getattr(contact, 'photo_url', '')
+                resource_name = contact.get('resource_name', '') if isinstance(contact, dict) else getattr(contact, 'resource_name', '')
+
+                if email:
+                    cursor.execute("""
+                        INSERT INTO atlas_contacts (display_name, email, phone, company, job_title, photo_url, source, source_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'google', %s)
+                        ON DUPLICATE KEY UPDATE
+                            display_name = VALUES(display_name),
+                            phone = VALUES(phone),
+                            company = VALUES(company),
+                            job_title = VALUES(job_title),
+                            photo_url = VALUES(photo_url),
+                            source_id = VALUES(source_id),
+                            updated_at = CURRENT_TIMESTAMP
+                    """, (name, email, phone, company, job_title, photo_url, resource_name))
+                    synced += 1
+            except Exception as contact_err:
+                print(f"Error syncing contact: {contact_err}")
+                continue
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "synced": synced,
+            "total_fetched": len(contacts),
+            "source": "google_people_api"
+        })
+
+    except Exception as e:
+        print(f"Google contact sync error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
