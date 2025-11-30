@@ -2814,7 +2814,7 @@
     let isLoading = false;
     let hasMoreContacts = true;
     let currentOffset = 0;
-    const BATCH_SIZE = 500;
+    const BATCH_SIZE = 10000; // Load ALL contacts at once - no pagination
     let totalContactCount = 0;
     let availableLetters = new Set();
     let currentActiveLetter = '';
@@ -3294,7 +3294,7 @@
     // Render contact card
     function renderContactCard(contact) {
       const initials = getInitials(contact.display_name || contact.name || 'Unknown');
-      const score = contact.relationship_score || Math.floor(Math.random() * 40) + 60;
+      const score = contact.relationship_score || 0; // No fake scores - show actual data only
       const circumference = 2 * Math.PI * 14;
       const offset = circumference - (score / 100) * circumference;
 
@@ -3545,7 +3545,7 @@
       document.getElementById('modalTitle').textContent =
         [currentContact.title, currentContact.company].filter(Boolean).join(' at ') || 'No title';
 
-      document.getElementById('modalScore').textContent = currentContact.relationship_score || 75;
+      document.getElementById('modalScore').textContent = currentContact.relationship_score || '--';
       document.getElementById('modalInteractions').textContent = currentContact.interaction_count || 0;
       document.getElementById('modalDays').textContent = currentContact.days_known || calculateDaysKnown(currentContact.created_at);
 
@@ -4578,7 +4578,7 @@
 
     // Update relationship health display in modal
     function updateRelationshipHealth(contact) {
-      const score = contact.relationship_score || Math.floor(Math.random() * 40 + 60);
+      const score = contact.relationship_score || 0; // No fake scores - show actual data only
       const lastInteraction = contact.last_interaction ? new Date(contact.last_interaction) : null;
       const daysSinceContact = lastInteraction
         ? Math.floor((new Date() - lastInteraction) / (1000 * 60 * 60 * 24))
