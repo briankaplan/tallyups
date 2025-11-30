@@ -1580,14 +1580,14 @@ def dashboard_stats():
             print(f"Pending count error (table may not exist): {pe}")
             pending = 0
 
-        # This month's spending - use simpler query that works with MySQL
+        # This month's spending - use chase_amount column from transactions table
         month_total = 0.0
         try:
             cursor = db_execute(conn, db_type, """
-                SELECT COALESCE(SUM(ABS(amount)), 0) AS total
+                SELECT COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total
                 FROM transactions
-                WHERE date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
-                AND amount < 0
+                WHERE chase_date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
+                AND CAST(chase_amount AS DECIMAL(10,2)) < 0
             """)
             row = cursor.fetchone()
             month_total = float(row['total']) if row and row['total'] else 0.0
