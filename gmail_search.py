@@ -56,7 +56,7 @@ from gmail_intelligence import (
     should_process_attachment,
 )
 
-# Import email screenshot service
+# Import email screenshot service (Playwright - for local dev)
 try:
     from scripts.misc.email_screenshot import create_email_receipt_screenshot
     SCREENSHOT_AVAILABLE = True
@@ -66,6 +66,15 @@ except ImportError:
         SCREENSHOT_AVAILABLE = True
     except ImportError:
         SCREENSHOT_AVAILABLE = False
+        create_email_receipt_screenshot = None
+
+# Import Gemini HTML extraction (Railway fallback - no browser needed)
+try:
+    from gemini_utils import extract_receipt_from_html_email
+    GEMINI_HTML_AVAILABLE = True
+except ImportError:
+    GEMINI_HTML_AVAILABLE = False
+    extract_receipt_from_html_email = None
 
 
 # =============================================================================
@@ -762,8 +771,8 @@ def search_gmail_receipts_for_row(
                 candidates.append(cand)
                 attachments_processed += 1
 
-            # HTML EMAIL PROCESSING - If no attachments found, try HTML body screenshot
-            if attachments_processed == 0 and SCREENSHOT_AVAILABLE:
+            # HTML EMAIL PROCESSING - If no attachments found, try HTML body extraction
+            if attachments_processed == 0 and (SCREENSHOT_AVAILABLE or GEMINI_HTML_AVAILABLE):
                 # Extract HTML body from message
                 html_body = None
                 for part in iter_parts(msg.get("payload", {})):
@@ -782,41 +791,62 @@ def search_gmail_receipts_for_row(
                     import re
                     money_pattern = r'\$\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})?'
                     if re.search(money_pattern, html_body):
-                        print(f"📧 Email body has receipt data, creating screenshot...")
+                        meta = None
+                        saved_filename = None
 
-                        # Screenshot the HTML
-                        screenshot_path = create_email_receipt_screenshot(
-                            html_body,
-                            subject,
-                            msg_id,
-                            RECEIPT_DIR
-                        )
+                        # METHOD 1: Playwright screenshot (local dev - better quality)
+                        if SCREENSHOT_AVAILABLE and create_email_receipt_screenshot:
+                            print(f"📧 Email body has receipt data, creating screenshot...")
 
-                        if screenshot_path and screenshot_path.exists():
-                            # Read screenshot as bytes
-                            with screenshot_path.open("rb") as f:
-                                screenshot_bytes = f.read()
+                            # Screenshot the HTML
+                            screenshot_path = create_email_receipt_screenshot(
+                                html_body,
+                                subject,
+                                msg_id,
+                                RECEIPT_DIR
+                            )
 
-                            # Process with vision AI
-                            saved_filename = screenshot_path.name
-                            meta = get_cached_meta(saved_filename)
-                            if not meta:
-                                meta = extract_receipt_with_vision_from_bytes(
-                                    screenshot_bytes,
-                                    filename_hint=saved_filename
-                                )
-                                if meta:
-                                    meta["filename"] = saved_filename
-                                    set_cached_meta(meta)
+                            if screenshot_path and screenshot_path.exists():
+                                # Read screenshot as bytes
+                                with screenshot_path.open("rb") as f:
+                                    screenshot_bytes = f.read()
+
+                                # Process with vision AI
+                                saved_filename = screenshot_path.name
+                                meta = get_cached_meta(saved_filename)
+                                if not meta:
+                                    meta = extract_receipt_with_vision_from_bytes(
+                                        screenshot_bytes,
+                                        filename_hint=saved_filename
+                                    )
+                                    if meta:
+                                        meta["filename"] = saved_filename
+                                        set_cached_meta(meta)
+
+                        # METHOD 2: Gemini HTML extraction (Railway - no browser)
+                        if not meta and GEMINI_HTML_AVAILABLE and extract_receipt_from_html_email:
+                            print(f"📧 Extracting receipt from HTML email via Gemini...")
+                            meta = extract_receipt_from_html_email(html_body, subject, sender)
 
                             if meta:
-                                # RENAME FILE: Merchant_date_amount.png
+                                # Create a placeholder filename for the metadata
+                                import hashlib
+                                msg_hash = hashlib.md5(msg_id.encode()).hexdigest()[:8]
+                                safe_subject = re.sub(r'[^\w\s-]', '', subject)[:30]
+                                safe_subject = re.sub(r'[-\s]+', '_', safe_subject)
+                                saved_filename = f"html_email_{safe_subject}_{msg_hash}.html"
+                                meta["filename"] = saved_filename
+                                set_cached_meta(meta)
+                                print(f"   ✅ Gemini HTML extraction: {meta.get('merchant_name')} · ${meta.get('total_amount', 0):.2f}")
+
+                        if meta and saved_filename:
+                            # RENAME FILE: Merchant_date_amount.png (only for screenshots)
+                            if saved_filename.endswith('.png') and SCREENSHOT_AVAILABLE:
                                 merchant = meta.get("merchant_normalized") or meta.get("merchant_name") or "Unknown"
-                                date = meta.get("receipt_date") or "NoDate"
+                                date_str = meta.get("receipt_date") or "NoDate"
                                 amount = meta.get("total_amount") or 0.0
 
                                 # Clean merchant name for filename
-                                import re
                                 merchant_clean = re.sub(r'[^\w\s-]', '', merchant)[:30]
                                 merchant_clean = re.sub(r'[-\s]+', '_', merchant_clean)
 
@@ -824,14 +854,15 @@ def search_gmail_receipts_for_row(
                                 amount_str = f"{abs(amount):.2f}".replace(".", "_")
 
                                 # Create new filename
-                                new_filename = f"{merchant_clean}_{date}_{amount_str}.png"
+                                new_filename = f"{merchant_clean}_{date_str}_{amount_str}.png"
                                 new_path = RECEIPT_DIR / new_filename
+                                old_path = RECEIPT_DIR / saved_filename
 
                                 # Rename file if it doesn't already have the correct name
-                                if screenshot_path.name != new_filename and not new_path.exists():
+                                if old_path.exists() and saved_filename != new_filename and not new_path.exists():
                                     try:
-                                        screenshot_path.rename(new_path)
-                                        print(f"📝 Renamed: {screenshot_path.name} → {new_filename}")
+                                        old_path.rename(new_path)
+                                        print(f"📝 Renamed: {saved_filename} → {new_filename}")
 
                                         # Update metadata cache with new filename
                                         meta["filename"] = new_filename
@@ -840,38 +871,37 @@ def search_gmail_receipts_for_row(
                                         # Update saved_filename to use new name
                                         saved_filename = new_filename
                                     except Exception as e:
-                                        print(f"⚠️ Could not rename {screenshot_path.name}: {e}")
-                                        # Keep using original filename
+                                        print(f"⚠️ Could not rename {saved_filename}: {e}")
                                 elif new_path.exists():
-                                    # New filename already exists, use it
                                     saved_filename = new_filename
-                                # Score and add as candidate
-                                final_score, amount_score, merch_score, date_score = score_candidate(
-                                    chase_amount,
-                                    chase_merchant_norm,
-                                    chase_date,
-                                    meta,
-                                )
 
-                                cand = GmailReceiptCandidate(
-                                    account=name,
-                                    message_id=msg_id,
-                                    attachment_id="",  # No attachment, HTML body screenshot
-                                    gmail_subject=subject,
-                                    gmail_sender=sender,
-                                    filename=saved_filename,
-                                    saved_filename=saved_filename,
-                                    total_amount=meta.get("total_amount") or 0.0,
-                                    merchant_name=meta.get("merchant_name") or "",
-                                    merchant_normalized=meta.get("merchant_normalized") or "",
-                                    receipt_date=meta.get("receipt_date") or "",
-                                    score=final_score,
-                                    amount_score=amount_score,
-                                    merchant_score=merch_score,
-                                    date_score=date_score,
-                                )
-                                candidates.append(cand)
-                                print(f"✅ HTML email screenshot processed: score={final_score:.1f}")
+                            # Score and add as candidate
+                            final_score, amount_score, merch_score, date_score = score_candidate(
+                                chase_amount,
+                                chase_merchant_norm,
+                                chase_date,
+                                meta,
+                            )
+
+                            cand = GmailReceiptCandidate(
+                                account=name,
+                                message_id=msg_id,
+                                attachment_id="",  # No attachment, HTML body extraction
+                                gmail_subject=subject,
+                                gmail_sender=sender,
+                                filename=saved_filename,
+                                saved_filename=saved_filename,
+                                total_amount=meta.get("total_amount") or 0.0,
+                                merchant_name=meta.get("merchant_name") or "",
+                                merchant_normalized=meta.get("merchant_normalized") or "",
+                                receipt_date=meta.get("receipt_date") or "",
+                                score=final_score,
+                                amount_score=amount_score,
+                                merchant_score=merch_score,
+                                date_score=date_score,
+                            )
+                            candidates.append(cand)
+                            print(f"✅ HTML email processed: score={final_score:.2f}")
 
     candidates.sort(key=lambda c: c.score, reverse=True)
     print(f"✅ Gmail candidates total: {len(candidates)}")

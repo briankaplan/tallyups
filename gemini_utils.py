@@ -214,6 +214,104 @@ Only return the JSON, no other text."""
             pass
     return (None, None, None, False)
 
+
+def extract_receipt_from_html_email(html_content: str, subject: str = "", sender: str = ""):
+    """
+    Extract receipt data from raw HTML email content using Gemini.
+    Works without browser - suitable for Railway deployment.
+
+    Args:
+        html_content: Raw HTML email content
+        subject: Email subject for context
+        sender: Sender email for context
+
+    Returns:
+        Dict with merchant, amount, date, description or None on failure
+    """
+    import re
+    from html.parser import HTMLParser
+
+    # Strip HTML tags to get plain text
+    class HTMLTextExtractor(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.text_parts = []
+            self.skip_data = False
+
+        def handle_starttag(self, tag, attrs):
+            if tag in ['script', 'style', 'head']:
+                self.skip_data = True
+
+        def handle_endtag(self, tag):
+            if tag in ['script', 'style', 'head']:
+                self.skip_data = False
+            if tag in ['p', 'div', 'tr', 'br', 'li']:
+                self.text_parts.append('\n')
+
+        def handle_data(self, data):
+            if not self.skip_data:
+                self.text_parts.append(data)
+
+    try:
+        parser = HTMLTextExtractor()
+        parser.feed(html_content)
+        plain_text = ' '.join(parser.text_parts)
+        # Clean up whitespace
+        plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+    except:
+        # Fallback: crude HTML strip
+        plain_text = re.sub(r'<[^>]+>', ' ', html_content)
+        plain_text = re.sub(r'\s+', ' ', plain_text).strip()
+
+    # Limit text length for API
+    plain_text = plain_text[:4000]
+
+    prompt = f"""Extract receipt/invoice information from this email:
+
+Subject: {subject}
+From: {sender}
+
+Email Content:
+{plain_text}
+
+Extract the following (be precise with numbers):
+1. merchant_name: The business/company name
+2. merchant_normalized: Simplified merchant name (e.g., "Soho House Nashville" → "soho house")
+3. receipt_date: Transaction date in YYYY-MM-DD format (or empty string if not found)
+4. subtotal_amount: Subtotal before tax/tip (number only, 0 if not shown)
+5. tip_amount: Tip amount (number only, 0 if not shown)
+6. total_amount: FINAL total charged (number only)
+
+Return ONLY valid JSON:
+{{"merchant_name": "...", "merchant_normalized": "...", "receipt_date": "YYYY-MM-DD", "subtotal_amount": 0.0, "tip_amount": 0.0, "total_amount": 123.45}}"""
+
+    result = generate_content_with_fallback(prompt)
+    if result:
+        try:
+            import json
+            result = result.strip()
+            if result.startswith('```'):
+                result = result.split('\n', 1)[1]
+            if result.endswith('```'):
+                result = result.rsplit('```', 1)[0]
+            result = result.strip()
+            data = json.loads(result)
+
+            # Validate we got meaningful data
+            if data.get('merchant_name') and data.get('total_amount'):
+                return {
+                    'merchant_name': data.get('merchant_name', ''),
+                    'merchant_normalized': data.get('merchant_normalized', ''),
+                    'receipt_date': data.get('receipt_date', ''),
+                    'subtotal_amount': float(data.get('subtotal_amount', 0) or 0),
+                    'tip_amount': float(data.get('tip_amount', 0) or 0),
+                    'total_amount': float(data.get('total_amount', 0) or 0),
+                    'ocr_source': 'gemini_html_extraction',
+                }
+        except Exception as e:
+            print(f"   ⚠️ Gemini HTML extraction parse error: {e}")
+    return None
+
 # Initialize on import
 _configure_with_key(0)
 
