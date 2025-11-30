@@ -631,26 +631,53 @@ def normalize_merchant_name(s: str | None) -> str:
 
 
 # =============================================================================
-# DATABASE LOAD (MySQL-only)
+# DATABASE LOAD (MySQL-only) WITH CACHING
 # =============================================================================
 
-def load_data():
-    """Load all transactions from MySQL database."""
-    global df
+# Cache configuration
+DF_CACHE_TTL_SECONDS = 300  # 5 minutes TTL for DataFrame cache
+_df_cache_timestamp = None  # When the cache was last loaded
+import time as _time_module  # For cache timestamp
+
+def load_data(force_refresh=False):
+    """Load all transactions from MySQL database with optional caching.
+
+    Args:
+        force_refresh: If True, bypass cache and reload from database
+    """
+    global df, _df_cache_timestamp
 
     if not db:
         raise RuntimeError("MySQL database not available")
 
+    # Check if cache is still valid
+    current_time = _time_module.time()
+    if not force_refresh and df is not None and _df_cache_timestamp:
+        cache_age = current_time - _df_cache_timestamp
+        if cache_age < DF_CACHE_TTL_SECONDS:
+            # Cache is still valid, return existing df
+            return df
+
     try:
+        start_time = _time_module.time()
         df = db.get_all_transactions()
         # Ensure _index is integer for proper comparisons
         if '_index' in df.columns:
             df['_index'] = pd.to_numeric(df['_index'], errors='coerce').fillna(0).astype(int)
-        print(f"✅ Loaded {len(df)} transactions from MySQL")
+
+        load_time = _time_module.time() - start_time
+        _df_cache_timestamp = current_time
+        print(f"✅ Loaded {len(df)} transactions from MySQL in {load_time:.2f}s (cached for {DF_CACHE_TTL_SECONDS}s)")
         return df
     except Exception as e:
         print(f"❌ MySQL load failed: {e}")
         raise
+
+
+def invalidate_cache():
+    """Force cache invalidation on next request."""
+    global _df_cache_timestamp
+    _df_cache_timestamp = None
 
 
 # Legacy alias for backward compatibility
@@ -672,11 +699,15 @@ def save_csv():
     save_data()
 
 
-def ensure_df():
-    """Lazy loader used by all routes."""
+def ensure_df(force_refresh=False):
+    """Lazy loader used by all routes. Respects cache TTL.
+
+    Args:
+        force_refresh: If True, bypass cache and reload from database
+    """
     global df
-    if df is None:
-        load_csv()
+    if df is None or force_refresh:
+        load_data(force_refresh=force_refresh)
     return df
 
 

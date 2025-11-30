@@ -210,7 +210,9 @@ class MySQLReceiptDatabase:
                     INDEX idx_date (chase_date),
                     INDEX idx_business (business_type),
                     INDEX idx_review (review_status),
-                    INDEX idx_report (report_id)
+                    INDEX idx_report (report_id),
+                    INDEX idx_deleted (deleted),
+                    INDEX idx_submitted (already_submitted)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """)
 
@@ -422,6 +424,25 @@ class MySQLReceiptDatabase:
                     except Exception as e:
                         if "Duplicate column" not in str(e):
                             print(f"  ⚠️  Migration for {col_name}: {e}")
+
+            # Add missing indexes for performance
+            index_migrations = [
+                ("idx_deleted", "CREATE INDEX idx_deleted ON transactions(deleted)"),
+                ("idx_submitted", "CREATE INDEX idx_submitted ON transactions(already_submitted)"),
+            ]
+
+            # Get existing indexes
+            cursor.execute("SHOW INDEX FROM transactions")
+            existing_indexes = {row['Key_name'] for row in cursor.fetchall()}
+
+            for idx_name, create_sql in index_migrations:
+                if idx_name not in existing_indexes:
+                    try:
+                        cursor.execute(create_sql)
+                        print(f"  ✅ Added index: {idx_name}")
+                    except Exception as e:
+                        if "Duplicate key name" not in str(e):
+                            print(f"  ⚠️  Index migration for {idx_name}: {e}")
 
             self.conn.commit()
         except Exception as e:
