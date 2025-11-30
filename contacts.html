@@ -467,6 +467,31 @@
       margin-bottom: 16px;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
+      align-items: center;
+    }
+
+    .load-all-btn {
+      padding: 8px 16px;
+      background: var(--purple);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      margin-left: auto;
+    }
+
+    .load-all-btn:hover {
+      background: #7C3AED;
+      transform: scale(1.02);
+    }
+
+    .load-all-btn:disabled {
+      background: var(--border);
+      cursor: not-allowed;
     }
 
     .stat-pill {
@@ -2460,6 +2485,9 @@
       <span class="stat-pill-value" id="recentInteractions">0</span>
       <span class="stat-pill-label">This Week</span>
     </div>
+    <button class="load-all-btn" id="loadAllBtn" onclick="loadAllContacts()" style="display: none;">
+      Load All <span id="remainingCount"></span>
+    </button>
   </div>
 
   <!-- Contact List -->
@@ -2903,7 +2931,7 @@
     async function loadAllContacts() {
       if (contacts.length >= totalContactCount) return;
 
-      const btn = document.querySelector('.load-all-btn');
+      const btn = document.getElementById('loadAllBtn');
       if (btn) {
         btn.textContent = 'Loading all contacts...';
         btn.disabled = true;
@@ -2917,15 +2945,34 @@
           contacts = data.contacts;
           totalContactCount = data.total || data.contacts.length;
           hasMoreContacts = false;
+          currentOffset = contacts.length;
           renderContacts();
+          renderCategoryChips();
           updateStats(data.stats || { total: totalContactCount });
           updateAlphabetIndex();
+          updateLoadAllButton();
         }
       } catch (error) {
         console.error('Error loading all contacts:', error);
+        if (btn) {
+          btn.textContent = 'Retry Load All';
+          btn.disabled = false;
+        }
       }
+    }
 
-      if (btn) btn.remove();
+    // Update Load All button visibility
+    function updateLoadAllButton() {
+      const btn = document.getElementById('loadAllBtn');
+      if (!btn) return;
+
+      if (contacts.length < totalContactCount) {
+        const remaining = totalContactCount - contacts.length;
+        document.getElementById('remainingCount').textContent = `(${remaining} more)`;
+        btn.style.display = 'block';
+      } else {
+        btn.style.display = 'none';
+      }
     }
 
     // Setup infinite scroll
@@ -2963,6 +3010,8 @@
           updateStats(data.stats || { total: totalContactCount });
           renderContacts();
           renderCategoryChips();  // Render category filter chips with counts
+          updateLoadAllButton();  // Show Load All button if more contacts available
+          updateAlphabetIndex();  // Update alphabet sidebar
         } else {
           showEmptyState();
         }
@@ -2992,8 +3041,11 @@
           renderContacts();
           renderCategoryChips();  // Update category counts with new contacts
           updateLoadedCount();
+          updateLoadAllButton();  // Update Load All button
+          updateAlphabetIndex();  // Update alphabet sidebar
         } else {
           hasMoreContacts = false;
+          updateLoadAllButton();
         }
       } catch (error) {
         console.error('Error loading more contacts:', error);
@@ -3028,10 +3080,11 @@
 
     // Update stats
     function updateStats(stats) {
-      document.getElementById('totalContacts').textContent = stats.total || contacts.length;
+      document.getElementById('totalContacts').textContent = totalContactCount || stats.total || contacts.length;
       document.getElementById('avgScore').textContent = stats.avg_score || calculateAvgScore();
       document.getElementById('recentInteractions').textContent = stats.recent_interactions || 0;
-      document.getElementById('countAll').textContent = contacts.length;
+      // Show total from server, not just loaded count
+      document.getElementById('countAll').textContent = totalContactCount || contacts.length;
       document.getElementById('countVip').textContent = contacts.filter(c => c.is_vip).length;
     }
 
