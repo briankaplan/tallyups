@@ -139,6 +139,109 @@ except Exception as e:
     print(f"⚠️ Contacts engine not available: {e}")
     CONTACTS_ENGINE_AVAILABLE = False
 
+# === SMART NOTES ENGINE (Calendar + iMessage + Contacts) ===
+try:
+    from smart_notes_engine import generate_smart_note, generate_notes_for_transactions
+    SMART_NOTES_AVAILABLE = True
+    print(f"✅ Smart notes engine loaded")
+except Exception as e:
+    print(f"⚠️ Smart notes engine not available: {e}")
+    SMART_NOTES_AVAILABLE = False
+    generate_smart_note = None
+    generate_notes_for_transactions = None
+
+# === APPLE RECEIPT SPLITTER ===
+try:
+    from apple_receipt_splitter import (
+        split_apple_receipt,
+        auto_split_transaction,
+        find_apple_transactions_to_split,
+        process_all_apple_splits
+    )
+    APPLE_SPLITTER_AVAILABLE = True
+    print(f"✅ Apple receipt splitter loaded")
+except Exception as e:
+    print(f"⚠️ Apple receipt splitter not available: {e}")
+    APPLE_SPLITTER_AVAILABLE = False
+    split_apple_receipt = None
+    auto_split_transaction = None
+
+# === CONTACT MANAGEMENT SYSTEM ===
+try:
+    from contact_management import (
+        get_contact_manager,
+        search_contacts,
+        find_attendees_for_expense,
+        get_contact_stats
+    )
+    CONTACT_MANAGER_AVAILABLE = True
+    print(f"✅ Contact management system loaded")
+except Exception as e:
+    print(f"⚠️ Contact management not available: {e}")
+    CONTACT_MANAGER_AVAILABLE = False
+    get_contact_manager = None
+    search_contacts = None
+    find_attendees_for_expense = None
+    get_contact_stats = None
+
+# === APPLE CONTACTS SYNC ===
+try:
+    from apple_contacts_sync import (
+        sync_apple_contacts,
+        get_apple_contacts_stats,
+        search_apple_contacts
+    )
+    APPLE_CONTACTS_AVAILABLE = True
+    print(f"✅ Apple Contacts sync loaded")
+except Exception as e:
+    print(f"⚠️ Apple Contacts sync not available: {e}")
+    APPLE_CONTACTS_AVAILABLE = False
+    sync_apple_contacts = None
+    get_apple_contacts_stats = None
+    search_apple_contacts = None
+
+# === ATLAS RELATIONSHIP INTELLIGENCE ===
+try:
+    from relationship_intelligence import (
+        AtlasService,
+        iMessageReader,
+        InteractionTracker,
+        CommitmentTracker,
+        RelationshipHealthAnalyzer,
+        MeetingPrepGenerator,
+        NudgeEngine,
+        GmailReader,
+        GooglePeopleAPI,
+        GMAIL_ACCOUNTS
+    )
+    ATLAS_AVAILABLE = True
+    print(f"✅ ATLAS Relationship Intelligence loaded (Gmail: {len(GMAIL_ACCOUNTS)} accounts)")
+except Exception as e:
+    print(f"⚠️ ATLAS not available: {e}")
+    ATLAS_AVAILABLE = False
+    AtlasService = None
+    GmailReader = None
+    GooglePeopleAPI = None
+    GMAIL_ACCOUNTS = []
+
+# === CONTACT SYNC ENGINE ===
+try:
+    from contact_sync_engine import (
+        UniversalSyncEngine,
+        AppleContactsAdapter,
+        GoogleContactsAdapter,
+        LinkedInAdapter,
+        SyncDirection,
+        SyncResult
+    )
+    CONTACT_SYNC_AVAILABLE = True
+    print("✅ Contact Sync Engine loaded")
+except Exception as e:
+    print(f"⚠️ Contact Sync Engine not available: {e}")
+    CONTACT_SYNC_AVAILABLE = False
+    UniversalSyncEngine = None
+    AppleContactsAdapter = None
+
 # =============================================================================
 # PATHS / GLOBALS
 # =============================================================================
@@ -3031,6 +3134,1091 @@ def api_ai_batch_categorize():
     })
 
 
+# =============================================================================
+# APPLE RECEIPT SPLITTER ENDPOINTS
+# =============================================================================
+
+@app.route("/api/ai/apple-split-analyze", methods=["POST"])
+def api_ai_apple_split_analyze():
+    """
+    Analyze an Apple receipt image to identify personal vs business items.
+    Does NOT create split transactions - just returns the analysis.
+
+    POST body: {"receipt_path": "applecombill_xxx.jpg"} or {"transaction_id": 123}
+    Returns: Analysis with items classified by business type
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not APPLE_SPLITTER_AVAILABLE:
+        return jsonify({'error': 'Apple receipt splitter not available'}), 503
+
+    data = request.get_json(force=True) or {}
+    receipt_path = data.get("receipt_path")
+    transaction_id = data.get("transaction_id")
+
+    # If transaction_id provided, look up the receipt
+    if transaction_id and not receipt_path:
+        try:
+            conn, db_type = get_db_connection()
+            cursor = db_execute(conn, db_type,
+                "SELECT receipt_file FROM transactions WHERE id = ?",
+                (transaction_id,))
+            row = cursor.fetchone()
+            conn.close()
+            if row and row.get('receipt_file'):
+                receipt_path = row['receipt_file']
+            else:
+                return jsonify({'error': f'No receipt found for transaction {transaction_id}'}), 404
+        except Exception as e:
+            return jsonify({'error': f'Database error: {e}'}), 500
+
+    if not receipt_path:
+        return jsonify({'error': 'receipt_path or transaction_id required'}), 400
+
+    # Build full path
+    if not receipt_path.startswith('/'):
+        full_path = str(RECEIPT_DIR / receipt_path)
+    else:
+        full_path = receipt_path
+
+    if not os.path.exists(full_path):
+        return jsonify({'error': f'Receipt file not found: {receipt_path}'}), 404
+
+    try:
+        result = split_apple_receipt(full_path)
+        return jsonify({
+            "ok": True,
+            "analysis": result
+        })
+    except Exception as e:
+        print(f"Apple split analyze error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/ai/apple-split-execute", methods=["POST"])
+def api_ai_apple_split_execute():
+    """
+    Execute an Apple receipt split - creates new split transactions in the database.
+    Links the SAME receipt to ALL split transactions.
+
+    POST body: {"transaction_id": 123} or {"transaction_id": 123, "receipt_path": "xxx.jpg"}
+    Returns: Created split transactions with linked receipt
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not APPLE_SPLITTER_AVAILABLE:
+        return jsonify({'error': 'Apple receipt splitter not available'}), 503
+
+    data = request.get_json(force=True) or {}
+    transaction_id = data.get("transaction_id")
+    receipt_path = data.get("receipt_path")
+
+    if not transaction_id:
+        return jsonify({'error': 'transaction_id required'}), 400
+
+    try:
+        result = auto_split_transaction(transaction_id, receipt_path)
+
+        if result.get('error'):
+            return jsonify({'error': result['error']}), 400
+
+        # Refresh dataframe to pick up new transactions
+        global df
+        df = None
+        ensure_df()
+
+        return jsonify({
+            "ok": True,
+            "result": result
+        })
+    except Exception as e:
+        print(f"Apple split execute error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/ai/apple-split-candidates", methods=["GET"])
+def api_ai_apple_split_candidates():
+    """
+    Find Apple transactions that might need splitting.
+
+    Query params: limit (default 50)
+    Returns: List of Apple transactions with their receipts
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not APPLE_SPLITTER_AVAILABLE:
+        return jsonify({'error': 'Apple receipt splitter not available'}), 503
+
+    limit = request.args.get('limit', 50, type=int)
+
+    try:
+        candidates = find_apple_transactions_to_split(limit=limit)
+        return jsonify({
+            "ok": True,
+            "count": len(candidates),
+            "candidates": candidates
+        })
+    except Exception as e:
+        print(f"Apple split candidates error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/ai/apple-split-all", methods=["POST"])
+def api_ai_apple_split_all():
+    """
+    Process all Apple transactions - analyze and split where needed.
+
+    POST body: {"dry_run": true/false, "limit": 50}
+    Returns: Summary of splits performed
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not APPLE_SPLITTER_AVAILABLE:
+        return jsonify({'error': 'Apple receipt splitter not available'}), 503
+
+    data = request.get_json(force=True) or {}
+    dry_run = data.get("dry_run", True)
+    limit = data.get("limit", 50)
+
+    try:
+        results = process_all_apple_splits(dry_run=dry_run, limit=limit)
+
+        # Refresh dataframe if we made changes
+        if not dry_run and results.get('splits_created', 0) > 0:
+            global df
+            df = None
+            ensure_df()
+
+        return jsonify({
+            "ok": True,
+            "dry_run": dry_run,
+            "results": results
+        })
+    except Exception as e:
+        print(f"Apple split all error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# CONTACT MANAGEMENT ENDPOINTS
+# =============================================================================
+
+@app.route("/api/contacts/search", methods=["GET"])
+def api_contacts_search():
+    """
+    Search contacts by name, company, or title.
+
+    Query params: q (search query), limit (default 10)
+    Returns: List of matching contacts
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not CONTACT_MANAGER_AVAILABLE:
+        return jsonify({'error': 'Contact manager not available'}), 503
+
+    query = request.args.get('q', '')
+    limit = request.args.get('limit', 10, type=int)
+
+    if not query:
+        return jsonify({'error': 'Search query (q) required'}), 400
+
+    try:
+        results = search_contacts(query, limit=limit)
+        return jsonify({
+            "ok": True,
+            "query": query,
+            "count": len(results),
+            "contacts": results
+        })
+    except Exception as e:
+        print(f"Contact search error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/contacts/stats", methods=["GET"])
+def api_contacts_stats():
+    """
+    Get contact database statistics.
+
+    Returns: Summary of contacts by category, priority, etc.
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not CONTACT_MANAGER_AVAILABLE:
+        return jsonify({'error': 'Contact manager not available'}), 503
+
+    try:
+        stats = get_contact_stats()
+        return jsonify({
+            "ok": True,
+            "stats": stats
+        })
+    except Exception as e:
+        print(f"Contact stats error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/contacts/attendees", methods=["POST"])
+def api_contacts_attendees():
+    """
+    Find likely attendees for an expense/meeting.
+
+    POST body: {"merchant": "...", "date": "...", "business_type": "...", "amount": 0}
+    Returns: List of likely attendees with confidence scores
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not CONTACT_MANAGER_AVAILABLE:
+        return jsonify({'error': 'Contact manager not available'}), 503
+
+    data = request.get_json(force=True) or {}
+    merchant = data.get("merchant", "")
+    date = data.get("date", "")
+    business_type = data.get("business_type", "")
+    amount = data.get("amount", 0)
+    calendar_attendees = data.get("calendar_attendees", [])
+    imessage_context = data.get("imessage_context", [])
+
+    if not merchant:
+        return jsonify({'error': 'merchant required'}), 400
+
+    try:
+        attendees = find_attendees_for_expense(
+            merchant=merchant,
+            date=date,
+            business_type=business_type,
+            amount=amount,
+            calendar_attendees=calendar_attendees,
+            imessage_context=imessage_context
+        )
+        return jsonify({
+            "ok": True,
+            "merchant": merchant,
+            "count": len(attendees),
+            "attendees": attendees
+        })
+    except Exception as e:
+        print(f"Contact attendees error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/contacts/<int:contact_id>", methods=["GET"])
+def api_contacts_get(contact_id):
+    """
+    Get a specific contact by ID.
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not CONTACT_MANAGER_AVAILABLE:
+        return jsonify({'error': 'Contact manager not available'}), 503
+
+    try:
+        manager = get_contact_manager()
+        contact = manager.get_contact_by_id(contact_id)
+        if not contact:
+            return jsonify({'error': f'Contact {contact_id} not found'}), 404
+
+        return jsonify({
+            "ok": True,
+            "contact": contact.to_dict()
+        })
+    except Exception as e:
+        print(f"Contact get error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/contacts/category/<category>", methods=["GET"])
+def api_contacts_by_category(category):
+    """
+    Get contacts by category.
+
+    Query params: limit (default 50)
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not CONTACT_MANAGER_AVAILABLE:
+        return jsonify({'error': 'Contact manager not available'}), 503
+
+    limit = request.args.get('limit', 50, type=int)
+
+    try:
+        manager = get_contact_manager()
+        contacts = manager.search_by_category(category, limit=limit)
+        return jsonify({
+            "ok": True,
+            "category": category,
+            "count": len(contacts),
+            "contacts": [c.to_dict() for c in contacts]
+        })
+    except Exception as e:
+        print(f"Contact category error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/contacts/high-priority", methods=["GET"])
+def api_contacts_high_priority():
+    """
+    Get high-priority contacts.
+
+    Query params: limit (default 50)
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not CONTACT_MANAGER_AVAILABLE:
+        return jsonify({'error': 'Contact manager not available'}), 503
+
+    limit = request.args.get('limit', 50, type=int)
+
+    try:
+        manager = get_contact_manager()
+        contacts = manager.get_high_priority_contacts(limit=limit)
+        return jsonify({
+            "ok": True,
+            "count": len(contacts),
+            "contacts": [c.to_dict() for c in contacts]
+        })
+    except Exception as e:
+        print(f"Contact high priority error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# APPLE CONTACTS SYNC API
+# =============================================================================
+
+@app.route("/api/contacts/apple/stats", methods=["GET"])
+@login_required
+def apple_contacts_stats():
+    """
+    Get statistics about Apple AddressBook (local macOS Contacts)
+    Returns source counts without syncing
+    """
+    if not APPLE_CONTACTS_AVAILABLE:
+        return jsonify({'error': 'Apple Contacts sync not available'}), 503
+
+    try:
+        stats = get_apple_contacts_stats()
+        return jsonify({
+            "ok": True,
+            "available": stats.get('available', False),
+            "total_contacts": stats.get('total_contacts', 0),
+            "sources": stats.get('sources', [])
+        })
+    except Exception as e:
+        print(f"Apple contacts stats error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/contacts/apple/search", methods=["GET"])
+@login_required
+def apple_contacts_search_api():
+    """
+    Search Apple Contacts directly (without full sync)
+    Query params: q (required), limit (optional, default 20)
+    """
+    if not APPLE_CONTACTS_AVAILABLE:
+        return jsonify({'error': 'Apple Contacts sync not available'}), 503
+
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify({'error': 'Missing search query (q parameter)'}), 400
+
+    limit = request.args.get('limit', 20, type=int)
+
+    try:
+        results = search_apple_contacts(query, limit=limit)
+        return jsonify({
+            "ok": True,
+            "query": query,
+            "count": len(results),
+            "contacts": results
+        })
+    except Exception as e:
+        print(f"Apple contacts search error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/contacts/apple/sync", methods=["POST"])
+@login_required
+def apple_contacts_sync_api():
+    """
+    Sync Apple Contacts to contacts.csv
+    This reads all AddressBook sources, deduplicates, and merges with existing
+    """
+    if not APPLE_CONTACTS_AVAILABLE:
+        return jsonify({'error': 'Apple Contacts sync not available'}), 503
+
+    try:
+        result = sync_apple_contacts()
+        return jsonify({
+            "ok": True,
+            "status": result.get('status', 'unknown'),
+            "stats": result.get('stats', {}),
+            "total_contacts": result.get('total_contacts', 0)
+        })
+    except Exception as e:
+        print(f"Apple contacts sync error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# ATLAS RELATIONSHIP INTELLIGENCE API
+# =============================================================================
+
+@app.route("/api/atlas/status", methods=["GET"])
+@login_required
+def atlas_status_api():
+    """Get ATLAS system status and capabilities"""
+    return jsonify({
+        "ok": True,
+        "available": ATLAS_AVAILABLE,
+        "features": {
+            "imessage": ATLAS_AVAILABLE,
+            "interaction_tracking": ATLAS_AVAILABLE,
+            "commitments": ATLAS_AVAILABLE,
+            "relationship_health": ATLAS_AVAILABLE,
+            "meeting_prep": ATLAS_AVAILABLE,
+            "nudges": ATLAS_AVAILABLE
+        }
+    })
+
+
+@app.route("/api/atlas/imessage/recent", methods=["GET"])
+@login_required
+def atlas_imessage_recent():
+    """Get recent iMessage contacts with message counts"""
+    if not ATLAS_AVAILABLE:
+        return jsonify({'error': 'ATLAS not available'}), 503
+
+    try:
+        days = request.args.get('days', 7, type=int)
+        limit = request.args.get('limit', 20, type=int)
+
+        reader = iMessageReader()
+        contacts = reader.get_recent_contacts(days=days, limit=limit)
+
+        return jsonify({
+            "ok": True,
+            "days": days,
+            "contacts": contacts
+        })
+    except Exception as e:
+        print(f"ATLAS iMessage error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/imessage/conversation/<path:handle>", methods=["GET"])
+@login_required
+def atlas_imessage_conversation(handle: str):
+    """Get conversation history with a specific contact"""
+    if not ATLAS_AVAILABLE:
+        return jsonify({'error': 'ATLAS not available'}), 503
+
+    try:
+        days = request.args.get('days', 30, type=int)
+        limit = request.args.get('limit', 100, type=int)
+
+        reader = iMessageReader()
+        messages = reader.get_messages_with_contact(handle, days=days, limit=limit)
+
+        return jsonify({
+            "ok": True,
+            "handle": handle,
+            "messages": messages
+        })
+    except Exception as e:
+        print(f"ATLAS conversation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/relationship/<path:identifier>", methods=["GET"])
+@login_required
+def atlas_relationship_health(identifier: str):
+    """Get relationship health score for a contact"""
+    if not ATLAS_AVAILABLE:
+        return jsonify({'error': 'ATLAS not available'}), 503
+
+    try:
+        analyzer = RelationshipHealthAnalyzer()
+        health = analyzer.calculate_health(identifier)
+
+        if health:
+            return jsonify({
+                "ok": True,
+                "identifier": identifier,
+                "health": {
+                    "overall_score": health.overall_score,
+                    "trend": health.trend.value if health.trend else "unknown",
+                    "last_interaction": health.last_interaction.isoformat() if health.last_interaction else None,
+                    "recency_score": health.recency_score,
+                    "frequency_score": health.frequency_score,
+                    "sentiment_score": health.sentiment_score,
+                    "reciprocity_score": health.reciprocity_score,
+                    "commitment_score": health.commitment_score,
+                    "insights": health.insights
+                }
+            })
+        else:
+            return jsonify({
+                "ok": True,
+                "identifier": identifier,
+                "health": None,
+                "message": "No interaction data found for this contact"
+            })
+    except Exception as e:
+        print(f"ATLAS relationship error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/meeting-prep/<path:identifier>", methods=["GET"])
+@login_required
+def atlas_meeting_prep(identifier: str):
+    """Generate meeting prep brief for a contact"""
+    if not ATLAS_AVAILABLE:
+        return jsonify({'error': 'ATLAS not available'}), 503
+
+    try:
+        generator = MeetingPrepGenerator()
+        brief = generator.generate_brief(identifier)
+
+        if brief:
+            return jsonify({
+                "ok": True,
+                "identifier": identifier,
+                "brief": {
+                    "contact_name": brief.contact_name,
+                    "last_meeting": brief.last_meeting.isoformat() if brief.last_meeting else None,
+                    "meeting_count_30d": brief.meeting_count_30d,
+                    "open_commitments": [
+                        {"content": c.content, "due_date": c.due_date.isoformat() if c.due_date else None, "status": c.status.value}
+                        for c in (brief.open_commitments or [])
+                    ],
+                    "recent_topics": brief.recent_topics,
+                    "relationship_summary": brief.relationship_summary,
+                    "talking_points": brief.talking_points,
+                    "context_notes": brief.context_notes
+                }
+            })
+        else:
+            return jsonify({
+                "ok": True,
+                "identifier": identifier,
+                "brief": None,
+                "message": "No data available to generate meeting brief"
+            })
+    except Exception as e:
+        print(f"ATLAS meeting prep error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/nudges", methods=["GET"])
+@login_required
+def atlas_get_nudges():
+    """Get proactive relationship nudges"""
+    if not ATLAS_AVAILABLE:
+        return jsonify({'error': 'ATLAS not available'}), 503
+
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        priority = request.args.get('priority', None)
+
+        engine = NudgeEngine()
+        nudges = engine.generate_nudges(limit=limit)
+
+        if priority:
+            nudges = [n for n in nudges if n.priority == priority]
+
+        return jsonify({
+            "ok": True,
+            "nudges": [
+                {
+                    "type": n.type,
+                    "priority": n.priority,
+                    "contact_name": n.contact_name,
+                    "contact_identifier": n.contact_identifier,
+                    "message": n.message,
+                    "suggested_action": n.suggested_action,
+                    "context": n.context
+                }
+                for n in nudges
+            ]
+        })
+    except Exception as e:
+        print(f"ATLAS nudges error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/commitments", methods=["GET"])
+@login_required
+def atlas_get_commitments():
+    """Get tracked commitments (optionally filtered by contact)"""
+    if not ATLAS_AVAILABLE:
+        return jsonify({'error': 'ATLAS not available'}), 503
+
+    try:
+        contact = request.args.get('contact', None)
+        status = request.args.get('status', None)
+        limit = request.args.get('limit', 50, type=int)
+
+        tracker = CommitmentTracker()
+        commitments = tracker.get_commitments(contact_identifier=contact, status=status, limit=limit)
+
+        return jsonify({
+            "ok": True,
+            "commitments": [
+                {
+                    "id": c.id,
+                    "contact_name": c.contact_name,
+                    "contact_identifier": c.contact_identifier,
+                    "content": c.content,
+                    "owner": c.owner,
+                    "due_date": c.due_date.isoformat() if c.due_date else None,
+                    "status": c.status.value,
+                    "source_type": c.source_type,
+                    "created_at": c.created_at.isoformat() if c.created_at else None
+                }
+                for c in commitments
+            ]
+        })
+    except Exception as e:
+        print(f"ATLAS commitments error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/commitments/<int:commitment_id>", methods=["PATCH"])
+@login_required
+def atlas_update_commitment(commitment_id: int):
+    """Update a commitment status"""
+    if not ATLAS_AVAILABLE:
+        return jsonify({'error': 'ATLAS not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        new_status = data.get('status')
+
+        if not new_status:
+            return jsonify({'error': 'status required'}), 400
+
+        tracker = CommitmentTracker()
+        success = tracker.update_commitment_status(commitment_id, new_status)
+
+        return jsonify({
+            "ok": success,
+            "commitment_id": commitment_id,
+            "new_status": new_status
+        })
+    except Exception as e:
+        print(f"ATLAS commitment update error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/interactions", methods=["POST"])
+@login_required
+def atlas_log_interaction():
+    """Log a new interaction with a contact"""
+    if not ATLAS_AVAILABLE:
+        return jsonify({'error': 'ATLAS not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+
+        contact_identifier = data.get('contact_identifier')
+        interaction_type = data.get('type', 'note')
+        subject = data.get('subject', '')
+        summary = data.get('summary', '')
+        content = data.get('content', '')
+
+        if not contact_identifier:
+            return jsonify({'error': 'contact_identifier required'}), 400
+
+        tracker = InteractionTracker()
+        interaction_id = tracker.log_interaction(
+            contact_identifier=contact_identifier,
+            interaction_type=interaction_type,
+            subject=subject,
+            summary=summary,
+            content=content
+        )
+
+        return jsonify({
+            "ok": True,
+            "interaction_id": interaction_id
+        })
+    except Exception as e:
+        print(f"ATLAS log interaction error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# ATLAS GMAIL API ENDPOINTS (All 3 accounts)
+# =============================================================================
+
+@app.route("/api/atlas/gmail/status", methods=["GET"])
+@login_required
+def atlas_gmail_status():
+    """Get status of all Gmail accounts"""
+    if not ATLAS_AVAILABLE or not GmailReader:
+        return jsonify({'error': 'ATLAS Gmail not available'}), 503
+
+    try:
+        reader = GmailReader()
+        accounts_status = reader.get_account_status()
+
+        return jsonify({
+            "ok": True,
+            "accounts": accounts_status,
+            "total_accounts": len(GMAIL_ACCOUNTS),
+            "configured_accounts": GMAIL_ACCOUNTS
+        })
+    except Exception as e:
+        print(f"ATLAS Gmail status error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/gmail/recent", methods=["GET"])
+@login_required
+def atlas_gmail_recent():
+    """Get recent email contacts across all Gmail accounts"""
+    if not ATLAS_AVAILABLE or not GmailReader:
+        return jsonify({'error': 'ATLAS Gmail not available'}), 503
+
+    try:
+        days = request.args.get('days', 30, type=int)
+        limit = request.args.get('limit', 50, type=int)
+
+        reader = GmailReader()
+        contacts = reader.get_recent_email_contacts(days=days, limit=limit)
+
+        return jsonify({
+            "ok": True,
+            "contacts": contacts,
+            "count": len(contacts),
+            "accounts_searched": GMAIL_ACCOUNTS
+        })
+    except Exception as e:
+        print(f"ATLAS Gmail recent error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/gmail/conversation/<path:email>", methods=["GET"])
+@login_required
+def atlas_gmail_conversation(email):
+    """Get email conversation with a specific contact"""
+    if not ATLAS_AVAILABLE or not GmailReader:
+        return jsonify({'error': 'ATLAS Gmail not available'}), 503
+
+    try:
+        days = request.args.get('days', 90, type=int)
+        limit = request.args.get('limit', 50, type=int)
+
+        reader = GmailReader()
+        emails = reader.get_emails_with_contact(email, days=days, limit=limit)
+
+        return jsonify({
+            "ok": True,
+            "email": email,
+            "emails": emails,
+            "count": len(emails),
+            "accounts_searched": GMAIL_ACCOUNTS
+        })
+    except Exception as e:
+        print(f"ATLAS Gmail conversation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# ATLAS GOOGLE PEOPLE API ENDPOINTS
+# =============================================================================
+
+@app.route("/api/atlas/people/contacts", methods=["GET"])
+@login_required
+def atlas_people_contacts():
+    """Get all Google contacts with photos"""
+    if not ATLAS_AVAILABLE or not GooglePeopleAPI:
+        return jsonify({'error': 'ATLAS People API not available'}), 503
+
+    try:
+        limit = request.args.get('limit', 100, type=int)
+
+        people = GooglePeopleAPI()
+        contacts = people.get_all_contacts(limit=limit)
+
+        return jsonify({
+            "ok": True,
+            "contacts": contacts,
+            "count": len(contacts)
+        })
+    except Exception as e:
+        print(f"ATLAS People contacts error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/people/search", methods=["GET"])
+@login_required
+def atlas_people_search():
+    """Search Google contacts by name or email"""
+    if not ATLAS_AVAILABLE or not GooglePeopleAPI:
+        return jsonify({'error': 'ATLAS People API not available'}), 503
+
+    try:
+        query = request.args.get('q', '')
+        if not query:
+            return jsonify({'error': 'q parameter required'}), 400
+
+        people = GooglePeopleAPI()
+        results = people.search_contacts(query)
+
+        return jsonify({
+            "ok": True,
+            "query": query,
+            "results": results,
+            "count": len(results)
+        })
+    except Exception as e:
+        print(f"ATLAS People search error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/people/photo/<path:identifier>", methods=["GET"])
+@login_required
+def atlas_people_photo(identifier):
+    """Get photo URL for a contact"""
+    if not ATLAS_AVAILABLE or not GooglePeopleAPI:
+        return jsonify({'error': 'ATLAS People API not available'}), 503
+
+    try:
+        people = GooglePeopleAPI()
+        photo_url = people.get_contact_photo(identifier)
+
+        return jsonify({
+            "ok": True,
+            "identifier": identifier,
+            "photo_url": photo_url
+        })
+    except Exception as e:
+        print(f"ATLAS People photo error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# CONTACT SYNC ENGINE API ENDPOINTS
+# =============================================================================
+
+@app.route("/api/atlas/sync/status", methods=["GET"])
+@login_required
+def atlas_sync_status():
+    """Get contact sync engine status and available adapters"""
+    if not CONTACT_SYNC_AVAILABLE:
+        return jsonify({'error': 'Contact Sync Engine not available'}), 503
+
+    try:
+        adapters = []
+
+        # Check Apple Contacts
+        if AppleContactsAdapter:
+            adapter = AppleContactsAdapter()
+            adapters.append({
+                "name": "apple",
+                "display_name": "Apple Contacts",
+                "supports_push": adapter.supports_push,
+                "supports_incremental": adapter.supports_incremental,
+                "available": True
+            })
+
+        # Check Google Contacts (requires OAuth)
+        adapters.append({
+            "name": "google",
+            "display_name": "Google Contacts",
+            "supports_push": True,
+            "supports_incremental": True,
+            "available": len(GMAIL_ACCOUNTS) > 0,
+            "accounts": GMAIL_ACCOUNTS
+        })
+
+        # LinkedIn (import only)
+        adapters.append({
+            "name": "linkedin",
+            "display_name": "LinkedIn",
+            "supports_push": False,
+            "supports_incremental": False,
+            "available": True,
+            "note": "Import from CSV export"
+        })
+
+        return jsonify({
+            "ok": True,
+            "engine_available": CONTACT_SYNC_AVAILABLE,
+            "adapters": adapters
+        })
+    except Exception as e:
+        print(f"Contact sync status error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/sync/apple", methods=["POST"])
+@login_required
+def atlas_sync_apple():
+    """Sync Apple Contacts to ATLAS"""
+    if not CONTACT_SYNC_AVAILABLE or not AppleContactsAdapter:
+        return jsonify({'error': 'Apple Contact Sync not available'}), 503
+
+    try:
+        import asyncio
+
+        async def run_sync():
+            adapter = AppleContactsAdapter()
+            if not await adapter.connect():
+                return {"ok": False, "error": "Could not connect to Apple Contacts"}
+
+            contacts = await adapter.pull_contacts()
+            return {
+                "ok": True,
+                "pulled": len(contacts),
+                "contacts": [
+                    {
+                        "name": c.display_name,
+                        "emails": [e["email"] for e in c.emails],
+                        "phones": [p["number"] for p in c.phones],
+                        "company": c.company,
+                        "job_title": c.job_title
+                    }
+                    for c in contacts[:100]  # Limit preview to 100
+                ]
+            }
+
+        result = asyncio.run(run_sync())
+        return jsonify(result)
+    except Exception as e:
+        print(f"Apple contact sync error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/sync/linkedin", methods=["POST"])
+@login_required
+def atlas_sync_linkedin():
+    """Import LinkedIn contacts from CSV"""
+    if not CONTACT_SYNC_AVAILABLE:
+        return jsonify({'error': 'Contact Sync Engine not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        csv_path = data.get('csv_path')
+
+        if not csv_path:
+            return jsonify({'error': 'csv_path required'}), 400
+
+        import asyncio
+
+        async def run_import():
+            adapter = LinkedInAdapter(csv_path=csv_path)
+            contacts = await adapter.pull_contacts()
+            return {
+                "ok": True,
+                "imported": len(contacts),
+                "contacts": [
+                    {
+                        "name": c.display_name,
+                        "company": c.company,
+                        "job_title": c.job_title,
+                        "linkedin_url": c.linkedin_url
+                    }
+                    for c in contacts[:50]
+                ]
+            }
+
+        result = asyncio.run(run_import())
+        return jsonify(result)
+    except Exception as e:
+        print(f"LinkedIn import error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/upload_receipt", methods=["POST"])
 @login_required
 def upload_receipt():
@@ -3410,16 +4598,41 @@ Return ONLY valid JSON:
 
 def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", category: str = "", business_type: str = "", row: dict = None) -> dict:
     """
-    Use Gemini AI to generate an intelligent expense note.
-    Now enhanced with merchant intelligence, contacts, and calendar context.
+    Use Smart Notes Engine (with Calendar, iMessage, and Contacts context) to generate
+    an intelligent expense note. Falls back to Gemini-only if smart notes unavailable.
 
     Returns:
         {
             "note": "Client dinner meeting at upscale steakhouse to discuss artist contract negotiations",
-            "confidence": 85
+            "confidence": 85,
+            "attendees": [...],
+            "calendar_events": [...],
+            "data_sources": [...]
         }
     """
-    # Build context
+    # Try Smart Notes Engine first (has Calendar + iMessage + Contacts integration)
+    if SMART_NOTES_AVAILABLE and generate_smart_note:
+        try:
+            result = generate_smart_note(
+                merchant=merchant,
+                amount=float(amount) if amount else 0.0,
+                date=date or "",
+                category=category or "",
+                business_type=business_type or ""
+            )
+            # Map confidence to numeric value
+            confidence_map = {'high': 90, 'medium': 70, 'low': 50}
+            return {
+                "note": result.get('note', f"Business expense at {merchant}"),
+                "confidence": confidence_map.get(result.get('confidence', 'low'), 50),
+                "attendees": result.get('attendees', []),
+                "calendar_events": result.get('calendar_events', []),
+                "data_sources": result.get('data_sources', [])
+            }
+        except Exception as e:
+            print(f"⚠️  Smart notes error (falling back to Gemini): {e}", flush=True)
+
+    # Fallback: Use Gemini with basic context (no iMessage, simpler calendar)
     merchant_context = ""
     attendees_context = ""
     calendar_context = ""
@@ -8461,10 +9674,16 @@ def recategorize_transactions():
             r'every studio', r'replit', r'codespace',
             r'subscription', r'monthly fee', r'annual plan',
             r'stripe', r'aws', r'google cloud', r'azure',
+            # Additional software found in Shopping
+            r'im-ada\.ai', r'ada\.ai', r'calendarbridge', r'sourcegraph',
+            r'chartmetric', r'elementor', r'shoeboxed', r'taskade',
+            r'pika\.art', r'rostr', r'prime video', r'disco\b',
+            r'dashlane', r'responsive-menu', r'topaz labs', r'obsidian',
+            r'apple\.com', r'bestbuy\.com',
         ],
         # Travel - Airfare
         'DH: Travel Costs - Airfare': [
-            r'southwest', r'delta', r'united', r'american air',
+            r'southwest', r'southwes\b', r'delta', r'united', r'american air',
             r'jet ?blue', r'frontier', r'spirit', r'alaska air',
             r'airline', r'airways', r'air canada',
         ],
@@ -8475,6 +9694,10 @@ def recategorize_transactions():
             r'holiday inn', r'hampton', r'embassy suites', r'omni',
             r'nobu hotel', r'soho grand', r'boutique hotel',
             r'lodging', r'resort', r'inn\b',
+            # Specific Nashville hotels
+            r'w nashville', r'le meridien', r'thompson nashville',
+            r'hermitage hotel', r'hutton hotel', r'virgin hotels',
+            r'joseph hotel', r'dream nashville', r'noelle',
         ],
         # Travel - Cab/Uber/Bus
         'DH: Travel Costs - Cab/Uber/Bus Fare': [
@@ -8483,13 +9706,16 @@ def recategorize_transactions():
             r'greyhound', r'megabus', r'transit',
             r'amtrak', r'train',
         ],
-        # Travel - Gas/Rental Car
+        # Travel - Gas/Rental Car (including parking)
         'DH: Travel Costs - Gas/Rental Car': [
             r'hertz', r'enterprise', r'budget', r'avis', r'national car',
             r'rental car', r'car rental',
             r'shell', r'exxon', r'chevron', r'bp\b', r'mobil',
             r'gas station', r'fuel', r'gasoline',
+            # Parking
             r'parking', r'pmc', r'metropolis', r'garage', r'spot hero',
+            r'park happy', r'belcourt lot', r'park mobile', r'spothero',
+            r'parkwhiz', r'bestparking', r'premier parking',
         ],
         # Meals - Travel
         'DH: Travel costs - Meals': [
@@ -8498,15 +9724,37 @@ def recategorize_transactions():
         ],
         # Company Meetings and Meals (non-client internal)
         'Company Meetings and Meals': [
-            r'soho house', r'restaurant', r'cafe',
+            # Soho House variations
+            r'soho house', r'sh nashville', r'sh\s+nashville', r'\bsh\b.*nashville',
+            # General dining
+            r'restaurant', r'cafe',
             r'starbucks', r'dunkin', r'doordash', r'uber eats', r'grubhub',
             r'postmates', r'seamless', r'caviar',
             r'bar\b', r'grill', r'pub\b', r'tavern', r'taproom',
             r'kitchen', r'bistro', r'diner', r'eatery',
             r'pizza', r'burger', r'sushi', r'thai', r'mexican', r'italian',
-            r'optimist', r'britannia', r'hattie', r'pancho',
+            # Nashville specific venues
+            r'optimist', r'britannia', r'hattie', r'pancho', r'catbird',
+            r'husk', r'bastion', r'peninsula', r'redheaded stranger',
+            r'adele', r'mas tacos', r'prince', r'bolton',
+            # Generic food terms
             r'food', r'lunch', r'dinner', r'breakfast',
             r'coffee', r'bakery', r'deli',
+            # Toast POS restaurants (TST* prefix)
+            r'tst\*', r'tst\s',
+            # Fast food chains
+            r'chick-fil-a', r'wendys', r'taco bell', r'little caesars',
+            r'jersey mike', r'port of sub', r'chipotle', r'mcdonalds',
+            # Specific restaurants from Food & Drink
+            r'del friscos', r'o-ku', r'char green', r'uncle julio',
+            r'first watch', r'marsh house', r'audrey', r'mafiaoza',
+            r'chuy', r'bongo java', r'losers', r'smokin thighs',
+            r'fido', r'crows nest', r'il forno', r'flora.*bama',
+            r'broadway brewhouse', r'americano lounge', r'binion',
+            r'goat mount', r'sodexo', r'two hands', r'tony.*benny',
+            r'urban juicer', r'wharf f', r'the forum.*levy',
+            r'desert star', r'chow fun', r'cosmopol', r'blue ribbon',
+            r'bonanno', r'nadeen', r'slim.*husk', r'lulu.*landing',
         ],
         # Client Business Meals (with DH prefix for Down Home client work)
         'DH: BD: Client Business Meals': [
@@ -8527,7 +9775,8 @@ def recategorize_transactions():
         'Internet Costs': [
             r'comcast', r'xfinity', r'spectrum', r'cox',
             r'att.*internet', r'fiber', r'broadband',
-            r'verizon fios',
+            r'verizon fios', r'vzwrlss', r'verizon wireless',
+            r't-mobile', r'at&t wireless',
         ],
         # Advertising
         'BD: Advertising & Promotion': [
@@ -10411,6 +11660,1417 @@ def generate_missing_receipt_form():
         import traceback
         traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# =============================================================================
+# ATLAS CONTACT HUB - Full CRM Integration
+# =============================================================================
+
+@app.route("/contact-hub")
+@login_required
+def contact_hub_page():
+    """Contact Hub - Relationship Intelligence Dashboard"""
+    return render_template_string(CONTACT_HUB_TEMPLATE)
+
+
+@app.route("/api/contact-hub/contacts", methods=["GET"])
+@login_required
+def api_contact_hub_list():
+    """List contacts with ATLAS relationship data"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        limit = request.args.get("limit", 100, type=int)
+        offset = request.args.get("offset", 0, type=int)
+        search = request.args.get("search", "")
+        relationship_type = request.args.get("type", "")
+        touch_needed = request.args.get("touch_needed", "false").lower() == "true"
+        sort_by = request.args.get("sort", "name")
+
+        result = db.atlas_get_contacts(
+            limit=limit,
+            offset=offset,
+            search=search if search else None,
+            relationship_type=relationship_type if relationship_type else None,
+            touch_needed=touch_needed,
+            sort_by=sort_by
+        )
+
+        return jsonify(safe_json(result))
+    except Exception as e:
+        print(f"Contact list error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/contacts/<int:contact_id>", methods=["GET"])
+@login_required
+def api_contact_hub_get(contact_id):
+    """Get single contact with full relationship data"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        contact = db.atlas_get_contact(contact_id)
+        if not contact:
+            return jsonify({"error": "Contact not found"}), 404
+        return jsonify(safe_json(contact))
+    except Exception as e:
+        print(f"Contact get error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/contacts", methods=["POST"])
+@login_required
+def api_contact_hub_create():
+    """Create new contact"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json()
+        contact_id = db.atlas_create_contact(data)
+        if contact_id:
+            return jsonify({"ok": True, "id": contact_id})
+        return jsonify({"error": "Failed to create contact"}), 500
+    except Exception as e:
+        print(f"Contact create error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/contacts/<int:contact_id>", methods=["PUT", "PATCH"])
+@login_required
+def api_contact_hub_update(contact_id):
+    """Update contact"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json()
+        success = db.atlas_update_contact(contact_id, data)
+        if success:
+            return jsonify({"ok": True})
+        return jsonify({"error": "Failed to update contact"}), 500
+    except Exception as e:
+        print(f"Contact update error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/interactions", methods=["GET"])
+@login_required
+def api_contact_hub_interactions():
+    """Get interactions"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        contact_id = request.args.get("contact_id", type=int)
+        interaction_type = request.args.get("type", "")
+        limit = request.args.get("limit", 50, type=int)
+        offset = request.args.get("offset", 0, type=int)
+
+        result = db.atlas_get_interactions(
+            contact_id=contact_id,
+            interaction_type=interaction_type if interaction_type else None,
+            limit=limit,
+            offset=offset
+        )
+
+        return jsonify(safe_json(result))
+    except Exception as e:
+        print(f"Interactions error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/interactions", methods=["POST"])
+@login_required
+def api_contact_hub_create_interaction():
+    """Create interaction (call, meeting, note, etc.)"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json()
+        interaction_id = db.atlas_create_interaction(data)
+        if interaction_id:
+            return jsonify({"ok": True, "id": interaction_id})
+        return jsonify({"error": "Failed to create interaction"}), 500
+    except Exception as e:
+        print(f"Interaction create error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/touch-needed", methods=["GET"])
+@login_required
+def api_contact_hub_touch_needed():
+    """Get contacts needing touch"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        limit = request.args.get("limit", 20, type=int)
+        contacts = db.atlas_get_touch_needed(limit=limit)
+        return jsonify(safe_json({"items": contacts}))
+    except Exception as e:
+        print(f"Touch needed error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/timeline/<int:contact_id>", methods=["GET"])
+@login_required
+def api_contact_hub_timeline(contact_id):
+    """Get unified timeline for a contact"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        limit = request.args.get("limit", 50, type=int)
+        timeline = db.atlas_get_contact_timeline(contact_id, limit=limit)
+        return jsonify(safe_json({"items": timeline}))
+    except Exception as e:
+        print(f"Timeline error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/digest", methods=["GET"])
+@login_required
+def api_contact_hub_digest():
+    """Get relationship intelligence digest"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        digest = db.atlas_get_relationship_digest()
+        return jsonify(safe_json(digest))
+    except Exception as e:
+        print(f"Digest error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/link-expense", methods=["POST"])
+@login_required
+def api_contact_hub_link_expense():
+    """Link expense to contact"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json()
+        contact_id = data.get("contact_id")
+        transaction_index = data.get("transaction_index")
+        link_type = data.get("link_type", "attendee")
+        notes = data.get("notes")
+
+        if not contact_id or not transaction_index:
+            return jsonify({"error": "Missing contact_id or transaction_index"}), 400
+
+        success = db.atlas_link_expense_to_contact(
+            contact_id=contact_id,
+            transaction_index=transaction_index,
+            link_type=link_type,
+            notes=notes
+        )
+
+        if success:
+            return jsonify({"ok": True})
+        return jsonify({"error": "Failed to link expense"}), 500
+    except Exception as e:
+        print(f"Link expense error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/reminders", methods=["GET"])
+@login_required
+def api_contact_hub_reminders():
+    """Get reminders"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        status = request.args.get("status", "pending")
+        limit = request.args.get("limit", 20, type=int)
+        reminders = db.atlas_get_reminders(status=status, limit=limit)
+        return jsonify(safe_json({"items": reminders}))
+    except Exception as e:
+        print(f"Reminders error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/reminders", methods=["POST"])
+@login_required
+def api_contact_hub_create_reminder():
+    """Create reminder"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json()
+        reminder_id = db.atlas_create_reminder(data)
+        if reminder_id:
+            return jsonify({"ok": True, "id": reminder_id})
+        return jsonify({"error": "Failed to create reminder"}), 500
+    except Exception as e:
+        print(f"Reminder create error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# Contact-Expense Integration Endpoints
+# ============================================================================
+
+@app.route("/api/contact-hub/contacts/<int:contact_id>/expenses", methods=["GET"])
+@login_required
+def api_contact_hub_contact_expenses(contact_id):
+    """Get all expenses linked to a contact"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        limit = int(request.args.get('limit', 50))
+        expenses = db.atlas_get_contact_expenses(contact_id, limit)
+        return jsonify({"ok": True, "expenses": expenses})
+    except Exception as e:
+        print(f"Contact expenses error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/unlink-expense", methods=["POST"])
+@login_required
+def api_contact_hub_unlink_expense():
+    """Remove a contact-expense link"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json()
+        contact_id = data.get('contact_id')
+        transaction_index = data.get('transaction_index')
+
+        if not contact_id or transaction_index is None:
+            return jsonify({"error": "Missing contact_id or transaction_index"}), 400
+
+        success = db.atlas_unlink_expense(contact_id, transaction_index)
+        return jsonify({"ok": success})
+    except Exception as e:
+        print(f"Unlink expense error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/suggest-contacts/<int:transaction_index>", methods=["GET"])
+@login_required
+def api_contact_hub_suggest_contacts(transaction_index):
+    """Suggest contacts for an expense based on merchant name"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        limit = int(request.args.get('limit', 5))
+        suggestions = db.atlas_suggest_contacts_for_expense(transaction_index, limit)
+        return jsonify({"ok": True, "suggestions": suggestions})
+    except Exception as e:
+        print(f"Suggest contacts error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/expense-contacts/<int:transaction_index>", methods=["GET"])
+@login_required
+def api_contact_hub_expense_contacts(transaction_index):
+    """Get all contacts linked to an expense"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        contacts = db.atlas_get_expense_contacts(transaction_index)
+        return jsonify({"ok": True, "contacts": contacts})
+    except Exception as e:
+        print(f"Expense contacts error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/auto-link-expenses", methods=["POST"])
+@login_required
+def api_contact_hub_auto_link_expenses():
+    """Auto-link expenses to contacts by matching merchant to company"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json() or {}
+        dry_run = data.get('dry_run', True)
+        result = db.atlas_auto_link_expenses(dry_run=dry_run)
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        print(f"Auto-link error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/spending-by-contact", methods=["GET"])
+@login_required
+def api_contact_hub_spending_by_contact():
+    """Get spending summary by contact"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        limit = int(request.args.get('limit', 20))
+        spending = db.atlas_get_spending_by_contact(limit)
+        return jsonify({"ok": True, "spending": spending})
+    except Exception as e:
+        print(f"Spending by contact error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/create-from-merchant", methods=["POST"])
+@login_required
+def api_contact_hub_create_from_merchant():
+    """Create a new contact from a merchant name"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json()
+        merchant = data.get('merchant')
+        transaction_index = data.get('transaction_index')
+
+        if not merchant:
+            return jsonify({"error": "Merchant name required"}), 400
+
+        contact_id = db.atlas_create_contact_from_merchant(merchant, transaction_index)
+        if contact_id:
+            return jsonify({"ok": True, "contact_id": contact_id})
+        return jsonify({"error": "Failed to create contact"}), 500
+    except Exception as e:
+        print(f"Create from merchant error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# AI-Powered Relationship Intelligence Endpoints
+# ============================================================================
+
+@app.route("/api/contact-hub/intelligence/strength/<int:contact_id>", methods=["GET"])
+@login_required
+def api_contact_hub_relationship_strength(contact_id):
+    """Calculate and return relationship strength for a contact"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        strength = db.atlas_calculate_relationship_strength(contact_id)
+        return jsonify({"ok": True, **strength})
+    except Exception as e:
+        print(f"Relationship strength error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/intelligence/insights/<int:contact_id>", methods=["GET"])
+@login_required
+def api_contact_hub_relationship_insights(contact_id):
+    """Get relationship insights for a contact"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        insights = db.atlas_get_relationship_insights(contact_id)
+        return jsonify({"ok": True, **insights})
+    except Exception as e:
+        print(f"Relationship insights error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/intelligence/recommendations", methods=["GET"])
+@login_required
+def api_contact_hub_recommendations():
+    """Get recommended actions for contacts"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        limit = int(request.args.get('limit', 10))
+        recommendations = db.atlas_get_contact_recommendations(limit)
+        return jsonify({"ok": True, "recommendations": recommendations})
+    except Exception as e:
+        print(f"Recommendations error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/intelligence/analysis", methods=["GET"])
+@login_required
+def api_contact_hub_interaction_analysis():
+    """Analyze interaction patterns"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        days = int(request.args.get('days', 30))
+        analysis = db.atlas_get_interaction_analysis(days)
+        return jsonify({"ok": True, **analysis})
+    except Exception as e:
+        print(f"Interaction analysis error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/intelligence/ai-summary/<int:contact_id>", methods=["GET"])
+@login_required
+def api_contact_hub_ai_summary(contact_id):
+    """Get AI-ready summary for a contact"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        summary = db.atlas_generate_ai_summary(contact_id)
+        return jsonify({"ok": True, "summary": summary})
+    except Exception as e:
+        print(f"AI summary error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# Calendar Sync and Interaction Logging Endpoints
+# ============================================================================
+
+@app.route("/api/contact-hub/calendar/sync", methods=["POST"])
+@login_required
+def api_contact_hub_calendar_sync():
+    """Sync calendar events to ATLAS"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        stats = db.atlas_sync_all_calendar_events()
+        return jsonify({"ok": True, **stats})
+    except Exception as e:
+        print(f"Calendar sync error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/calendar/events", methods=["GET"])
+@login_required
+def api_contact_hub_calendar_events():
+    """Get calendar events"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        contact_id = request.args.get('contact_id', type=int)
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        limit = request.args.get('limit', 50, type=int)
+
+        events = db.atlas_get_calendar_events(contact_id, start_date, end_date, limit)
+        return jsonify({"ok": True, "events": events})
+    except Exception as e:
+        print(f"Calendar events error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/calendar/upcoming", methods=["GET"])
+@login_required
+def api_contact_hub_upcoming_events():
+    """Get upcoming events with matched contacts"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        days = request.args.get('days', 7, type=int)
+        events = db.atlas_get_upcoming_events_with_contacts(days)
+        return jsonify({"ok": True, "events": events})
+    except Exception as e:
+        print(f"Upcoming events error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/interactions/log", methods=["POST"])
+@login_required
+def api_contact_hub_log_interaction():
+    """Log a new interaction"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json()
+        interaction_id = db.atlas_log_interaction(data)
+        if interaction_id:
+            return jsonify({"ok": True, "id": interaction_id})
+        return jsonify({"error": "Failed to log interaction"}), 500
+    except Exception as e:
+        print(f"Log interaction error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/interactions/quick-log", methods=["POST"])
+@login_required
+def api_contact_hub_quick_log():
+    """Quick log an interaction (call, meeting, email, note)"""
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 500
+
+    try:
+        data = request.get_json()
+        contact_id = data.get('contact_id')
+        interaction_type = data.get('type', 'note')
+        note = data.get('note')
+
+        if not contact_id:
+            return jsonify({"error": "contact_id required"}), 400
+
+        success = db.atlas_quick_log(contact_id, interaction_type, note)
+        return jsonify({"ok": success})
+    except Exception as e:
+        print(f"Quick log error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# Contact Hub HTML Template (PWA-ready)
+CONTACT_HUB_TEMPLATE = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Contact Hub - ATLAS</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <style>
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #252540;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --accent-blue: #4a9eff;
+            --accent-green: #4ade80;
+            --accent-orange: #fb923c;
+            --accent-purple: #a78bfa;
+            --accent-red: #f87171;
+            --border-color: #3a3a5a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3a8eff;
+            transform: translateY(-1px);
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 15px 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            padding: 15px 20px;
+            background: var(--bg-secondary);
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .tab:hover:not(.active) {
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .contact-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border-color);
+        }
+
+        .contact-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-blue);
+            box-shadow: 0 8px 30px rgba(74, 158, 255, 0.15);
+        }
+
+        .contact-header {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .contact-info h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .contact-info .company {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .contact-meta {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .tag-vip {
+            background: rgba(251, 146, 60, 0.2);
+            color: var(--accent-orange);
+        }
+
+        .tag-touch {
+            background: rgba(248, 113, 113, 0.2);
+            color: var(--accent-red);
+        }
+
+        .touch-needed-section {
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.1), rgba(251, 146, 60, 0.1));
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .touch-needed-section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .touch-list {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .touch-item {
+            flex-shrink: 0;
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 200px;
+            border: 1px solid var(--border-color);
+        }
+
+        .touch-item h4 {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .touch-item .days {
+            font-size: 12px;
+            color: var(--accent-red);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .timeline {
+            padding: 20px;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .timeline-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .timeline-icon.call { background: rgba(74, 158, 255, 0.2); color: var(--accent-blue); }
+        .timeline-icon.meeting { background: rgba(167, 139, 250, 0.2); color: var(--accent-purple); }
+        .timeline-icon.email { background: rgba(74, 222, 128, 0.2); color: var(--accent-green); }
+        .timeline-icon.expense { background: rgba(251, 146, 60, 0.2); color: var(--accent-orange); }
+        .timeline-icon.note { background: rgba(160, 160, 176, 0.2); color: var(--text-secondary); }
+
+        .nav-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0 20px 0;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 11px;
+        }
+
+        .nav-item.active {
+            color: var(--accent-blue);
+        }
+
+        @media (max-width: 768px) {
+            .stats-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-top">
+            <h1>Contact Hub</h1>
+            <button class="btn btn-primary" onclick="showAddContact()">+ Add Contact</button>
+        </div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search contacts..." onkeyup="debounceSearch()">
+        </div>
+    </div>
+
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-item">
+            <div class="stat-value" id="statTotal">-</div>
+            <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="statTouch">-</div>
+            <div class="stat-label">Need Touch</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="statVIP">-</div>
+            <div class="stat-label">VIP</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="statRecent">-</div>
+            <div class="stat-label">This Week</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-filter="all" onclick="setFilter('all')">All</div>
+        <div class="tab" data-filter="professional" onclick="setFilter('professional')">Professional</div>
+        <div class="tab" data-filter="friend" onclick="setFilter('friend')">Friends</div>
+        <div class="tab" data-filter="family" onclick="setFilter('family')">Family</div>
+        <div class="tab" data-filter="client" onclick="setFilter('client')">Clients</div>
+    </div>
+
+    <div class="content">
+        <div class="touch-needed-section" id="touchNeededSection">
+            <h2>Needs Your Attention</h2>
+            <div class="touch-list" id="touchList"></div>
+        </div>
+
+        <div class="contact-grid" id="contactGrid"></div>
+    </div>
+
+    <!-- Contact Modal -->
+    <div class="modal-overlay" id="contactModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add Contact</h2>
+                <button onclick="closeModal()" style="background:none;border:none;color:var(--text-primary);font-size:24px;cursor:pointer;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="contactForm" onsubmit="saveContact(event)">
+                    <input type="hidden" id="contactId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Name *</label>
+                            <input type="text" id="contactName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Company</label>
+                            <input type="text" id="contactCompany">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="contactEmail">
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" id="contactPhone">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="contactTitle">
+                        </div>
+                        <div class="form-group">
+                            <label>Relationship</label>
+                            <select id="contactRelationship">
+                                <option value="professional">Professional</option>
+                                <option value="friend">Friend</option>
+                                <option value="family">Family</option>
+                                <option value="client">Client</option>
+                                <option value="vendor">Vendor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Touch Frequency (days)</label>
+                            <input type="number" id="contactFrequency" value="30" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Team/Category</label>
+                            <input type="text" id="contactTeam" placeholder="e.g., MCR, DownHome">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Context (how you know them)</label>
+                        <textarea id="contactContext" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="contactNotes" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:10px;">
+                            <input type="checkbox" id="contactVIP"> Mark as VIP
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Save Contact</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Detail Modal -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal" style="max-width:700px;">
+            <div class="modal-header">
+                <h2 id="detailName">Contact Details</h2>
+                <button onclick="closeDetailModal()" style="background:none;border:none;color:var(--text-primary);font-size:24px;cursor:pointer;">&times;</button>
+            </div>
+            <div class="modal-body" id="detailContent">
+                <!-- Filled dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <nav class="nav-bottom">
+        <a href="/library" class="nav-item">
+            <span style="font-size:20px;">📊</span>
+            <span>Expenses</span>
+        </a>
+        <a href="/contact-hub" class="nav-item active">
+            <span style="font-size:20px;">👥</span>
+            <span>Contacts</span>
+        </a>
+        <a href="/reports" class="nav-item">
+            <span style="font-size:20px;">📋</span>
+            <span>Reports</span>
+        </a>
+        <a href="/incoming" class="nav-item">
+            <span style="font-size:20px;">📥</span>
+            <span>Incoming</span>
+        </a>
+    </nav>
+
+    <script>
+        let contacts = [];
+        let currentFilter = 'all';
+        let searchTimeout;
+
+        async function loadData() {
+            try {
+                // Load digest stats
+                const digestRes = await fetch('/api/contact-hub/digest');
+                const digest = await digestRes.json();
+
+                document.getElementById('statTouch').textContent = digest.touch_needed_count || 0;
+                document.getElementById('statVIP').textContent = digest.vip_touch_needed || 0;
+                document.getElementById('statRecent').textContent = digest.recent_interactions || 0;
+
+                // Load touch needed
+                const touchRes = await fetch('/api/contact-hub/touch-needed?limit=10');
+                const touchData = await touchRes.json();
+                renderTouchNeeded(touchData.items || []);
+
+                // Load contacts
+                await loadContacts();
+            } catch (e) {
+                console.error('Load error:', e);
+            }
+        }
+
+        async function loadContacts() {
+            const search = document.getElementById('searchInput').value;
+            const typeFilter = currentFilter !== 'all' ? `&type=${currentFilter}` : '';
+
+            try {
+                const res = await fetch(`/api/contact-hub/contacts?limit=100&search=${encodeURIComponent(search)}${typeFilter}`);
+                const data = await res.json();
+                contacts = data.items || [];
+                document.getElementById('statTotal').textContent = data.total || contacts.length;
+                renderContacts();
+            } catch (e) {
+                console.error('Load contacts error:', e);
+            }
+        }
+
+        function renderTouchNeeded(items) {
+            const container = document.getElementById('touchList');
+            if (!items.length) {
+                document.getElementById('touchNeededSection').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('touchNeededSection').style.display = 'block';
+            container.innerHTML = items.map(c => `
+                <div class="touch-item" onclick="showContactDetail(${c.id})">
+                    <h4>${c.name}</h4>
+                    <div class="days">${c.days_since_touch || 0} days since touch</div>
+                    ${c.company ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:5px;">${c.company}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderContacts() {
+            const grid = document.getElementById('contactGrid');
+            grid.innerHTML = contacts.map(c => `
+                <div class="contact-card" onclick="showContactDetail(${c.id})">
+                    <div class="contact-header">
+                        <div class="avatar">
+                            ${c.photo_url ? `<img src="${c.photo_url}" alt="">` : getInitials(c.name)}
+                        </div>
+                        <div class="contact-info">
+                            <h3>${c.name} ${c.is_vip ? '<span class="tag tag-vip">VIP</span>' : ''}</h3>
+                            ${c.company ? `<div class="company">${c.title ? c.title + ' at ' : ''}${c.company}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="contact-meta">
+                        ${c.email ? `<div class="meta-item">📧 ${c.email}</div>` : ''}
+                        ${c.phone ? `<div class="meta-item">📱 ${c.phone}</div>` : ''}
+                        ${c.interaction_count ? `<div class="meta-item">💬 ${c.interaction_count}</div>` : ''}
+                        ${c.expense_count ? `<div class="meta-item">💰 ${c.expense_count}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getInitials(name) {
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[data-filter="${filter}"]`).classList.add('active');
+            loadContacts();
+        }
+
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(loadContacts, 300);
+        }
+
+        function showAddContact() {
+            document.getElementById('contactId').value = '';
+            document.getElementById('contactForm').reset();
+            document.getElementById('modalTitle').textContent = 'Add Contact';
+            document.getElementById('contactModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('contactModal').classList.remove('active');
+        }
+
+        async function saveContact(e) {
+            e.preventDefault();
+            const id = document.getElementById('contactId').value;
+            const data = {
+                name: document.getElementById('contactName').value,
+                company: document.getElementById('contactCompany').value,
+                email: document.getElementById('contactEmail').value,
+                phone: document.getElementById('contactPhone').value,
+                title: document.getElementById('contactTitle').value,
+                relationship_type: document.getElementById('contactRelationship').value,
+                touch_frequency_days: parseInt(document.getElementById('contactFrequency').value),
+                team: document.getElementById('contactTeam').value,
+                context: document.getElementById('contactContext').value,
+                notes: document.getElementById('contactNotes').value,
+                is_vip: document.getElementById('contactVIP').checked
+            };
+
+            try {
+                const url = id ? `/api/contact-hub/contacts/${id}` : '/api/contact-hub/contacts';
+                const method = id ? 'PUT' : 'POST';
+
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+                if (result.ok || result.id) {
+                    closeModal();
+                    loadData();
+                } else {
+                    alert(result.error || 'Failed to save');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function showContactDetail(id) {
+            try {
+                const res = await fetch(`/api/contact-hub/contacts/${id}`);
+                const contact = await res.json();
+
+                document.getElementById('detailName').textContent = contact.name;
+
+                const content = document.getElementById('detailContent');
+                content.innerHTML = `
+                    <div style="display:flex;gap:20px;margin-bottom:20px;">
+                        <div class="avatar" style="width:80px;height:80px;font-size:32px;">
+                            ${contact.photo_url ? `<img src="${contact.photo_url}" alt="">` : getInitials(contact.name)}
+                        </div>
+                        <div>
+                            <h2>${contact.name} ${contact.is_vip ? '<span class="tag tag-vip">VIP</span>' : ''}</h2>
+                            ${contact.title ? `<div>${contact.title}</div>` : ''}
+                            ${contact.company ? `<div style="color:var(--text-secondary);">${contact.company}</div>` : ''}
+                            <div style="margin-top:10px;display:flex;gap:10px;">
+                                ${contact.email ? `<a href="mailto:${contact.email}" class="btn btn-primary" style="padding:8px 15px;font-size:12px;">Email</a>` : ''}
+                                ${contact.phone ? `<a href="tel:${contact.phone}" class="btn btn-primary" style="padding:8px 15px;font-size:12px;">Call</a>` : ''}
+                                <button onclick="editContact(${contact.id})" class="btn" style="background:var(--bg-card);color:var(--text-primary);padding:8px 15px;font-size:12px;">Edit</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
+                        <div style="background:var(--bg-card);padding:15px;border-radius:12px;">
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:5px;">Last Touch</div>
+                            <div>${contact.last_touch_date || 'Never'}</div>
+                        </div>
+                        <div style="background:var(--bg-card);padding:15px;border-radius:12px;">
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:5px;">Interactions</div>
+                            <div>${contact.total_interactions || 0}</div>
+                        </div>
+                    </div>
+
+                    ${contact.context ? `
+                        <div style="background:var(--bg-card);padding:15px;border-radius:12px;margin-bottom:20px;">
+                            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:5px;">Context</div>
+                            <div>${contact.context}</div>
+                        </div>
+                    ` : ''}
+
+                    <h3 style="margin:20px 0 15px;">Recent Activity</h3>
+                    <div class="timeline">
+                        ${(contact.recent_interactions || []).map(i => `
+                            <div class="timeline-item">
+                                <div class="timeline-icon ${i.interaction_type}">${getIcon(i.interaction_type)}</div>
+                                <div>
+                                    <div style="font-weight:500;">${i.summary || i.interaction_type}</div>
+                                    <div style="font-size:12px;color:var(--text-secondary);">${formatDate(i.occurred_at)}</div>
+                                </div>
+                            </div>
+                        `).join('') || '<div style="color:var(--text-secondary);">No recent activity</div>'}
+                    </div>
+
+                    ${(contact.linked_expenses || []).length ? `
+                        <h3 style="margin:20px 0 15px;">Linked Expenses</h3>
+                        ${contact.linked_expenses.map(e => `
+                            <div style="background:var(--bg-card);padding:12px;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;">
+                                <div>
+                                    <div>${e.mi_merchant || e.chase_description}</div>
+                                    <div style="font-size:12px;color:var(--text-secondary);">${e.chase_date}</div>
+                                </div>
+                                <div style="font-weight:600;color:var(--accent-green);">$${Math.abs(e.chase_amount).toFixed(2)}</div>
+                            </div>
+                        `).join('')}
+                    ` : ''}
+                `;
+
+                document.getElementById('detailModal').classList.add('active');
+            } catch (e) {
+                console.error('Detail error:', e);
+            }
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.remove('active');
+        }
+
+        async function editContact(id) {
+            closeDetailModal();
+            try {
+                const res = await fetch(`/api/contact-hub/contacts/${id}`);
+                const c = await res.json();
+
+                document.getElementById('contactId').value = c.id;
+                document.getElementById('contactName').value = c.name || '';
+                document.getElementById('contactCompany').value = c.company || '';
+                document.getElementById('contactEmail').value = c.email || '';
+                document.getElementById('contactPhone').value = c.phone || '';
+                document.getElementById('contactTitle').value = c.title || '';
+                document.getElementById('contactRelationship').value = c.relationship_type || 'professional';
+                document.getElementById('contactFrequency').value = c.touch_frequency_days || 30;
+                document.getElementById('contactTeam').value = c.team || '';
+                document.getElementById('contactContext').value = c.context || '';
+                document.getElementById('contactNotes').value = c.notes || '';
+                document.getElementById('contactVIP').checked = c.is_vip || false;
+
+                document.getElementById('modalTitle').textContent = 'Edit Contact';
+                document.getElementById('contactModal').classList.add('active');
+            } catch (e) {
+                console.error('Edit error:', e);
+            }
+        }
+
+        function getIcon(type) {
+            const icons = {
+                call: '📞', meeting: '📅', email: '📧', note: '📝',
+                imessage_sent: '💬', imessage_received: '💬', expense: '💰'
+            };
+            return icons[type] || '📌';
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        // Init
+        loadData();
+    </script>
+</body>
+</html>
+'''
 
 
 # =============================================================================

@@ -7,6 +7,7 @@ Mirrors the db_sqlite.py interface for drop-in compatibility.
 """
 
 import os
+import json
 import pymysql
 import pandas as pd
 from datetime import datetime
@@ -393,6 +394,9 @@ class MySQLReceiptDatabase:
             # Run schema migrations to add columns that might be missing
             self._run_migrations()
 
+            # Initialize ATLAS schema for relationship intelligence
+            self._init_atlas_schema()
+
             print(f"✅ MySQL schema initialized", flush=True)
 
         except Exception as e:
@@ -447,6 +451,350 @@ class MySQLReceiptDatabase:
             self.conn.commit()
         except Exception as e:
             print(f"⚠️  Migrations error: {e}", flush=True)
+
+    def _init_atlas_schema(self):
+        """Initialize ATLAS Relationship Intelligence schema"""
+        if not self.use_mysql or not self.conn:
+            return
+
+        try:
+            cursor = self.conn.cursor()
+
+            # Extend contacts table with ATLAS fields (add missing columns)
+            atlas_contact_columns = [
+                ("display_name", "VARCHAR(255)"),
+                ("nickname", "VARCHAR(100)"),
+                ("photo_url", "VARCHAR(500)"),
+                ("linkedin_url", "VARCHAR(500)"),
+                ("twitter_handle", "VARCHAR(100)"),
+                ("birthday", "DATE"),
+                ("relationship_type", "VARCHAR(100)"),  # friend, colleague, family, client, vendor
+                ("relationship_strength", "DECIMAL(3,2) DEFAULT 0.5"),  # 0-1 score
+                ("touch_frequency_days", "INT DEFAULT 30"),  # desired contact frequency
+                ("last_touch_date", "DATE"),
+                ("next_touch_date", "DATE"),
+                ("total_interactions", "INT DEFAULT 0"),
+                ("source", "VARCHAR(100)"),  # apple, google, linkedin, manual
+                ("source_id", "VARCHAR(255)"),  # external ID from source
+                ("google_resource_name", "VARCHAR(255)"),  # Google People API resource
+                ("apple_contact_id", "VARCHAR(255)"),
+                ("merged_from", "TEXT"),  # JSON array of merged contact IDs
+                ("tags", "TEXT"),  # JSON array of tags
+                ("context", "TEXT"),  # how you know them
+                ("priority_score", "DECIMAL(5,2) DEFAULT 0"),
+            ]
+
+            cursor.execute("SHOW COLUMNS FROM contacts")
+            existing_cols = {row['Field'] for row in cursor.fetchall()}
+
+            for col_name, col_def in atlas_contact_columns:
+                if col_name not in existing_cols:
+                    try:
+                        cursor.execute(f"ALTER TABLE contacts ADD COLUMN {col_name} {col_def}")
+                    except Exception as e:
+                        if "Duplicate column" not in str(e):
+                            print(f"  ⚠️  Contact column {col_name}: {e}")
+
+            # Create contact_emails table (multiple emails per contact)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS contact_emails (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    contact_id INT NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    email_type VARCHAR(50) DEFAULT 'personal',
+                    is_primary BOOLEAN DEFAULT FALSE,
+                    verified BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_contact (contact_id),
+                    INDEX idx_email (email),
+                    UNIQUE KEY unique_contact_email (contact_id, email),
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create contact_phones table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS contact_phones (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    contact_id INT NOT NULL,
+                    phone VARCHAR(50) NOT NULL,
+                    phone_type VARCHAR(50) DEFAULT 'mobile',
+                    is_primary BOOLEAN DEFAULT FALSE,
+                    normalized VARCHAR(20),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_contact (contact_id),
+                    INDEX idx_phone (phone),
+                    INDEX idx_normalized (normalized),
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create contact_addresses table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS contact_addresses (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    contact_id INT NOT NULL,
+                    address_type VARCHAR(50) DEFAULT 'home',
+                    street VARCHAR(500),
+                    city VARCHAR(100),
+                    state VARCHAR(100),
+                    postal_code VARCHAR(20),
+                    country VARCHAR(100),
+                    formatted VARCHAR(1000),
+                    is_primary BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_contact (contact_id),
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create interactions table (all touchpoints)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS interactions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    interaction_type VARCHAR(100) NOT NULL,
+                    channel VARCHAR(50),
+                    occurred_at DATETIME NOT NULL,
+                    content TEXT,
+                    summary VARCHAR(500),
+                    sentiment VARCHAR(20),
+                    is_outgoing BOOLEAN DEFAULT TRUE,
+                    duration_minutes INT,
+                    location VARCHAR(255),
+                    attendees TEXT,
+                    expense_id INT,
+                    calendar_event_id INT,
+                    email_thread_id INT,
+                    external_id VARCHAR(255),
+                    source VARCHAR(100),
+                    ai_summary TEXT,
+                    ai_action_items TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_type (interaction_type),
+                    INDEX idx_occurred (occurred_at),
+                    INDEX idx_channel (channel),
+                    INDEX idx_expense (expense_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create interaction_contacts junction table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS interaction_contacts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    interaction_id INT NOT NULL,
+                    contact_id INT NOT NULL,
+                    role VARCHAR(50) DEFAULT 'participant',
+                    INDEX idx_interaction (interaction_id),
+                    INDEX idx_contact (contact_id),
+                    UNIQUE KEY unique_interaction_contact (interaction_id, contact_id),
+                    FOREIGN KEY (interaction_id) REFERENCES interactions(id) ON DELETE CASCADE,
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create calendar_events table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS calendar_events (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    google_event_id VARCHAR(255),
+                    calendar_id VARCHAR(255),
+                    title VARCHAR(500) NOT NULL,
+                    description TEXT,
+                    location VARCHAR(500),
+                    start_time DATETIME NOT NULL,
+                    end_time DATETIME,
+                    all_day BOOLEAN DEFAULT FALSE,
+                    status VARCHAR(50),
+                    attendees TEXT,
+                    organizer_email VARCHAR(255),
+                    recurring_event_id VARCHAR(255),
+                    conference_url VARCHAR(500),
+                    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_google_event (google_event_id),
+                    INDEX idx_start (start_time),
+                    INDEX idx_calendar (calendar_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create email_threads table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS email_threads (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    gmail_thread_id VARCHAR(255) NOT NULL,
+                    gmail_account VARCHAR(255),
+                    subject VARCHAR(500),
+                    snippet TEXT,
+                    message_count INT DEFAULT 1,
+                    last_message_at DATETIME,
+                    labels TEXT,
+                    is_read BOOLEAN DEFAULT TRUE,
+                    is_starred BOOLEAN DEFAULT FALSE,
+                    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_thread (gmail_thread_id, gmail_account),
+                    INDEX idx_thread (gmail_thread_id),
+                    INDEX idx_account (gmail_account),
+                    INDEX idx_last_message (last_message_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create email_messages table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS email_messages (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    thread_id INT,
+                    gmail_message_id VARCHAR(255) NOT NULL,
+                    gmail_account VARCHAR(255),
+                    from_email VARCHAR(255),
+                    from_name VARCHAR(255),
+                    to_emails TEXT,
+                    cc_emails TEXT,
+                    subject VARCHAR(500),
+                    snippet TEXT,
+                    body_text TEXT,
+                    body_html MEDIUMTEXT,
+                    sent_at DATETIME,
+                    is_outgoing BOOLEAN DEFAULT FALSE,
+                    has_attachments BOOLEAN DEFAULT FALSE,
+                    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_message (gmail_message_id, gmail_account),
+                    INDEX idx_thread (thread_id),
+                    INDEX idx_message (gmail_message_id),
+                    INDEX idx_from (from_email),
+                    INDEX idx_sent (sent_at),
+                    FOREIGN KEY (thread_id) REFERENCES email_threads(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create reminders table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS reminders (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    contact_id INT,
+                    reminder_type VARCHAR(100) NOT NULL,
+                    title VARCHAR(500) NOT NULL,
+                    description TEXT,
+                    due_date DATE NOT NULL,
+                    due_time TIME,
+                    is_recurring BOOLEAN DEFAULT FALSE,
+                    recurrence_pattern VARCHAR(100),
+                    status VARCHAR(50) DEFAULT 'pending',
+                    priority VARCHAR(20) DEFAULT 'normal',
+                    snoozed_until DATETIME,
+                    completed_at DATETIME,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_contact (contact_id),
+                    INDEX idx_due (due_date),
+                    INDEX idx_status (status),
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create contact_photos table (for face recognition)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS contact_photos (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    contact_id INT NOT NULL,
+                    photo_url VARCHAR(1000),
+                    photo_data MEDIUMBLOB,
+                    is_primary BOOLEAN DEFAULT FALSE,
+                    source VARCHAR(100),
+                    quality_score DECIMAL(3,2),
+                    has_face_encoding BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_contact (contact_id),
+                    INDEX idx_primary (is_primary),
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create face_encodings table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS face_encodings (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    contact_id INT NOT NULL,
+                    photo_id INT,
+                    encoding BLOB NOT NULL,
+                    confidence DECIMAL(3,2) DEFAULT 1.0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_contact (contact_id),
+                    INDEX idx_photo (photo_id),
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
+                    FOREIGN KEY (photo_id) REFERENCES contact_photos(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create enrichments table (cached external data)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS contact_enrichments (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    contact_id INT NOT NULL,
+                    enrichment_type VARCHAR(100) NOT NULL,
+                    source VARCHAR(100) NOT NULL,
+                    data JSON,
+                    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at DATETIME,
+                    INDEX idx_contact (contact_id),
+                    INDEX idx_type (enrichment_type),
+                    UNIQUE KEY unique_enrichment (contact_id, enrichment_type, source),
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create activity_feed table (denormalized timeline)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS activity_feed (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    contact_id INT,
+                    activity_type VARCHAR(100) NOT NULL,
+                    title VARCHAR(500) NOT NULL,
+                    description TEXT,
+                    occurred_at DATETIME NOT NULL,
+                    metadata JSON,
+                    source_type VARCHAR(50),
+                    source_id INT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_contact (contact_id),
+                    INDEX idx_type (activity_type),
+                    INDEX idx_occurred (occurred_at),
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create contact_expense_links table (link contacts to expenses)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS contact_expense_links (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    contact_id INT NOT NULL,
+                    transaction_index INT NOT NULL,
+                    link_type VARCHAR(50) DEFAULT 'attendee',
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_contact (contact_id),
+                    INDEX idx_transaction (transaction_index),
+                    UNIQUE KEY unique_link (contact_id, transaction_index),
+                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            # Create imessage_sync_state table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS imessage_sync_state (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    last_rowid BIGINT DEFAULT 0,
+                    last_sync DATETIME,
+                    messages_synced INT DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            self.conn.commit()
+            print(f"  ✅ ATLAS schema initialized", flush=True)
+
+        except Exception as e:
+            print(f"⚠️  ATLAS schema initialization failed: {e}", flush=True)
+            self.conn.rollback()
 
     def get_all_transactions(self) -> pd.DataFrame:
         """Get all transactions as DataFrame (with UI-friendly column names)"""
@@ -1199,6 +1547,1397 @@ class MySQLReceiptDatabase:
                 count += 1
         print(f"✅ Seeded {count} default contacts")
         return count
+
+
+    # =========================================================================
+    # ATLAS RELATIONSHIP INTELLIGENCE METHODS
+    # =========================================================================
+
+    def atlas_get_contacts(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        search: str = None,
+        relationship_type: str = None,
+        touch_needed: bool = False,
+        sort_by: str = 'name'
+    ) -> Dict[str, Any]:
+        """Get contacts with ATLAS relationship data"""
+        if not self.use_mysql or not self.conn:
+            return {"items": [], "total": 0}
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        where_clauses = ["1=1"]
+        params = []
+
+        if search:
+            where_clauses.append("(name LIKE %s OR email LIKE %s OR company LIKE %s)")
+            search_pattern = f"%{search}%"
+            params.extend([search_pattern, search_pattern, search_pattern])
+
+        if relationship_type:
+            where_clauses.append("relationship_type = %s")
+            params.append(relationship_type)
+
+        if touch_needed:
+            where_clauses.append("(next_touch_date IS NULL OR next_touch_date <= CURDATE())")
+
+        where_sql = " AND ".join(where_clauses)
+
+        # Get total count
+        cursor.execute(f"SELECT COUNT(*) as total FROM contacts WHERE {where_sql}", params)
+        total = cursor.fetchone()['total']
+
+        # Get paginated results
+        order_map = {
+            'name': 'name ASC',
+            'last_touch': 'last_touch_date DESC',
+            'priority': 'priority_score DESC',
+            'company': 'company ASC',
+            'relationship': 'relationship_strength DESC'
+        }
+        order_by = order_map.get(sort_by, 'name ASC')
+
+        cursor.execute(f"""
+            SELECT c.*,
+                (SELECT COUNT(*) FROM interaction_contacts ic
+                 JOIN interactions i ON ic.interaction_id = i.id
+                 WHERE ic.contact_id = c.id) as interaction_count,
+                (SELECT COUNT(*) FROM contact_expense_links cel
+                 WHERE cel.contact_id = c.id) as expense_count
+            FROM contacts c
+            WHERE {where_sql}
+            ORDER BY {order_by}
+            LIMIT %s OFFSET %s
+        """, params + [limit, offset])
+
+        items = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+
+        return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+    def atlas_get_contact(self, contact_id: int) -> Optional[Dict]:
+        """Get single contact with full ATLAS data"""
+        if not self.use_mysql or not self.conn:
+            return None
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        cursor.execute("SELECT * FROM contacts WHERE id = %s", (contact_id,))
+        contact = cursor.fetchone()
+
+        if not contact:
+            cursor.close()
+            return None
+
+        contact = dict(contact)
+
+        # Get emails
+        cursor.execute("SELECT * FROM contact_emails WHERE contact_id = %s", (contact_id,))
+        contact['emails'] = [dict(r) for r in cursor.fetchall()]
+
+        # Get phones
+        cursor.execute("SELECT * FROM contact_phones WHERE contact_id = %s", (contact_id,))
+        contact['phones'] = [dict(r) for r in cursor.fetchall()]
+
+        # Get addresses
+        cursor.execute("SELECT * FROM contact_addresses WHERE contact_id = %s", (contact_id,))
+        contact['addresses'] = [dict(r) for r in cursor.fetchall()]
+
+        # Get recent interactions
+        cursor.execute("""
+            SELECT i.* FROM interactions i
+            JOIN interaction_contacts ic ON i.id = ic.interaction_id
+            WHERE ic.contact_id = %s
+            ORDER BY i.occurred_at DESC
+            LIMIT 10
+        """, (contact_id,))
+        contact['recent_interactions'] = [dict(r) for r in cursor.fetchall()]
+
+        # Get linked expenses
+        cursor.execute("""
+            SELECT t.*, cel.link_type, cel.notes as link_notes
+            FROM transactions t
+            JOIN contact_expense_links cel ON t._index = cel.transaction_index
+            WHERE cel.contact_id = %s
+            ORDER BY t.chase_date DESC
+            LIMIT 10
+        """, (contact_id,))
+        contact['linked_expenses'] = [dict(r) for r in cursor.fetchall()]
+
+        cursor.close()
+        return contact
+
+    def atlas_create_contact(self, data: Dict) -> Optional[int]:
+        """Create a new ATLAS contact"""
+        if not self.use_mysql or not self.conn:
+            return None
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        # Parse name
+        name = data.get('name', '')
+        name_parts = name.strip().split()
+        first_name = name_parts[0] if name_parts else ''
+        last_name = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
+
+        try:
+            cursor.execute("""
+                INSERT INTO contacts (
+                    name, first_name, last_name, name_tokens, email, phone, title, company,
+                    category, team, is_vip, notes, display_name, nickname, photo_url,
+                    linkedin_url, twitter_handle, birthday, relationship_type,
+                    relationship_strength, touch_frequency_days, source, context, tags
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                )
+            """, (
+                name, first_name, last_name, name.lower(),
+                data.get('email'), data.get('phone'), data.get('title'),
+                data.get('company'), data.get('category'), data.get('team'),
+                data.get('is_vip', False), data.get('notes'),
+                data.get('display_name', name), data.get('nickname'),
+                data.get('photo_url'), data.get('linkedin_url'),
+                data.get('twitter_handle'), data.get('birthday'),
+                data.get('relationship_type', 'professional'),
+                data.get('relationship_strength', 0.5),
+                data.get('touch_frequency_days', 30),
+                data.get('source', 'manual'), data.get('context'),
+                json.dumps(data.get('tags', [])) if data.get('tags') else None
+            ))
+            contact_id = cursor.lastrowid
+
+            # Add multiple emails if provided
+            if data.get('emails'):
+                for i, email_data in enumerate(data['emails']):
+                    cursor.execute("""
+                        INSERT INTO contact_emails (contact_id, email, email_type, is_primary)
+                        VALUES (%s, %s, %s, %s)
+                    """, (contact_id, email_data.get('email'), email_data.get('type', 'personal'), i == 0))
+
+            # Add multiple phones if provided
+            if data.get('phones'):
+                for i, phone_data in enumerate(data['phones']):
+                    cursor.execute("""
+                        INSERT INTO contact_phones (contact_id, phone, phone_type, is_primary)
+                        VALUES (%s, %s, %s, %s)
+                    """, (contact_id, phone_data.get('phone'), phone_data.get('type', 'mobile'), i == 0))
+
+            self.conn.commit()
+            cursor.close()
+            return contact_id
+
+        except Exception as e:
+            print(f"❌ Create contact error: {e}")
+            self.conn.rollback()
+            cursor.close()
+            return None
+
+    def atlas_update_contact(self, contact_id: int, data: Dict) -> bool:
+        """Update an ATLAS contact"""
+        if not self.use_mysql or not self.conn:
+            return False
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        # Build update statement
+        allowed_fields = [
+            'name', 'first_name', 'last_name', 'email', 'phone', 'title', 'company',
+            'category', 'team', 'is_vip', 'notes', 'display_name', 'nickname',
+            'photo_url', 'linkedin_url', 'twitter_handle', 'birthday',
+            'relationship_type', 'relationship_strength', 'touch_frequency_days',
+            'context', 'tags', 'last_touch_date', 'next_touch_date'
+        ]
+
+        set_clauses = []
+        params = []
+        for field in allowed_fields:
+            if field in data:
+                set_clauses.append(f"{field} = %s")
+                value = data[field]
+                if field == 'tags' and isinstance(value, list):
+                    value = json.dumps(value)
+                params.append(value)
+
+        if not set_clauses:
+            return False
+
+        params.append(contact_id)
+
+        try:
+            cursor.execute(f"""
+                UPDATE contacts SET {', '.join(set_clauses)} WHERE id = %s
+            """, params)
+            self.conn.commit()
+            cursor.close()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"❌ Update contact error: {e}")
+            self.conn.rollback()
+            cursor.close()
+            return False
+
+    def atlas_create_interaction(self, data: Dict) -> Optional[int]:
+        """Create a new interaction"""
+        if not self.use_mysql or not self.conn:
+            return None
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        try:
+            cursor.execute("""
+                INSERT INTO interactions (
+                    interaction_type, channel, occurred_at, content, summary,
+                    sentiment, is_outgoing, duration_minutes, location, attendees,
+                    expense_id, source, ai_summary
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                data.get('interaction_type', 'note'),
+                data.get('channel'),
+                data.get('occurred_at', datetime.now()),
+                data.get('content'),
+                data.get('summary'),
+                data.get('sentiment'),
+                data.get('is_outgoing', True),
+                data.get('duration_minutes'),
+                data.get('location'),
+                json.dumps(data.get('attendees', [])) if data.get('attendees') else None,
+                data.get('expense_id'),
+                data.get('source', 'manual'),
+                data.get('ai_summary')
+            ))
+            interaction_id = cursor.lastrowid
+
+            # Link contacts to interaction
+            contact_ids = data.get('contact_ids', [])
+            for contact_id in contact_ids:
+                cursor.execute("""
+                    INSERT INTO interaction_contacts (interaction_id, contact_id, role)
+                    VALUES (%s, %s, %s)
+                """, (interaction_id, contact_id, 'participant'))
+
+                # Update contact's last touch
+                cursor.execute("""
+                    UPDATE contacts SET
+                        last_touch_date = %s,
+                        total_interactions = total_interactions + 1,
+                        next_touch_date = DATE_ADD(%s, INTERVAL touch_frequency_days DAY)
+                    WHERE id = %s
+                """, (data.get('occurred_at', datetime.now()),
+                      data.get('occurred_at', datetime.now()), contact_id))
+
+            self.conn.commit()
+            cursor.close()
+            return interaction_id
+
+        except Exception as e:
+            print(f"❌ Create interaction error: {e}")
+            self.conn.rollback()
+            cursor.close()
+            return None
+
+    def atlas_get_interactions(
+        self,
+        contact_id: int = None,
+        interaction_type: str = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """Get interactions with optional filters"""
+        if not self.use_mysql or not self.conn:
+            return {"items": [], "total": 0}
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        where_clauses = ["1=1"]
+        params = []
+
+        if contact_id:
+            where_clauses.append("""
+                i.id IN (SELECT interaction_id FROM interaction_contacts WHERE contact_id = %s)
+            """)
+            params.append(contact_id)
+
+        if interaction_type:
+            where_clauses.append("i.interaction_type = %s")
+            params.append(interaction_type)
+
+        where_sql = " AND ".join(where_clauses)
+
+        cursor.execute(f"SELECT COUNT(*) as total FROM interactions i WHERE {where_sql}", params)
+        total = cursor.fetchone()['total']
+
+        cursor.execute(f"""
+            SELECT i.*,
+                GROUP_CONCAT(c.name) as contact_names
+            FROM interactions i
+            LEFT JOIN interaction_contacts ic ON i.id = ic.interaction_id
+            LEFT JOIN contacts c ON ic.contact_id = c.id
+            WHERE {where_sql}
+            GROUP BY i.id
+            ORDER BY i.occurred_at DESC
+            LIMIT %s OFFSET %s
+        """, params + [limit, offset])
+
+        items = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+
+        return {"items": items, "total": total}
+
+    def atlas_get_touch_needed(self, limit: int = 20) -> List[Dict]:
+        """Get contacts that need to be touched"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        cursor.execute("""
+            SELECT c.*,
+                DATEDIFF(CURDATE(), COALESCE(last_touch_date, DATE_SUB(CURDATE(), INTERVAL 365 DAY))) as days_since_touch,
+                DATEDIFF(CURDATE(), next_touch_date) as days_overdue
+            FROM contacts c
+            WHERE next_touch_date IS NULL OR next_touch_date <= CURDATE()
+            ORDER BY
+                CASE WHEN is_vip THEN 0 ELSE 1 END,
+                priority_score DESC,
+                days_since_touch DESC
+            LIMIT %s
+        """, (limit,))
+
+        results = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+        return results
+
+    def atlas_get_contact_timeline(self, contact_id: int, limit: int = 50) -> List[Dict]:
+        """Get unified timeline for a contact"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        # Combine interactions, emails, calendar events
+        cursor.execute("""
+            SELECT
+                'interaction' as source_type,
+                i.id as source_id,
+                i.interaction_type as activity_type,
+                COALESCE(i.summary, LEFT(i.content, 100)) as title,
+                i.content as description,
+                i.occurred_at,
+                NULL as metadata
+            FROM interactions i
+            JOIN interaction_contacts ic ON i.id = ic.interaction_id
+            WHERE ic.contact_id = %s
+
+            UNION ALL
+
+            SELECT
+                'expense' as source_type,
+                t._index as source_id,
+                'expense' as activity_type,
+                CONCAT('$', ABS(t.chase_amount), ' at ', COALESCE(t.mi_merchant, t.chase_description)) as title,
+                t.ai_note as description,
+                t.chase_date as occurred_at,
+                NULL as metadata
+            FROM transactions t
+            JOIN contact_expense_links cel ON t._index = cel.transaction_index
+            WHERE cel.contact_id = %s
+
+            UNION ALL
+
+            SELECT
+                'calendar' as source_type,
+                ce.id as source_id,
+                'meeting' as activity_type,
+                ce.title,
+                ce.description,
+                ce.start_time as occurred_at,
+                JSON_OBJECT('location', ce.location, 'attendees', ce.attendees) as metadata
+            FROM calendar_events ce
+            WHERE ce.attendees LIKE CONCAT('%%', (SELECT email FROM contacts WHERE id = %s), '%%')
+
+            ORDER BY occurred_at DESC
+            LIMIT %s
+        """, (contact_id, contact_id, contact_id, limit))
+
+        results = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+        return results
+
+    def atlas_link_expense_to_contact(self, contact_id: int, transaction_index: int, link_type: str = 'attendee', notes: str = None) -> bool:
+        """Link an expense to a contact"""
+        if not self.use_mysql or not self.conn:
+            return False
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        try:
+            cursor.execute("""
+                INSERT INTO contact_expense_links (contact_id, transaction_index, link_type, notes)
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE link_type = VALUES(link_type), notes = VALUES(notes)
+            """, (contact_id, transaction_index, link_type, notes))
+            self.conn.commit()
+            cursor.close()
+            return True
+        except Exception as e:
+            print(f"❌ Link expense error: {e}")
+            self.conn.rollback()
+            cursor.close()
+            return False
+
+    def atlas_get_relationship_digest(self) -> Dict[str, Any]:
+        """Get relationship intelligence digest"""
+        if not self.use_mysql or not self.conn:
+            return {}
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        digest = {}
+
+        # Contacts needing attention
+        cursor.execute("""
+            SELECT COUNT(*) as count FROM contacts
+            WHERE next_touch_date IS NULL OR next_touch_date <= CURDATE()
+        """)
+        digest['touch_needed_count'] = cursor.fetchone()['count']
+
+        # VIP contacts needing touch
+        cursor.execute("""
+            SELECT COUNT(*) as count FROM contacts
+            WHERE is_vip = TRUE AND (next_touch_date IS NULL OR next_touch_date <= CURDATE())
+        """)
+        digest['vip_touch_needed'] = cursor.fetchone()['count']
+
+        # Recent interactions (last 7 days)
+        cursor.execute("""
+            SELECT COUNT(*) as count FROM interactions
+            WHERE occurred_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        """)
+        digest['recent_interactions'] = cursor.fetchone()['count']
+
+        # Contacts by relationship type
+        cursor.execute("""
+            SELECT relationship_type, COUNT(*) as count
+            FROM contacts
+            WHERE relationship_type IS NOT NULL
+            GROUP BY relationship_type
+        """)
+        digest['by_relationship_type'] = {r['relationship_type']: r['count'] for r in cursor.fetchall()}
+
+        # Top contacts by interaction count
+        cursor.execute("""
+            SELECT c.id, c.name, c.company, c.photo_url, COUNT(ic.id) as interaction_count
+            FROM contacts c
+            LEFT JOIN interaction_contacts ic ON c.id = ic.contact_id
+            GROUP BY c.id
+            ORDER BY interaction_count DESC
+            LIMIT 10
+        """)
+        digest['most_active_contacts'] = [dict(r) for r in cursor.fetchall()]
+
+        # Upcoming birthdays (next 30 days)
+        cursor.execute("""
+            SELECT id, name, birthday, photo_url
+            FROM contacts
+            WHERE birthday IS NOT NULL
+            AND DAYOFYEAR(birthday) BETWEEN DAYOFYEAR(CURDATE()) AND DAYOFYEAR(CURDATE()) + 30
+            ORDER BY DAYOFYEAR(birthday)
+            LIMIT 10
+        """)
+        digest['upcoming_birthdays'] = [dict(r) for r in cursor.fetchall()]
+
+        cursor.close()
+        return digest
+
+    def atlas_create_reminder(self, data: Dict) -> Optional[int]:
+        """Create a reminder"""
+        if not self.use_mysql or not self.conn:
+            return None
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        try:
+            cursor.execute("""
+                INSERT INTO reminders (
+                    contact_id, reminder_type, title, description, due_date,
+                    due_time, is_recurring, recurrence_pattern, priority
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                data.get('contact_id'),
+                data.get('reminder_type', 'follow_up'),
+                data.get('title'),
+                data.get('description'),
+                data.get('due_date'),
+                data.get('due_time'),
+                data.get('is_recurring', False),
+                data.get('recurrence_pattern'),
+                data.get('priority', 'normal')
+            ))
+            reminder_id = cursor.lastrowid
+            self.conn.commit()
+            cursor.close()
+            return reminder_id
+        except Exception as e:
+            print(f"❌ Create reminder error: {e}")
+            self.conn.rollback()
+            cursor.close()
+            return None
+
+    def atlas_get_reminders(self, status: str = 'pending', limit: int = 20) -> List[Dict]:
+        """Get reminders"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        cursor.execute("""
+            SELECT r.*, c.name as contact_name, c.photo_url as contact_photo
+            FROM reminders r
+            LEFT JOIN contacts c ON r.contact_id = c.id
+            WHERE r.status = %s
+            ORDER BY r.due_date ASC, r.priority DESC
+            LIMIT %s
+        """, (status, limit))
+
+        results = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+        return results
+
+    def atlas_get_contact_expenses(self, contact_id: int, limit: int = 50) -> List[Dict]:
+        """Get all expenses linked to a contact"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        cursor.execute("""
+            SELECT t.*, cel.link_type, cel.notes as link_notes, cel.created_at as linked_at
+            FROM transactions t
+            JOIN contact_expense_links cel ON t._index = cel.transaction_index
+            WHERE cel.contact_id = %s
+            ORDER BY t.date DESC
+            LIMIT %s
+        """, (contact_id, limit))
+
+        results = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+        return results
+
+    def atlas_unlink_expense(self, contact_id: int, transaction_index: int) -> bool:
+        """Remove a contact-expense link"""
+        if not self.use_mysql or not self.conn:
+            return False
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        try:
+            cursor.execute("""
+                DELETE FROM contact_expense_links
+                WHERE contact_id = %s AND transaction_index = %s
+            """, (contact_id, transaction_index))
+            self.conn.commit()
+            cursor.close()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"❌ Unlink expense error: {e}")
+            self.conn.rollback()
+            cursor.close()
+            return False
+
+    def atlas_suggest_contacts_for_expense(self, transaction_index: int, limit: int = 5) -> List[Dict]:
+        """Suggest contacts based on expense merchant name using fuzzy matching"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        # Get transaction merchant
+        cursor.execute("SELECT merchant, description FROM transactions WHERE _index = %s", (transaction_index,))
+        row = cursor.fetchone()
+        if not row:
+            cursor.close()
+            return []
+
+        merchant = row['merchant'] or ''
+        description = row['description'] or ''
+        search_text = f"{merchant} {description}".lower()
+
+        # Find contacts whose company or name matches
+        cursor.execute("""
+            SELECT c.id, c.name, c.company, c.photo_url, c.relationship_type,
+                   CASE
+                       WHEN LOWER(c.company) = %s THEN 100
+                       WHEN LOWER(c.company) LIKE %s THEN 80
+                       WHEN LOWER(c.name) LIKE %s THEN 60
+                       WHEN LOWER(c.company) LIKE %s THEN 40
+                       ELSE 20
+                   END as match_score
+            FROM contacts c
+            WHERE (c.company IS NOT NULL AND c.company != '')
+               OR (c.name IS NOT NULL AND c.name != '')
+            HAVING match_score > 20
+            ORDER BY match_score DESC
+            LIMIT %s
+        """, (merchant.lower(), f"%{merchant.lower()}%", f"%{merchant.lower()}%", f"%{search_text[:20]}%", limit))
+
+        results = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+        return results
+
+    def atlas_auto_link_expenses(self, dry_run: bool = True) -> Dict[str, Any]:
+        """Auto-link expenses to contacts by matching merchant to company name"""
+        if not self.use_mysql or not self.conn:
+            return {'linked': 0, 'errors': 0}
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        # Get unlinked expenses
+        cursor.execute("""
+            SELECT DISTINCT t._index, LOWER(t.merchant) as merchant
+            FROM transactions t
+            LEFT JOIN contact_expense_links cel ON t._index = cel.transaction_index
+            WHERE cel.id IS NULL
+            AND t.merchant IS NOT NULL AND t.merchant != ''
+        """)
+        expenses = cursor.fetchall()
+
+        # Get all contacts with companies
+        cursor.execute("""
+            SELECT id, LOWER(company) as company, LOWER(name) as name
+            FROM contacts
+            WHERE company IS NOT NULL AND company != ''
+        """)
+        contacts = {r['company']: r['id'] for r in cursor.fetchall()}
+
+        linked = 0
+        matches = []
+
+        for exp in expenses:
+            merchant = exp['merchant']
+            # Try exact match first
+            if merchant in contacts:
+                matches.append({
+                    'transaction_index': exp['_index'],
+                    'contact_id': contacts[merchant],
+                    'match_type': 'exact'
+                })
+            else:
+                # Try partial match
+                for company, contact_id in contacts.items():
+                    if company in merchant or merchant in company:
+                        matches.append({
+                            'transaction_index': exp['_index'],
+                            'contact_id': contact_id,
+                            'match_type': 'partial'
+                        })
+                        break
+
+        if not dry_run:
+            for match in matches:
+                try:
+                    cursor.execute("""
+                        INSERT IGNORE INTO contact_expense_links (contact_id, transaction_index, link_type, notes)
+                        VALUES (%s, %s, 'vendor', %s)
+                    """, (match['contact_id'], match['transaction_index'], f"Auto-linked ({match['match_type']} match)"))
+                    linked += 1
+                except Exception as e:
+                    print(f"❌ Auto-link error: {e}")
+
+            self.conn.commit()
+
+        cursor.close()
+        return {
+            'found': len(matches),
+            'linked': linked if not dry_run else 0,
+            'matches': matches[:20] if dry_run else [],
+            'dry_run': dry_run
+        }
+
+    def atlas_get_expense_contacts(self, transaction_index: int) -> List[Dict]:
+        """Get all contacts linked to an expense"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        cursor.execute("""
+            SELECT c.id, c.name, c.company, c.photo_url, c.relationship_type,
+                   cel.link_type, cel.notes as link_notes
+            FROM contacts c
+            JOIN contact_expense_links cel ON c.id = cel.contact_id
+            WHERE cel.transaction_index = %s
+        """, (transaction_index,))
+
+        results = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+        return results
+
+    def atlas_get_spending_by_contact(self, limit: int = 20) -> List[Dict]:
+        """Get spending summary by contact"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        cursor.execute("""
+            SELECT c.id, c.name, c.company, c.photo_url,
+                   COUNT(cel.id) as expense_count,
+                   SUM(t.amount) as total_spent,
+                   MAX(t.date) as last_expense_date
+            FROM contacts c
+            JOIN contact_expense_links cel ON c.id = cel.contact_id
+            JOIN transactions t ON cel.transaction_index = t._index
+            GROUP BY c.id
+            ORDER BY total_spent DESC
+            LIMIT %s
+        """, (limit,))
+
+        results = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+        return results
+
+    def atlas_create_contact_from_merchant(self, merchant: str, transaction_index: int = None) -> Optional[int]:
+        """Create a new contact from a merchant name and optionally link an expense"""
+        if not self.use_mysql or not self.conn:
+            return None
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        try:
+            # Create contact with merchant as company
+            cursor.execute("""
+                INSERT INTO contacts (name, company, relationship_type, source, created_at, updated_at)
+                VALUES (%s, %s, 'vendor', 'expense_import', NOW(), NOW())
+            """, (merchant, merchant))
+            contact_id = cursor.lastrowid
+
+            # Link expense if provided
+            if transaction_index:
+                cursor.execute("""
+                    INSERT INTO contact_expense_links (contact_id, transaction_index, link_type, notes)
+                    VALUES (%s, %s, 'vendor', 'Created from expense')
+                """, (contact_id, transaction_index))
+
+            self.conn.commit()
+            cursor.close()
+            return contact_id
+        except Exception as e:
+            print(f"❌ Create contact from merchant error: {e}")
+            self.conn.rollback()
+            cursor.close()
+            return None
+
+    # =========================================================================
+    # AI-Powered Relationship Intelligence
+    # =========================================================================
+
+    def atlas_calculate_relationship_strength(self, contact_id: int) -> Dict[str, Any]:
+        """Calculate relationship strength based on interactions and touchpoints"""
+        if not self.use_mysql or not self.conn:
+            return {}
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        # Get interaction stats
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total_interactions,
+                SUM(CASE WHEN occurred_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as recent_30d,
+                SUM(CASE WHEN occurred_at >= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN 1 ELSE 0 END) as recent_90d,
+                MAX(occurred_at) as last_interaction,
+                MIN(occurred_at) as first_interaction
+            FROM interactions i
+            JOIN interaction_contacts ic ON i.id = ic.interaction_id
+            WHERE ic.contact_id = %s
+        """, (contact_id,))
+        interaction_stats = dict(cursor.fetchone() or {})
+
+        # Get expense relationship
+        cursor.execute("""
+            SELECT COUNT(*) as expense_count, SUM(t.amount) as total_spent
+            FROM contact_expense_links cel
+            JOIN transactions t ON cel.transaction_index = t._index
+            WHERE cel.contact_id = %s
+        """, (contact_id,))
+        expense_stats = dict(cursor.fetchone() or {})
+
+        # Calculate strength score (0-1)
+        strength = 0.0
+        factors = {}
+
+        # Interaction frequency factor (0-0.4)
+        total = interaction_stats.get('total_interactions') or 0
+        recent = interaction_stats.get('recent_30d') or 0
+        if recent >= 10:
+            factors['interaction_frequency'] = 0.4
+        elif recent >= 5:
+            factors['interaction_frequency'] = 0.3
+        elif recent >= 2:
+            factors['interaction_frequency'] = 0.2
+        elif total >= 5:
+            factors['interaction_frequency'] = 0.1
+        else:
+            factors['interaction_frequency'] = 0.05
+
+        # Recency factor (0-0.3)
+        last = interaction_stats.get('last_interaction')
+        if last:
+            from datetime import datetime
+            days_since = (datetime.now() - last).days if hasattr(last, 'days') else 0
+            if days_since <= 7:
+                factors['recency'] = 0.3
+            elif days_since <= 30:
+                factors['recency'] = 0.2
+            elif days_since <= 90:
+                factors['recency'] = 0.1
+            else:
+                factors['recency'] = 0.05
+        else:
+            factors['recency'] = 0
+
+        # Longevity factor (0-0.2)
+        first = interaction_stats.get('first_interaction')
+        if first:
+            from datetime import datetime
+            days_known = (datetime.now() - first).days if hasattr(first, 'days') else 0
+            if days_known >= 365:
+                factors['longevity'] = 0.2
+            elif days_known >= 180:
+                factors['longevity'] = 0.15
+            elif days_known >= 90:
+                factors['longevity'] = 0.1
+            else:
+                factors['longevity'] = 0.05
+        else:
+            factors['longevity'] = 0
+
+        # Financial relationship factor (0-0.1)
+        expense_count = expense_stats.get('expense_count') or 0
+        if expense_count >= 10:
+            factors['financial'] = 0.1
+        elif expense_count >= 5:
+            factors['financial'] = 0.07
+        elif expense_count >= 1:
+            factors['financial'] = 0.03
+        else:
+            factors['financial'] = 0
+
+        strength = sum(factors.values())
+
+        # Update contact's relationship_strength
+        cursor.execute("""
+            UPDATE contacts SET relationship_strength = %s WHERE id = %s
+        """, (round(strength, 2), contact_id))
+        self.conn.commit()
+
+        cursor.close()
+        return {
+            'contact_id': contact_id,
+            'strength': round(strength, 2),
+            'factors': factors,
+            'interaction_stats': interaction_stats,
+            'expense_stats': expense_stats
+        }
+
+    def atlas_get_relationship_insights(self, contact_id: int) -> Dict[str, Any]:
+        """Get AI-ready relationship insights for a contact"""
+        if not self.use_mysql or not self.conn:
+            return {}
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        # Get contact details
+        cursor.execute("SELECT * FROM contacts WHERE id = %s", (contact_id,))
+        contact = dict(cursor.fetchone() or {})
+
+        # Get interaction summary by type
+        cursor.execute("""
+            SELECT i.type, COUNT(*) as count, MAX(i.occurred_at) as last_date
+            FROM interactions i
+            JOIN interaction_contacts ic ON i.id = ic.interaction_id
+            WHERE ic.contact_id = %s
+            GROUP BY i.type
+        """, (contact_id,))
+        interactions_by_type = [dict(r) for r in cursor.fetchall()]
+
+        # Get spending patterns
+        cursor.execute("""
+            SELECT
+                DATE_FORMAT(t.date, '%%Y-%%m') as month,
+                SUM(t.amount) as total,
+                COUNT(*) as count
+            FROM contact_expense_links cel
+            JOIN transactions t ON cel.transaction_index = t._index
+            WHERE cel.contact_id = %s
+            GROUP BY DATE_FORMAT(t.date, '%%Y-%%m')
+            ORDER BY month DESC
+            LIMIT 12
+        """, (contact_id,))
+        spending_by_month = [dict(r) for r in cursor.fetchall()]
+
+        # Get communication patterns (time of day, day of week)
+        cursor.execute("""
+            SELECT
+                HOUR(i.occurred_at) as hour,
+                DAYOFWEEK(i.occurred_at) as dow,
+                COUNT(*) as count
+            FROM interactions i
+            JOIN interaction_contacts ic ON i.id = ic.interaction_id
+            WHERE ic.contact_id = %s
+            GROUP BY HOUR(i.occurred_at), DAYOFWEEK(i.occurred_at)
+        """, (contact_id,))
+        communication_patterns = [dict(r) for r in cursor.fetchall()]
+
+        cursor.close()
+        return {
+            'contact': contact,
+            'interactions_by_type': interactions_by_type,
+            'spending_by_month': spending_by_month,
+            'communication_patterns': communication_patterns
+        }
+
+    def atlas_get_contact_recommendations(self, limit: int = 10) -> List[Dict]:
+        """Get recommended actions for contacts based on patterns"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        recommendations = []
+
+        # 1. VIP contacts that haven't been contacted recently
+        cursor.execute("""
+            SELECT c.id, c.name, c.company, c.photo_url, c.last_touch_date,
+                   DATEDIFF(CURDATE(), c.last_touch_date) as days_since_touch,
+                   'vip_needs_attention' as recommendation_type,
+                   'VIP contact needs attention' as reason
+            FROM contacts c
+            WHERE c.is_vip = TRUE
+            AND (c.last_touch_date IS NULL OR c.last_touch_date < DATE_SUB(CURDATE(), INTERVAL 14 DAY))
+            ORDER BY c.last_touch_date ASC
+            LIMIT 5
+        """)
+        recommendations.extend([dict(r) for r in cursor.fetchall()])
+
+        # 2. Contacts with declining interaction
+        cursor.execute("""
+            SELECT c.id, c.name, c.company, c.photo_url,
+                   'declining_engagement' as recommendation_type,
+                   'Interaction frequency has decreased' as reason
+            FROM contacts c
+            WHERE c.relationship_strength < 0.3
+            AND EXISTS (
+                SELECT 1 FROM interaction_contacts ic
+                JOIN interactions i ON ic.interaction_id = i.id
+                WHERE ic.contact_id = c.id
+                AND i.occurred_at < DATE_SUB(NOW(), INTERVAL 60 DAY)
+            )
+            LIMIT 5
+        """)
+        recommendations.extend([dict(r) for r in cursor.fetchall()])
+
+        # 3. High spenders needing follow-up
+        cursor.execute("""
+            SELECT c.id, c.name, c.company, c.photo_url,
+                   SUM(t.amount) as total_spent,
+                   'high_value_followup' as recommendation_type,
+                   'High-value contact - consider follow-up' as reason
+            FROM contacts c
+            JOIN contact_expense_links cel ON c.id = cel.contact_id
+            JOIN transactions t ON cel.transaction_index = t._index
+            WHERE t.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY c.id
+            HAVING total_spent > 500
+            ORDER BY total_spent DESC
+            LIMIT 5
+        """)
+        recommendations.extend([dict(r) for r in cursor.fetchall()])
+
+        # 4. Upcoming birthdays
+        cursor.execute("""
+            SELECT c.id, c.name, c.company, c.photo_url, c.birthday,
+                   DATEDIFF(DATE_ADD(c.birthday, INTERVAL YEAR(CURDATE()) - YEAR(c.birthday) +
+                       IF(DAYOFYEAR(CURDATE()) > DAYOFYEAR(c.birthday), 1, 0) YEAR), CURDATE()) as days_until,
+                   'birthday_coming' as recommendation_type,
+                   'Birthday coming up soon' as reason
+            FROM contacts c
+            WHERE c.birthday IS NOT NULL
+            HAVING days_until BETWEEN 0 AND 14
+            ORDER BY days_until ASC
+            LIMIT 5
+        """)
+        recommendations.extend([dict(r) for r in cursor.fetchall()])
+
+        cursor.close()
+        return recommendations[:limit]
+
+    def atlas_get_interaction_analysis(self, days: int = 30) -> Dict[str, Any]:
+        """Analyze interaction patterns across all contacts"""
+        if not self.use_mysql or not self.conn:
+            return {}
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        # Total interactions by type
+        cursor.execute("""
+            SELECT type, COUNT(*) as count
+            FROM interactions
+            WHERE occurred_at >= DATE_SUB(NOW(), INTERVAL %s DAY)
+            GROUP BY type
+        """, (days,))
+        by_type = {r['type']: r['count'] for r in cursor.fetchall()}
+
+        # Interactions by day of week
+        cursor.execute("""
+            SELECT DAYOFWEEK(occurred_at) as dow, COUNT(*) as count
+            FROM interactions
+            WHERE occurred_at >= DATE_SUB(NOW(), INTERVAL %s DAY)
+            GROUP BY DAYOFWEEK(occurred_at)
+        """, (days,))
+        by_day = {r['dow']: r['count'] for r in cursor.fetchall()}
+
+        # Interactions by hour
+        cursor.execute("""
+            SELECT HOUR(occurred_at) as hour, COUNT(*) as count
+            FROM interactions
+            WHERE occurred_at >= DATE_SUB(NOW(), INTERVAL %s DAY)
+            GROUP BY HOUR(occurred_at)
+        """, (days,))
+        by_hour = {r['hour']: r['count'] for r in cursor.fetchall()}
+
+        # Daily trend
+        cursor.execute("""
+            SELECT DATE(occurred_at) as date, COUNT(*) as count
+            FROM interactions
+            WHERE occurred_at >= DATE_SUB(NOW(), INTERVAL %s DAY)
+            GROUP BY DATE(occurred_at)
+            ORDER BY date
+        """, (days,))
+        daily_trend = [{'date': str(r['date']), 'count': r['count']} for r in cursor.fetchall()]
+
+        # Most contacted
+        cursor.execute("""
+            SELECT c.id, c.name, c.company, c.photo_url, COUNT(*) as interaction_count
+            FROM contacts c
+            JOIN interaction_contacts ic ON c.id = ic.contact_id
+            JOIN interactions i ON ic.interaction_id = i.id
+            WHERE i.occurred_at >= DATE_SUB(NOW(), INTERVAL %s DAY)
+            GROUP BY c.id
+            ORDER BY interaction_count DESC
+            LIMIT 10
+        """, (days,))
+        most_contacted = [dict(r) for r in cursor.fetchall()]
+
+        cursor.close()
+        return {
+            'period_days': days,
+            'by_type': by_type,
+            'by_day_of_week': by_day,
+            'by_hour': by_hour,
+            'daily_trend': daily_trend,
+            'most_contacted': most_contacted
+        }
+
+    def atlas_generate_ai_summary(self, contact_id: int) -> str:
+        """Generate an AI-ready summary prompt for a contact"""
+        insights = self.atlas_get_relationship_insights(contact_id)
+        strength = self.atlas_calculate_relationship_strength(contact_id)
+
+        contact = insights.get('contact', {})
+        summary = f"""
+Contact: {contact.get('name', 'Unknown')}
+Company: {contact.get('company', 'N/A')}
+Relationship Type: {contact.get('relationship_type', 'Unknown')}
+Relationship Strength: {strength.get('strength', 0)} / 1.0
+
+Interaction Summary:
+{', '.join([f"{i['type']}: {i['count']}" for i in insights.get('interactions_by_type', [])])}
+
+Recent Spending: ${sum([m.get('total', 0) for m in insights.get('spending_by_month', [])[:3]])}
+
+Notes: {contact.get('notes', 'None')}
+
+Generate a brief relationship summary and 2-3 actionable recommendations.
+"""
+        return summary.strip()
+
+    # =========================================================================
+    # Calendar Sync and Interaction Logging
+    # =========================================================================
+
+    def atlas_sync_calendar_event(self, event_data: Dict) -> Optional[int]:
+        """Sync a calendar event to the database"""
+        if not self.use_mysql or not self.conn:
+            return None
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        try:
+            # Extract event data
+            google_event_id = event_data.get('id')
+            summary = event_data.get('summary', '')
+            description = event_data.get('description', '')
+            location = event_data.get('location', '')
+            calendar_email = event_data.get('calendar_email', '')
+
+            # Parse dates
+            start = event_data.get('start', {})
+            end = event_data.get('end', {})
+            start_time = start.get('dateTime') or start.get('date')
+            end_time = end.get('dateTime') or end.get('date')
+
+            # Get attendees
+            attendees = event_data.get('attendees', [])
+            attendee_emails = [a.get('email') for a in attendees if a.get('email')]
+
+            cursor.execute("""
+                INSERT INTO calendar_events (
+                    google_event_id, calendar_email, summary, description,
+                    location, start_time, end_time, attendees_json, raw_event_json
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    summary = VALUES(summary),
+                    description = VALUES(description),
+                    location = VALUES(location),
+                    start_time = VALUES(start_time),
+                    end_time = VALUES(end_time),
+                    attendees_json = VALUES(attendees_json)
+            """, (
+                google_event_id, calendar_email, summary, description,
+                location, start_time, end_time,
+                json.dumps(attendee_emails), json.dumps(event_data)
+            ))
+
+            event_id = cursor.lastrowid or None
+
+            # Try to link attendees to contacts
+            for email in attendee_emails:
+                cursor.execute("""
+                    SELECT c.id FROM contacts c
+                    JOIN contact_emails ce ON c.id = ce.contact_id
+                    WHERE ce.email = %s
+                    LIMIT 1
+                """, (email.lower(),))
+                result = cursor.fetchone()
+                if result:
+                    # Create interaction for this meeting
+                    cursor.execute("""
+                        INSERT IGNORE INTO interactions (type, channel, occurred_at, summary, source_type, source_id)
+                        VALUES ('meeting', 'calendar', %s, %s, 'calendar_event', %s)
+                    """, (start_time, summary[:200] if summary else None, google_event_id))
+
+                    interaction_id = cursor.lastrowid
+                    if interaction_id:
+                        cursor.execute("""
+                            INSERT IGNORE INTO interaction_contacts (interaction_id, contact_id)
+                            VALUES (%s, %s)
+                        """, (interaction_id, result['id']))
+
+            self.conn.commit()
+            cursor.close()
+            return event_id
+        except Exception as e:
+            print(f"❌ Sync calendar event error: {e}")
+            self.conn.rollback()
+            cursor.close()
+            return None
+
+    def atlas_get_calendar_events(self, contact_id: int = None, start_date: str = None, end_date: str = None, limit: int = 50) -> List[Dict]:
+        """Get calendar events, optionally filtered by contact"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        if contact_id:
+            cursor.execute("""
+                SELECT DISTINCT ce.*
+                FROM calendar_events ce
+                JOIN interactions i ON ce.google_event_id = i.source_id AND i.source_type = 'calendar_event'
+                JOIN interaction_contacts ic ON i.id = ic.interaction_id
+                WHERE ic.contact_id = %s
+                ORDER BY ce.start_time DESC
+                LIMIT %s
+            """, (contact_id, limit))
+        else:
+            query = "SELECT * FROM calendar_events WHERE 1=1"
+            params = []
+            if start_date:
+                query += " AND start_time >= %s"
+                params.append(start_date)
+            if end_date:
+                query += " AND end_time <= %s"
+                params.append(end_date)
+            query += " ORDER BY start_time DESC LIMIT %s"
+            params.append(limit)
+            cursor.execute(query, params)
+
+        results = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+        return results
+
+    def atlas_log_interaction(self, data: Dict) -> Optional[int]:
+        """Log a new interaction and optionally link to contacts"""
+        if not self.use_mysql or not self.conn:
+            return None
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        try:
+            interaction_type = data.get('type', 'note')
+            channel = data.get('channel')
+            occurred_at = data.get('occurred_at')
+            summary = data.get('summary')
+            content = data.get('content')
+            is_outgoing = data.get('is_outgoing', True)
+            sentiment = data.get('sentiment')
+            contact_ids = data.get('contact_ids', [])
+
+            cursor.execute("""
+                INSERT INTO interactions (type, channel, occurred_at, summary, content, is_outgoing, sentiment)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (interaction_type, channel, occurred_at, summary, content, is_outgoing, sentiment))
+
+            interaction_id = cursor.lastrowid
+
+            # Link to contacts
+            for contact_id in contact_ids:
+                cursor.execute("""
+                    INSERT INTO interaction_contacts (interaction_id, contact_id)
+                    VALUES (%s, %s)
+                """, (interaction_id, contact_id))
+
+                # Update contact's last touch date
+                cursor.execute("""
+                    UPDATE contacts
+                    SET last_touch_date = %s,
+                        total_interactions = COALESCE(total_interactions, 0) + 1,
+                        next_touch_date = DATE_ADD(%s, INTERVAL COALESCE(touch_frequency_days, 30) DAY)
+                    WHERE id = %s
+                """, (occurred_at, occurred_at, contact_id))
+
+            self.conn.commit()
+            cursor.close()
+            return interaction_id
+        except Exception as e:
+            print(f"❌ Log interaction error: {e}")
+            self.conn.rollback()
+            cursor.close()
+            return None
+
+    def atlas_quick_log(self, contact_id: int, interaction_type: str, note: str = None) -> bool:
+        """Quick log an interaction with just a type (call, meeting, email, note)"""
+        from datetime import datetime
+        return self.atlas_log_interaction({
+            'type': interaction_type,
+            'occurred_at': datetime.now().isoformat(),
+            'summary': note or f"{interaction_type.title()} logged",
+            'contact_ids': [contact_id]
+        }) is not None
+
+    def atlas_get_upcoming_events_with_contacts(self, days: int = 7) -> List[Dict]:
+        """Get upcoming calendar events with matched contacts"""
+        if not self.use_mysql or not self.conn:
+            return []
+
+        self.ensure_connection()
+        cursor = self.conn.cursor()
+
+        cursor.execute("""
+            SELECT ce.*, GROUP_CONCAT(c.name) as contact_names, GROUP_CONCAT(c.id) as contact_ids
+            FROM calendar_events ce
+            LEFT JOIN interactions i ON ce.google_event_id = i.source_id AND i.source_type = 'calendar_event'
+            LEFT JOIN interaction_contacts ic ON i.id = ic.interaction_id
+            LEFT JOIN contacts c ON ic.contact_id = c.id
+            WHERE ce.start_time >= NOW()
+            AND ce.start_time <= DATE_ADD(NOW(), INTERVAL %s DAY)
+            GROUP BY ce.id
+            ORDER BY ce.start_time ASC
+        """, (days,))
+
+        results = [dict(r) for r in cursor.fetchall()]
+        cursor.close()
+        return results
+
+    def atlas_sync_all_calendar_events(self) -> Dict[str, int]:
+        """Sync all calendar events from the calendar service"""
+        stats = {'synced': 0, 'errors': 0}
+
+        try:
+            # Import calendar service
+            from calendar_service import get_all_calendar_services
+
+            services = get_all_calendar_services()
+
+            for service_info in services:
+                email = service_info.get('email', 'unknown')
+                service = service_info.get('service')
+
+                if not service:
+                    continue
+
+                try:
+                    # Get events from last 30 days to next 30 days
+                    from datetime import datetime, timedelta
+                    time_min = (datetime.utcnow() - timedelta(days=30)).isoformat() + 'Z'
+                    time_max = (datetime.utcnow() + timedelta(days=30)).isoformat() + 'Z'
+
+                    events_result = service.events().list(
+                        calendarId='primary',
+                        timeMin=time_min,
+                        timeMax=time_max,
+                        maxResults=100,
+                        singleEvents=True,
+                        orderBy='startTime'
+                    ).execute()
+
+                    events = events_result.get('items', [])
+
+                    for event in events:
+                        event['calendar_email'] = email
+                        if self.atlas_sync_calendar_event(event):
+                            stats['synced'] += 1
+                        else:
+                            stats['errors'] += 1
+
+                except Exception as e:
+                    print(f"❌ Calendar sync error for {email}: {e}")
+                    stats['errors'] += 1
+
+        except ImportError:
+            print("❌ Calendar service not available")
+            stats['errors'] += 1
+
+        return stats
 
 
 # Singleton instance
