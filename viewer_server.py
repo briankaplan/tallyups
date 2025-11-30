@@ -4150,6 +4150,15 @@ def atlas_contacts():
                         "priority": c.get('priority', ''),
                         "source": c.get('source', 'Apple Contacts'),
                         "notes": c.get('notes', ''),
+                        # Relationship intelligence fields
+                        "relationship_score": c.get('relationship_score', 0),
+                        "last_interaction": str(c.get('last_interaction', '')) if c.get('last_interaction') else None,
+                        "interaction_count": c.get('interaction_count', 0),
+                        "birthday": str(c.get('birthday', '')) if c.get('birthday') else None,
+                        "anniversary": str(c.get('anniversary', '')) if c.get('anniversary') else None,
+                        "photo_url": c.get('photo_url', ''),
+                        "linkedin_url": c.get('linkedin_url', ''),
+                        "twitter_handle": c.get('twitter_handle', ''),
                         "created_at": str(c.get('created_at', '')) if c.get('created_at') else None,
                         "updated_at": str(c.get('updated_at', '')) if c.get('updated_at') else None
                     })
@@ -5440,6 +5449,26 @@ def atlas_sync_google():
             )
         """)
 
+        # Create contact_interactions table for tracking all interactions
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contact_interactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT NOT NULL,
+                interaction_type VARCHAR(50) NOT NULL,
+                interaction_date DATETIME NOT NULL,
+                source VARCHAR(50),
+                source_id VARCHAR(255),
+                subject TEXT,
+                content TEXT,
+                sentiment VARCHAR(20),
+                metadata JSON,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact_date (contact_id, interaction_date),
+                INDEX idx_type (interaction_type),
+                INDEX idx_source (source)
+            )
+        """)
+
         synced = 0
         for contact in contacts:
             try:
@@ -5541,6 +5570,15 @@ def _import_contacts_from_json(contacts_data):
             ("name_tokens", "TEXT"),
             ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
             ("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+            # Relationship intelligence columns
+            ("relationship_score", "INT DEFAULT 0"),
+            ("last_interaction", "DATETIME"),
+            ("interaction_count", "INT DEFAULT 0"),
+            ("birthday", "DATE"),
+            ("anniversary", "DATE"),
+            ("photo_url", "TEXT"),
+            ("linkedin_url", "VARCHAR(500)"),
+            ("twitter_handle", "VARCHAR(100)"),
         ]
         columns_added = []
         for col_name, col_type in missing_columns:
