@@ -14210,7 +14210,12 @@ def generate_missing_receipt_form():
 @login_required
 def contact_hub_page():
     """ATLAS Contact Hub - Relationship Intelligence Dashboard"""
-    return send_from_directory(BASE_DIR, "contacts.html")
+    response = send_from_directory(BASE_DIR, "contacts.html")
+    # Prevent browser caching to ensure latest UI version is always served
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route("/api/contact-hub/contacts", methods=["GET"])
