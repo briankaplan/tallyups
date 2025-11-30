@@ -1106,6 +1106,242 @@
       color: var(--text-dim);
       font-size: 12px;
     }
+
+    /* AI Features Panel */
+    .ai-panel {
+      margin: 12px 16px;
+      padding: 16px;
+      background: linear-gradient(135deg, rgba(170, 102, 255, 0.1) 0%, rgba(255, 102, 170, 0.1) 100%);
+      border: 1px solid rgba(170, 102, 255, 0.3);
+      border-radius: 16px;
+      display: none;
+    }
+
+    .ai-panel.visible {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+
+    .ai-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .ai-panel-title {
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ai-panel-title svg {
+      width: 20px;
+      height: 20px;
+      color: var(--purple);
+    }
+
+    .ai-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .ai-action-btn {
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .ai-action-btn:hover {
+      border-color: var(--purple);
+      transform: translateY(-1px);
+    }
+
+    .ai-action-btn.loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .ai-action-icon {
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .ai-action-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .ai-action-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* AI Search */
+    .ai-search-container {
+      position: relative;
+      margin-top: 12px;
+    }
+
+    .ai-search-input {
+      width: 100%;
+      padding: 12px 44px 12px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .ai-search-input:focus {
+      border-color: var(--purple);
+    }
+
+    .ai-search-btn {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Smart Filters */
+    .smart-filters {
+      display: none;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      margin: 0 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    .smart-filters.visible {
+      display: flex;
+    }
+
+    .smart-filter {
+      padding: 6px 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .smart-filter:hover {
+      border-color: var(--purple);
+      color: var(--text);
+    }
+
+    .smart-filter.active {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: white;
+    }
+
+    .smart-filter .count {
+      padding: 2px 6px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      font-size: 10px;
+    }
+
+    .smart-filter-type {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+
+    /* AI Results Panel */
+    .ai-results {
+      margin: 12px 16px;
+      padding: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: none;
+    }
+
+    .ai-results.visible {
+      display: block;
+    }
+
+    .ai-results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .ai-results-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .ai-results-close {
+      padding: 4px 8px;
+      background: var(--bg-elevated);
+      border: none;
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .ai-result-item {
+      padding: 12px;
+      background: var(--bg-elevated);
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+
+    .ai-result-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .ai-result-detail {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .ai-result-tags {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ai-result-tag {
+      padding: 2px 8px;
+      background: rgba(170, 102, 255, 0.2);
+      border-radius: 6px;
+      font-size: 10px;
+      color: var(--purple);
+    }
   </style>
 </head>
 <body>
@@ -1124,6 +1360,11 @@
         <span class="logo-text"><span>ATLAS</span></span>
       </div>
       <div class="header-actions">
+        <button class="icon-btn" onclick="toggleAIPanel()" id="aiBtn" title="AI Features" style="background: linear-gradient(135deg, rgba(170,102,255,0.2) 0%, rgba(255,102,170,0.2) 100%);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </button>
         <button class="icon-btn" onclick="toggleSyncPanel()" id="syncBtn" title="Sync Contacts">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 2v6h-6M3 12a9 9 0 0115.4-6.4L21 8M3 22v-6h6M21 12a9 9 0 01-15.4 6.4L3 16"/>
@@ -1180,6 +1421,62 @@
         <div class="sync-source-status" id="appleStatus">Not connected</div>
       </div>
     </div>
+  </div>
+
+  <!-- AI Panel -->
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-panel-header">
+      <div class="ai-panel-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        AI Contact Intelligence
+      </div>
+      <button class="sync-close" onclick="toggleAIPanel()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="ai-actions">
+      <div class="ai-action-btn" onclick="aiCategorize()" id="aiCategorizeBtn">
+        <div class="ai-action-icon">&#x1F3AF;</div>
+        <div class="ai-action-title">Auto-Categorize</div>
+        <div class="ai-action-desc">AI analyzes and categorizes uncategorized contacts</div>
+      </div>
+      <div class="ai-action-btn" onclick="aiSmartFilters()" id="aiFiltersBtn">
+        <div class="ai-action-icon">&#x1F50D;</div>
+        <div class="ai-action-title">Smart Filters</div>
+        <div class="ai-action-desc">Generate intelligent filter suggestions</div>
+      </div>
+      <div class="ai-action-btn" onclick="aiFindDuplicates()" id="aiDedupeBtn">
+        <div class="ai-action-icon">&#x1F465;</div>
+        <div class="ai-action-title">Find Duplicates</div>
+        <div class="ai-action-desc">Detect potential duplicate contacts</div>
+      </div>
+      <div class="ai-action-btn" onclick="aiEnrich()" id="aiEnrichBtn">
+        <div class="ai-action-icon">&#x2728;</div>
+        <div class="ai-action-title">Find Incomplete</div>
+        <div class="ai-action-desc">Identify contacts missing key info</div>
+      </div>
+    </div>
+    <div class="ai-search-container">
+      <input type="text" class="ai-search-input" placeholder="Ask AI: 'executives at tech companies', 'VIP contacts'..." id="aiSearchInput" onkeydown="if(event.key==='Enter') aiSearch()">
+      <button class="ai-search-btn" onclick="aiSearch()">Search</button>
+    </div>
+  </div>
+
+  <!-- Smart Filters (populated by AI) -->
+  <div class="smart-filters" id="smartFilters"></div>
+
+  <!-- AI Results Panel -->
+  <div class="ai-results" id="aiResults">
+    <div class="ai-results-header">
+      <div class="ai-results-title" id="aiResultsTitle">AI Results</div>
+      <button class="ai-results-close" onclick="closeAIResults()">Close</button>
+    </div>
+    <div id="aiResultsContent"></div>
   </div>
 
   <!-- Filter Chips -->
@@ -2157,6 +2454,322 @@
     // Register service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
+    // ===========================================
+    // AI FEATURES
+    // ===========================================
+
+    // Toggle AI Panel
+    function toggleAIPanel() {
+      const panel = document.getElementById('aiPanel');
+      panel.classList.toggle('visible');
+      // Close sync panel if open
+      document.getElementById('syncPanel').classList.remove('visible');
+    }
+
+    // AI Categorize contacts
+    async function aiCategorize() {
+      const btn = document.getElementById('aiCategorizeBtn');
+      btn.classList.add('loading');
+      btn.querySelector('.ai-action-title').textContent = 'Analyzing...';
+
+      try {
+        const response = await fetch('/api/atlas/ai/organize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'categorize' })
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+          showToast(`Categorized ${data.processed} contacts`, 'success');
+          if (data.changes && data.changes.length > 0) {
+            showAIResults('AI Categorization Results', data.changes.map(c => ({
+              name: c.name,
+              detail: `Category: ${c.new_category}, Priority: ${c.new_priority}`
+            })));
+          }
+          loadContacts(); // Refresh to show new categories
+        } else {
+          showToast(data.error || 'Categorization failed', 'error');
+        }
+      } catch (e) {
+        console.error('AI categorize error:', e);
+        showToast('AI categorization failed', 'error');
+      }
+
+      btn.classList.remove('loading');
+      btn.querySelector('.ai-action-title').textContent = 'Auto-Categorize';
+    }
+
+    // AI Smart Filters
+    async function aiSmartFilters() {
+      const btn = document.getElementById('aiFiltersBtn');
+      btn.classList.add('loading');
+      btn.querySelector('.ai-action-title').textContent = 'Generating...';
+
+      try {
+        const response = await fetch('/api/atlas/ai/smart-filters');
+        const data = await response.json();
+
+        if (data.ok && data.filters) {
+          renderSmartFilters(data.filters);
+          showToast(`Generated ${data.filters.length} smart filters`, 'success');
+        } else {
+          showToast(data.error || 'Failed to generate filters', 'error');
+        }
+      } catch (e) {
+        console.error('AI filters error:', e);
+        showToast('Failed to generate smart filters', 'error');
+      }
+
+      btn.classList.remove('loading');
+      btn.querySelector('.ai-action-title').textContent = 'Smart Filters';
+    }
+
+    // Render smart filters
+    function renderSmartFilters(filters) {
+      const container = document.getElementById('smartFilters');
+      if (!filters || filters.length === 0) {
+        container.classList.remove('visible');
+        return;
+      }
+
+      container.innerHTML = filters.slice(0, 12).map(f => `
+        <div class="smart-filter" onclick="applySmartFilter('${f.id}', ${JSON.stringify(f.query).replace(/"/g, '&quot;')})">
+          <span>${f.name}</span>
+          <span class="count">${f.count}</span>
+          <span class="smart-filter-type">${f.type}</span>
+        </div>
+      `).join('');
+
+      container.classList.add('visible');
+    }
+
+    // Apply smart filter
+    let activeSmartFilter = null;
+    async function applySmartFilter(filterId, query) {
+      // Toggle off if same filter
+      if (activeSmartFilter === filterId) {
+        activeSmartFilter = null;
+        document.querySelectorAll('.smart-filter').forEach(el => el.classList.remove('active'));
+        renderContacts();
+        return;
+      }
+
+      activeSmartFilter = filterId;
+      document.querySelectorAll('.smart-filter').forEach(el => {
+        el.classList.toggle('active', el.onclick.toString().includes(filterId));
+      });
+
+      // Build search based on query
+      let filtered = contacts;
+
+      if (query.category) {
+        filtered = filtered.filter(c => c.category === query.category);
+      }
+      if (query.company) {
+        filtered = filtered.filter(c => c.company === query.company);
+      }
+      if (query.priority) {
+        filtered = filtered.filter(c => c.priority === query.priority);
+      }
+      if (query.source) {
+        filtered = filtered.filter(c => c.source === query.source);
+      }
+      if (query.email_domain) {
+        filtered = filtered.filter(c => c.email && c.email.includes(`@${query.email_domain}`));
+      }
+      if (query.has_phone) {
+        filtered = filtered.filter(c => c.phone && c.phone.trim() !== '');
+      }
+      if (query.missing_email) {
+        filtered = filtered.filter(c => !c.email || c.email.trim() === '');
+      }
+      if (query.days) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - query.days);
+        filtered = filtered.filter(c => c.created_at && new Date(c.created_at) >= cutoff);
+      }
+
+      // Render filtered contacts
+      renderFilteredContacts(filtered);
+    }
+
+    // Render filtered contacts (for smart filters)
+    function renderFilteredContacts(filtered) {
+      const list = document.getElementById('contactList');
+
+      if (filtered.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-title">No contacts match this filter</div>
+            <div class="empty-text">Try a different filter</div>
+          </div>
+        `;
+        return;
+      }
+
+      const grouped = {};
+      filtered.forEach(contact => {
+        const letter = (contact.display_name || contact.name || 'Unknown')[0].toUpperCase();
+        if (!grouped[letter]) grouped[letter] = [];
+        grouped[letter].push(contact);
+      });
+
+      let html = `<div class="loaded-count">Showing ${filtered.length} contacts</div>`;
+      Object.keys(grouped).sort().forEach(letter => {
+        html += `<div class="section-header"><span class="section-title">${letter}</span></div>`;
+        grouped[letter].forEach(contact => {
+          html += renderContactCard(contact);
+        });
+      });
+
+      list.innerHTML = html;
+    }
+
+    // AI Find Duplicates
+    async function aiFindDuplicates() {
+      const btn = document.getElementById('aiDedupeBtn');
+      btn.classList.add('loading');
+      btn.querySelector('.ai-action-title').textContent = 'Searching...';
+
+      try {
+        const response = await fetch('/api/atlas/ai/organize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'dedupe' })
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+          if (data.changes && data.changes.length > 0) {
+            showAIResults('Potential Duplicates Found', data.changes.map(d => ({
+              name: `${d.contact1.name} & ${d.contact2.name}`,
+              detail: `Emails: ${d.contact1.email || 'none'}, ${d.contact2.email || 'none'}`,
+              ids: [d.contact1.id, d.contact2.id]
+            })));
+            showToast(`Found ${data.changes.length} potential duplicates`, 'success');
+          } else {
+            showToast('No duplicates found', 'success');
+          }
+        } else {
+          showToast(data.error || 'Duplicate check failed', 'error');
+        }
+      } catch (e) {
+        console.error('AI dedupe error:', e);
+        showToast('Duplicate check failed', 'error');
+      }
+
+      btn.classList.remove('loading');
+      btn.querySelector('.ai-action-title').textContent = 'Find Duplicates';
+    }
+
+    // AI Enrich - find incomplete contacts
+    async function aiEnrich() {
+      const btn = document.getElementById('aiEnrichBtn');
+      btn.classList.add('loading');
+      btn.querySelector('.ai-action-title').textContent = 'Scanning...';
+
+      try {
+        const response = await fetch('/api/atlas/ai/organize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'enrich' })
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+          if (data.changes && data.changes.length > 0) {
+            showAIResults('Incomplete Contacts', data.changes.map(c => ({
+              name: c.name,
+              detail: `Missing: ${c.missing_fields.join(', ')}`,
+              id: c.id
+            })));
+            showToast(`Found ${data.changes.length} incomplete contacts`, 'success');
+          } else {
+            showToast('All contacts are complete', 'success');
+          }
+        } else {
+          showToast(data.error || 'Enrichment check failed', 'error');
+        }
+      } catch (e) {
+        console.error('AI enrich error:', e);
+        showToast('Enrichment check failed', 'error');
+      }
+
+      btn.classList.remove('loading');
+      btn.querySelector('.ai-action-title').textContent = 'Find Incomplete';
+    }
+
+    // AI Search
+    async function aiSearch() {
+      const query = document.getElementById('aiSearchInput').value.trim();
+      if (!query) return;
+
+      document.querySelector('.ai-search-btn').textContent = 'Searching...';
+
+      try {
+        const response = await fetch('/api/atlas/ai/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+
+        const data = await response.json();
+
+        if (data.ok && data.contacts) {
+          if (data.contacts.length > 0) {
+            showAIResults(`AI Search: "${query}"`, data.contacts.map(c => ({
+              name: c.name,
+              detail: [c.title, c.company].filter(Boolean).join(' at ') || c.email || '',
+              id: c.id
+            })));
+            showToast(`Found ${data.contacts.length} contacts`, 'success');
+          } else {
+            showToast('No contacts found for that query', 'error');
+          }
+        } else {
+          showToast(data.error || 'Search failed', 'error');
+        }
+      } catch (e) {
+        console.error('AI search error:', e);
+        showToast('AI search failed', 'error');
+      }
+
+      document.querySelector('.ai-search-btn').textContent = 'Search';
+    }
+
+    // Show AI Results
+    function showAIResults(title, results) {
+      document.getElementById('aiResultsTitle').textContent = title;
+
+      const content = document.getElementById('aiResultsContent');
+      content.innerHTML = results.slice(0, 20).map(r => `
+        <div class="ai-result-item" ${r.id ? `onclick="openContact(${r.id})"` : ''} style="${r.id ? 'cursor:pointer' : ''}">
+          <div class="ai-result-name">${r.name}</div>
+          <div class="ai-result-detail">${r.detail}</div>
+          ${r.tags ? `<div class="ai-result-tags">${r.tags.map(t => `<span class="ai-result-tag">${t}</span>`).join('')}</div>` : ''}
+        </div>
+      `).join('');
+
+      if (results.length > 20) {
+        content.innerHTML += `<div class="loaded-count">Showing 20 of ${results.length} results</div>`;
+      }
+
+      document.getElementById('aiResults').classList.add('visible');
+    }
+
+    // Close AI Results
+    function closeAIResults() {
+      document.getElementById('aiResults').classList.remove('visible');
+      // Clear smart filter selection
+      activeSmartFilter = null;
+      document.querySelectorAll('.smart-filter').forEach(el => el.classList.remove('active'));
     }
   </script>
 </body>

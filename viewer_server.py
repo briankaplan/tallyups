@@ -5359,6 +5359,647 @@ def atlas_sync_linkedin():
         return jsonify({'error': str(e)}), 500
 
 
+# =============================================================================
+# AI-POWERED CONTACT FILTERING & ORGANIZATION
+# =============================================================================
+
+@app.route("/api/atlas/ai/analyze-contacts", methods=["POST"])
+def atlas_ai_analyze_contacts():
+    """Use AI to analyze and categorize contacts"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json() or {}
+        contact_ids = data.get('contact_ids', [])  # Specific contacts or empty for batch
+        batch_size = min(data.get('batch_size', 50), 100)
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get contacts to analyze
+        if contact_ids:
+            placeholders = ','.join(['%s'] * len(contact_ids))
+            query = f"""
+                SELECT id, display_name, first_name, last_name, company, job_title,
+                       email, phone, category, notes, source
+                FROM contacts
+                WHERE id IN ({placeholders})
+            """
+            cursor.execute(query, tuple(contact_ids))
+        else:
+            # Get contacts that haven't been AI-categorized recently
+            query = """
+                SELECT id, display_name, first_name, last_name, company, job_title,
+                       email, phone, category, notes, source
+                FROM contacts
+                WHERE ai_analyzed_at IS NULL OR ai_analyzed_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
+                LIMIT %s
+            """
+            cursor.execute(query, (batch_size,))
+
+        contacts = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        if not contacts:
+            return jsonify({
+                'ok': True,
+                'analyzed': 0,
+                'message': 'No contacts need analysis'
+            })
+
+        # Use Gemini AI to analyze contacts
+        api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_AI_KEY')
+        if not api_key:
+            return jsonify({'error': 'AI not configured'}), 503
+
+        analyzed_results = []
+        for contact in contacts:
+            analysis = _ai_analyze_single_contact(contact, api_key)
+            if analysis:
+                analyzed_results.append({
+                    'id': contact['id'],
+                    'name': contact['display_name'],
+                    **analysis
+                })
+                # Update in database
+                _update_contact_ai_analysis(contact['id'], analysis)
+
+        return jsonify({
+            'ok': True,
+            'analyzed': len(analyzed_results),
+            'results': analyzed_results
+        })
+
+    except Exception as e:
+        print(f"AI contact analysis error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+def _ai_analyze_single_contact(contact, api_key):
+    """Analyze a single contact with Gemini AI"""
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.0-flash')
+
+        prompt = f"""Analyze this contact and provide categorization:
+Name: {contact.get('display_name', '')}
+Company: {contact.get('company', '')}
+Title: {contact.get('job_title', '')}
+Email: {contact.get('email', '')}
+Notes: {contact.get('notes', '')}
+
+Return a JSON object with:
+1. "category": One of: Executive, Technical, Sales, Marketing, Finance, Legal, Operations, Creative, Personal, Family, Friend, Vendor, Investor, Media, Other
+2. "priority": One of: VIP, High, Normal, Low
+3. "tags": Array of relevant tags (max 5), e.g., ["decision-maker", "technical", "startup", "enterprise"]
+4. "relationship_type": One of: Professional, Personal, Business Partner, Client, Prospect, Vendor, Investor, Advisor, Friend, Family
+5. "suggested_actions": Array of 1-2 suggested engagement actions
+
+Return ONLY valid JSON, no other text."""
+
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        # Parse JSON from response
+        import json
+        # Clean up markdown if present
+        if text.startswith('```'):
+            text = text.split('```')[1]
+            if text.startswith('json'):
+                text = text[4:]
+        text = text.strip()
+
+        analysis = json.loads(text)
+        return analysis
+
+    except Exception as e:
+        print(f"AI analysis error for contact {contact.get('id')}: {e}")
+        return None
+
+
+def _update_contact_ai_analysis(contact_id, analysis):
+    """Update contact with AI analysis results"""
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Update category and priority if available
+        import json
+        tags_str = json.dumps(analysis.get('tags', []))
+
+        update_query = """
+            UPDATE contacts
+            SET category = %s,
+                priority = %s,
+                tags = %s,
+                ai_analyzed_at = NOW(),
+                updated_at = NOW()
+            WHERE id = %s
+        """
+        cursor.execute(update_query, (
+            analysis.get('category', 'Other'),
+            analysis.get('priority', 'Normal'),
+            tags_str,
+            contact_id
+        ))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        print(f"Error updating contact AI analysis: {e}")
+
+
+@app.route("/api/atlas/ai/smart-filters", methods=["GET"])
+def atlas_ai_smart_filters():
+    """Get AI-generated smart filter suggestions based on contact patterns"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get contact statistics for smart filters
+        filters = []
+
+        # 1. Category breakdown
+        cursor.execute("""
+            SELECT category, COUNT(*) as count
+            FROM contacts
+            WHERE category IS NOT NULL AND category != ''
+            GROUP BY category
+            ORDER BY count DESC
+        """)
+        categories = cursor.fetchall()
+        for cat in categories:
+            if cat['count'] >= 3:  # Only show categories with 3+ contacts
+                filters.append({
+                    'id': f"category_{cat['category'].lower().replace(' ', '_')}",
+                    'name': cat['category'],
+                    'type': 'category',
+                    'count': cat['count'],
+                    'query': {'category': cat['category']}
+                })
+
+        # 2. Company-based filters (top companies)
+        cursor.execute("""
+            SELECT company, COUNT(*) as count
+            FROM contacts
+            WHERE company IS NOT NULL AND company != ''
+            GROUP BY company
+            HAVING count >= 2
+            ORDER BY count DESC
+            LIMIT 10
+        """)
+        companies = cursor.fetchall()
+        for comp in companies:
+            filters.append({
+                'id': f"company_{comp['company'][:20].lower().replace(' ', '_')}",
+                'name': f"At {comp['company']}",
+                'type': 'company',
+                'count': comp['count'],
+                'query': {'company': comp['company']}
+            })
+
+        # 3. Priority filters
+        cursor.execute("""
+            SELECT priority, COUNT(*) as count
+            FROM contacts
+            WHERE priority IS NOT NULL AND priority != '' AND priority != 'Normal'
+            GROUP BY priority
+            ORDER BY FIELD(priority, 'VIP', 'High', 'Low')
+        """)
+        priorities = cursor.fetchall()
+        for pri in priorities:
+            filters.append({
+                'id': f"priority_{pri['priority'].lower()}",
+                'name': f"{pri['priority']} Priority",
+                'type': 'priority',
+                'count': pri['count'],
+                'query': {'priority': pri['priority']}
+            })
+
+        # 4. Source-based filters
+        cursor.execute("""
+            SELECT source, COUNT(*) as count
+            FROM contacts
+            WHERE source IS NOT NULL AND source != ''
+            GROUP BY source
+            ORDER BY count DESC
+        """)
+        sources = cursor.fetchall()
+        for src in sources:
+            if src['count'] >= 5:
+                filters.append({
+                    'id': f"source_{src['source'].lower().replace(' ', '_')}",
+                    'name': f"From {src['source']}",
+                    'type': 'source',
+                    'count': src['count'],
+                    'query': {'source': src['source']}
+                })
+
+        # 5. Email domain patterns (for business contacts)
+        cursor.execute("""
+            SELECT
+                SUBSTRING_INDEX(email, '@', -1) as domain,
+                COUNT(*) as count
+            FROM contacts
+            WHERE email IS NOT NULL AND email LIKE '%@%'
+            GROUP BY domain
+            HAVING count >= 3 AND domain NOT IN ('gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com')
+            ORDER BY count DESC
+            LIMIT 10
+        """)
+        domains = cursor.fetchall()
+        for dom in domains:
+            filters.append({
+                'id': f"domain_{dom['domain'].replace('.', '_')}",
+                'name': f"@{dom['domain']}",
+                'type': 'domain',
+                'count': dom['count'],
+                'query': {'email_domain': dom['domain']}
+            })
+
+        # 6. Recently added (last 7 days)
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM contacts
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        """)
+        recent = cursor.fetchone()
+        if recent and recent['count'] > 0:
+            filters.insert(0, {
+                'id': 'recent_added',
+                'name': 'Recently Added',
+                'type': 'time',
+                'count': recent['count'],
+                'query': {'days': 7}
+            })
+
+        # 7. Has phone number
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM contacts
+            WHERE phone IS NOT NULL AND phone != ''
+        """)
+        with_phone = cursor.fetchone()
+        if with_phone:
+            filters.append({
+                'id': 'has_phone',
+                'name': 'With Phone',
+                'type': 'completeness',
+                'count': with_phone['count'],
+                'query': {'has_phone': True}
+            })
+
+        # 8. Missing email
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM contacts
+            WHERE email IS NULL OR email = ''
+        """)
+        no_email = cursor.fetchone()
+        if no_email and no_email['count'] > 0:
+            filters.append({
+                'id': 'missing_email',
+                'name': 'Missing Email',
+                'type': 'incomplete',
+                'count': no_email['count'],
+                'query': {'missing_email': True}
+            })
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'filters': filters,
+            'generated_at': datetime.datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        print(f"Smart filters error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/ai/search", methods=["POST"])
+def atlas_ai_search():
+    """AI-powered natural language contact search"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json() or {}
+        query = data.get('query', '').strip()
+
+        if not query:
+            return jsonify({'error': 'Query is required'}), 400
+
+        # Use Gemini to understand the search intent
+        api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_AI_KEY')
+        if not api_key:
+            # Fall back to basic search
+            return _basic_contact_search(query)
+
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.0-flash')
+
+        prompt = f"""Parse this natural language search query for contacts and extract search parameters.
+Query: "{query}"
+
+Return a JSON object with these optional fields:
+- "name": name to search for
+- "company": company name
+- "category": category filter (Executive, Technical, Sales, Personal, etc.)
+- "priority": priority filter (VIP, High, Normal, Low)
+- "has_phone": true if looking for contacts with phone
+- "has_email": true if looking for contacts with email
+- "email_domain": specific email domain
+- "keywords": array of keywords to search in notes/tags
+- "limit": number of results (default 50)
+
+Examples:
+"executives at Google" -> {{"company": "Google", "category": "Executive"}}
+"VIP contacts" -> {{"priority": "VIP"}}
+"people I met recently" -> {{"days": 7}}
+"contacts from tech companies" -> {{"keywords": ["tech", "software", "startup"]}}
+
+Return ONLY valid JSON."""
+
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        # Clean up markdown
+        import json
+        if text.startswith('```'):
+            text = text.split('```')[1]
+            if text.startswith('json'):
+                text = text[4:]
+        text = text.strip()
+
+        search_params = json.loads(text)
+
+        # Execute search with extracted parameters
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        conditions = []
+        values = []
+
+        if search_params.get('name'):
+            conditions.append("(display_name LIKE %s OR first_name LIKE %s OR last_name LIKE %s)")
+            name_pattern = f"%{search_params['name']}%"
+            values.extend([name_pattern, name_pattern, name_pattern])
+
+        if search_params.get('company'):
+            conditions.append("company LIKE %s")
+            values.append(f"%{search_params['company']}%")
+
+        if search_params.get('category'):
+            conditions.append("category = %s")
+            values.append(search_params['category'])
+
+        if search_params.get('priority'):
+            conditions.append("priority = %s")
+            values.append(search_params['priority'])
+
+        if search_params.get('email_domain'):
+            conditions.append("email LIKE %s")
+            values.append(f"%@{search_params['email_domain']}")
+
+        if search_params.get('has_phone'):
+            conditions.append("phone IS NOT NULL AND phone != ''")
+
+        if search_params.get('has_email'):
+            conditions.append("email IS NOT NULL AND email != ''")
+
+        if search_params.get('days'):
+            conditions.append("created_at >= DATE_SUB(NOW(), INTERVAL %s DAY)")
+            values.append(search_params['days'])
+
+        if search_params.get('keywords'):
+            keyword_conditions = []
+            for kw in search_params['keywords']:
+                keyword_conditions.append("(notes LIKE %s OR tags LIKE %s OR job_title LIKE %s)")
+                kw_pattern = f"%{kw}%"
+                values.extend([kw_pattern, kw_pattern, kw_pattern])
+            if keyword_conditions:
+                conditions.append(f"({' OR '.join(keyword_conditions)})")
+
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        limit = min(search_params.get('limit', 50), 200)
+
+        query = f"""
+            SELECT id, display_name, first_name, last_name, company, job_title,
+                   email, phone, category, priority, notes, source, created_at
+            FROM contacts
+            WHERE {where_clause}
+            ORDER BY priority = 'VIP' DESC, priority = 'High' DESC, display_name ASC
+            LIMIT {limit}
+        """
+
+        cursor.execute(query, tuple(values))
+        results = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        # Format results
+        contacts = []
+        for r in results:
+            contacts.append({
+                'id': r['id'],
+                'name': r['display_name'] or f"{r['first_name']} {r['last_name']}".strip(),
+                'company': r['company'],
+                'title': r['job_title'],
+                'email': r['email'],
+                'phone': r['phone'],
+                'category': r['category'],
+                'priority': r['priority']
+            })
+
+        return jsonify({
+            'ok': True,
+            'query': query,
+            'parsed_intent': search_params,
+            'total': len(contacts),
+            'contacts': contacts
+        })
+
+    except Exception as e:
+        print(f"AI search error: {e}")
+        import traceback
+        traceback.print_exc()
+        # Fall back to basic search
+        return _basic_contact_search(data.get('query', ''))
+
+
+def _basic_contact_search(query):
+    """Basic contact search fallback"""
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        search_pattern = f"%{query}%"
+        cursor.execute("""
+            SELECT id, display_name, first_name, last_name, company, job_title,
+                   email, phone, category, priority
+            FROM contacts
+            WHERE display_name LIKE %s OR company LIKE %s OR email LIKE %s
+                  OR job_title LIKE %s OR notes LIKE %s
+            ORDER BY display_name ASC
+            LIMIT 50
+        """, (search_pattern, search_pattern, search_pattern, search_pattern, search_pattern))
+
+        results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        contacts = []
+        for r in results:
+            contacts.append({
+                'id': r['id'],
+                'name': r['display_name'] or f"{r.get('first_name', '')} {r.get('last_name', '')}".strip(),
+                'company': r['company'],
+                'title': r['job_title'],
+                'email': r['email'],
+                'phone': r['phone'],
+                'category': r['category'],
+                'priority': r['priority']
+            })
+
+        return jsonify({
+            'ok': True,
+            'query': query,
+            'total': len(contacts),
+            'contacts': contacts
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/ai/organize", methods=["POST"])
+def atlas_ai_organize():
+    """AI-powered contact organization - batch categorization and cleanup"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json() or {}
+        action = data.get('action', 'categorize')  # categorize, dedupe, enrich
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        results = {'action': action, 'processed': 0, 'changes': []}
+
+        if action == 'categorize':
+            # Find uncategorized contacts and categorize them
+            cursor.execute("""
+                SELECT id, display_name, company, job_title, email
+                FROM contacts
+                WHERE (category IS NULL OR category = '' OR category = 'General')
+                LIMIT 100
+            """)
+            uncategorized = cursor.fetchall()
+
+            api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_AI_KEY')
+            if api_key:
+                for contact in uncategorized:
+                    analysis = _ai_analyze_single_contact(contact, api_key)
+                    if analysis and analysis.get('category'):
+                        _update_contact_ai_analysis(contact['id'], analysis)
+                        results['changes'].append({
+                            'id': contact['id'],
+                            'name': contact['display_name'],
+                            'new_category': analysis['category'],
+                            'new_priority': analysis.get('priority', 'Normal')
+                        })
+                        results['processed'] += 1
+
+        elif action == 'dedupe':
+            # Find potential duplicates by similar names/emails
+            cursor.execute("""
+                SELECT c1.id as id1, c1.display_name as name1, c1.email as email1,
+                       c2.id as id2, c2.display_name as name2, c2.email as email2
+                FROM contacts c1
+                JOIN contacts c2 ON c1.id < c2.id
+                WHERE (c1.email IS NOT NULL AND c1.email != '' AND c1.email = c2.email)
+                   OR (c1.display_name = c2.display_name AND c1.company = c2.company)
+                LIMIT 50
+            """)
+            duplicates = cursor.fetchall()
+
+            for dup in duplicates:
+                results['changes'].append({
+                    'type': 'potential_duplicate',
+                    'contact1': {'id': dup['id1'], 'name': dup['name1'], 'email': dup['email1']},
+                    'contact2': {'id': dup['id2'], 'name': dup['name2'], 'email': dup['email2']}
+                })
+                results['processed'] += 1
+
+        elif action == 'enrich':
+            # Find contacts missing key information
+            cursor.execute("""
+                SELECT id, display_name, email, phone, company, job_title
+                FROM contacts
+                WHERE (email IS NULL OR email = '')
+                   OR (phone IS NULL OR phone = '')
+                   OR (company IS NULL OR company = '')
+                LIMIT 100
+            """)
+            incomplete = cursor.fetchall()
+
+            for contact in incomplete:
+                missing = []
+                if not contact['email']: missing.append('email')
+                if not contact['phone']: missing.append('phone')
+                if not contact['company']: missing.append('company')
+
+                results['changes'].append({
+                    'id': contact['id'],
+                    'name': contact['display_name'],
+                    'missing_fields': missing
+                })
+                results['processed'] += 1
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            **results
+        })
+
+    except Exception as e:
+        print(f"AI organize error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/upload_receipt", methods=["POST"])
 @login_required
 def upload_receipt():
