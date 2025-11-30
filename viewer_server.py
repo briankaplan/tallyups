@@ -8418,6 +8418,222 @@ def reprocess_missing_receipts():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/recategorize", methods=["POST"])
+def recategorize_transactions():
+    """
+    Re-categorize all transactions using smart pattern matching.
+    Fixes issues like AI tools being categorized as "Shopping".
+
+    Body (optional):
+    {
+        "dry_run": true,  // Preview changes without applying them
+        "limit": 100      // Limit number of transactions to process
+    }
+    """
+    import re
+
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+    dry_run = data.get('dry_run', False)
+    limit = data.get('limit', 1000)
+
+    # Smart categorization rules - Down Home exact categories
+    # Uses pattern matching for known merchants
+    CATEGORY_RULES = {
+        # Software & Subscriptions - AI tools, dev tools, SaaS
+        'Software subscriptions': [
+            r'anthropic', r'claude\.ai', r'openai', r'chatgpt',
+            r'cursor', r'midjourney', r'runway', r'ideogram', r'suno',
+            r'huggingface', r'davinci', r'replicate', r'stability',
+            r'cloudflare', r'vercel', r'netlify', r'railway',
+            r'github', r'gitlab', r'bitbucket',
+            r'notion', r'linear', r'figma', r'canva',
+            r'spotify', r'apple\.com/bill', r'netflix', r'hulu', r'disney',
+            r'adobe', r'dropbox', r'google storage', r'icloud',
+            r'expensify', r'quickbooks', r'freshbooks',
+            r'zoom', r'slack', r'discord nitro',
+            r'every studio', r'replit', r'codespace',
+            r'subscription', r'monthly fee', r'annual plan',
+            r'stripe', r'aws', r'google cloud', r'azure',
+        ],
+        # Travel - Airfare
+        'DH: Travel Costs - Airfare': [
+            r'southwest', r'delta', r'united', r'american air',
+            r'jet ?blue', r'frontier', r'spirit', r'alaska air',
+            r'airline', r'airways', r'air canada',
+        ],
+        # Travel - Hotel
+        'DH: Travel Costs - Hotel': [
+            r'hotel', r'marriott', r'hilton', r'hyatt', r'airbnb', r'vrbo',
+            r'sheraton', r'westin', r'w hotel', r'intercontinental',
+            r'holiday inn', r'hampton', r'embassy suites', r'omni',
+            r'nobu hotel', r'soho grand', r'boutique hotel',
+            r'lodging', r'resort', r'inn\b',
+        ],
+        # Travel - Cab/Uber/Bus
+        'DH: Travel Costs - Cab/Uber/Bus Fare': [
+            r'\buber\b', r'\blyft\b', r'taxi', r'\bcab\b',
+            r'yellow cab', r'curb', r'gett',
+            r'greyhound', r'megabus', r'transit',
+            r'amtrak', r'train',
+        ],
+        # Travel - Gas/Rental Car
+        'DH: Travel Costs - Gas/Rental Car': [
+            r'hertz', r'enterprise', r'budget', r'avis', r'national car',
+            r'rental car', r'car rental',
+            r'shell', r'exxon', r'chevron', r'bp\b', r'mobil',
+            r'gas station', r'fuel', r'gasoline',
+            r'parking', r'pmc', r'metropolis', r'garage', r'spot hero',
+        ],
+        # Meals - Travel
+        'DH: Travel costs - Meals': [
+            # This is contextual - meals while traveling
+            # Will need business_type check in logic
+        ],
+        # Company Meetings and Meals (non-client internal)
+        'Company Meetings and Meals': [
+            r'soho house', r'restaurant', r'cafe',
+            r'starbucks', r'dunkin', r'doordash', r'uber eats', r'grubhub',
+            r'postmates', r'seamless', r'caviar',
+            r'bar\b', r'grill', r'pub\b', r'tavern', r'taproom',
+            r'kitchen', r'bistro', r'diner', r'eatery',
+            r'pizza', r'burger', r'sushi', r'thai', r'mexican', r'italian',
+            r'optimist', r'britannia', r'hattie', r'pancho',
+            r'food', r'lunch', r'dinner', r'breakfast',
+            r'coffee', r'bakery', r'deli',
+        ],
+        # Client Business Meals (with DH prefix for Down Home client work)
+        'DH: BD: Client Business Meals': [
+            # Will be set based on ai_note mentioning "client" or specific known client names
+        ],
+        # Non-DH client meals
+        'BD: Client Business Meals': [
+            # For other business entities
+        ],
+        # Office Supplies
+        'Office Supplies': [
+            r'office depot', r'staples', r'office max',
+            r'printer', r'scanner', r'paper', r'supplies',
+            r'desk', r'chair', r'furniture',
+            r'best buy', r'micro center',
+        ],
+        # Internet
+        'Internet Costs': [
+            r'comcast', r'xfinity', r'spectrum', r'cox',
+            r'att.*internet', r'fiber', r'broadband',
+            r'verizon fios',
+        ],
+        # Advertising
+        'BD: Advertising & Promotion': [
+            r'facebook ads', r'google ads', r'meta ads',
+            r'linkedin ads', r'twitter ads', r'instagram ads',
+            r'advertising', r'promotion', r'marketing',
+            r'pr agency', r'billboard',
+        ],
+    }
+
+    try:
+        conn, db_type = get_db_connection()
+
+        # Get all transactions with business_type for context
+        cursor = db_execute(conn, db_type, '''
+            SELECT _index, chase_description, chase_category, chase_amount,
+                   business_type, ai_note
+            FROM transactions
+            ORDER BY chase_date DESC
+            LIMIT ?
+        ''', (limit,))
+
+        transactions = [dict(row) for row in cursor.fetchall()]
+
+        changes = []
+        for tx in transactions:
+            idx = tx['_index']
+            desc = (tx['chase_description'] or '').lower()
+            old_cat = tx['chase_category'] or ''
+            biz_type = (tx['business_type'] or '').lower()
+            ai_note = (tx['ai_note'] or '').lower()
+            new_cat = None
+
+            # Determine if this is Down Home business (for DH: prefix)
+            is_dh = 'down home' in biz_type or 'downhome' in biz_type or 'dh' in biz_type
+
+            # Check for client context (for BD: categories)
+            is_client = 'client' in ai_note or 'meeting with' in ai_note
+
+            # Try each category's patterns
+            for category, patterns in CATEGORY_RULES.items():
+                if not patterns:  # Skip empty pattern lists
+                    continue
+                for pattern in patterns:
+                    if re.search(pattern, desc, re.IGNORECASE):
+                        new_cat = category
+                        break
+                if new_cat:
+                    break
+
+            # Special logic for meals - check if client-related
+            if new_cat == 'Company Meetings and Meals' and is_client:
+                if is_dh:
+                    new_cat = 'DH: BD: Client Business Meals'
+                else:
+                    new_cat = 'BD: Client Business Meals'
+
+            # Only record if category changed
+            if new_cat and new_cat != old_cat:
+                changes.append({
+                    '_index': idx,
+                    'description': tx['chase_description'],
+                    'old_category': old_cat,
+                    'new_category': new_cat,
+                    'business_type': tx['business_type'] or ''
+                })
+
+        # Apply changes if not dry run
+        updated_count = 0
+        if not dry_run and changes:
+            for change in changes:
+                cursor = db_execute(conn, db_type, '''
+                    UPDATE transactions
+                    SET chase_category = ?
+                    WHERE _index = ?
+                ''', (change['new_category'], change['_index']))
+                updated_count += 1
+            conn.commit()
+
+        conn.close()
+
+        # Group changes by category for summary
+        by_category = {}
+        for c in changes:
+            cat = c['new_category']
+            if cat not in by_category:
+                by_category[cat] = []
+            by_category[cat].append(c['description'][:40])
+
+        return jsonify({
+            'ok': True,
+            'dry_run': dry_run,
+            'total_scanned': len(transactions),
+            'changes_needed': len(changes),
+            'changes_applied': updated_count if not dry_run else 0,
+            'by_category': {k: len(v) for k, v in by_category.items()},
+            'sample_changes': changes[:20]  # Show first 20 changes
+        })
+
+    except Exception as e:
+        print(f"❌ Error recategorizing: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/fix-dates", methods=["POST"])
 def fix_incoming_receipt_dates():
     """
