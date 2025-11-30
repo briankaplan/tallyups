@@ -1,12 +1,13 @@
-// Service Worker for Tallyups PWA - v3
-const CACHE_NAME = 'tallyups-v3';
-const STATIC_CACHE = 'tallyups-static-v3';
-const DYNAMIC_CACHE = 'tallyups-dynamic-v3';
+// Service Worker for Tallyups PWA - v4
+const CACHE_NAME = 'tallyups-v4';
+const STATIC_CACHE = 'tallyups-static-v4';
+const DYNAMIC_CACHE = 'tallyups-dynamic-v4';
 const OFFLINE_QUEUE = 'tallyups-offline-queue';
 
 // Core app shell to cache
 const APP_SHELL = [
   '/scanner',
+  '/contacts',
   '/manifest.json',
   '/receipt-icon-192.png',
   '/receipt-icon-512.png'

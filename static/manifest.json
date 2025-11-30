@@ -42,6 +42,13 @@
       "description": "Browse all receipts",
       "url": "/library",
       "icons": [{ "src": "/static/icons/library-shortcut.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "ATLAS Contacts",
+      "short_name": "Contacts",
+      "description": "Contact relationship intelligence",
+      "url": "/contacts",
+      "icons": [{ "src": "/static/icons/contacts-shortcut.png", "sizes": "96x96" }]
     }
   ],
   "share_target": {

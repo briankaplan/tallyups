@@ -11667,10 +11667,12 @@ def generate_missing_receipt_form():
 # =============================================================================
 
 @app.route("/contact-hub")
+@app.route("/contacts")
+@app.route("/contacts.html")
 @login_required
 def contact_hub_page():
-    """Contact Hub - Relationship Intelligence Dashboard"""
-    return render_template_string(CONTACT_HUB_TEMPLATE)
+    """ATLAS Contact Hub - Relationship Intelligence Dashboard"""
+    return send_from_directory(BASE_DIR, "contacts.html")
 
 
 @app.route("/api/contact-hub/contacts", methods=["GET"])

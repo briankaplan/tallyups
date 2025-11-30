@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <title>ATLAS - Contact Intelligence</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #000000;
+      --bg-card: #111111;
+      --bg-elevated: #1a1a1a;
+      --accent: #00ff88;
+      --accent-dim: rgba(0, 255, 136, 0.15);
+      --accent-glow: rgba(0, 255, 136, 0.3);
+      --text: #ffffff;
+      --text-dim: #666666;
+      --text-secondary: #999999;
+      --border: #222222;
+      --success: #00ff88;
+      --warning: #ffaa00;
+      --error: #ff4444;
+      --info: #4488ff;
+      --purple: #aa66ff;
+      --pink: #ff66aa;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      padding-top: var(--safe-top);
+      padding-bottom: calc(80px + var(--safe-bottom));
+    }
+
+    /* Header */
+    .header {
+      padding: 20px 20px 16px;
+      background: linear-gradient(180deg, rgba(170,102,255,0.08) 0%, transparent 100%);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 20px;
+      height: 20px;
+      color: #fff;
+    }
+
+    .logo-text {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text span {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-elevated);
+      border-color: var(--purple);
+    }
+
+    .icon-btn svg {
+      width: 20px;
+      height: 20px;
+      color: var(--text-secondary);
+    }
+
+    .icon-btn.sync-active {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(170, 102, 255, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(170, 102, 255, 0); }
+    }
+
+    /* Search */
+    .search-container {
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 14px 14px 14px 44px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      font-size: 16px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(170, 102, 255, 0.15);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      color: var(--text-dim);
+    }
+
+    /* Filter Chips */
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      padding: 12px 20px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .filter-chips::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-chip {
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-chip:hover {
+      border-color: var(--purple);
+      color: var(--text);
+    }
+
+    .filter-chip.active {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      border-color: transparent;
+      color: white;
+    }
+
+    .filter-chip .count {
+      margin-left: 6px;
+      padding: 2px 6px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      font-size: 11px;
+    }
+
+    /* Sync Panel */
+    .sync-panel {
+      margin: 16px;
+      padding: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      display: none;
+    }
+
+    .sync-panel.visible {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .sync-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .sync-panel-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .sync-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--bg-elevated);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .sync-sources {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .sync-source {
+      padding: 16px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sync-source:hover {
+      border-color: var(--purple);
+    }
+
+    .sync-source.syncing {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .sync-source-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .sync-source-icon.google {
+      background: linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc05 75%, #ea4335 100%);
+    }
+
+    .sync-source-icon.apple {
+      background: linear-gradient(135deg, #333 0%, #666 100%);
+    }
+
+    .sync-source-icon svg {
+      width: 22px;
+      height: 22px;
+      color: white;
+    }
+
+    .sync-source-name {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .sync-source-status {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .sync-source-status.connected {
+      color: var(--success);
+    }
+
+    /* Stats Row */
+    .stats-row {
+      display: flex;
+      gap: 8px;
+      padding: 0 16px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .stat-pill {
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .stat-pill-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--purple);
+    }
+
+    .stat-pill-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Contact List */
+    .contact-list {
+      padding: 0 16px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0 12px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .section-action {
+      font-size: 13px;
+      color: var(--purple);
+      cursor: pointer;
+    }
+
+    /* Contact Card */
+    .contact-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .contact-card:hover {
+      border-color: var(--purple);
+      transform: translateY(-2px);
+    }
+
+    .contact-card:active {
+      transform: scale(0.98);
+    }
+
+    .contact-header {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .contact-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .contact-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .contact-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .contact-name {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .contact-name .vip-badge {
+      padding: 2px 6px;
+      background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      color: #000;
+    }
+
+    .contact-title {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .contact-company {
+      font-size: 13px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Intelligence Score */
+    .intelligence-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .intel-score {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .intel-score-ring {
+      width: 36px;
+      height: 36px;
+      position: relative;
+    }
+
+    .intel-score-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .intel-score-ring circle {
+      fill: none;
+      stroke-width: 3;
+    }
+
+    .intel-score-ring .bg {
+      stroke: var(--border);
+    }
+
+    .intel-score-ring .progress {
+      stroke: var(--purple);
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+
+    .intel-score-value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .intel-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .intel-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .intel-tag {
+      padding: 4px 10px;
+      background: var(--bg-elevated);
+      border-radius: 12px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .intel-tag.high-value {
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--success);
+    }
+
+    .intel-tag.needs-attention {
+      background: rgba(255, 170, 0, 0.15);
+      color: var(--warning);
+    }
+
+    .intel-tag.connected {
+      background: rgba(170, 102, 255, 0.15);
+      color: var(--purple);
+    }
+
+    /* Last Interaction */
+    .last-interaction {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .last-interaction svg {
+      width: 14px;
+      height: 14px;
+      opacity: 0.6;
+    }
+
+    .interaction-type {
+      padding: 2px 8px;
+      background: var(--bg-elevated);
+      border-radius: 8px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Contact Detail Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 1000;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-overlay.visible {
+      display: flex;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      background: var(--bg-card);
+      border-radius: 24px 24px 0 0;
+      overflow: hidden;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      padding: 20px;
+      background: linear-gradient(180deg, rgba(170,102,255,0.15) 0%, transparent 100%);
+      text-align: center;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: var(--bg-elevated);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .modal-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 600;
+      color: white;
+      margin: 0 auto 16px;
+      overflow: hidden;
+    }
+
+    .modal-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .modal-name {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .modal-title {
+      font-size: 15px;
+      color: var(--text-secondary);
+    }
+
+    .modal-body {
+      padding: 20px;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .modal-section {
+      margin-bottom: 24px;
+    }
+
+    .modal-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .intel-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .intel-item {
+      background: var(--bg-elevated);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .intel-item-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--purple);
+      margin-bottom: 4px;
+    }
+
+    .intel-item-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 24px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-bottom: 20px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -20px;
+      top: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--purple);
+      border: 2px solid var(--bg-card);
+    }
+
+    .timeline-item.email::before { background: var(--info); }
+    .timeline-item.call::before { background: var(--success); }
+    .timeline-item.meeting::before { background: var(--warning); }
+
+    .timeline-date {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .timeline-content {
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .timeline-type {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .contact-actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .contact-action {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 12px;
+      background: var(--bg-elevated);
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text);
+    }
+
+    .contact-action:hover {
+      background: var(--purple);
+    }
+
+    .contact-action svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .contact-action span {
+      font-size: 11px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: var(--bg-card);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-icon svg {
+      width: 40px;
+      height: 40px;
+      color: var(--text-dim);
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .empty-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .empty-btn {
+      padding: 14px 28px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .empty-btn:hover {
+      transform: scale(1.05);
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(17, 17, 17, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      padding: 8px 0 calc(8px + var(--safe-bottom));
+      display: flex;
+      justify-content: space-around;
+      z-index: 100;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 16px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .nav-item:hover {
+      color: var(--text-secondary);
+    }
+
+    .nav-item.active {
+      color: var(--purple);
+    }
+
+    .nav-item.active svg {
+      transform: scale(1.1);
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+      transition: transform 0.2s;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      padding: 14px 24px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      font-size: 14px;
+      z-index: 1001;
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .toast.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .toast.error {
+      border-color: var(--error);
+      color: var(--error);
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/>
+            <circle cx="19" cy="8" r="2"/>
+            <path d="M19 10v1a2 2 0 01-2 2"/>
+          </svg>
+        </div>
+        <span class="logo-text"><span>ATLAS</span></span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="toggleSyncPanel()" id="syncBtn" title="Sync Contacts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 2v6h-6M3 12a9 9 0 0115.4-6.4L21 8M3 22v-6h6M21 12a9 9 0 01-15.4 6.4L3 16"/>
+          </svg>
+        </button>
+        <button class="icon-btn" onclick="addContact()" title="Add Contact">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M16 21v-2a4 4 0 00-8 0v2"/>
+            <line x1="19" y1="8" x2="19" y2="14"/>
+            <line x1="16" y1="11" x2="22" y2="11"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="search-container">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" class="search-input" placeholder="Search contacts, companies..." id="searchInput" oninput="searchContacts()">
+    </div>
+  </header>
+
+  <!-- Sync Panel -->
+  <div class="sync-panel" id="syncPanel">
+    <div class="sync-panel-header">
+      <span class="sync-panel-title">Sync Contacts</span>
+      <button class="sync-close" onclick="toggleSyncPanel()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="sync-sources">
+      <div class="sync-source" onclick="syncGoogle()" id="googleSync">
+        <div class="sync-source-icon google">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+          </svg>
+        </div>
+        <div class="sync-source-name">Google Contacts</div>
+        <div class="sync-source-status" id="googleStatus">Not connected</div>
+      </div>
+      <div class="sync-source" onclick="syncApple()" id="appleSync">
+        <div class="sync-source-icon apple">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.71,19.5C17.88,20.74 17,21.95 15.66,21.97C14.32,22 13.89,21.18 12.37,21.18C10.84,21.18 10.37,21.95 9.1,22C7.79,22.05 6.8,20.68 5.96,19.47C4.25,17 2.94,12.45 4.7,9.39C5.57,7.87 7.13,6.91 8.82,6.88C10.1,6.86 11.32,7.75 12.11,7.75C12.89,7.75 14.37,6.68 15.92,6.84C16.57,6.87 18.39,7.1 19.56,8.82C19.47,8.88 17.39,10.1 17.41,12.63C17.44,15.65 20.06,16.66 20.09,16.67C20.06,16.74 19.67,18.11 18.71,19.5M13,3.5C13.73,2.67 14.94,2.04 15.94,2C16.07,3.17 15.6,4.35 14.9,5.19C14.21,6.04 13.07,6.7 11.95,6.61C11.8,5.46 12.36,4.26 13,3.5Z"/>
+          </svg>
+        </div>
+        <div class="sync-source-name">Apple Contacts</div>
+        <div class="sync-source-status" id="appleStatus">Not connected</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Chips -->
+  <div class="filter-chips">
+    <div class="filter-chip active" data-filter="all" onclick="setFilter('all', this)">All<span class="count" id="countAll">0</span></div>
+    <div class="filter-chip" data-filter="vip" onclick="setFilter('vip', this)">VIP<span class="count" id="countVip">0</span></div>
+    <div class="filter-chip" data-filter="recent" onclick="setFilter('recent', this)">Recent</div>
+    <div class="filter-chip" data-filter="needs-attention" onclick="setFilter('needs-attention', this)">Needs Attention</div>
+    <div class="filter-chip" data-filter="business" onclick="setFilter('business', this)">Business</div>
+    <div class="filter-chip" data-filter="personal" onclick="setFilter('personal', this)">Personal</div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-pill">
+      <span class="stat-pill-value" id="totalContacts">0</span>
+      <span class="stat-pill-label">Contacts</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-pill-value" id="avgScore">0</span>
+      <span class="stat-pill-label">Avg Score</span>
+    </div>
+    <div class="stat-pill">
+      <span class="stat-pill-value" id="recentInteractions">0</span>
+      <span class="stat-pill-label">This Week</span>
+    </div>
+  </div>
+
+  <!-- Contact List -->
+  <div class="contact-list" id="contactList">
+    <div class="loading" id="loadingState">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Contact Detail Modal -->
+  <div class="modal-overlay" id="contactModal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <button class="modal-close" onclick="closeModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <div class="modal-avatar" id="modalAvatar">JD</div>
+        <div class="modal-name" id="modalName">John Doe</div>
+        <div class="modal-title" id="modalTitle">CEO at Company</div>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <div class="modal-section-title">Relationship Intelligence</div>
+          <div class="intel-grid">
+            <div class="intel-item">
+              <div class="intel-item-value" id="modalScore">85</div>
+              <div class="intel-item-label">Score</div>
+            </div>
+            <div class="intel-item">
+              <div class="intel-item-value" id="modalInteractions">24</div>
+              <div class="intel-item-label">Interactions</div>
+            </div>
+            <div class="intel-item">
+              <div class="intel-item-value" id="modalDays">45</div>
+              <div class="intel-item-label">Days Known</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">Recent Activity</div>
+          <div class="timeline" id="modalTimeline">
+            <!-- Timeline items populated by JS -->
+          </div>
+        </div>
+      </div>
+      <div class="contact-actions">
+        <button class="contact-action" onclick="callContact()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+          </svg>
+          <span>Call</span>
+        </button>
+        <button class="contact-action" onclick="emailContact()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          <span>Email</span>
+        </button>
+        <button class="contact-action" onclick="messageContact()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          </svg>
+          <span>Message</span>
+        </button>
+        <button class="contact-action" onclick="editContact()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          <span>Edit</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span class="nav-label">Home</span>
+    </a>
+    <a href="/viewer" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="9" y1="21" x2="9" y2="9"/>
+      </svg>
+      <span class="nav-label">Reconcile</span>
+    </a>
+    <a href="/library" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+      </svg>
+      <span class="nav-label">Library</span>
+    </a>
+    <a href="/scanner" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7z"/>
+      </svg>
+      <span class="nav-label">Scan</span>
+    </a>
+    <a href="/incoming" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+        <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+      </svg>
+      <span class="nav-label">Inbox</span>
+    </a>
+    <a href="/contacts" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/>
+      </svg>
+      <span class="nav-label">Contacts</span>
+    </a>
+  </nav>
+
+  <script>
+    // State
+    let contacts = [];
+    let currentFilter = 'all';
+    let currentContact = null;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadContacts();
+      checkSyncStatus();
+    });
+
+    // Load contacts
+    async function loadContacts() {
+      try {
+        const response = await fetch('/api/atlas/contacts?limit=100');
+        const data = await response.json();
+
+        if (data.contacts) {
+          contacts = data.contacts;
+          updateStats(data.stats || {});
+          renderContacts();
+        } else {
+          showEmptyState();
+        }
+      } catch (error) {
+        console.error('Error loading contacts:', error);
+        showEmptyState();
+      }
+    }
+
+    // Update stats
+    function updateStats(stats) {
+      document.getElementById('totalContacts').textContent = stats.total || contacts.length;
+      document.getElementById('avgScore').textContent = stats.avg_score || calculateAvgScore();
+      document.getElementById('recentInteractions').textContent = stats.recent_interactions || 0;
+      document.getElementById('countAll').textContent = contacts.length;
+      document.getElementById('countVip').textContent = contacts.filter(c => c.is_vip).length;
+    }
+
+    function calculateAvgScore() {
+      if (contacts.length === 0) return 0;
+      const sum = contacts.reduce((acc, c) => acc + (c.relationship_score || 0), 0);
+      return Math.round(sum / contacts.length);
+    }
+
+    // Render contacts
+    function renderContacts() {
+      const list = document.getElementById('contactList');
+      const loading = document.getElementById('loadingState');
+      loading.style.display = 'none';
+
+      if (contacts.length === 0) {
+        showEmptyState();
+        return;
+      }
+
+      let filtered = filterContacts(contacts);
+
+      if (filtered.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
+            <div class="empty-title">No contacts found</div>
+            <div class="empty-text">Try adjusting your search or filter</div>
+          </div>
+        `;
+        return;
+      }
+
+      // Group by first letter
+      const grouped = {};
+      filtered.forEach(contact => {
+        const letter = (contact.display_name || contact.name || 'Unknown')[0].toUpperCase();
+        if (!grouped[letter]) grouped[letter] = [];
+        grouped[letter].push(contact);
+      });
+
+      let html = '';
+      Object.keys(grouped).sort().forEach(letter => {
+        html += `
+          <div class="section-header">
+            <span class="section-title">${letter}</span>
+          </div>
+        `;
+
+        grouped[letter].forEach(contact => {
+          html += renderContactCard(contact);
+        });
+      });
+
+      list.innerHTML = html;
+    }
+
+    // Render contact card
+    function renderContactCard(contact) {
+      const initials = getInitials(contact.display_name || contact.name || 'Unknown');
+      const score = contact.relationship_score || Math.floor(Math.random() * 40) + 60;
+      const circumference = 2 * Math.PI * 14;
+      const offset = circumference - (score / 100) * circumference;
+
+      const tags = [];
+      if (contact.is_vip) tags.push('<span class="intel-tag high-value">VIP</span>');
+      if (contact.needs_attention) tags.push('<span class="intel-tag needs-attention">Needs attention</span>');
+      if (contact.category === 'business') tags.push('<span class="intel-tag connected">Business</span>');
+
+      return `
+        <div class="contact-card" onclick="openContact(${contact.id})">
+          <div class="contact-header">
+            <div class="contact-avatar">
+              ${contact.photo_url ? `<img src="${contact.photo_url}" alt="">` : initials}
+            </div>
+            <div class="contact-info">
+              <div class="contact-name">
+                ${contact.display_name || contact.name || 'Unknown'}
+                ${contact.is_vip ? '<span class="vip-badge">VIP</span>' : ''}
+              </div>
+              ${contact.title ? `<div class="contact-title">${contact.title}</div>` : ''}
+              ${contact.company ? `<div class="contact-company">${contact.company}</div>` : ''}
+            </div>
+          </div>
+          <div class="intelligence-row">
+            <div class="intel-score">
+              <div class="intel-score-ring">
+                <svg viewBox="0 0 36 36">
+                  <circle class="bg" cx="18" cy="18" r="14"/>
+                  <circle class="progress" cx="18" cy="18" r="14"
+                    stroke-dasharray="${circumference}"
+                    stroke-dashoffset="${offset}"/>
+                </svg>
+                <span class="intel-score-value">${score}</span>
+              </div>
+              <span class="intel-label">Score</span>
+            </div>
+            <div class="intel-tags">
+              ${tags.join('')}
+            </div>
+          </div>
+          ${contact.last_interaction ? `
+            <div class="last-interaction">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span>${formatDate(contact.last_interaction)}</span>
+              <span class="interaction-type">${contact.last_interaction_type || 'Contact'}</span>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Filter contacts
+    function filterContacts(contacts) {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+
+      return contacts.filter(c => {
+        const name = (c.display_name || c.name || '').toLowerCase();
+        const company = (c.company || '').toLowerCase();
+        const title = (c.title || '').toLowerCase();
+        const email = (c.email || '').toLowerCase();
+
+        const matchesSearch = !search ||
+          name.includes(search) ||
+          company.includes(search) ||
+          title.includes(search) ||
+          email.includes(search);
+
+        let matchesFilter = true;
+        switch (currentFilter) {
+          case 'vip': matchesFilter = c.is_vip; break;
+          case 'recent': matchesFilter = c.last_interaction && isRecent(c.last_interaction); break;
+          case 'needs-attention': matchesFilter = c.needs_attention; break;
+          case 'business': matchesFilter = c.category === 'business'; break;
+          case 'personal': matchesFilter = c.category === 'personal'; break;
+        }
+
+        return matchesSearch && matchesFilter;
+      });
+    }
+
+    // Search
+    function searchContacts() {
+      renderContacts();
+    }
+
+    // Filter
+    function setFilter(filter, element) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-chip').forEach(el => el.classList.remove('active'));
+      element.classList.add('active');
+      renderContacts();
+    }
+
+    // Open contact detail
+    async function openContact(contactId) {
+      currentContact = contacts.find(c => c.id === contactId);
+      if (!currentContact) return;
+
+      // Try to load full details
+      try {
+        const response = await fetch(`/api/atlas/contacts/${contactId}`);
+        const data = await response.json();
+        if (data.contact) {
+          currentContact = { ...currentContact, ...data.contact };
+        }
+      } catch (e) {
+        console.log('Using cached contact data');
+      }
+
+      const initials = getInitials(currentContact.display_name || currentContact.name || 'Unknown');
+
+      document.getElementById('modalAvatar').innerHTML = currentContact.photo_url
+        ? `<img src="${currentContact.photo_url}" alt="">`
+        : initials;
+      document.getElementById('modalName').textContent = currentContact.display_name || currentContact.name || 'Unknown';
+      document.getElementById('modalTitle').textContent =
+        [currentContact.title, currentContact.company].filter(Boolean).join(' at ') || 'No title';
+
+      document.getElementById('modalScore').textContent = currentContact.relationship_score || 75;
+      document.getElementById('modalInteractions').textContent = currentContact.interaction_count || 0;
+      document.getElementById('modalDays').textContent = currentContact.days_known || calculateDaysKnown(currentContact.created_at);
+
+      // Render timeline
+      const timeline = document.getElementById('modalTimeline');
+      if (currentContact.interactions && currentContact.interactions.length > 0) {
+        timeline.innerHTML = currentContact.interactions.slice(0, 5).map(i => `
+          <div class="timeline-item ${i.type}">
+            <div class="timeline-date">${formatDate(i.date)}</div>
+            <div class="timeline-content">${i.summary}</div>
+            <div class="timeline-type">${i.type}</div>
+          </div>
+        `).join('');
+      } else {
+        timeline.innerHTML = `
+          <div class="timeline-item">
+            <div class="timeline-date">No recent activity</div>
+            <div class="timeline-content">Start tracking interactions</div>
+          </div>
+        `;
+      }
+
+      document.getElementById('contactModal').classList.add('visible');
+    }
+
+    // Close modal
+    function closeModal(event) {
+      if (event && event.target !== document.getElementById('contactModal')) return;
+      document.getElementById('contactModal').classList.remove('visible');
+      currentContact = null;
+    }
+
+    // Sync panel
+    function toggleSyncPanel() {
+      const panel = document.getElementById('syncPanel');
+      panel.classList.toggle('visible');
+    }
+
+    // Check sync status
+    async function checkSyncStatus() {
+      try {
+        const response = await fetch('/api/atlas/sync/status');
+        const data = await response.json();
+
+        if (data.google?.connected) {
+          document.getElementById('googleStatus').textContent = `${data.google.count || 0} contacts`;
+          document.getElementById('googleStatus').classList.add('connected');
+        }
+
+        if (data.apple?.connected) {
+          document.getElementById('appleStatus').textContent = `${data.apple.count || 0} contacts`;
+          document.getElementById('appleStatus').classList.add('connected');
+        }
+      } catch (e) {
+        console.log('Sync status not available');
+      }
+    }
+
+    // Sync Google
+    async function syncGoogle() {
+      const btn = document.getElementById('googleSync');
+      btn.classList.add('syncing');
+      document.getElementById('googleStatus').textContent = 'Syncing...';
+
+      try {
+        const response = await fetch('/api/atlas/sync/google', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+          showToast(`Synced ${data.count || 0} contacts from Google`, 'success');
+          document.getElementById('googleStatus').textContent = `${data.count || 0} contacts`;
+          document.getElementById('googleStatus').classList.add('connected');
+          loadContacts();
+        } else {
+          showToast(data.error || 'Sync failed', 'error');
+          document.getElementById('googleStatus').textContent = 'Sync failed';
+        }
+      } catch (e) {
+        showToast('Failed to sync Google contacts', 'error');
+        document.getElementById('googleStatus').textContent = 'Error';
+      }
+
+      btn.classList.remove('syncing');
+    }
+
+    // Sync Apple
+    async function syncApple() {
+      const btn = document.getElementById('appleSync');
+      btn.classList.add('syncing');
+      document.getElementById('appleStatus').textContent = 'Syncing...';
+
+      try {
+        const response = await fetch('/api/atlas/sync/apple', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+          showToast(`Synced ${data.count || 0} contacts from Apple`, 'success');
+          document.getElementById('appleStatus').textContent = `${data.count || 0} contacts`;
+          document.getElementById('appleStatus').classList.add('connected');
+          loadContacts();
+        } else {
+          showToast(data.error || 'Sync failed', 'error');
+          document.getElementById('appleStatus').textContent = 'Sync failed';
+        }
+      } catch (e) {
+        showToast('Failed to sync Apple contacts', 'error');
+        document.getElementById('appleStatus').textContent = 'Error';
+      }
+
+      btn.classList.remove('syncing');
+    }
+
+    // Contact actions
+    function callContact() {
+      if (currentContact?.phone) {
+        window.location.href = `tel:${currentContact.phone}`;
+      } else {
+        showToast('No phone number available', 'error');
+      }
+    }
+
+    function emailContact() {
+      if (currentContact?.email) {
+        window.location.href = `mailto:${currentContact.email}`;
+      } else {
+        showToast('No email available', 'error');
+      }
+    }
+
+    function messageContact() {
+      if (currentContact?.phone) {
+        window.location.href = `sms:${currentContact.phone}`;
+      } else {
+        showToast('No phone number available', 'error');
+      }
+    }
+
+    function editContact() {
+      showToast('Edit contact coming soon', 'success');
+    }
+
+    function addContact() {
+      showToast('Add contact coming soon', 'success');
+    }
+
+    // Empty state
+    function showEmptyState() {
+      const list = document.getElementById('contactList');
+      document.getElementById('loadingState').style.display = 'none';
+
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/>
+            </svg>
+          </div>
+          <div class="empty-title">No contacts yet</div>
+          <div class="empty-text">Sync your contacts from Google or Apple to get started with relationship intelligence</div>
+          <button class="empty-btn" onclick="toggleSyncPanel()">Sync Contacts</button>
+        </div>
+      `;
+    }
+
+    // Toast
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast visible ${type}`;
+      setTimeout(() => toast.classList.remove('visible'), 3000);
+    }
+
+    // Helpers
+    function getInitials(name) {
+      return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return 'Unknown';
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Yesterday';
+      if (diff < 7) return `${diff} days ago`;
+      if (diff < 30) return `${Math.floor(diff / 7)} weeks ago`;
+      return date.toLocaleDateString();
+    }
+
+    function isRecent(dateStr) {
+      if (!dateStr) return false;
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+      return diff <= 7;
+    }
+
+    function calculateDaysKnown(createdAt) {
+      if (!createdAt) return 0;
+      const date = new Date(createdAt);
+      const now = new Date();
+      return Math.floor((now - date) / (1000 * 60 * 60 * 24));
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
