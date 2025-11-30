@@ -4312,8 +4312,22 @@ def atlas_sync_status():
 @login_required
 def atlas_sync_apple():
     """Sync Apple Contacts to ATLAS"""
+    import platform
+
+    # Apple Contacts sync only works on macOS
+    if platform.system() != 'Darwin':
+        return jsonify({
+            'error': 'Apple Contact sync is only available on macOS. Use Google sync instead.',
+            'success': False,
+            'ok': False
+        }), 503
+
     if not CONTACT_SYNC_AVAILABLE or not AppleContactsAdapter:
-        return jsonify({'error': 'Apple Contact Sync not available'}), 503
+        return jsonify({
+            'error': 'Apple Contact Sync not available',
+            'success': False,
+            'ok': False
+        }), 503
 
     try:
         import asyncio
@@ -4321,12 +4335,14 @@ def atlas_sync_apple():
         async def run_sync():
             adapter = AppleContactsAdapter()
             if not await adapter.connect():
-                return {"ok": False, "error": "Could not connect to Apple Contacts"}
+                return {"ok": False, "success": False, "error": "Could not connect to Apple Contacts"}
 
             contacts = await adapter.pull_contacts()
             return {
                 "ok": True,
+                "success": True,
                 "pulled": len(contacts),
+                "count": len(contacts),
                 "contacts": [
                     {
                         "name": c.display_name,
@@ -4345,7 +4361,7 @@ def atlas_sync_apple():
         print(f"Apple contact sync error: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e), 'success': False, 'ok': False}), 500
 
 
 @app.route("/api/atlas/sync/google", methods=["POST"])
@@ -4353,10 +4369,11 @@ def atlas_sync_apple():
 def atlas_sync_google():
     """Sync Google Contacts to ATLAS using Google People API"""
     if not ATLAS_AVAILABLE or not GooglePeopleAPI:
-        return jsonify({'error': 'Google People API not available'}), 503
+        return jsonify({'error': 'Google People API not available', 'success': False}), 503
 
     try:
-        data = request.get_json() or {}
+        # Handle requests with or without JSON body (silent=True prevents 415 error)
+        data = request.get_json(silent=True) or {}
         limit = data.get('limit', 200)
 
         people = GooglePeopleAPI()
@@ -4426,7 +4443,9 @@ def atlas_sync_google():
 
         return jsonify({
             "ok": True,
+            "success": True,
             "synced": synced,
+            "count": synced,
             "total_fetched": len(contacts),
             "source": "google_people_api"
         })
@@ -4435,7 +4454,7 @@ def atlas_sync_google():
         print(f"Google contact sync error: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e), 'success': False}), 500
 
 
 @app.route("/api/atlas/sync/linkedin", methods=["POST"])

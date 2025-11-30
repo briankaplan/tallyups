@@ -1482,9 +1482,10 @@
         const response = await fetch('/api/atlas/sync/google', { method: 'POST' });
         const data = await response.json();
 
-        if (data.success) {
-          showToast(`Synced ${data.count || 0} contacts from Google`, 'success');
-          document.getElementById('googleStatus').textContent = `${data.count || 0} contacts`;
+        if (data.success || data.ok) {
+          const count = data.count || data.synced || 0;
+          showToast(`Synced ${count} contacts from Google`, 'success');
+          document.getElementById('googleStatus').textContent = `${count} contacts`;
           document.getElementById('googleStatus').classList.add('connected');
           loadContacts();
         } else {
@@ -1509,14 +1510,15 @@
         const response = await fetch('/api/atlas/sync/apple', { method: 'POST' });
         const data = await response.json();
 
-        if (data.success) {
-          showToast(`Synced ${data.count || 0} contacts from Apple`, 'success');
-          document.getElementById('appleStatus').textContent = `${data.count || 0} contacts`;
+        if (data.success || data.ok) {
+          const count = data.count || data.pulled || 0;
+          showToast(`Synced ${count} contacts from Apple`, 'success');
+          document.getElementById('appleStatus').textContent = `${count} contacts`;
           document.getElementById('appleStatus').classList.add('connected');
           loadContacts();
         } else {
           showToast(data.error || 'Sync failed', 'error');
-          document.getElementById('appleStatus').textContent = 'Sync failed';
+          document.getElementById('appleStatus').textContent = 'Not available';
         }
       } catch (e) {
         showToast('Failed to sync Apple contacts', 'error');
