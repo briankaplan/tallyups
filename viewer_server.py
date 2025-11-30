@@ -5270,8 +5270,8 @@ def atlas_contact_create():
 # CONTACT SYNC ENGINE API ENDPOINTS
 # =============================================================================
 
-@app.route("/api/atlas/sync/status", methods=["GET"])
-def atlas_sync_status():
+@app.route("/api/atlas/sync/adapters", methods=["GET"])
+def atlas_sync_adapters():
     """Get contact sync engine status and available adapters"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
