@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <title>Tallyups - Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #000000;
+      --bg-card: #111111;
+      --bg-elevated: #1a1a1a;
+      --accent: #00ff88;
+      --accent-dim: rgba(0, 255, 136, 0.15);
+      --accent-glow: rgba(0, 255, 136, 0.3);
+      --text: #ffffff;
+      --text-dim: #666666;
+      --text-secondary: #999999;
+      --border: #222222;
+      --success: #00ff88;
+      --warning: #ffaa00;
+      --error: #ff4444;
+      --info: #4488ff;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      padding-top: var(--safe-top);
+      padding-bottom: calc(80px + var(--safe-bottom));
+    }
+
+    /* Header */
+    .header {
+      padding: 20px 20px 16px;
+      background: linear-gradient(180deg, rgba(0,255,136,0.08) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .back-btn:hover {
+      background: var(--bg-elevated);
+      border-color: var(--accent);
+    }
+
+    .back-btn svg {
+      width: 20px;
+      height: 20px;
+      color: var(--text-secondary);
+    }
+
+    .header-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    /* Settings Sections */
+    .section {
+      padding: 0 16px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      padding-left: 4px;
+    }
+
+    .settings-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .settings-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .settings-item:last-child {
+      border-bottom: none;
+    }
+
+    .settings-item:hover {
+      background: var(--bg-elevated);
+    }
+
+    .settings-item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .settings-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--accent-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .settings-icon svg {
+      width: 18px;
+      height: 18px;
+      color: var(--accent);
+    }
+
+    .settings-icon.warning {
+      background: rgba(255, 170, 0, 0.15);
+    }
+
+    .settings-icon.warning svg {
+      color: var(--warning);
+    }
+
+    .settings-icon.error {
+      background: rgba(255, 68, 68, 0.15);
+    }
+
+    .settings-icon.error svg {
+      color: var(--error);
+    }
+
+    .settings-icon.info {
+      background: rgba(68, 136, 255, 0.15);
+    }
+
+    .settings-icon.info svg {
+      color: var(--info);
+    }
+
+    .settings-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .settings-label {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .settings-sublabel {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .settings-item-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-value {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .settings-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .settings-badge.warning {
+      background: rgba(255, 170, 0, 0.15);
+      color: var(--warning);
+    }
+
+    .settings-badge.error {
+      background: rgba(255, 68, 68, 0.15);
+      color: var(--error);
+    }
+
+    .chevron {
+      width: 16px;
+      height: 16px;
+      color: var(--text-dim);
+    }
+
+    /* Toggle Switch */
+    .toggle {
+      position: relative;
+      width: 48px;
+      height: 28px;
+      background: var(--bg-elevated);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .toggle.active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .toggle-knob {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.3s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .toggle.active .toggle-knob {
+      left: calc(100% - 23px);
+    }
+
+    /* Status Badge */
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .status-dot.warning {
+      background: var(--warning);
+    }
+
+    .status-dot.error {
+      background: var(--error);
+    }
+
+    /* Version Info */
+    .version-info {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    .version-info strong {
+      color: var(--text-secondary);
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(17, 17, 17, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0;
+      padding-bottom: calc(8px + var(--safe-bottom));
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 16px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .nav-item:hover,
+    .nav-item.active {
+      color: var(--accent);
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    /* Loading states */
+    .loading-text {
+      color: var(--text-dim);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <a href="/dashboard" class="back-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+    </a>
+    <h1 class="header-title">Settings</h1>
+  </header>
+
+  <!-- Account Section -->
+  <div class="section">
+    <h2 class="section-title">Account</h2>
+    <div class="settings-card">
+      <div class="settings-item" onclick="window.location.href='/contacts.html'">
+        <div class="settings-item-left">
+          <div class="settings-icon info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">ATLAS Contacts</span>
+            <span class="settings-sublabel">Manage your contact hub</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <span class="settings-badge" id="contact-count">...</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Gmail Integration</span>
+            <span class="settings-sublabel" id="gmail-account">Loading...</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <div class="status-indicator">
+            <span class="status-dot" id="gmail-dot"></span>
+            <span class="settings-value" id="gmail-status">...</span>
+          </div>
+        </div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Calendar Sync</span>
+            <span class="settings-sublabel">Google Calendar integration</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <div class="status-indicator">
+            <span class="status-dot" id="calendar-dot"></span>
+            <span class="settings-value" id="calendar-status">...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Services Section -->
+  <div class="section">
+    <h2 class="section-title">Services</h2>
+    <div class="settings-card">
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">AI Processing (Gemini)</span>
+            <span class="settings-sublabel">Receipt OCR and categorization</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <div class="status-indicator">
+            <span class="status-dot" id="ai-dot"></span>
+            <span class="settings-value" id="ai-status">...</span>
+          </div>
+        </div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Cloud Storage (R2)</span>
+            <span class="settings-sublabel">Receipt file storage</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <div class="status-indicator">
+            <span class="status-dot" id="storage-dot"></span>
+            <span class="settings-value" id="storage-status">...</span>
+          </div>
+        </div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <ellipse cx="12" cy="5" rx="9" ry="3"/>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Database (MySQL)</span>
+            <span class="settings-sublabel">Transaction and receipt data</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <div class="status-indicator">
+            <span class="status-dot" id="db-dot"></span>
+            <span class="settings-value" id="db-status">...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preferences Section -->
+  <div class="section">
+    <h2 class="section-title">Preferences</h2>
+    <div class="settings-card">
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Dark Mode</span>
+            <span class="settings-sublabel">Always enabled</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <div class="toggle active">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-item" id="notifications-toggle">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 01-3.46 0"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Notifications</span>
+            <span class="settings-sublabel">Push notifications for new receipts</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <div class="toggle" id="notif-toggle">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-item" id="auto-match-toggle">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Auto-Match Receipts</span>
+            <span class="settings-sublabel">Automatically match receipts to transactions</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <div class="toggle active" id="auto-match">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Section -->
+  <div class="section">
+    <h2 class="section-title">Data</h2>
+    <div class="settings-card">
+      <div class="settings-item" onclick="refreshData()">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Refresh All Data</span>
+            <span class="settings-sublabel">Sync with all connected services</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+      <div class="settings-item" onclick="clearCache()">
+        <div class="settings-item-left">
+          <div class="settings-icon warning">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Clear Cache</span>
+            <span class="settings-sublabel">Free up local storage</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- About Section -->
+  <div class="section">
+    <h2 class="section-title">About</h2>
+    <div class="settings-card">
+      <div class="settings-item">
+        <div class="settings-item-left">
+          <div class="settings-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Version</span>
+            <span class="settings-sublabel">Tallyups Receipt Manager</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <span class="settings-value">2.0.0</span>
+        </div>
+      </div>
+      <div class="settings-item" onclick="window.location.href='/logout'">
+        <div class="settings-item-left">
+          <div class="settings-icon error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </div>
+          <div class="settings-text">
+            <span class="settings-label">Log Out</span>
+            <span class="settings-sublabel">Sign out of your account</span>
+          </div>
+        </div>
+        <div class="settings-item-right">
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="version-info">
+    <strong>Tallyups</strong> &middot; Built with care<br>
+    Railway Deployment
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span class="nav-label">Home</span>
+    </a>
+    <a href="/viewer" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+      </svg>
+      <span class="nav-label">Reconcile</span>
+    </a>
+    <a href="/library" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/>
+        <rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      <span class="nav-label">Library</span>
+    </a>
+    <a href="/scanner" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span class="nav-label">Scan</span>
+    </a>
+    <a href="/incoming" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+        <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+      </svg>
+      <span class="nav-label">Inbox</span>
+    </a>
+  </nav>
+
+  <script>
+    // Load health status on page load
+    async function loadStatus() {
+      try {
+        const response = await fetch('/api/health');
+        const data = await response.json();
+
+        // Gmail status
+        const gmailConnected = data.gmail_service || data.services?.gmail;
+        updateStatus('gmail', gmailConnected ? 'Connected' : 'Not configured', gmailConnected);
+        document.getElementById('gmail-account').textContent = gmailConnected ? 'Receipts syncing' : 'Not connected';
+
+        // Calendar status
+        const calendarConnected = data.calendar_service || data.services?.calendar;
+        updateStatus('calendar', calendarConnected ? 'Connected' : 'Not configured', calendarConnected);
+
+        // AI status
+        const aiConnected = data.gemini_available || data.services?.gemini;
+        updateStatus('ai', aiConnected ? 'Active' : 'Not configured', aiConnected);
+
+        // Storage status
+        const storageConnected = data.r2_available || data.services?.r2;
+        updateStatus('storage', storageConnected ? 'Active' : 'Not configured', storageConnected);
+
+        // Database status
+        const dbConnected = data.mysql_connected || data.database?.connected;
+        updateStatus('db', dbConnected ? 'Connected' : 'Not connected', dbConnected);
+
+      } catch (error) {
+        console.error('Error loading status:', error);
+        updateStatus('gmail', 'Error', false);
+        updateStatus('calendar', 'Error', false);
+        updateStatus('ai', 'Error', false);
+        updateStatus('storage', 'Error', false);
+        updateStatus('db', 'Error', false);
+      }
+    }
+
+    function updateStatus(service, text, isActive) {
+      const statusEl = document.getElementById(`${service}-status`);
+      const dotEl = document.getElementById(`${service}-dot`);
+
+      if (statusEl) statusEl.textContent = text;
+      if (dotEl) {
+        dotEl.classList.remove('warning', 'error');
+        if (!isActive) dotEl.classList.add('error');
+      }
+    }
+
+    // Load contact count
+    async function loadContactCount() {
+      try {
+        const response = await fetch('/api/atlas/contacts?limit=1');
+        const data = await response.json();
+        const countEl = document.getElementById('contact-count');
+        if (countEl && data.total !== undefined) {
+          countEl.textContent = `${data.total} contacts`;
+        }
+      } catch (error) {
+        console.error('Error loading contact count:', error);
+      }
+    }
+
+    // Toggle handlers
+    document.getElementById('notifications-toggle')?.addEventListener('click', function() {
+      const toggle = document.getElementById('notif-toggle');
+      toggle.classList.toggle('active');
+    });
+
+    document.getElementById('auto-match-toggle')?.addEventListener('click', function() {
+      const toggle = document.getElementById('auto-match');
+      toggle.classList.toggle('active');
+    });
+
+    // Refresh data
+    async function refreshData() {
+      alert('Syncing with all services...');
+      // Could trigger actual sync endpoints here
+      loadStatus();
+    }
+
+    // Clear cache
+    function clearCache() {
+      if (confirm('Clear all cached data? This will not delete your receipts.')) {
+        localStorage.clear();
+        sessionStorage.clear();
+        alert('Cache cleared successfully');
+      }
+    }
+
+    // Initialize
+    loadStatus();
+    loadContactCount();
+  </script>
+</body>
+</html>
