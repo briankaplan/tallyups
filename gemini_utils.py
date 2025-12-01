@@ -53,20 +53,49 @@ def reset_to_first_key():
     _current_key_index = 0
     _configure_with_key(0)
 
-def generate_content_with_fallback(prompt, image=None, max_retries=3, retry_delay=30):
+def calculate_backoff_delay(attempt: int, base_delay: float = 1.0, max_delay: float = 60.0,
+                           jitter: bool = True) -> float:
     """
-    Generate content with automatic API key fallback on quota errors
+    Calculate exponential backoff delay with optional jitter.
+
+    Args:
+        attempt: The retry attempt number (0-indexed)
+        base_delay: Base delay in seconds
+        max_delay: Maximum delay cap in seconds
+        jitter: Whether to add random jitter to prevent thundering herd
+
+    Returns:
+        Delay in seconds
+    """
+    import random
+    # Exponential backoff: base * 2^attempt
+    delay = min(base_delay * (2 ** attempt), max_delay)
+    if jitter:
+        # Add random jitter (0.5x to 1.5x)
+        delay = delay * (0.5 + random.random())
+    return delay
+
+
+def generate_content_with_fallback(prompt, image=None, max_retries=5, base_delay=1.0,
+                                   max_delay=60.0, retry_delay=30):
+    """
+    Generate content with automatic API key fallback and exponential backoff on quota errors.
+
+    Uses exponential backoff with jitter to handle rate limits gracefully.
 
     Args:
         prompt: The text prompt
         image: Optional PIL Image for vision tasks
-        max_retries: Max retries per key before switching
-        retry_delay: Seconds to wait before retrying on rate limit
+        max_retries: Max retries per key before switching (default 5)
+        base_delay: Base delay for exponential backoff in seconds (default 1.0)
+        max_delay: Maximum delay cap in seconds (default 60.0)
+        retry_delay: Fallback delay when no server hint available (default 30)
 
     Returns:
         Generated content text or None on failure
     """
     import time
+    import re
     global _current_key_index
 
     model = get_model()
@@ -75,8 +104,11 @@ def generate_content_with_fallback(prompt, image=None, max_retries=3, retry_dela
 
     retries = 0
     keys_tried = 0
+    total_attempts = 0
+    max_total_attempts = max_retries * max(1, len(GEMINI_API_KEYS)) * 2  # Safety limit
 
-    while True:
+    while total_attempts < max_total_attempts:
+        total_attempts += 1
         try:
             if image:
                 response = model.generate_content([prompt, image])
@@ -88,27 +120,37 @@ def generate_content_with_fallback(prompt, image=None, max_retries=3, retry_dela
             error_str = str(e).lower()
 
             # Check for quota/rate limit errors
-            if 'quota' in error_str or 'rate' in error_str or '429' in error_str or 'resource' in error_str:
-                # Extract retry delay from error if available
-                import re
-                delay_match = re.search(r'retry in (\d+)', error_str)
-                actual_delay = int(delay_match.group(1)) + 2 if delay_match else retry_delay
+            is_rate_limit = any(term in error_str for term in
+                               ['quota', 'rate', '429', 'resource', 'too many', 'exhausted'])
 
-                # Try waiting first before switching keys (rate limits reset quickly)
-                if retries < 1:
-                    print(f"   ⏳ Rate limited, waiting {actual_delay}s before retry...")
+            if is_rate_limit:
+                # Try to extract server-suggested retry delay
+                delay_match = re.search(r'retry in (\d+)', error_str)
+                if delay_match:
+                    # Use server-suggested delay + small buffer
+                    actual_delay = int(delay_match.group(1)) + 2
+                else:
+                    # Use exponential backoff
+                    actual_delay = calculate_backoff_delay(retries, base_delay, max_delay)
+
+                # Try waiting with exponential backoff before switching keys
+                if retries < max_retries:
+                    print(f"   ⏳ Rate limited (attempt {retries + 1}/{max_retries}), "
+                          f"waiting {actual_delay:.1f}s with exponential backoff...")
                     time.sleep(actual_delay)
                     retries += 1
                     continue
 
-                # If still failing after wait, try next key
-                print(f"   ⚠️  API quota exceeded on key #{_current_key_index + 1}")
+                # Max retries reached for this key, try next key
+                print(f"   ⚠️  API quota exceeded on key #{_current_key_index + 1} after {max_retries} retries")
                 keys_tried += 1
 
                 if keys_tried >= len(GEMINI_API_KEYS):
-                    # All keys tried, wait and reset to first key
-                    print(f"   🔄 All keys rate limited, waiting {actual_delay}s and retrying key #1...")
-                    time.sleep(actual_delay)
+                    # All keys tried, use longer exponential backoff and reset to first key
+                    long_delay = calculate_backoff_delay(keys_tried, base_delay * 2, max_delay * 2)
+                    print(f"   🔄 All {len(GEMINI_API_KEYS)} keys rate limited, "
+                          f"waiting {long_delay:.1f}s and retrying from key #1...")
+                    time.sleep(long_delay)
                     reset_to_first_key()
                     model = get_model()
                     keys_tried = 0
@@ -120,14 +162,31 @@ def generate_content_with_fallback(prompt, image=None, max_retries=3, retry_dela
                     retries = 0
                     continue
                 else:
+                    print("   ❌ All API keys exhausted")
                     return None
 
-            # Other errors - retry a few times
-            retries += 1
-            if retries >= max_retries:
-                print(f"   ❌ Gemini error after {max_retries} retries: {e}")
-                return None
-            print(f"   ⚠️  Gemini error (retry {retries}/{max_retries}): {e}")
+            # Check for transient errors that should be retried
+            is_transient = any(term in error_str for term in
+                              ['timeout', 'connection', 'unavailable', '503', '500', 'internal'])
+
+            if is_transient:
+                retries += 1
+                if retries >= max_retries:
+                    print(f"   ❌ Transient error after {max_retries} retries: {e}")
+                    return None
+                backoff_delay = calculate_backoff_delay(retries - 1, base_delay, max_delay)
+                print(f"   ⚠️  Transient error (retry {retries}/{max_retries}), "
+                      f"waiting {backoff_delay:.1f}s: {e}")
+                time.sleep(backoff_delay)
+                continue
+
+            # Non-recoverable error
+            print(f"   ❌ Gemini error (non-recoverable): {e}")
+            return None
+
+    # Exceeded max total attempts
+    print(f"   ❌ Exceeded maximum total attempts ({max_total_attempts})")
+    return None
 
 def analyze_receipt_image(image, prompt=None):
     """

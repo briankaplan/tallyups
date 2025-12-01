@@ -24,8 +24,16 @@ from typing import Optional, Dict, List, Any, Tuple
 from urllib.parse import urlparse
 from contextlib import contextmanager
 
-# Configure module logger
-logger = logging.getLogger(__name__)
+# Import structured logging if available
+try:
+    from logging_config import get_logger, DatabaseLogger, log_timing
+    logger = get_logger(__name__)
+    db_logger = DatabaseLogger()
+except ImportError:
+    # Fallback to basic logging
+    logger = logging.getLogger(__name__)
+    db_logger = None
+    log_timing = None
 
 # =============================================================================
 # CONNECTION POOL IMPLEMENTATION
@@ -126,40 +134,48 @@ class ConnectionPool:
             TimeoutError: If no connection available within timeout
             RuntimeError: If unable to create connection
         """
-        # Try to get from pool first
-        try:
-            conn = self._pool.get_nowait()
-            if self._is_connection_valid(conn):
-                return conn
-            else:
-                # Connection invalid, close it and try again
-                self._close_connection(conn)
-                return self.get_connection()
-        except queue.Empty:
-            pass
-
-        # Pool empty, try to create overflow connection
-        with self._lock:
-            if self._overflow_count < self.max_overflow:
-                try:
-                    conn = self._create_connection()
-                    self._overflow_count += 1
-                    logger.debug(f"Created overflow connection (count={self._overflow_count})")
+        max_retries = 3
+        for attempt in range(max_retries):
+            # Try to get from pool first
+            try:
+                conn = self._pool.get_nowait()
+                if self._is_connection_valid(conn):
                     return conn
-                except Exception as e:
-                    logger.error(f"Failed to create overflow connection: {e}")
-                    raise RuntimeError(f"Cannot create database connection: {e}")
+                else:
+                    # Connection invalid, close it and continue loop
+                    self._close_connection(conn)
+                    continue
+            except queue.Empty:
+                pass
 
-        # At max capacity, wait for a connection to be returned
-        try:
-            conn = self._pool.get(timeout=self.pool_timeout)
-            if self._is_connection_valid(conn):
-                return conn
-            else:
-                self._close_connection(conn)
-                return self.get_connection()
-        except queue.Empty:
-            raise TimeoutError(f"Connection pool exhausted (timeout={self.pool_timeout}s)")
+            # Pool empty, try to create overflow connection
+            with self._lock:
+                if self._overflow_count < self.max_overflow:
+                    try:
+                        conn = self._create_connection()
+                        self._overflow_count += 1
+                        logger.debug(f"Created overflow connection (count={self._overflow_count})")
+                        return conn
+                    except Exception as e:
+                        logger.error(f"Failed to create overflow connection: {e}")
+                        if attempt == max_retries - 1:
+                            raise RuntimeError(f"Cannot create database connection: {e}")
+                        continue
+
+            # At max capacity, wait for a connection to be returned
+            try:
+                conn = self._pool.get(timeout=self.pool_timeout)
+                if self._is_connection_valid(conn):
+                    return conn
+                else:
+                    self._close_connection(conn)
+                    continue
+            except queue.Empty:
+                if attempt == max_retries - 1:
+                    raise TimeoutError(f"Connection pool exhausted (timeout={self.pool_timeout}s)")
+                continue
+
+        raise TimeoutError(f"Connection pool exhausted after {max_retries} attempts")
 
     def return_connection(self, conn: pymysql.Connection, discard: bool = False):
         """

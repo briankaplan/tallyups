@@ -34,6 +34,19 @@ from contacts_engine import (
     guess_attendees_for_row,
 )
 
+# Structured logging
+try:
+    from logging_config import get_logger, ReceiptLogger, APILogger, log_timing
+    logger = get_logger(__name__)
+    receipt_logger = ReceiptLogger()
+    api_logger = APILogger()
+except ImportError:
+    import logging
+    logger = logging.getLogger(__name__)
+    receipt_logger = None
+    api_logger = None
+    log_timing = None
+
 load_dotenv()
 
 # =============================================================================
@@ -46,6 +59,74 @@ if not OPENAI_API_KEY:
     raise RuntimeError("Missing OPENAI_API_KEY in environment")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+# =============================================================================
+# EXPONENTIAL BACKOFF FOR API CALLS
+# =============================================================================
+
+def openai_with_backoff(
+    messages: list,
+    model: str = "gpt-4o-mini",
+    max_tokens: int = 150,
+    temperature: float = 0.7,
+    max_retries: int = 5,
+    base_delay: float = 1.0,
+    max_delay: float = 60.0,
+) -> Optional[str]:
+    """
+    Make OpenAI API call with exponential backoff and retry logic.
+
+    Args:
+        messages: List of message dicts for chat completion
+        model: Model to use
+        max_tokens: Maximum tokens in response
+        temperature: Temperature for generation
+        max_retries: Maximum retry attempts
+        base_delay: Base delay for exponential backoff
+        max_delay: Maximum delay cap
+
+    Returns:
+        Response text or None on failure
+    """
+    import time
+    import random
+
+    for attempt in range(max_retries):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            return resp.choices[0].message.content.strip()
+
+        except Exception as e:
+            error_str = str(e).lower()
+
+            # Check if this is a retryable error
+            is_retryable = any(term in error_str for term in
+                              ['rate', '429', 'timeout', 'connection', 'unavailable',
+                               '503', '500', 'overloaded', 'capacity'])
+
+            if not is_retryable:
+                print(f"⚠️ OpenAI non-retryable error: {e}")
+                return None
+
+            if attempt >= max_retries - 1:
+                print(f"⚠️ OpenAI error after {max_retries} retries: {e}")
+                return None
+
+            # Calculate exponential backoff with jitter
+            delay = min(base_delay * (2 ** attempt), max_delay)
+            delay = delay * (0.5 + random.random())  # Add jitter
+
+            print(f"⚠️ OpenAI rate limited (attempt {attempt + 1}/{max_retries}), "
+                  f"retrying in {delay:.1f}s...")
+            time.sleep(delay)
+
+    return None
 
 
 # =============================================================================
@@ -111,7 +192,7 @@ def find_best_receipt_for_transaction(
     amt = parse_amount_str(tx.get("Chase Amount") or tx.get("amount") or 0)
     date = tx.get("Chase Date") or tx.get("transaction_date") or ""
 
-    print(f"\n🔍 Orchestrator matching: {desc} · ${amt:.2f} · {date}")
+    logger.debug(f"Orchestrator matching: {desc} | ${amt:.2f} | {date}")
 
     # -------------------------------------------------------------------------
     # PHASE 1: LOCAL RECEIPTS
@@ -121,7 +202,7 @@ def find_best_receipt_for_transaction(
         try:
             local_match = find_best_receipt_local(tx)
         except Exception as e:
-            print(f"⚠️ Local receipt search error: {e}")
+            logger.warning(f"Local receipt search error: {e}")
 
     if local_match and local_match.get("score", 0) >= local_threshold:
         meta = local_match.get("vision_meta") or {}
@@ -144,14 +225,22 @@ def find_best_receipt_for_transaction(
             "method": "vision",
         }
 
-        print(f"✅ LOCAL MATCH: {result['receipt_file']} (score {score:.3f})")
+        logger.info(f"Local match found: {result['receipt_file']} (score {score:.3f})")
+        if receipt_logger:
+            receipt_logger.receipt_matched(
+                transaction_id=str(tx.get('index', 'unknown')),
+                receipt_file=result['receipt_file'],
+                score=score,
+                source='local',
+                method='vision'
+            )
         return result
 
     # -------------------------------------------------------------------------
     # PHASE 2: GMAIL ESCALATION
     # -------------------------------------------------------------------------
     if enable_gmail and GMAIL_SEARCH_AVAILABLE and find_best_gmail_receipt_for_row:
-        print("📬 Escalating to Gmail search...")
+        logger.debug("Escalating to Gmail search...")
         try:
             gmail_match = find_best_gmail_receipt_for_row(tx, threshold=gmail_threshold)
             if gmail_match:
@@ -173,16 +262,24 @@ def find_best_receipt_for_transaction(
                     "method": "vision",
                 }
 
-                print(f"✅ GMAIL MATCH: {result['receipt_file']} (score {gmail_match.score:.3f})")
+                logger.info(f"Gmail match found: {result['receipt_file']} (score {gmail_match.score:.3f})")
+                if receipt_logger:
+                    receipt_logger.receipt_matched(
+                        transaction_id=str(tx.get('index', 'unknown')),
+                        receipt_file=result['receipt_file'],
+                        score=gmail_match.score,
+                        source='gmail',
+                        method='vision'
+                    )
                 return result
         except Exception as e:
-            print(f"⚠️ Gmail search error: {e}")
+            logger.warning(f"Gmail search error: {e}")
 
     # -------------------------------------------------------------------------
     # PHASE 3: iMESSAGE SEARCH
     # -------------------------------------------------------------------------
     if enable_gmail and IMESSAGE_SEARCH_AVAILABLE and search_imessage:
-        print("💬 Escalating to iMessage search...")
+        logger.debug("Escalating to iMessage search...")
         try:
             imessage_candidates = search_imessage(tx)
             if imessage_candidates and len(imessage_candidates) > 0:
@@ -214,10 +311,18 @@ def find_best_receipt_for_transaction(
                             "method": "browser_screenshot",
                         }
 
-                        print(f"✅ iMESSAGE MATCH: {result['receipt_file']} (score {score:.3f})")
+                        logger.info(f"iMessage match found: {result['receipt_file']} (score {score:.3f})")
+                        if receipt_logger:
+                            receipt_logger.receipt_matched(
+                                transaction_id=str(tx.get('index', 'unknown')),
+                                receipt_file=result['receipt_file'],
+                                score=score,
+                                source='imessage',
+                                method='browser_screenshot'
+                            )
                         return result
         except Exception as e:
-            print(f"⚠️ iMessage search error: {e}")
+            logger.warning(f"iMessage search error: {e}")
 
     # -------------------------------------------------------------------------
     # NO MATCH FOUND
@@ -241,7 +346,14 @@ def find_best_receipt_for_transaction(
         "method": "none",
     }
 
-    print(f"❌ NO MATCH (best score: {best_score}%)")
+    logger.info(f"No receipt match found (best score: {best_score}%)")
+    if receipt_logger:
+        receipt_logger.receipt_not_found(
+            transaction_id=str(tx.get('index', 'unknown')),
+            merchant=desc,
+            amount=amt,
+            best_score=best_score / 100.0 if best_score else 0
+        )
     return result
 
 
@@ -293,24 +405,24 @@ Write a 1-2 sentence note explaining:
 Keep it factual, concise, and professional. Focus on business value, not just describing the transaction.
 """
 
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You write concise business expense notes."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=150,
-            temperature=0.7,
-        )
-        note = resp.choices[0].message.content.strip()
+    # Use exponential backoff helper
+    note = openai_with_backoff(
+        messages=[
+            {"role": "system", "content": "You write concise business expense notes."},
+            {"role": "user", "content": prompt}
+        ],
+        model="gpt-4o-mini",
+        max_tokens=150,
+        temperature=0.7,
+    )
+
+    if note:
         return note
-    except Exception as e:
-        print(f"⚠️ AI note generation error: {e}")
-        # Fallback to basic note
-        if hint:
-            return f"${amt:.2f} at {desc} on {date} · {hint}"
-        return f"${amt:.2f} at {desc} on {date} · categorized as {biz}"
+
+    # Fallback to basic note if API fails
+    if hint:
+        return f"${amt:.2f} at {desc} on {date} · {hint}"
+    return f"${amt:.2f} at {desc} on {date} · categorized as {biz}"
 
 
 # =============================================================================
@@ -356,20 +468,22 @@ Format:
 Keep it professional and accounting-friendly.
 """
 
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You write formal expense report entries."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=200,
-            temperature=0.5,
-        )
-        return resp.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"⚠️ Report block generation error: {e}")
-        return f"**Date:** {date}\n**Merchant:** {desc}\n**Amount:** ${amt:.2f}\n**Business:** {biz}"
+    # Use exponential backoff helper
+    result = openai_with_backoff(
+        messages=[
+            {"role": "system", "content": "You write formal expense report entries."},
+            {"role": "user", "content": prompt}
+        ],
+        model="gpt-4o-mini",
+        max_tokens=200,
+        temperature=0.5,
+    )
+
+    if result:
+        return result
+
+    # Fallback to basic format if API fails
+    return f"**Date:** {date}\n**Merchant:** {desc}\n**Amount:** ${amt:.2f}\n**Business:** {biz}"
 
 
 # =============================================================================

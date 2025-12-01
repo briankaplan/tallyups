@@ -15,8 +15,35 @@ from pathlib import Path
 from difflib import SequenceMatcher
 from datetime import datetime, date
 
-from flask import Flask, send_from_directory, jsonify, request, abort, Response, make_response, send_file
+from flask import Flask, send_from_directory, jsonify, request, abort, Response, make_response, send_file, g
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+# Initialize structured logging first
+from logging_config import (
+    init_logging,
+    get_logger,
+    set_context,
+    clear_context,
+    log_context,
+    log_timing,
+    ReceiptLogger,
+    APILogger,
+    DatabaseLogger,
+    flask_request_logger,
+)
+init_logging()
+logger = get_logger("viewer_server")
+receipt_logger = ReceiptLogger()
+api_logger = APILogger()
+db_logger = DatabaseLogger()
+try:
+    from flask_wtf.csrf import CSRFProtect, generate_csrf
+    CSRF_AVAILABLE = True
+except ImportError:
+    CSRF_AVAILABLE = False
+    CSRFProtect = None
+    generate_csrf = None
+    print("⚠️ Flask-WTF not installed. CSRF protection disabled. Install with: pip install Flask-WTF")
 import pandas as pd
 
 from dotenv import load_dotenv
@@ -249,11 +276,78 @@ BASE_DIR = Path(__file__).resolve().parent
 RECEIPT_DIR = BASE_DIR / "receipts"
 TRASH_DIR = BASE_DIR / "receipts_trash"
 
+# =============================================================================
+# FILE UPLOAD SECURITY
+# =============================================================================
+ALLOWED_UPLOAD_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.heic', '.pdf', '.tiff', '.webp', '.bmp'}
+ALLOWED_MAGIC_BYTES = {
+    b'\xff\xd8\xff': 'jpeg',
+    b'\x89PNG': 'png',
+    b'GIF87a': 'gif',
+    b'GIF89a': 'gif',
+    b'%PDF': 'pdf',
+    b'II*\x00': 'tiff',
+    b'MM\x00*': 'tiff',
+    b'BM': 'bmp',
+}
+
+def validate_upload_file(file) -> tuple:
+    """
+    Validate uploaded file type by extension and magic bytes.
+    Returns (is_valid, error_message).
+    """
+    if not file or not file.filename:
+        return False, "No file provided"
+
+    # Check extension
+    ext = Path(file.filename).suffix.lower()
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        return False, f"File type '{ext}' not allowed"
+
+    # Check magic bytes
+    file.seek(0)
+    header = file.read(16)
+    file.seek(0)
+
+    if not header:
+        return False, "Empty file"
+
+    # HEIC/HEIF files have 'ftyp' signature at offset 4
+    if len(header) >= 12 and header[4:8] == b'ftyp':
+        heic_types = [b'heic', b'heix', b'hevc', b'hevx', b'mif1']
+        if header[8:12] in heic_types:
+            return True, None
+
+    # Check common magic bytes
+    for magic, _ in ALLOWED_MAGIC_BYTES.items():
+        if header.startswith(magic):
+            return True, None
+
+    # WebP check
+    if header[:4] == b'RIFF' and len(header) >= 12 and header[8:12] == b'WEBP':
+        return True, None
+
+    return False, "File content does not match expected format"
+
 app = Flask(__name__)
 
 # Configure app to trust Railway proxy headers (for HTTPS detection)
 if os.environ.get('RAILWAY_ENVIRONMENT'):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+# Add structured request logging
+flask_request_logger(app)
+logger.info("Flask application initialized")
+
+# Set up API monitoring
+try:
+    from monitoring import setup_flask_monitoring, get_monitor
+    setup_flask_monitoring(app)
+    api_monitor = get_monitor()
+    logger.info("API monitoring enabled")
+except Exception as e:
+    logger.warning(f"API monitoring not available: {e}")
+    api_monitor = None
 
 # =============================================================================
 # AUTHENTICATION SETUP
@@ -273,6 +367,59 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = SESSION_TIMEOUT
 # File upload size limit: 50MB (protects against DoS)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+
+# =============================================================================
+# CSRF PROTECTION
+# =============================================================================
+csrf = None
+if CSRF_AVAILABLE:
+    # Configure CSRF
+    app.config['WTF_CSRF_ENABLED'] = True
+    app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hour token validity
+    app.config['WTF_CSRF_SSL_STRICT'] = bool(os.environ.get('RAILWAY_ENVIRONMENT'))
+
+    csrf = CSRFProtect(app)
+
+    # Exempt API endpoints that use API key authentication (they don't use sessions)
+    # These are already protected by api_key_required decorator
+    CSRF_EXEMPT_ENDPOINTS = [
+        'api_status',
+        'api_incoming_sync',
+        'api_gmail_sync',
+        'api_webhook',
+    ]
+
+    @csrf.exempt
+    @app.route('/api/csrf-token', methods=['GET'])
+    def get_csrf_token():
+        """Get a CSRF token for AJAX requests."""
+        return jsonify({'csrf_token': generate_csrf()})
+
+    # Add CSRF token to all responses as a header for JavaScript access
+    @app.after_request
+    def add_csrf_header(response):
+        """Add CSRF token to response headers for JavaScript."""
+        if 'text/html' in response.content_type:
+            # For HTML responses, JavaScript can read from meta tag or this header
+            response.headers['X-CSRF-Token'] = generate_csrf()
+        return response
+
+    # Context processor for templates
+    @app.context_processor
+    def csrf_context_processor():
+        """Make CSRF token available in all templates."""
+        return {'csrf_token': generate_csrf}
+
+    print("✅ CSRF protection enabled")
+else:
+    print("⚠️ CSRF protection disabled (Flask-WTF not available)")
+
+# Helper function for CSRF-exempt API routes
+def csrf_exempt_route(f):
+    """Decorator to mark a route as CSRF exempt."""
+    if csrf:
+        return csrf.exempt(f)
+    return f
 
 
 # =============================================================================
@@ -1355,6 +1502,7 @@ def find_best_receipt(row: dict) -> dict | None:
 # AUTHENTICATION ROUTES
 # =============================================================================
 
+@csrf_exempt_route
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Login page with password authentication."""
@@ -1373,6 +1521,7 @@ def login():
     return render_template_string(LOGIN_PAGE_HTML, error=error, has_pin=bool(AUTH_PIN))
 
 
+@csrf_exempt_route
 @app.route("/login/pin", methods=["GET", "POST"])
 def login_pin():
     """PIN entry page for quick mobile unlock."""
@@ -1391,6 +1540,7 @@ def login_pin():
     return render_template_string(PIN_PAGE_HTML, next_url=next_url)
 
 
+@csrf_exempt_route
 @app.route("/login/biometric", methods=["POST"])
 def login_biometric():
     """Biometric (Face ID/Touch ID) authentication via WebAuthn."""
@@ -1522,6 +1672,18 @@ def pwa_manifest():
 def service_worker():
     """Serve service worker."""
     return send_from_directory(BASE_DIR, "sw.js", mimetype='application/javascript')
+
+
+@app.route("/static/js/<path:filename>")
+def serve_static_js(filename):
+    """Serve static JavaScript files."""
+    return send_from_directory(BASE_DIR / "static" / "js", filename, mimetype='application/javascript')
+
+
+@app.route("/static/css/<path:filename>")
+def serve_static_css(filename):
+    """Serve static CSS files."""
+    return send_from_directory(BASE_DIR / "static" / "css", filename, mimetype='text/css')
 
 
 @app.route("/receipt-icon-192.png")
@@ -2135,6 +2297,11 @@ def mobile_upload():
     file = request.files['file']
     if not file.filename:
         return jsonify({"error": "No file selected"}), 400
+
+    # Security: Validate file type
+    is_valid, error_msg = validate_upload_file(file)
+    if not is_valid:
+        return jsonify({"error": f"Invalid file: {error_msg}"}), 400
 
     try:
         # Get form data
@@ -7288,6 +7455,11 @@ def upload_receipt():
 
     if idx is None or file is None:
         abort(400, "Missing _index or file")
+
+    # Security: Validate file type
+    is_valid, error_msg = validate_upload_file(file)
+    if not is_valid:
+        abort(400, f"Invalid file: {error_msg}")
 
     mask = df["_index"] == idx
     if not mask.any():

@@ -28,8 +28,15 @@ from dataclasses import dataclass, field
 from enum import Enum
 import httpx
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Import structured logging if available
+try:
+    from logging_config import get_logger, SyncLogger
+    logger = get_logger(__name__)
+    sync_logger = SyncLogger()
+except ImportError:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    sync_logger = None
 
 
 class SyncDirection(Enum):
@@ -43,6 +50,34 @@ class ConflictResolution(Enum):
     SOURCE_WINS = "source_wins"
     NEWEST_WINS = "newest_wins"
     MERGE = "merge"
+    MANUAL = "manual"  # Requires user intervention
+
+
+@dataclass
+class SyncConflict:
+    """Represents a sync conflict between local and remote data"""
+    contact_id: Optional[int]  # ATLAS contact ID if exists
+    source: str
+    source_id: str
+    local_data: Dict[str, Any]
+    remote_data: Dict[str, Any]
+    conflicting_fields: List[str]
+    local_modified: Optional[datetime] = None
+    remote_modified: Optional[datetime] = None
+    resolution: Optional[ConflictResolution] = None
+    resolved_data: Optional[Dict[str, Any]] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API responses"""
+        return {
+            "contact_id": self.contact_id,
+            "source": self.source,
+            "source_id": self.source_id,
+            "conflicting_fields": self.conflicting_fields,
+            "local_modified": self.local_modified.isoformat() if self.local_modified else None,
+            "remote_modified": self.remote_modified.isoformat() if self.remote_modified else None,
+            "resolution": self.resolution.value if self.resolution else None,
+        }
 
 
 @dataclass
@@ -521,11 +556,209 @@ class UniversalSyncEngine:
         self.api_url = atlas_api_url
         self.adapters: Dict[str, ContactSyncAdapter] = {}
         self.conflict_resolution = ConflictResolution.NEWEST_WINS
+        self.pending_conflicts: List[SyncConflict] = []
+        self.conflict_callback = None  # Optional callback for conflict notification
+
+    # Fields that can have conflicts (not additive like emails/phones)
+    CONFLICT_FIELDS = [
+        'first_name', 'last_name', 'display_name', 'company',
+        'job_title', 'department', 'birthday', 'notes'
+    ]
 
     def register_adapter(self, adapter: ContactSyncAdapter):
         """Register a contact source adapter"""
         self.adapters[adapter.source_name] = adapter
         logger.info(f"Registered adapter: {adapter.source_name}")
+
+    def set_conflict_resolution(self, strategy: ConflictResolution):
+        """Set the conflict resolution strategy"""
+        self.conflict_resolution = strategy
+        logger.info(f"Conflict resolution set to: {strategy.value}")
+
+    def set_conflict_callback(self, callback):
+        """Set callback for manual conflict resolution notifications"""
+        self.conflict_callback = callback
+
+    def get_pending_conflicts(self) -> List[SyncConflict]:
+        """Get all pending conflicts awaiting manual resolution"""
+        return [c for c in self.pending_conflicts if c.resolution is None]
+
+    def detect_conflicts(
+        self,
+        local_data: Dict[str, Any],
+        remote_data: ContactData
+    ) -> List[str]:
+        """
+        Detect conflicting fields between local and remote data.
+
+        Returns list of field names that have different non-null values.
+        """
+        conflicts = []
+
+        remote_dict = {
+            'first_name': remote_data.first_name,
+            'last_name': remote_data.last_name,
+            'display_name': remote_data.display_name,
+            'company': remote_data.company,
+            'job_title': remote_data.job_title,
+            'department': remote_data.department,
+            'birthday': remote_data.birthday.isoformat() if remote_data.birthday else None,
+            'notes': remote_data.notes,
+        }
+
+        for field in self.CONFLICT_FIELDS:
+            local_val = local_data.get(field)
+            remote_val = remote_dict.get(field)
+
+            # Skip if either value is null/empty
+            if not local_val or not remote_val:
+                continue
+
+            # Normalize for comparison
+            local_norm = str(local_val).strip().lower()
+            remote_norm = str(remote_val).strip().lower()
+
+            if local_norm != remote_norm:
+                conflicts.append(field)
+
+        return conflicts
+
+    def resolve_conflict(
+        self,
+        conflict: SyncConflict,
+        strategy: Optional[ConflictResolution] = None
+    ) -> Dict[str, Any]:
+        """
+        Resolve a sync conflict using the specified strategy.
+
+        Args:
+            conflict: The conflict to resolve
+            strategy: Resolution strategy (uses engine default if not specified)
+
+        Returns:
+            Resolved data dictionary
+        """
+        strategy = strategy or self.conflict_resolution
+
+        if strategy == ConflictResolution.ATLAS_WINS:
+            # Keep all local values
+            conflict.resolution = ConflictResolution.ATLAS_WINS
+            conflict.resolved_data = conflict.local_data.copy()
+            return conflict.resolved_data
+
+        elif strategy == ConflictResolution.SOURCE_WINS:
+            # Use all remote values
+            conflict.resolution = ConflictResolution.SOURCE_WINS
+            conflict.resolved_data = conflict.remote_data.copy()
+            return conflict.resolved_data
+
+        elif strategy == ConflictResolution.NEWEST_WINS:
+            # Compare timestamps, use newest
+            local_time = conflict.local_modified or datetime.min
+            remote_time = conflict.remote_modified or datetime.min
+
+            if local_time >= remote_time:
+                conflict.resolution = ConflictResolution.NEWEST_WINS
+                conflict.resolved_data = conflict.local_data.copy()
+            else:
+                conflict.resolution = ConflictResolution.NEWEST_WINS
+                conflict.resolved_data = conflict.remote_data.copy()
+            return conflict.resolved_data
+
+        elif strategy == ConflictResolution.MERGE:
+            # Intelligent merge: prefer non-null remote values, keep local where remote is null
+            merged = conflict.local_data.copy()
+
+            for field in conflict.conflicting_fields:
+                remote_val = conflict.remote_data.get(field)
+                # Remote wins for conflicting fields in merge mode
+                if remote_val:
+                    merged[field] = remote_val
+
+            # Always merge additive data (emails, phones, addresses)
+            for additive_field in ['emails', 'phones', 'addresses']:
+                local_items = conflict.local_data.get(additive_field, [])
+                remote_items = conflict.remote_data.get(additive_field, [])
+
+                if additive_field == 'emails':
+                    # Merge emails by email address
+                    seen = {e['email'].lower() for e in local_items if e.get('email')}
+                    merged_items = local_items.copy()
+                    for item in remote_items:
+                        if item.get('email') and item['email'].lower() not in seen:
+                            merged_items.append(item)
+                    merged[additive_field] = merged_items
+
+                elif additive_field == 'phones':
+                    # Merge phones by normalized number
+                    seen = {p.get('normalized', p['number']) for p in local_items if p.get('number')}
+                    merged_items = local_items.copy()
+                    for item in remote_items:
+                        key = item.get('normalized', item.get('number', ''))
+                        if key and key not in seen:
+                            merged_items.append(item)
+                    merged[additive_field] = merged_items
+
+                elif additive_field == 'addresses':
+                    # Merge addresses by formatted address
+                    seen = {a.get('formatted', '').lower() for a in local_items if a.get('formatted')}
+                    merged_items = local_items.copy()
+                    for item in remote_items:
+                        if item.get('formatted') and item['formatted'].lower() not in seen:
+                            merged_items.append(item)
+                    merged[additive_field] = merged_items
+
+            conflict.resolution = ConflictResolution.MERGE
+            conflict.resolved_data = merged
+            return conflict.resolved_data
+
+        elif strategy == ConflictResolution.MANUAL:
+            # Add to pending conflicts for manual resolution
+            if conflict not in self.pending_conflicts:
+                self.pending_conflicts.append(conflict)
+
+            # Notify via callback if set
+            if self.conflict_callback:
+                try:
+                    self.conflict_callback(conflict)
+                except Exception as e:
+                    logger.error(f"Conflict callback error: {e}")
+
+            # Return local data as temporary resolution
+            return conflict.local_data
+
+        # Default: return local data
+        return conflict.local_data
+
+    def resolve_manual_conflict(
+        self,
+        conflict_source_id: str,
+        resolution: ConflictResolution,
+        custom_data: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Manually resolve a pending conflict.
+
+        Args:
+            conflict_source_id: The source_id of the conflicted contact
+            resolution: How to resolve (ATLAS_WINS, SOURCE_WINS, MERGE)
+            custom_data: Custom merged data (for MERGE resolution)
+
+        Returns:
+            True if conflict was found and resolved
+        """
+        for conflict in self.pending_conflicts:
+            if conflict.source_id == conflict_source_id and conflict.resolution is None:
+                if custom_data:
+                    conflict.resolution = ConflictResolution.MERGE
+                    conflict.resolved_data = custom_data
+                else:
+                    self.resolve_conflict(conflict, resolution)
+
+                logger.info(f"Manually resolved conflict for {conflict_source_id}: {resolution.value}")
+                return True
+
+        return False
 
     async def sync_all(self, direction: SyncDirection = SyncDirection.BIDIRECTIONAL) -> List[SyncResult]:
         """Sync all registered sources"""
