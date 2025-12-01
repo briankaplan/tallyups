@@ -4601,6 +4601,11 @@ def atlas_contact_update(contact_id):
         print(f"ATLAS contact update error: {e}")
         import traceback
         traceback.print_exc()
+        # Ensure connection is returned on error
+        try:
+            return_db_connection(conn, discard=True)
+        except:
+            pass
         return jsonify({'error': str(e)}), 500
 
 
@@ -5949,6 +5954,11 @@ def atlas_contact_create():
         print(f"ATLAS contact create error: {e}")
         import traceback
         traceback.print_exc()
+        # Ensure connection is returned on error
+        try:
+            return_db_connection(conn, discard=True)
+        except:
+            pass
         return jsonify({'error': str(e)}), 500
 
 
