@@ -4623,7 +4623,7 @@ def atlas_contacts_find_incomplete():
 
     try:
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+        cursor = conn.cursor()
 
         results = {
             'phone_only': [],      # Has phone but no email AND no company
@@ -4766,7 +4766,7 @@ def atlas_contacts_upcoming_events():
         event_type = request.args.get('type', 'all')  # birthday, anniversary, or all
 
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+        cursor = conn.cursor()
 
         results = {
             'birthdays': [],
@@ -4897,7 +4897,7 @@ def atlas_sync_status():
 
     try:
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+        cursor = conn.cursor()
 
         # Ensure sync columns exist
         try:
@@ -4961,7 +4961,7 @@ def atlas_sync_pending():
 
     try:
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+        cursor = conn.cursor()
 
         cursor.execute("""
             SELECT id, display_name, email, phone, company, sync_status,
@@ -5063,7 +5063,7 @@ def atlas_sync_google_push():
         people_service = build('people', 'v1', credentials=creds)
 
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True) if db_type == 'mysql' else conn.cursor()
+        cursor = conn.cursor()
 
         # Get contacts pending push
         cursor.execute("""
@@ -6286,7 +6286,7 @@ def atlas_ai_analyze_contacts():
         batch_size = min(data.get('batch_size', 50), 100)
 
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         # Get contacts to analyze
         if contact_ids:
@@ -6437,7 +6437,7 @@ def atlas_ai_smart_filters():
 
     try:
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         # Get contact statistics for smart filters
         filters = []
@@ -6667,7 +6667,7 @@ Return ONLY valid JSON."""
 
         # Execute search with extracted parameters
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         conditions = []
         values = []
@@ -6764,7 +6764,7 @@ def _basic_contact_search(query):
     """Basic contact search fallback"""
     try:
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         search_pattern = f"%{query}%"
         cursor.execute("""
@@ -6819,7 +6819,7 @@ def atlas_ai_organize():
         action = data.get('action', 'categorize')  # categorize, dedupe, enrich
 
         conn, db_type = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         results = {'action': action, 'processed': 0, 'changes': []}
 

@@ -1011,7 +1011,7 @@ class InteractionTracker:
         if not conn:
             return []
 
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         threshold = datetime.now() - timedelta(days=days)
 
@@ -1165,7 +1165,7 @@ class CommitmentTracker:
         if not conn:
             return []
 
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         query = """
             SELECT * FROM atlas_commitments
@@ -1549,7 +1549,7 @@ class NudgeEngine:
         if not conn:
             return nudges
 
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         # Find contacts overdue for contact
         cursor.execute("""
