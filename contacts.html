@@ -2860,15 +2860,16 @@
     let currentCategoryFilter = null;
 
     // Industry Categories Definition (base categories)
+    // These match the actual database category values
     const BASE_CATEGORIES = [
       { id: 'music-industry', name: 'Music Industry', icon: '🎵', keywords: ['music', 'band', 'artist', 'producer', 'label', 'recording', 'songwriter', 'musician', 'dj'] },
+      { id: 'executive-leadership', name: 'Executive/Leadership', icon: '👔', keywords: ['executive', 'leadership', 'ceo', 'cto', 'cfo', 'president', 'vp', 'director', 'manager', 'founder', 'co-founder'] },
+      { id: 'technology', name: 'Technology', icon: '💻', keywords: ['tech', 'technology', 'software', 'developer', 'engineer', 'startup', 'app', 'digital', 'it', 'programming', 'ai', 'ml'] },
+      { id: 'media', name: 'Media', icon: '📰', keywords: ['media', 'press', 'journalist', 'news', 'reporter', 'editor', 'writer', 'publication', 'content', 'influencer'] },
+      { id: 'legal-finance', name: 'Legal/Finance', icon: '⚖️', keywords: ['legal', 'finance', 'lawyer', 'attorney', 'law', 'counsel', 'bank', 'investment', 'accounting', 'cpa', 'financial'] },
       { id: 'tv-film', name: 'TV/Film', icon: '🎬', keywords: ['film', 'tv', 'television', 'movie', 'production', 'director', 'actor', 'actress', 'entertainment'] },
       { id: 'friends', name: 'Friends', icon: '👥', keywords: ['friend', 'personal'] },
       { id: 'family', name: 'Family', icon: '👨‍👩‍👧‍👦', keywords: ['family', 'mom', 'dad', 'sister', 'brother', 'parent', 'relative'] },
-      { id: 'tech', name: 'Tech', icon: '💻', keywords: ['tech', 'software', 'developer', 'engineer', 'startup', 'app', 'digital', 'it', 'programming'] },
-      { id: 'finance', name: 'Finance', icon: '💰', keywords: ['finance', 'bank', 'investment', 'accounting', 'cpa', 'financial', 'advisor'] },
-      { id: 'media-press', name: 'Media/Press', icon: '📰', keywords: ['media', 'press', 'journalist', 'news', 'reporter', 'editor', 'writer', 'publication'] },
-      { id: 'legal', name: 'Legal', icon: '⚖️', keywords: ['legal', 'lawyer', 'attorney', 'law', 'counsel', 'paralegal'] },
       { id: 'healthcare', name: 'Healthcare', icon: '🏥', keywords: ['health', 'medical', 'doctor', 'nurse', 'hospital', 'clinic', 'physician', 'therapy'] },
       { id: 'real-estate', name: 'Real Estate', icon: '🏠', keywords: ['real estate', 'realtor', 'property', 'broker', 'realty', 'housing'] },
       { id: 'hospitality', name: 'Hospitality', icon: '🏨', keywords: ['hotel', 'restaurant', 'hospitality', 'venue', 'catering', 'bar', 'chef'] },
@@ -3387,24 +3388,37 @@
     }
 
     // Filter contacts
-    function filterContacts(contacts) {
-      const search = document.getElementById('searchInput').value.toLowerCase();
+    function filterContacts(contactsList) {
+      const search = document.getElementById('searchInput').value.toLowerCase().trim();
 
-      return contacts.filter(c => {
+      return contactsList.filter(c => {
+        // Build searchable text from all relevant fields
         const name = (c.display_name || c.name || '').toLowerCase();
+        const firstName = (c.first_name || '').toLowerCase();
+        const lastName = (c.last_name || '').toLowerCase();
         const company = (c.company || '').toLowerCase();
-        const title = (c.title || '').toLowerCase();
+        const title = (c.title || c.job_title || '').toLowerCase();
         const email = (c.email || '').toLowerCase();
+        const phone = (c.phone || '').toLowerCase();
+        const notes = (c.notes || '').toLowerCase();
+        const category = (c.category || '').toLowerCase();
 
+        // Check if search matches any field
         const matchesSearch = !search ||
           name.includes(search) ||
+          firstName.includes(search) ||
+          lastName.includes(search) ||
           company.includes(search) ||
           title.includes(search) ||
-          email.includes(search);
+          email.includes(search) ||
+          phone.includes(search) ||
+          notes.includes(search) ||
+          category.includes(search);
 
+        // Quick filter (VIP, Recent, Needs Attention)
         let matchesFilter = true;
         switch (currentFilter) {
-          case 'vip': matchesFilter = c.is_vip; break;
+          case 'vip': matchesFilter = c.is_vip || c.priority === 'High'; break;
           case 'recent': matchesFilter = c.last_interaction && isRecent(c.last_interaction); break;
           case 'needs-attention': matchesFilter = c.needs_attention; break;
         }
@@ -3472,21 +3486,32 @@
 
     // Detect category for a contact based on stored category name or keywords
     function detectContactCategory(contact) {
-      // First, check if contact.category directly matches a category name
+      // First, check if contact.category directly matches a category name OR id
       if (contact.category) {
         const storedCat = contact.category.toLowerCase().trim();
         for (const cat of INDUSTRY_CATEGORIES) {
+          // Match by name (case-insensitive)
           if (cat.name.toLowerCase() === storedCat) {
+            return cat.id;
+          }
+          // Match by id (case-insensitive)
+          if (cat.id.toLowerCase() === storedCat) {
+            return cat.id;
+          }
+          // Partial match for flexibility (e.g., "Music" matches "Music Industry")
+          if (cat.name.toLowerCase().includes(storedCat) || storedCat.includes(cat.name.toLowerCase())) {
             return cat.id;
           }
         }
       }
 
-      // Then check for keyword matches in company, title, notes
+      // Then check for keyword matches in company, title, notes, AND the category field itself
       const searchText = [
         contact.company || '',
         contact.title || '',
-        contact.notes || ''
+        contact.job_title || '',
+        contact.notes || '',
+        contact.category || ''
       ].join(' ').toLowerCase();
 
       for (const cat of INDUSTRY_CATEGORIES) {
