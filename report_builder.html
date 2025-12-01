@@ -1435,10 +1435,22 @@ async function startReview() {
       // Business filter
       if (business && tx['Business Type'] !== business) return false;
 
-      // Date filter
-      const txDate = tx['Chase Date'] || tx['date'] || '';
-      if (dateFrom && txDate < dateFrom) return false;
-      if (dateTo && txDate > dateTo) return false;
+      // Date filter - parse RFC 2822 or ISO date formats
+      const txDateRaw = tx['Chase Date'] || tx['date'] || '';
+      // Convert to ISO format for comparison (handles both "Thu, 27 Nov 2025 00:00:00 GMT" and "2024-07-01")
+      let txDateISO = '';
+      if (txDateRaw) {
+        try {
+          const parsed = new Date(txDateRaw);
+          if (!isNaN(parsed.getTime())) {
+            txDateISO = parsed.toISOString().split('T')[0]; // "YYYY-MM-DD"
+          }
+        } catch(e) {
+          txDateISO = txDateRaw; // fallback to raw string
+        }
+      }
+      if (dateFrom && txDateISO < dateFrom) return false;
+      if (dateTo && txDateISO > dateTo) return false;
 
       // Status filter
       const status = (tx['Review Status'] || '').toLowerCase();
@@ -1458,11 +1470,13 @@ async function startReview() {
       return;
     }
 
-    // Sort by date descending
+    // Sort by date descending (parse dates properly)
     filteredTransactions.sort((a, b) => {
-      const dateA = a['Chase Date'] || a['date'] || '';
-      const dateB = b['Chase Date'] || b['date'] || '';
-      return dateB.localeCompare(dateA);
+      const dateAraw = a['Chase Date'] || a['date'] || '';
+      const dateBraw = b['Chase Date'] || b['date'] || '';
+      const dateA = dateAraw ? new Date(dateAraw).getTime() : 0;
+      const dateB = dateBraw ? new Date(dateBraw).getTime() : 0;
+      return dateB - dateA; // descending order
     });
 
     // Initialize
