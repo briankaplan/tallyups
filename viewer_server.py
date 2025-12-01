@@ -4125,11 +4125,11 @@ def atlas_contacts():
             # Get total count
             if search:
                 cursor.execute("""
-                    SELECT COUNT(*) as total FROM contacts
-                    WHERE name LIKE %s OR email LIKE %s OR company LIKE %s
+                    SELECT COUNT(*) as total FROM atlas_contacts
+                    WHERE display_name LIKE %s OR email LIKE %s OR company LIKE %s
                 """, (f'%{search}%', f'%{search}%', f'%{search}%'))
             else:
-                cursor.execute("SELECT COUNT(*) as total FROM contacts")
+                cursor.execute("SELECT COUNT(*) as total FROM atlas_contacts")
 
             total = cursor.fetchone()['total']
 
@@ -4395,18 +4395,9 @@ def atlas_contact_update(contact_id):
         update_fields.append("updated_at = NOW()")
         values.append(contact_id)
 
-        # Try contacts table first, fall back to atlas_contacts
-        try:
-            query = f"UPDATE contacts SET {', '.join(update_fields)} WHERE id = %s"
-            cursor.execute(query, values)
-            if cursor.rowcount == 0:
-                # Try atlas_contacts
-                query = f"UPDATE atlas_contacts SET {', '.join(update_fields)} WHERE id = %s"
-                cursor.execute(query, values)
-        except Exception:
-            # Try atlas_contacts
-            query = f"UPDATE atlas_contacts SET {', '.join(update_fields)} WHERE id = %s"
-            cursor.execute(query, values)
+        # Update in atlas_contacts table
+        query = f"UPDATE atlas_contacts SET {', '.join(update_fields)} WHERE id = %s"
+        cursor.execute(query, values)
 
         conn.commit()
         cursor.close()
@@ -4439,22 +4430,9 @@ def atlas_contact_delete(contact_id):
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Try contacts table first, fall back to atlas_contacts
-        deleted = False
-        try:
-            cursor.execute("DELETE FROM contacts WHERE id = %s", (contact_id,))
-            if cursor.rowcount > 0:
-                deleted = True
-        except Exception:
-            pass
-
-        if not deleted:
-            try:
-                cursor.execute("DELETE FROM atlas_contacts WHERE id = %s", (contact_id,))
-                if cursor.rowcount > 0:
-                    deleted = True
-            except Exception:
-                pass
+        # Delete from atlas_contacts table
+        cursor.execute("DELETE FROM atlas_contacts WHERE id = %s", (contact_id,))
+        deleted = cursor.rowcount > 0
 
         conn.commit()
         cursor.close()
@@ -4543,14 +4521,8 @@ def atlas_contact_upload_photo(contact_id):
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Try contacts table first
-        try:
-            cursor.execute("UPDATE contacts SET photo_url = %s, updated_at = NOW() WHERE id = %s", (photo_url, contact_id))
-            if cursor.rowcount == 0:
-                # Try atlas_contacts
-                cursor.execute("UPDATE atlas_contacts SET photo_url = %s, updated_at = NOW() WHERE id = %s", (photo_url, contact_id))
-        except Exception:
-            cursor.execute("UPDATE atlas_contacts SET photo_url = %s, updated_at = NOW() WHERE id = %s", (photo_url, contact_id))
+        # Update atlas_contacts table
+        cursor.execute("UPDATE atlas_contacts SET photo_url = %s, updated_at = NOW() WHERE id = %s", (photo_url, contact_id))
 
         conn.commit()
         cursor.close()
@@ -4584,15 +4556,8 @@ def atlas_contact_delete_photo(contact_id):
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Clear photo_url in both tables
-        try:
-            cursor.execute("UPDATE contacts SET photo_url = NULL, updated_at = NOW() WHERE id = %s", (contact_id,))
-        except:
-            pass
-        try:
-            cursor.execute("UPDATE atlas_contacts SET photo_url = NULL, updated_at = NOW() WHERE id = %s", (contact_id,))
-        except:
-            pass
+        # Clear photo_url in atlas_contacts
+        cursor.execute("UPDATE atlas_contacts SET photo_url = NULL, updated_at = NOW() WHERE id = %s", (contact_id,))
 
         conn.commit()
         cursor.close()
@@ -4730,8 +4695,8 @@ def atlas_contacts_bulk_delete():
         # Build placeholders for IN clause
         placeholders = ','.join(['%s'] * len(contact_ids))
 
-        # Delete from contacts table
-        cursor.execute(f"DELETE FROM contacts WHERE id IN ({placeholders})", tuple(contact_ids))
+        # Delete from atlas_contacts table
+        cursor.execute(f"DELETE FROM atlas_contacts WHERE id IN ({placeholders})", tuple(contact_ids))
         deleted_count = cursor.rowcount
 
         conn.commit()
@@ -4780,8 +4745,8 @@ def atlas_contacts_upcoming_events():
         # Get contacts with birthdays/anniversaries
         if event_type in ['birthday', 'all']:
             cursor.execute("""
-                SELECT id, name, first_name, last_name, email, phone, birthday, company, category
-                FROM contacts
+                SELECT id, display_name as name, first_name, last_name, email, phone, birthday, company, category
+                FROM atlas_contacts
                 WHERE birthday IS NOT NULL
             """)
             rows = cursor.fetchall()
@@ -5237,7 +5202,7 @@ def atlas_sync_google_pull():
 
                 # Check if contact exists by google_resource_name or email
                 cursor.execute("""
-                    SELECT id FROM contacts
+                    SELECT id FROM atlas_contacts
                     WHERE google_resource_name = %s OR (email = %s AND email != '')
                     LIMIT 1
                 """, (resource_name, email))
@@ -5247,7 +5212,7 @@ def atlas_sync_google_pull():
                 if existing:
                     # Update existing contact
                     cursor.execute("""
-                        UPDATE contacts SET
+                        UPDATE atlas_contacts SET
                             display_name = COALESCE(NULLIF(%s, ''), display_name),
                             first_name = COALESCE(NULLIF(%s, ''), first_name),
                             last_name = COALESCE(NULLIF(%s, ''), last_name),
@@ -5266,7 +5231,7 @@ def atlas_sync_google_pull():
                 else:
                     # Insert new contact
                     cursor.execute("""
-                        INSERT INTO contacts (
+                        INSERT INTO atlas_contacts (
                             display_name, first_name, last_name, email, phone,
                             company, job_title, photo_url, source,
                             google_resource_name, google_etag,
@@ -5371,7 +5336,7 @@ def atlas_contact_create():
 
         # Insert into contacts table
         insert_query = """
-            INSERT INTO contacts (
+            INSERT INTO atlas_contacts (
                 display_name, first_name, last_name, company, job_title,
                 email, phone, category, priority, notes, source, created_at, updated_at
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
@@ -5718,7 +5683,7 @@ def _import_contacts_from_json(contacts_data):
         columns_added = []
         for col_name, col_type in missing_columns:
             try:
-                cursor.execute(f"ALTER TABLE contacts ADD COLUMN {col_name} {col_type}")
+                cursor.execute(f"ALTER TABLE atlas_contacts ADD COLUMN {col_name} {col_type}")
                 conn.commit()
                 columns_added.append(col_name)
                 print(f"Added missing column: {col_name}")
@@ -5770,7 +5735,7 @@ def _import_contacts_from_json(contacts_data):
                 update_clause = ', '.join(update_parts)
 
                 sql = f"""
-                    INSERT INTO contacts ({col_list})
+                    INSERT INTO atlas_contacts ({col_list})
                     VALUES ({placeholders})
                     ON DUPLICATE KEY UPDATE {update_clause}
                 """
@@ -6086,7 +6051,7 @@ def atlas_contacts_migrate():
         columns_added = []
         for col_name, col_type in missing_columns:
             try:
-                cursor.execute(f"ALTER TABLE contacts ADD COLUMN {col_name} {col_type}")
+                cursor.execute(f"ALTER TABLE atlas_contacts ADD COLUMN {col_name} {col_type}")
                 conn.commit()
                 columns_added.append(col_name)
             except Exception:
@@ -6166,7 +6131,7 @@ def atlas_contacts_upload():
 
                 # Build upsert query (INSERT ... ON DUPLICATE KEY UPDATE for MySQL)
                 cursor.execute("""
-                    INSERT INTO contacts (name, first_name, last_name, email, phone, company, title, category, priority, notes, source, name_tokens)
+                    INSERT INTO atlas_contacts (name, first_name, last_name, email, phone, company, title, category, priority, notes, source, name_tokens)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE
                         first_name = COALESCE(VALUES(first_name), first_name),
@@ -6852,7 +6817,7 @@ def atlas_ai_organize():
             cursor.execute("""
                 SELECT c1.id as id1, c1.display_name as name1, c1.email as email1,
                        c2.id as id2, c2.display_name as name2, c2.email as email2
-                FROM contacts c1
+                FROM atlas_contacts c1
                 JOIN contacts c2 ON c1.id < c2.id
                 WHERE (c1.email IS NOT NULL AND c1.email != '' AND c1.email = c2.email)
                    OR (c1.display_name = c2.display_name AND c1.company = c2.company)
@@ -14960,7 +14925,7 @@ def api_atlas_calculate_relationship_scores():
             SELECT c.id, c.email, c.name,
                    COUNT(ci.id) as interaction_count,
                    MAX(ci.interaction_date) as last_interaction
-            FROM contacts c
+            FROM atlas_contacts c
             LEFT JOIN contact_interactions ci ON ci.contact_id = c.id
             GROUP BY c.id, c.email, c.name
         """)
@@ -15054,7 +15019,7 @@ def api_atlas_sync_email_interactions():
         cursor = conn.cursor()
 
         # Get all contacts with emails
-        cursor.execute("SELECT id, email, name FROM contacts WHERE email IS NOT NULL AND email != ''")
+        cursor.execute("SELECT id, email, name FROM atlas_contacts WHERE email IS NOT NULL AND email != ''")
         contacts_with_email = {c['email'].lower(): c for c in cursor.fetchall() if c['email']}
 
         interactions_created = 0
