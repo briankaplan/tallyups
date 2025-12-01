@@ -12,7 +12,6 @@ Features:
 
 import os
 import re
-import csv
 import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -22,8 +21,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).parent
-CONTACTS_CSV = BASE_DIR / "contacts.csv"
 IMESSAGE_DB = os.path.expanduser("~/Library/Messages/chat.db")
+
+# MySQL connection for contacts
+try:
+    from db_mysql import get_db_connection
+    MYSQL_AVAILABLE = True
+except ImportError:
+    MYSQL_AVAILABLE = False
+    get_db_connection = None
 
 # Load OpenAI for note generation
 try:
@@ -57,66 +63,86 @@ except:
 
 
 # =============================================================================
-# CONTACTS DATABASE
+# CONTACTS DATABASE - MySQL atlas_contacts table
 # =============================================================================
 
 class ContactsDatabase:
-    """Rich contacts database from CSV with search capabilities"""
+    """Rich contacts database from MySQL atlas_contacts table with search capabilities"""
 
     def __init__(self):
         self.contacts = []
         self.by_name = {}
         self.by_company = {}
+        self._loaded = False
         self._load_contacts()
 
     def _load_contacts(self):
-        """Load contacts from CSV"""
-        if not CONTACTS_CSV.exists():
-            print(f"Warning: contacts.csv not found at {CONTACTS_CSV}")
+        """Load contacts from MySQL atlas_contacts table"""
+        if not MYSQL_AVAILABLE or not get_db_connection:
+            print("Warning: MySQL not available for contacts database")
             return
 
         try:
-            with open(CONTACTS_CSV, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    contact = {
-                        'id': row.get('id'),
-                        'name': row.get('name', ''),
-                        'first_name': row.get('first_name', ''),
-                        'last_name': row.get('last_name', ''),
-                        'title': row.get('title', ''),
-                        'company': row.get('company', ''),
-                        'category': row.get('category', ''),
-                        'priority': row.get('priority', ''),
-                        'notes': row.get('notes', ''),
-                        'relationship': row.get('relationship', ''),
-                        'strategic_notes': row.get('strategic_notes', ''),
-                    }
-                    self.contacts.append(contact)
+            conn = get_db_connection()
+            cursor = conn.cursor()
 
-                    # Index by name (lowercase)
-                    name_lower = contact['name'].lower()
+            # Query atlas_contacts table
+            cursor.execute("""
+                SELECT id, name, first_name, last_name, title, company,
+                       category, priority, notes, ai_description
+                FROM atlas_contacts
+                WHERE name IS NOT NULL AND name != ''
+            """)
+
+            rows = cursor.fetchall()
+
+            for row in rows:
+                contact = {
+                    'id': row.get('id'),
+                    'name': row.get('name', '') or '',
+                    'first_name': row.get('first_name', '') or '',
+                    'last_name': row.get('last_name', '') or '',
+                    'title': row.get('title', '') or '',
+                    'company': row.get('company', '') or '',
+                    'category': row.get('category', '') or '',
+                    'priority': row.get('priority', '') or '',
+                    'notes': row.get('notes', '') or '',
+                    'ai_description': row.get('ai_description', '') or '',
+                }
+                self.contacts.append(contact)
+
+                # Index by name (lowercase)
+                name_lower = contact['name'].lower()
+                if name_lower:
                     self.by_name[name_lower] = contact
 
-                    # Also index by first name
-                    first_lower = contact['first_name'].lower()
-                    if first_lower not in self.by_name:
-                        self.by_name[first_lower] = contact
+                # Also index by first name
+                first_lower = contact['first_name'].lower() if contact['first_name'] else ''
+                if first_lower and first_lower not in self.by_name:
+                    self.by_name[first_lower] = contact
 
-                    # Index by company
-                    company = contact['company'].strip()
-                    if company:
-                        company_lower = company.lower()
-                        if company_lower not in self.by_company:
-                            self.by_company[company_lower] = []
-                        self.by_company[company_lower].append(contact)
+                # Index by company
+                company = contact['company'].strip()
+                if company:
+                    company_lower = company.lower()
+                    if company_lower not in self.by_company:
+                        self.by_company[company_lower] = []
+                    self.by_company[company_lower].append(contact)
 
-            print(f"Loaded {len(self.contacts)} contacts from database")
+            cursor.close()
+            conn.close()
+
+            self._loaded = True
+            print(f"Loaded {len(self.contacts)} contacts from MySQL atlas_contacts")
+
         except Exception as e:
-            print(f"Error loading contacts: {e}")
+            print(f"Error loading contacts from MySQL: {e}")
 
     def search_by_name(self, name: str) -> Optional[Dict]:
         """Find contact by full or partial name"""
+        if not name:
+            return None
+
         name_lower = name.lower().strip()
 
         # Exact match
@@ -132,6 +158,9 @@ class ContactsDatabase:
 
     def search_by_company(self, company: str) -> List[Dict]:
         """Find contacts by company"""
+        if not company:
+            return []
+
         company_lower = company.lower().strip()
 
         if company_lower in self.by_company:
