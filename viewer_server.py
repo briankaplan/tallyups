@@ -14804,6 +14804,249 @@ def api_contact_hub_quick_log():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/atlas/contacts/calculate-scores", methods=["POST"])
+def api_atlas_calculate_relationship_scores():
+    """Calculate relationship scores based on interaction data"""
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        updated = 0
+
+        # Get all contacts with their interaction data from contact_interactions
+        cursor.execute("""
+            SELECT c.id, c.email, c.name,
+                   COUNT(ci.id) as interaction_count,
+                   MAX(ci.interaction_date) as last_interaction
+            FROM contacts c
+            LEFT JOIN contact_interactions ci ON ci.contact_id = c.id
+            GROUP BY c.id, c.email, c.name
+        """)
+
+        contacts = cursor.fetchall()
+
+        for contact in contacts:
+            contact_id = contact['id']
+            interaction_count = contact['interaction_count'] or 0
+            last_interaction = contact['last_interaction']
+
+            # Calculate relationship score (0-100)
+            # Score is based on:
+            # - Number of interactions (up to 50 points)
+            # - Recency of last interaction (up to 50 points)
+            score = 0
+
+            # Interaction count scoring (log scale, max 50 points)
+            if interaction_count > 0:
+                import math
+                score += min(50, int(math.log2(interaction_count + 1) * 10))
+
+            # Recency scoring (max 50 points)
+            if last_interaction:
+                from datetime import datetime, timedelta
+                if isinstance(last_interaction, str):
+                    try:
+                        last_interaction = datetime.fromisoformat(last_interaction.replace('Z', '+00:00'))
+                    except:
+                        last_interaction = None
+
+                if last_interaction:
+                    now = datetime.utcnow()
+                    if hasattr(last_interaction, 'tzinfo') and last_interaction.tzinfo:
+                        last_interaction = last_interaction.replace(tzinfo=None)
+
+                    days_ago = (now - last_interaction).days
+
+                    if days_ago <= 7:
+                        score += 50  # Very recent
+                    elif days_ago <= 30:
+                        score += 40
+                    elif days_ago <= 90:
+                        score += 25
+                    elif days_ago <= 180:
+                        score += 15
+                    elif days_ago <= 365:
+                        score += 5
+
+            # Update the contact's relationship score
+            cursor.execute("""
+                UPDATE contacts
+                SET relationship_score = %s,
+                    interaction_count = %s,
+                    last_interaction = %s
+                WHERE id = %s
+            """, (score, interaction_count, last_interaction, contact_id))
+            updated += 1
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "updated": updated,
+            "message": f"Updated relationship scores for {updated} contacts"
+        })
+
+    except Exception as e:
+        print(f"Calculate scores error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/sync-email-interactions", methods=["POST"])
+def api_atlas_sync_email_interactions():
+    """Scan Gmail for emails and populate contact interactions"""
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        from incoming_receipts_service import get_gmail_service
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get all contacts with emails
+        cursor.execute("SELECT id, email, name FROM contacts WHERE email IS NOT NULL AND email != ''")
+        contacts_with_email = {c['email'].lower(): c for c in cursor.fetchall() if c['email']}
+
+        interactions_created = 0
+        emails_scanned = 0
+
+        # Get Gmail accounts
+        gmail_accounts = [
+            os.getenv('GMAIL_ACCOUNT_1', 'brian@musiccityrodeo.com'),
+            os.getenv('GMAIL_ACCOUNT_2', 'brian@downhome.com'),
+            os.getenv('GMAIL_ACCOUNT_3', 'brian@kaplan.com'),
+        ]
+
+        for account_email in gmail_accounts:
+            try:
+                service = get_gmail_service(account_email)
+                if not service:
+                    continue
+
+                # Get recent emails (last 30 days)
+                from datetime import datetime, timedelta
+                after_date = (datetime.utcnow() - timedelta(days=30)).strftime('%Y/%m/%d')
+
+                results = service.users().messages().list(
+                    userId='me',
+                    q=f'after:{after_date}',
+                    maxResults=100
+                ).execute()
+
+                messages = results.get('messages', [])
+
+                for msg in messages:
+                    try:
+                        message = service.users().messages().get(
+                            userId='me',
+                            id=msg['id'],
+                            format='metadata',
+                            metadataHeaders=['From', 'To', 'Subject', 'Date']
+                        ).execute()
+
+                        emails_scanned += 1
+
+                        headers = {h['name'].lower(): h['value'] for h in message.get('payload', {}).get('headers', [])}
+
+                        from_email = headers.get('from', '')
+                        to_email = headers.get('to', '')
+                        subject = headers.get('subject', '')
+                        date_str = headers.get('date', '')
+
+                        # Extract email addresses
+                        import re
+                        from_match = re.search(r'<([^>]+)>', from_email) or re.search(r'[\w\.-]+@[\w\.-]+', from_email)
+                        to_match = re.search(r'<([^>]+)>', to_email) or re.search(r'[\w\.-]+@[\w\.-]+', to_email)
+
+                        from_addr = (from_match.group(1) if from_match and '<' in from_email else from_match.group() if from_match else '').lower()
+                        to_addr = (to_match.group(1) if to_match and '<' in to_email else to_match.group() if to_match else '').lower()
+
+                        # Determine the contact (the other party)
+                        contact_email = None
+                        interaction_type = None
+
+                        if from_addr == account_email.lower():
+                            # We sent this email
+                            contact_email = to_addr
+                            interaction_type = 'email_sent'
+                        elif from_addr in contacts_with_email:
+                            # We received this email
+                            contact_email = from_addr
+                            interaction_type = 'email_received'
+
+                        if contact_email and contact_email in contacts_with_email:
+                            contact = contacts_with_email[contact_email]
+
+                            # Parse date
+                            try:
+                                import email.utils
+                                parsed_date = email.utils.parsedate_to_datetime(date_str)
+                            except:
+                                parsed_date = datetime.utcnow()
+
+                            # Check if interaction already exists
+                            cursor.execute("""
+                                SELECT id FROM contact_interactions
+                                WHERE contact_id = %s AND source_id = %s
+                            """, (contact['id'], msg['id']))
+
+                            if not cursor.fetchone():
+                                # Create interaction
+                                cursor.execute("""
+                                    INSERT INTO contact_interactions
+                                    (contact_id, interaction_type, interaction_date, source, source_id, subject)
+                                    VALUES (%s, %s, %s, %s, %s, %s)
+                                """, (
+                                    contact['id'],
+                                    interaction_type,
+                                    parsed_date,
+                                    'gmail',
+                                    msg['id'],
+                                    subject[:500] if subject else None
+                                ))
+                                interactions_created += 1
+
+                    except Exception as e:
+                        print(f"Error processing message: {e}")
+                        continue
+
+            except Exception as e:
+                print(f"Error scanning Gmail for {account_email}: {e}")
+                continue
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "emails_scanned": emails_scanned,
+            "interactions_created": interactions_created,
+            "contacts_with_email": len(contacts_with_email)
+        })
+
+    except Exception as e:
+        print(f"Sync email interactions error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 # Contact Hub HTML Template (PWA-ready)
 CONTACT_HUB_TEMPLATE = '''
 <!DOCTYPE html>
