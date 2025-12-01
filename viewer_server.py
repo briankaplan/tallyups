@@ -4290,88 +4290,7 @@ def atlas_contacts():
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Try to get contacts from contacts table (Apple Contacts import) first,
-        # then fallback to atlas_contacts table if empty
-        try:
-            # Check contacts table first (Apple Contacts data)
-            if search:
-                cursor.execute("""
-                    SELECT * FROM contacts
-                    WHERE name LIKE %s OR email LIKE %s OR company LIKE %s
-                    ORDER BY name
-                    LIMIT %s OFFSET %s
-                """, (f'%{search}%', f'%{search}%', f'%{search}%', limit, offset))
-            else:
-                cursor.execute("""
-                    SELECT * FROM contacts
-                    ORDER BY name
-                    LIMIT %s OFFSET %s
-                """, (limit, offset))
-
-            contacts = cursor.fetchall()
-
-            # Get total count
-            if search:
-                cursor.execute("""
-                    SELECT COUNT(*) as total FROM atlas_contacts
-                    WHERE display_name LIKE %s OR email LIKE %s OR company LIKE %s
-                """, (f'%{search}%', f'%{search}%', f'%{search}%'))
-            else:
-                cursor.execute("SELECT COUNT(*) as total FROM atlas_contacts")
-
-            total = cursor.fetchone()['total']
-
-            # If we have contacts, format and return them
-            if contacts:
-                formatted = []
-                for c in contacts:
-                    formatted.append({
-                        "id": c.get('id'),
-                        "name": c.get('name', ''),
-                        "first_name": c.get('first_name', ''),
-                        "last_name": c.get('last_name', ''),
-                        "email": c.get('email', ''),
-                        "phone": c.get('phone', ''),
-                        "company": c.get('company', ''),
-                        "job_title": c.get('title', ''),
-                        "category": c.get('category', ''),
-                        "priority": c.get('priority', ''),
-                        "source": c.get('source', 'Apple Contacts'),
-                        "notes": c.get('notes', ''),
-                        # Relationship intelligence fields
-                        "relationship_score": c.get('relationship_score', 0),
-                        "last_interaction": str(c.get('last_interaction', '')) if c.get('last_interaction') else None,
-                        "interaction_count": c.get('interaction_count', 0),
-                        "birthday": str(c.get('birthday', '')) if c.get('birthday') else None,
-                        "anniversary": str(c.get('anniversary', '')) if c.get('anniversary') else None,
-                        "photo_url": c.get('photo_url', ''),
-                        "linkedin_url": c.get('linkedin_url', ''),
-                        "twitter_handle": c.get('twitter_handle', ''),
-                        "created_at": str(c.get('created_at', '')) if c.get('created_at') else None,
-                        "updated_at": str(c.get('updated_at', '')) if c.get('updated_at') else None
-                    })
-
-                cursor.close()
-                return_db_connection(conn)
-
-                return jsonify({
-                    "ok": True,
-                    "contacts": formatted,
-                    "count": len(formatted),
-                    "total": total,
-                    "limit": limit,
-                    "offset": offset,
-                    "source": "contacts_table"
-                })
-
-            # No contacts in contacts table, try atlas_contacts table
-            print("contacts table empty, trying atlas_contacts table...")
-
-        except Exception as table_err:
-            # contacts table might not exist, try atlas_contacts as fallback
-            print(f"contacts query failed: {table_err}, trying atlas_contacts table...")
-
-        # Fallback to atlas_contacts table if contacts table failed or was empty
+        # Use atlas_contacts as primary source (where synced contacts are stored)
         try:
             if search:
                 cursor.execute("""
@@ -4405,15 +4324,24 @@ def atlas_contacts():
             for c in contacts:
                 formatted.append({
                     "id": c.get('id'),
-                    "name": c.get('display_name', ''),
+                    "name": c.get('display_name') or c.get('name', ''),
+                    "first_name": c.get('first_name', ''),
+                    "last_name": c.get('last_name', ''),
                     "email": c.get('email', ''),
                     "phone": c.get('phone', ''),
                     "company": c.get('company', ''),
                     "job_title": c.get('job_title', ''),
+                    "category": c.get('category', ''),
+                    "priority": c.get('priority', 'Normal'),
                     "photo_url": c.get('photo_url', ''),
                     "source": c.get('source', 'manual'),
-                    "last_interaction": c.get('last_interaction'),
+                    "relationship_score": c.get('relationship_score', 0),
+                    "last_interaction": str(c.get('last_interaction_at', '')) if c.get('last_interaction_at') else None,
                     "interaction_count": c.get('interaction_count', 0),
+                    "birthday": str(c.get('birthday', '')) if c.get('birthday') else None,
+                    "anniversary": str(c.get('anniversary', '')) if c.get('anniversary') else None,
+                    "linkedin_url": c.get('linkedin_url', ''),
+                    "twitter_handle": c.get('twitter_handle', ''),
                     "tags": c.get('tags', '').split(',') if c.get('tags') else [],
                     "notes": c.get('notes', ''),
                     "created_at": str(c.get('created_at', '')) if c.get('created_at') else None,
