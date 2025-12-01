@@ -732,7 +732,7 @@ class MySQLReceiptDatabase:
                 name_tokens VARCHAR(500),
                 email VARCHAR(255),
                 phone VARCHAR(50),
-                title VARCHAR(255),
+                job_title VARCHAR(255),
                 company VARCHAR(255),
                 category VARCHAR(100),
                 notes TEXT,
@@ -823,11 +823,21 @@ class MySQLReceiptDatabase:
                         cursor.execute("SHOW COLUMNS FROM atlas_contacts")
                         atlas_cols = {row['Field'] for row in cursor.fetchall()}
 
+                        # First, check if we need to rename 'title' to 'job_title'
+                        if 'title' in atlas_cols and 'job_title' not in atlas_cols:
+                            try:
+                                cursor.execute("ALTER TABLE atlas_contacts CHANGE COLUMN title job_title VARCHAR(255)")
+                                print("  ✅ Renamed atlas_contacts column: title -> job_title")
+                                atlas_cols.remove('title')
+                                atlas_cols.append('job_title')
+                            except Exception as e:
+                                print(f"  ⚠️ Could not rename title to job_title: {e}")
+
                         atlas_migrations = [
                             ("first_name", "ALTER TABLE atlas_contacts ADD COLUMN first_name VARCHAR(100)"),
                             ("last_name", "ALTER TABLE atlas_contacts ADD COLUMN last_name VARCHAR(100)"),
                             ("company", "ALTER TABLE atlas_contacts ADD COLUMN company VARCHAR(255)"),
-                            ("title", "ALTER TABLE atlas_contacts ADD COLUMN title VARCHAR(255)"),
+                            ("job_title", "ALTER TABLE atlas_contacts ADD COLUMN job_title VARCHAR(255)"),
                             ("category", "ALTER TABLE atlas_contacts ADD COLUMN category VARCHAR(100)"),
                             ("priority", "ALTER TABLE atlas_contacts ADD COLUMN priority VARCHAR(20) DEFAULT 'normal'"),
                             ("relationship_score", "ALTER TABLE atlas_contacts ADD COLUMN relationship_score FLOAT DEFAULT 0.5"),
@@ -887,7 +897,7 @@ class MySQLReceiptDatabase:
                 email VARCHAR(255),
                 phone VARCHAR(50),
                 company VARCHAR(255),
-                title VARCHAR(255),
+                job_title VARCHAR(255),
                 category VARCHAR(100),
                 priority VARCHAR(20) DEFAULT 'normal',
                 relationship_score FLOAT DEFAULT 0.5,
@@ -940,6 +950,16 @@ class MySQLReceiptDatabase:
 
         cursor.execute("SHOW COLUMNS FROM contacts")
         existing_cols = {row['Field'] for row in cursor.fetchall()}
+
+        # Check if we need to rename 'title' to 'job_title' in contacts table
+        if 'title' in existing_cols and 'job_title' not in existing_cols:
+            try:
+                cursor.execute("ALTER TABLE contacts CHANGE COLUMN title job_title VARCHAR(255)")
+                print("  ✅ Renamed contacts column: title -> job_title")
+                existing_cols.remove('title')
+                existing_cols.add('job_title')
+            except Exception as e:
+                print(f"  ⚠️ Could not rename title to job_title in contacts: {e}")
 
         for col_name, col_def in atlas_contact_columns:
             if col_name not in existing_cols:
@@ -2140,7 +2160,7 @@ class MySQLReceiptDatabase:
         try:
             cursor.execute("""
                 INSERT INTO contacts (
-                    name, first_name, last_name, name_tokens, email, phone, title, company,
+                    name, first_name, last_name, name_tokens, email, phone, job_title, company,
                     category, team, is_vip, notes, display_name, nickname, photo_url,
                     linkedin_url, twitter_handle, birthday, relationship_type,
                     relationship_strength, touch_frequency_days, source, context, tags
@@ -2149,7 +2169,7 @@ class MySQLReceiptDatabase:
                 )
             """, (
                 name, first_name, last_name, name.lower(),
-                data.get('email'), data.get('phone'), data.get('title'),
+                data.get('email'), data.get('phone'), data.get('job_title') or data.get('title'),
                 data.get('company'), data.get('category'), data.get('team'),
                 data.get('is_vip', False), data.get('notes'),
                 data.get('display_name', name), data.get('nickname'),
@@ -2199,12 +2219,16 @@ class MySQLReceiptDatabase:
 
         # Build update statement
         allowed_fields = [
-            'name', 'first_name', 'last_name', 'email', 'phone', 'title', 'company',
+            'name', 'first_name', 'last_name', 'email', 'phone', 'job_title', 'company',
             'category', 'team', 'is_vip', 'notes', 'display_name', 'nickname',
             'photo_url', 'linkedin_url', 'twitter_handle', 'birthday',
             'relationship_type', 'relationship_strength', 'touch_frequency_days',
             'context', 'tags', 'last_touch_date', 'next_touch_date'
         ]
+
+        # Handle 'title' as alias for 'job_title' for backward compatibility
+        if 'title' in data and 'job_title' not in data:
+            data['job_title'] = data['title']
 
         set_clauses = []
         params = []
