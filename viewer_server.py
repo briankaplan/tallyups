@@ -15088,7 +15088,8 @@ def api_atlas_sync_email_interactions():
             return jsonify({'error': 'Authentication required'}), 401
 
     try:
-        from incoming_receipts_service import get_gmail_service
+        # get_gmail_service is defined in this file (viewer_server.py)
+        # No import needed - just use it directly
 
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
