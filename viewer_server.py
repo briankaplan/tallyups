@@ -4476,6 +4476,141 @@ def atlas_contact_delete(contact_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route("/api/atlas/contacts/<contact_id>/photo", methods=["POST"])
+def atlas_contact_upload_photo(contact_id):
+    """Upload a photo for a contact and store in R2"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        # Check if file was uploaded
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+        if ext not in allowed_extensions:
+            return jsonify({'error': f'Invalid file type. Allowed: {", ".join(allowed_extensions)}'}), 400
+
+        # Save temporarily
+        import tempfile
+        import uuid
+        temp_dir = tempfile.gettempdir()
+        unique_filename = f"contact_{contact_id}_{uuid.uuid4().hex[:8]}.{ext}"
+        temp_path = Path(temp_dir) / unique_filename
+        file.save(str(temp_path))
+
+        photo_url = None
+
+        # Try to upload to R2
+        if R2_ENABLED and upload_to_r2:
+            try:
+                r2_key = f"contact-photos/{unique_filename}"
+                success, result = upload_to_r2(temp_path, key=r2_key)
+                if success:
+                    photo_url = result
+                    print(f"Uploaded contact photo to R2: {photo_url}")
+                else:
+                    print(f"R2 upload failed: {result}")
+            except Exception as e:
+                print(f"R2 upload error: {e}")
+
+        # If R2 failed, use local storage fallback
+        if not photo_url:
+            # Store in static folder
+            static_photos = Path("static/contact-photos")
+            static_photos.mkdir(parents=True, exist_ok=True)
+            dest_path = static_photos / unique_filename
+            import shutil
+            shutil.move(str(temp_path), str(dest_path))
+            photo_url = f"/static/contact-photos/{unique_filename}"
+            print(f"Stored contact photo locally: {photo_url}")
+
+        # Clean up temp file if still exists
+        if temp_path.exists():
+            temp_path.unlink()
+
+        # Update database with photo_url
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Try contacts table first
+        try:
+            cursor.execute("UPDATE contacts SET photo_url = %s, updated_at = NOW() WHERE id = %s", (photo_url, contact_id))
+            if cursor.rowcount == 0:
+                # Try atlas_contacts
+                cursor.execute("UPDATE atlas_contacts SET photo_url = %s, updated_at = NOW() WHERE id = %s", (photo_url, contact_id))
+        except Exception:
+            cursor.execute("UPDATE atlas_contacts SET photo_url = %s, updated_at = NOW() WHERE id = %s", (photo_url, contact_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "message": "Photo uploaded successfully",
+            "photo_url": photo_url,
+            "contact_id": contact_id
+        })
+
+    except Exception as e:
+        print(f"ATLAS contact photo upload error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/<contact_id>/photo", methods=["DELETE"])
+def atlas_contact_delete_photo(contact_id):
+    """Delete a contact's photo"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Clear photo_url in both tables
+        try:
+            cursor.execute("UPDATE contacts SET photo_url = NULL, updated_at = NOW() WHERE id = %s", (contact_id,))
+        except:
+            pass
+        try:
+            cursor.execute("UPDATE atlas_contacts SET photo_url = NULL, updated_at = NOW() WHERE id = %s", (contact_id,))
+        except:
+            pass
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "message": "Photo removed successfully",
+            "contact_id": contact_id
+        })
+
+    except Exception as e:
+        print(f"ATLAS contact photo delete error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/api/atlas/contacts/find-incomplete", methods=["POST"])
 def atlas_contacts_find_incomplete():
     """Find incomplete contacts for cleanup"""

@@ -1008,12 +1008,48 @@
       color: white;
       margin: 0 auto 16px;
       overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .modal-avatar:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    .modal-avatar:hover::after {
+      content: 'Upload';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 4px 0;
+      text-align: center;
+    }
+
+    .modal-avatar.has-photo:hover::after {
+      content: 'Change';
     }
 
     .modal-avatar img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+
+    .photo-uploading {
+      font-size: 24px;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
 
     .modal-name {
@@ -2524,7 +2560,8 @@
             <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
-        <div class="modal-avatar" id="modalAvatar">JD</div>
+        <div class="modal-avatar" id="modalAvatar" onclick="triggerPhotoUpload()" title="Click to upload photo">JD</div>
+        <input type="file" id="photoUploadInput" accept="image/*" style="display: none;" onchange="uploadContactPhoto(event)">
         <div class="modal-name" id="modalName">John Doe</div>
         <div class="modal-title" id="modalTitle">CEO at Company</div>
       </div>
@@ -3537,10 +3574,15 @@
       }
 
       const initials = getInitials(currentContact.display_name || currentContact.name || 'Unknown');
+      const modalAvatar = document.getElementById('modalAvatar');
 
-      document.getElementById('modalAvatar').innerHTML = currentContact.photo_url
-        ? `<img src="${currentContact.photo_url}" alt="">`
-        : initials;
+      if (currentContact.photo_url) {
+        modalAvatar.innerHTML = `<img src="${currentContact.photo_url}" alt="">`;
+        modalAvatar.classList.add('has-photo');
+      } else {
+        modalAvatar.innerHTML = initials;
+        modalAvatar.classList.remove('has-photo');
+      }
       document.getElementById('modalName').textContent = currentContact.display_name || currentContact.name || 'Unknown';
       document.getElementById('modalTitle').textContent =
         [currentContact.title, currentContact.company].filter(Boolean).join(' at ') || 'No title';
@@ -3576,6 +3618,107 @@
       if (event && event.target !== document.getElementById('contactModal')) return;
       document.getElementById('contactModal').classList.remove('visible');
       currentContact = null;
+    }
+
+    // Photo upload functions
+    function triggerPhotoUpload() {
+      if (!currentContact) return;
+      document.getElementById('photoUploadInput').click();
+    }
+
+    async function uploadContactPhoto(event) {
+      const file = event.target.files[0];
+      if (!file || !currentContact) return;
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        showToast('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'error');
+        return;
+      }
+
+      // Show loading state
+      const avatar = document.getElementById('modalAvatar');
+      const originalContent = avatar.innerHTML;
+      avatar.innerHTML = '<div class="photo-uploading">...</div>';
+      avatar.style.cursor = 'wait';
+
+      try {
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        const response = await fetch(`/api/atlas/contacts/${currentContact.id}/photo?admin_key=${ADMIN_KEY}`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Update avatar with new photo
+          avatar.innerHTML = '';
+          avatar.style.backgroundImage = `url(${data.photo_url})`;
+          avatar.style.backgroundSize = 'cover';
+          avatar.style.backgroundPosition = 'center';
+          avatar.classList.add('has-photo');
+
+          // Update contact in local data
+          currentContact.photo_url = data.photo_url;
+          const contactIndex = contacts.findIndex(c => c.id === currentContact.id);
+          if (contactIndex >= 0) {
+            contacts[contactIndex].photo_url = data.photo_url;
+          }
+
+          // Re-render contacts to show updated photo in list
+          renderContacts();
+          showToast('Photo uploaded successfully', 'success');
+        } else {
+          avatar.innerHTML = originalContent;
+          showToast(data.error || 'Failed to upload photo', 'error');
+        }
+      } catch (e) {
+        avatar.innerHTML = originalContent;
+        showToast('Error uploading photo: ' + e.message, 'error');
+      }
+
+      avatar.style.cursor = 'pointer';
+      event.target.value = ''; // Reset file input
+    }
+
+    async function deleteContactPhoto() {
+      if (!currentContact || !currentContact.photo_url) return;
+
+      if (!confirm('Remove this contact\'s photo?')) return;
+
+      try {
+        const response = await fetch(`/api/atlas/contacts/${currentContact.id}/photo?admin_key=${ADMIN_KEY}`, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Reset avatar to initials
+          const avatar = document.getElementById('modalAvatar');
+          avatar.style.backgroundImage = '';
+          avatar.classList.remove('has-photo');
+          avatar.innerHTML = getInitials(currentContact.name || currentContact.first_name);
+
+          // Update contact in local data
+          currentContact.photo_url = null;
+          const contactIndex = contacts.findIndex(c => c.id === currentContact.id);
+          if (contactIndex >= 0) {
+            contacts[contactIndex].photo_url = null;
+          }
+
+          renderContacts();
+          showToast('Photo removed', 'success');
+        } else {
+          showToast(data.error || 'Failed to remove photo', 'error');
+        }
+      } catch (e) {
+        showToast('Error removing photo: ' + e.message, 'error');
+      }
     }
 
     // Sync panel
