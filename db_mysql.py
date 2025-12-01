@@ -4,15 +4,259 @@ Created: 2025-11-24
 
 Provides MySQL database operations for ReceiptAI system.
 Mirrors the db_sqlite.py interface for drop-in compatibility.
+
+Features:
+- Connection pooling for better performance
+- Automatic reconnection handling
+- Thread-safe operations
 """
 
 import os
 import json
 import pymysql
 import pandas as pd
+import threading
+import time
+import queue
+import logging
 from datetime import datetime
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple
 from urllib.parse import urlparse
+from contextlib import contextmanager
+
+# Configure module logger
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# CONNECTION POOL IMPLEMENTATION
+# =============================================================================
+
+class ConnectionPool:
+    """
+    Thread-safe MySQL connection pool.
+
+    Features:
+    - Pre-allocated connections for fast access
+    - Automatic connection validation and refresh
+    - Overflow connections for peak load
+    - Connection timeout handling
+    """
+
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        pool_size: int = 5,
+        max_overflow: int = 10,
+        pool_timeout: float = 30.0,
+        pool_recycle: int = 3600,  # Recycle connections after 1 hour
+    ):
+        self.config = config
+        self.pool_size = pool_size
+        self.max_overflow = max_overflow
+        self.pool_timeout = pool_timeout
+        self.pool_recycle = pool_recycle
+
+        self._pool: queue.Queue = queue.Queue(maxsize=pool_size)
+        self._overflow_count = 0
+        self._lock = threading.Lock()
+        self._connection_times: Dict[int, float] = {}  # Track creation time
+
+        # Initialize the pool
+        self._initialize_pool()
+
+        logger.info(f"Connection pool initialized: size={pool_size}, max_overflow={max_overflow}")
+
+    def _initialize_pool(self):
+        """Pre-allocate connections for the pool."""
+        for _ in range(self.pool_size):
+            try:
+                conn = self._create_connection()
+                self._pool.put_nowait(conn)
+            except Exception as e:
+                logger.warning(f"Failed to pre-allocate connection: {e}")
+
+    def _create_connection(self) -> pymysql.Connection:
+        """Create a new database connection."""
+        conn = pymysql.connect(
+            host=self.config['host'],
+            port=self.config['port'],
+            user=self.config['user'],
+            password=self.config['password'],
+            database=self.config['database'],
+            charset=self.config.get('charset', 'utf8mb4'),
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=False,
+            connect_timeout=10,
+            read_timeout=30,
+            write_timeout=30,
+        )
+        # Set isolation level explicitly
+        cursor = conn.cursor()
+        cursor.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        cursor.close()
+
+        self._connection_times[id(conn)] = time.time()
+        return conn
+
+    def _is_connection_valid(self, conn: pymysql.Connection) -> bool:
+        """Check if a connection is still valid and not too old."""
+        # Check if connection should be recycled
+        conn_id = id(conn)
+        if conn_id in self._connection_times:
+            age = time.time() - self._connection_times[conn_id]
+            if age > self.pool_recycle:
+                logger.debug(f"Connection {conn_id} expired (age={age:.0f}s)")
+                return False
+
+        # Ping to verify connection is alive
+        try:
+            conn.ping(reconnect=False)
+            return True
+        except Exception:
+            return False
+
+    def get_connection(self) -> pymysql.Connection:
+        """
+        Get a connection from the pool.
+
+        Returns a valid connection, either from the pool or newly created.
+        Blocks up to pool_timeout seconds if pool is exhausted.
+
+        Raises:
+            TimeoutError: If no connection available within timeout
+            RuntimeError: If unable to create connection
+        """
+        # Try to get from pool first
+        try:
+            conn = self._pool.get_nowait()
+            if self._is_connection_valid(conn):
+                return conn
+            else:
+                # Connection invalid, close it and try again
+                self._close_connection(conn)
+                return self.get_connection()
+        except queue.Empty:
+            pass
+
+        # Pool empty, try to create overflow connection
+        with self._lock:
+            if self._overflow_count < self.max_overflow:
+                try:
+                    conn = self._create_connection()
+                    self._overflow_count += 1
+                    logger.debug(f"Created overflow connection (count={self._overflow_count})")
+                    return conn
+                except Exception as e:
+                    logger.error(f"Failed to create overflow connection: {e}")
+                    raise RuntimeError(f"Cannot create database connection: {e}")
+
+        # At max capacity, wait for a connection to be returned
+        try:
+            conn = self._pool.get(timeout=self.pool_timeout)
+            if self._is_connection_valid(conn):
+                return conn
+            else:
+                self._close_connection(conn)
+                return self.get_connection()
+        except queue.Empty:
+            raise TimeoutError(f"Connection pool exhausted (timeout={self.pool_timeout}s)")
+
+    def return_connection(self, conn: pymysql.Connection, discard: bool = False):
+        """
+        Return a connection to the pool.
+
+        Args:
+            conn: The connection to return
+            discard: If True, close the connection instead of returning it
+        """
+        if discard or not self._is_connection_valid(conn):
+            self._close_connection(conn)
+
+            # If this was a pool connection, try to replace it
+            if self._pool.qsize() < self.pool_size:
+                try:
+                    new_conn = self._create_connection()
+                    self._pool.put_nowait(new_conn)
+                except Exception as e:
+                    logger.warning(f"Failed to replace discarded connection: {e}")
+            return
+
+        # Try to return to pool
+        try:
+            # Reset connection state
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
+            self._pool.put_nowait(conn)
+        except queue.Full:
+            # Pool is full, this was an overflow connection
+            self._close_connection(conn)
+            with self._lock:
+                self._overflow_count = max(0, self._overflow_count - 1)
+
+    def _close_connection(self, conn: pymysql.Connection):
+        """Safely close a connection."""
+        try:
+            conn_id = id(conn)
+            if conn_id in self._connection_times:
+                del self._connection_times[conn_id]
+            conn.close()
+        except Exception as e:
+            logger.debug(f"Error closing connection: {e}")
+
+    @contextmanager
+    def connection(self):
+        """
+        Context manager for getting a pooled connection.
+
+        Usage:
+            with pool.connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM table")
+        """
+        conn = self.get_connection()
+        discard = False
+        try:
+            yield conn
+            conn.commit()
+        except Exception as e:
+            try:
+                conn.rollback()
+            except Exception:
+                discard = True
+            raise
+        finally:
+            self.return_connection(conn, discard=discard)
+
+    def close_all(self):
+        """Close all connections in the pool."""
+        while True:
+            try:
+                conn = self._pool.get_nowait()
+                self._close_connection(conn)
+            except queue.Empty:
+                break
+
+        with self._lock:
+            self._overflow_count = 0
+
+        logger.info("Connection pool closed")
+
+    def status(self) -> Dict[str, Any]:
+        """Get pool status information."""
+        return {
+            'pool_size': self.pool_size,
+            'available': self._pool.qsize(),
+            'overflow_count': self._overflow_count,
+            'max_overflow': self.max_overflow,
+        }
+
+
+# Global connection pool instance
+_connection_pool: Optional[ConnectionPool] = None
+_pool_lock = threading.Lock()
 
 # MySQL connection from Railway environment variables
 # Railway provides either MYSQL_URL or individual MYSQL* variables
@@ -58,52 +302,101 @@ def get_mysql_config() -> Optional[Dict[str, str]]:
 # Standalone connection function for external modules (e.g., relationship_intelligence.py)
 _db_instance = None
 
+
+def get_connection_pool() -> ConnectionPool:
+    """
+    Get or create the global connection pool.
+
+    Thread-safe singleton pattern for the connection pool.
+    """
+    global _connection_pool
+
+    if _connection_pool is None:
+        with _pool_lock:
+            if _connection_pool is None:
+                config = get_mysql_config()
+                if not config:
+                    raise RuntimeError("MySQL configuration not available")
+                _connection_pool = ConnectionPool(
+                    config,
+                    pool_size=int(os.environ.get('DB_POOL_SIZE', '5')),
+                    max_overflow=int(os.environ.get('DB_POOL_OVERFLOW', '10')),
+                    pool_timeout=float(os.environ.get('DB_POOL_TIMEOUT', '30')),
+                )
+    return _connection_pool
+
+
 def get_db_connection():
     """
-    Get a MySQL database connection for use by external modules.
+    Get a MySQL database connection from the pool.
 
     Returns a pymysql connection with DictCursor.
-    Caller is responsible for closing the connection.
+
+    IMPORTANT: For best practices, use get_pooled_connection() context manager
+    instead of this function to ensure proper connection return.
+
+    If using this function directly, caller must return the connection:
+        conn = get_db_connection()
+        try:
+            # use connection
+        finally:
+            return_db_connection(conn)
     """
-    global _db_instance
+    return get_connection_pool().get_connection()
 
-    config = get_mysql_config()
-    if not config:
-        raise RuntimeError("MySQL configuration not available")
 
-    conn = pymysql.connect(
-        host=config['host'],
-        port=config['port'],
-        user=config['user'],
-        password=config['password'],
-        database=config['database'],
-        charset=config.get('charset', 'utf8mb4'),
-        cursorclass=pymysql.cursors.DictCursor
-    )
-    return conn
+def return_db_connection(conn, discard: bool = False):
+    """Return a connection to the pool."""
+    if _connection_pool:
+        _connection_pool.return_connection(conn, discard=discard)
+
+
+@contextmanager
+def get_pooled_connection():
+    """
+    Context manager for getting a pooled database connection.
+
+    This is the recommended way to get connections:
+
+        with get_pooled_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM table")
+            results = cursor.fetchall()
+        # Connection automatically returned to pool
+    """
+    pool = get_connection_pool()
+    with pool.connection() as conn:
+        yield conn
+
+
+def get_pool_status() -> Dict[str, Any]:
+    """Get connection pool status for monitoring."""
+    if _connection_pool:
+        return _connection_pool.status()
+    return {'status': 'not_initialized'}
 
 
 class MySQLReceiptDatabase:
-    """MySQL database handler for ReceiptAI"""
+    """
+    MySQL database handler for ReceiptAI.
+
+    Now uses connection pooling for better performance and reliability.
+    """
 
     def __init__(self, config: Optional[Dict[str, str]] = None):
         self.config = config or get_mysql_config()
-        self.conn = None
+        self._pool: Optional[ConnectionPool] = None
         self.use_mysql = False
 
         if not self.config:
             print(f"ℹ️  MySQL not configured (set MYSQL_URL or MYSQL* variables)", flush=True)
             return
 
-        # Try to connect to MySQL
+        # Initialize connection pool
         try:
-            self.conn = pymysql.connect(
-                **self.config,
-                cursorclass=pymysql.cursors.DictCursor,
-                autocommit=False
-            )
+            self._pool = get_connection_pool()
             self.use_mysql = True
-            print(f"✅ Connected to MySQL: {self.config['host']}:{self.config['port']}/{self.config['database']}", flush=True)
+            print(f"✅ Connected to MySQL (pooled): {self.config['host']}:{self.config['port']}/{self.config['database']}", flush=True)
 
             # Initialize schema if needed
             self._init_schema()
@@ -113,46 +406,72 @@ class MySQLReceiptDatabase:
             self.use_mysql = False
 
     def __del__(self):
-        """Close connection on cleanup"""
-        if self.conn:
-            self.conn.close()
+        """Cleanup - pool is global so don't close it here"""
+        pass
+
+    @property
+    def conn(self):
+        """
+        Legacy compatibility property that returns a pooled connection.
+
+        WARNING: This is for backwards compatibility with methods not yet
+        migrated to use pooled_connection() context manager. The connection
+        is automatically returned to the pool when the request completes.
+        New code should use pooled_connection() context manager instead.
+        """
+        if not self._pool:
+            return None
+        return self._pool.get_connection()
 
     def get_connection(self):
-        """Get a NEW connection for direct SQL operations.
-
-        IMPORTANT: Caller is responsible for closing this connection!
-        Use this for operations that need direct cursor access.
         """
-        if not self.config:
-            raise RuntimeError("MySQL not configured")
+        Get a connection from the pool for direct SQL operations.
 
-        return pymysql.connect(
-            **self.config,
-            cursorclass=pymysql.cursors.DictCursor,
-            autocommit=False
-        )
+        IMPORTANT: Return connection when done using return_connection()
+        or use pooled_connection() context manager instead.
+        """
+        if not self._pool:
+            raise RuntimeError("MySQL not configured")
+        return self._pool.get_connection()
+
+    def return_connection(self, conn, discard: bool = False):
+        """Return a connection to the pool."""
+        if self._pool:
+            self._pool.return_connection(conn, discard=discard)
+
+    @contextmanager
+    def pooled_connection(self):
+        """
+        Context manager for getting a pooled connection.
+
+        Usage:
+            with db.pooled_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM table")
+        """
+        if not self._pool:
+            raise RuntimeError("MySQL not configured")
+        with self._pool.connection() as conn:
+            yield conn
 
     def ensure_connection(self):
-        """Ensure the shared connection is alive, reconnect if needed"""
-        if not self.use_mysql:
+        """Check if database is available (pool always maintains connections)"""
+        if not self.use_mysql or not self._pool:
             return False
-
         try:
-            self.conn.ping(reconnect=True)
+            # Test by getting and returning a connection
+            conn = self._pool.get_connection()
+            self._pool.return_connection(conn)
             return True
         except Exception as e:
-            print(f"⚠️  MySQL connection lost, reconnecting: {e}", flush=True)
-            try:
-                self.conn = pymysql.connect(
-                    **self.config,
-                    cursorclass=pymysql.cursors.DictCursor,
-                    autocommit=False
-                )
-                return True
-            except Exception as e2:
-                print(f"❌ MySQL reconnection failed: {e2}", flush=True)
-                self.use_mysql = False
-                return False
+            logger.error(f"Database connection check failed: {e}")
+            return False
+
+    def get_pool_status(self) -> Dict[str, Any]:
+        """Get connection pool status for monitoring."""
+        if self._pool:
+            return self._pool.status()
+        return {'status': 'not_initialized'}
 
     def execute_query(self, query: str, params: tuple = None) -> List[Dict]:
         """Execute a raw SQL query and return results as list of dicts.
@@ -165,259 +484,40 @@ class MySQLReceiptDatabase:
             List of dictionaries (one per row) for SELECT queries,
             or empty list for non-SELECT queries
         """
-        if not self.use_mysql:
+        if not self.use_mysql or not self._pool:
             return []
 
-        self.ensure_connection()
-
         try:
-            cursor = self.conn.cursor()
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
+            with self._pool.connection() as conn:
+                cursor = conn.cursor()
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
 
-            # Check if this is a SELECT query
-            if query.strip().upper().startswith('SELECT'):
-                results = cursor.fetchall()
-                cursor.close()
-                return list(results) if results else []
-            else:
-                self.conn.commit()
-                cursor.close()
-                return []
+                # Check if this is a SELECT query
+                if query.strip().upper().startswith('SELECT'):
+                    results = cursor.fetchall()
+                    cursor.close()
+                    return list(results) if results else []
+                else:
+                    # commit is handled by context manager
+                    cursor.close()
+                    return []
         except Exception as e:
-            print(f"❌ Query error: {e}", flush=True)
+            logger.error(f"Query error: {e}")
             return []
 
     def _init_schema(self):
         """Initialize database schema (tables, indexes)"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return
 
         try:
-            cursor = self.conn.cursor()
-
-            # Create transactions table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS transactions (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    _index INT NOT NULL UNIQUE,
-                    chase_date DATE,
-                    chase_description TEXT,
-                    chase_amount DECIMAL(10,2),
-                    chase_category VARCHAR(255),
-                    chase_type VARCHAR(100),
-                    receipt_file VARCHAR(500),
-                    receipt_url VARCHAR(1000),
-                    r2_url VARCHAR(1000),
-                    business_type VARCHAR(255),
-                    notes TEXT,
-                    ai_note TEXT,
-                    ai_confidence FLOAT,
-                    ai_receipt_merchant VARCHAR(255),
-                    ai_receipt_date DATE,
-                    ai_receipt_total DECIMAL(10,2),
-                    review_status VARCHAR(100),
-                    category VARCHAR(255),
-                    report_id VARCHAR(255),
-                    source VARCHAR(255),
-                    mi_merchant VARCHAR(255),
-                    mi_category VARCHAR(255),
-                    mi_description TEXT,
-                    mi_confidence DECIMAL(5,4),
-                    mi_is_subscription BOOLEAN,
-                    mi_subscription_name VARCHAR(255),
-                    mi_processed_at DATETIME,
-                    is_refund BOOLEAN,
-                    already_submitted VARCHAR(50),
-                    deleted BOOLEAN DEFAULT FALSE,
-                    deleted_by_user BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX idx_index (_index),
-                    INDEX idx_date (chase_date),
-                    INDEX idx_business (business_type),
-                    INDEX idx_review (review_status),
-                    INDEX idx_report (report_id),
-                    INDEX idx_deleted (deleted),
-                    INDEX idx_submitted (already_submitted)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create receipt_metadata table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS receipt_metadata (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    filename VARCHAR(500) NOT NULL UNIQUE,
-                    merchant VARCHAR(255),
-                    date DATE,
-                    amount DECIMAL(10,2),
-                    raw_text TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_filename (filename),
-                    INDEX idx_merchant (merchant),
-                    INDEX idx_date (date)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create reports table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS reports (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    report_id VARCHAR(255) NOT NULL UNIQUE,
-                    report_name VARCHAR(255) NOT NULL,
-                    business_type VARCHAR(255) NOT NULL,
-                    expense_count INT NOT NULL,
-                    total_amount DECIMAL(10,2) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_report_id (report_id),
-                    INDEX idx_business (business_type)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create rejected_receipts table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS rejected_receipts (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    transaction_date VARCHAR(50),
-                    transaction_description TEXT,
-                    transaction_amount VARCHAR(50),
-                    receipt_path VARCHAR(500) NOT NULL,
-                    transaction_index INT,
-                    reason VARCHAR(255) DEFAULT 'user_manually_removed',
-                    rejected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_receipt_path (receipt_path),
-                    INDEX idx_transaction (transaction_index),
-                    UNIQUE KEY unique_rejection (transaction_date, transaction_amount, receipt_path(200))
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create incoming_receipts table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS incoming_receipts (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    email_id VARCHAR(255),
-                    gmail_account VARCHAR(255),
-                    sender VARCHAR(255),
-                    from_email VARCHAR(255),
-                    subject TEXT,
-                    description TEXT,
-                    body_snippet TEXT,
-                    receipt_date DATE,
-                    received_date DATETIME,
-                    merchant VARCHAR(255),
-                    amount DECIMAL(10,2),
-                    confidence_score INT DEFAULT 0,
-                    category VARCHAR(255),
-                    business_type VARCHAR(255),
-                    file_path VARCHAR(500),
-                    receipt_file VARCHAR(500),
-                    receipt_files TEXT,
-                    attachments TEXT,
-                    source VARCHAR(100) DEFAULT 'gmail',
-                    status VARCHAR(50) DEFAULT 'pending',
-                    match_type VARCHAR(100),
-                    matched_transaction_id INT,
-                    accepted_as_transaction_id INT,
-                    is_subscription BOOLEAN DEFAULT FALSE,
-                    is_refund BOOLEAN DEFAULT FALSE,
-                    notes TEXT,
-                    rejection_reason VARCHAR(255),
-                    reviewed_at DATETIME,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    processed_at DATETIME,
-                    INDEX idx_status (status),
-                    INDEX idx_merchant (merchant),
-                    INDEX idx_date (receipt_date),
-                    INDEX idx_received (received_date),
-                    INDEX idx_source (source)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create incoming_rejection_patterns table for learning
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS incoming_rejection_patterns (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    pattern_type VARCHAR(100) NOT NULL,
-                    pattern_value VARCHAR(255) NOT NULL,
-                    rejection_count INT DEFAULT 1,
-                    last_rejected_at DATETIME,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE KEY unique_pattern (pattern_type, pattern_value),
-                    INDEX idx_pattern_type (pattern_type)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create merchants table for merchant intelligence/learning
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS merchants (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    raw_description VARCHAR(500) NOT NULL,
-                    normalized_name VARCHAR(255) NOT NULL,
-                    category VARCHAR(255),
-                    is_subscription BOOLEAN DEFAULT FALSE,
-                    subscription_name VARCHAR(255),
-                    avg_amount DECIMAL(10,2),
-                    primary_business_type VARCHAR(255),
-                    confidence DECIMAL(5,4) DEFAULT 0.7,
-                    transaction_count INT DEFAULT 1,
-                    last_seen DATE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    UNIQUE KEY unique_raw_desc (raw_description(255)),
-                    INDEX idx_normalized (normalized_name),
-                    INDEX idx_category (category),
-                    INDEX idx_subscription (is_subscription)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create contacts table for CRM/attendee matching
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS contacts (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    first_name VARCHAR(100),
-                    last_name VARCHAR(100),
-                    name_tokens VARCHAR(500),
-                    email VARCHAR(255),
-                    phone VARCHAR(50),
-                    title VARCHAR(255),
-                    company VARCHAR(255),
-                    category VARCHAR(100),
-                    notes TEXT,
-                    is_vip BOOLEAN DEFAULT FALSE,
-                    team VARCHAR(100),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX idx_name (name),
-                    INDEX idx_first_name (first_name),
-                    INDEX idx_name_tokens (name_tokens(100)),
-                    INDEX idx_company (company),
-                    INDEX idx_category (category),
-                    INDEX idx_team (team)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create merchant_learning table for auto-learning from corrections
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS merchant_learning (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    raw_description VARCHAR(500) NOT NULL,
-                    learned_merchant VARCHAR(255),
-                    learned_category VARCHAR(255),
-                    learned_business_type VARCHAR(255),
-                    source VARCHAR(100) DEFAULT 'user_correction',
-                    confidence DECIMAL(5,4) DEFAULT 0.9,
-                    learn_count INT DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    UNIQUE KEY unique_raw_desc (raw_description(255)),
-                    INDEX idx_learned_merchant (learned_merchant)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            self.conn.commit()
+            with self._pool.connection() as conn:
+                cursor = conn.cursor()
+                self._create_tables(cursor)
+                # Commit is handled by context manager
 
             # Run schema migrations to add columns that might be missing
             self._run_migrations()
@@ -429,408 +529,712 @@ class MySQLReceiptDatabase:
 
         except Exception as e:
             print(f"⚠️  Schema initialization failed: {e}", flush=True)
-            self.conn.rollback()
+
+    def _create_tables(self, cursor):
+        """Create all required tables. Called within a connection context."""
+        # Create transactions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                _index INT NOT NULL UNIQUE,
+                chase_date DATE,
+                chase_description TEXT,
+                chase_amount DECIMAL(10,2),
+                chase_category VARCHAR(255),
+                chase_type VARCHAR(100),
+                receipt_file VARCHAR(500),
+                receipt_url VARCHAR(1000),
+                r2_url VARCHAR(1000),
+                business_type VARCHAR(255),
+                notes TEXT,
+                ai_note TEXT,
+                ai_confidence FLOAT,
+                ai_receipt_merchant VARCHAR(255),
+                ai_receipt_date DATE,
+                ai_receipt_total DECIMAL(10,2),
+                review_status VARCHAR(100),
+                category VARCHAR(255),
+                report_id VARCHAR(255),
+                source VARCHAR(255),
+                mi_merchant VARCHAR(255),
+                mi_category VARCHAR(255),
+                mi_description TEXT,
+                mi_confidence DECIMAL(5,4),
+                mi_is_subscription BOOLEAN,
+                mi_subscription_name VARCHAR(255),
+                mi_processed_at DATETIME,
+                is_refund BOOLEAN,
+                already_submitted VARCHAR(50),
+                deleted BOOLEAN DEFAULT FALSE,
+                deleted_by_user BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_index (_index),
+                INDEX idx_date (chase_date),
+                INDEX idx_business (business_type),
+                INDEX idx_review (review_status),
+                INDEX idx_report (report_id),
+                INDEX idx_deleted (deleted),
+                INDEX idx_submitted (already_submitted)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_metadata table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_metadata (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                filename VARCHAR(500) NOT NULL UNIQUE,
+                merchant VARCHAR(255),
+                date DATE,
+                amount DECIMAL(10,2),
+                raw_text TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_filename (filename),
+                INDEX idx_merchant (merchant),
+                INDEX idx_date (date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create reports table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reports (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                report_id VARCHAR(255) NOT NULL UNIQUE,
+                report_name VARCHAR(255) NOT NULL,
+                business_type VARCHAR(255) NOT NULL,
+                expense_count INT NOT NULL,
+                total_amount DECIMAL(10,2) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_report_id (report_id),
+                INDEX idx_business (business_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create rejected_receipts table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rejected_receipts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                transaction_date VARCHAR(50),
+                transaction_description TEXT,
+                transaction_amount VARCHAR(50),
+                receipt_path VARCHAR(500) NOT NULL,
+                transaction_index INT,
+                reason VARCHAR(255) DEFAULT 'user_manually_removed',
+                rejected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_receipt_path (receipt_path),
+                INDEX idx_transaction (transaction_index),
+                UNIQUE KEY unique_rejection (transaction_date, transaction_amount, receipt_path(200))
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create incoming_receipts table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS incoming_receipts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email_id VARCHAR(255),
+                gmail_account VARCHAR(255),
+                sender VARCHAR(255),
+                from_email VARCHAR(255),
+                subject TEXT,
+                description TEXT,
+                body_snippet TEXT,
+                receipt_date DATE,
+                received_date DATETIME,
+                merchant VARCHAR(255),
+                amount DECIMAL(10,2),
+                confidence_score INT DEFAULT 0,
+                category VARCHAR(255),
+                business_type VARCHAR(255),
+                file_path VARCHAR(500),
+                receipt_file VARCHAR(500),
+                receipt_files TEXT,
+                attachments TEXT,
+                source VARCHAR(100) DEFAULT 'gmail',
+                status VARCHAR(50) DEFAULT 'pending',
+                match_type VARCHAR(100),
+                matched_transaction_id INT,
+                accepted_as_transaction_id INT,
+                is_subscription BOOLEAN DEFAULT FALSE,
+                is_refund BOOLEAN DEFAULT FALSE,
+                notes TEXT,
+                rejection_reason VARCHAR(255),
+                reviewed_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                processed_at DATETIME,
+                INDEX idx_status (status),
+                INDEX idx_merchant (merchant),
+                INDEX idx_date (receipt_date),
+                INDEX idx_received (received_date),
+                INDEX idx_source (source)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create incoming_rejection_patterns table for learning
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS incoming_rejection_patterns (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                pattern_type VARCHAR(100) NOT NULL,
+                pattern_value VARCHAR(255) NOT NULL,
+                rejection_count INT DEFAULT 1,
+                last_rejected_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_pattern (pattern_type, pattern_value),
+                INDEX idx_pattern_type (pattern_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create merchants table for merchant intelligence/learning
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS merchants (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                raw_description VARCHAR(500) NOT NULL,
+                normalized_name VARCHAR(255) NOT NULL,
+                category VARCHAR(255),
+                is_subscription BOOLEAN DEFAULT FALSE,
+                subscription_name VARCHAR(255),
+                avg_amount DECIMAL(10,2),
+                primary_business_type VARCHAR(255),
+                confidence DECIMAL(5,4) DEFAULT 0.7,
+                transaction_count INT DEFAULT 1,
+                last_seen DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_raw_desc (raw_description(255)),
+                INDEX idx_normalized (normalized_name),
+                INDEX idx_category (category),
+                INDEX idx_subscription (is_subscription)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create contacts table for CRM/attendee matching
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100),
+                last_name VARCHAR(100),
+                name_tokens VARCHAR(500),
+                email VARCHAR(255),
+                phone VARCHAR(50),
+                title VARCHAR(255),
+                company VARCHAR(255),
+                category VARCHAR(100),
+                notes TEXT,
+                is_vip BOOLEAN DEFAULT FALSE,
+                team VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_name (name),
+                INDEX idx_first_name (first_name),
+                INDEX idx_name_tokens (name_tokens(100)),
+                INDEX idx_company (company),
+                INDEX idx_category (category),
+                INDEX idx_team (team)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create merchant_learning table for auto-learning from corrections
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS merchant_learning (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                raw_description VARCHAR(500) NOT NULL,
+                learned_merchant VARCHAR(255),
+                learned_category VARCHAR(255),
+                learned_business_type VARCHAR(255),
+                source VARCHAR(100) DEFAULT 'user_correction',
+                confidence DECIMAL(5,4) DEFAULT 0.9,
+                learn_count INT DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_raw_desc (raw_description(255)),
+                INDEX idx_learned_merchant (learned_merchant)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
 
     def _run_migrations(self):
         """Add any missing columns to existing tables"""
+        if not self._pool:
+            return
+
         try:
-            cursor = self.conn.cursor()
+            with self._pool.connection() as conn:
+                cursor = conn.cursor()
 
-            # Check and add missing columns to transactions table
-            migrations = [
-                ("deleted", "ALTER TABLE transactions ADD COLUMN deleted BOOLEAN DEFAULT FALSE"),
-                ("deleted_by_user", "ALTER TABLE transactions ADD COLUMN deleted_by_user BOOLEAN DEFAULT FALSE"),
-                ("receipt_url", "ALTER TABLE transactions ADD COLUMN receipt_url VARCHAR(1000)"),
-                ("r2_url", "ALTER TABLE transactions ADD COLUMN r2_url VARCHAR(1000)"),
-            ]
+                # Check and add missing columns to transactions table
+                migrations = [
+                    ("deleted", "ALTER TABLE transactions ADD COLUMN deleted BOOLEAN DEFAULT FALSE"),
+                    ("deleted_by_user", "ALTER TABLE transactions ADD COLUMN deleted_by_user BOOLEAN DEFAULT FALSE"),
+                    ("receipt_url", "ALTER TABLE transactions ADD COLUMN receipt_url VARCHAR(1000)"),
+                    ("r2_url", "ALTER TABLE transactions ADD COLUMN r2_url VARCHAR(1000)"),
+                ]
 
-            # Get existing columns
-            cursor.execute("SHOW COLUMNS FROM transactions")
-            existing_cols = {row['Field'] for row in cursor.fetchall()}
+                # Get existing columns
+                cursor.execute("SHOW COLUMNS FROM transactions")
+                existing_cols = {row['Field'] for row in cursor.fetchall()}
 
-            for col_name, alter_sql in migrations:
-                if col_name not in existing_cols:
-                    try:
-                        cursor.execute(alter_sql)
-                        print(f"  ✅ Added column: {col_name}")
-                    except Exception as e:
-                        if "Duplicate column" not in str(e):
-                            print(f"  ⚠️  Migration for {col_name}: {e}")
+                for col_name, alter_sql in migrations:
+                    if col_name not in existing_cols:
+                        try:
+                            cursor.execute(alter_sql)
+                            print(f"  ✅ Added column: {col_name}")
+                        except Exception as e:
+                            if "Duplicate column" not in str(e):
+                                print(f"  ⚠️  Migration for {col_name}: {e}")
 
-            # Add missing indexes for performance
-            index_migrations = [
-                ("idx_deleted", "CREATE INDEX idx_deleted ON transactions(deleted)"),
-                ("idx_submitted", "CREATE INDEX idx_submitted ON transactions(already_submitted)"),
-            ]
+                # Add missing indexes for performance
+                index_migrations = [
+                    ("idx_deleted", "CREATE INDEX idx_deleted ON transactions(deleted)"),
+                    ("idx_submitted", "CREATE INDEX idx_submitted ON transactions(already_submitted)"),
+                ]
 
-            # Get existing indexes
-            cursor.execute("SHOW INDEX FROM transactions")
-            existing_indexes = {row['Key_name'] for row in cursor.fetchall()}
+                # Get existing indexes
+                cursor.execute("SHOW INDEX FROM transactions")
+                existing_indexes = {row['Key_name'] for row in cursor.fetchall()}
 
-            for idx_name, create_sql in index_migrations:
-                if idx_name not in existing_indexes:
-                    try:
-                        cursor.execute(create_sql)
-                        print(f"  ✅ Added index: {idx_name}")
-                    except Exception as e:
-                        if "Duplicate key name" not in str(e):
-                            print(f"  ⚠️  Index migration for {idx_name}: {e}")
+                for idx_name, create_sql in index_migrations:
+                    if idx_name not in existing_indexes:
+                        try:
+                            cursor.execute(create_sql)
+                            print(f"  ✅ Added index: {idx_name}")
+                        except Exception as e:
+                            if "Duplicate key name" not in str(e):
+                                print(f"  ⚠️  Index migration for {idx_name}: {e}")
 
-            self.conn.commit()
+                # Migrate atlas_contacts table - add missing columns
+                try:
+                    cursor.execute("SHOW TABLES LIKE 'atlas_contacts'")
+                    if cursor.fetchone():
+                        cursor.execute("SHOW COLUMNS FROM atlas_contacts")
+                        atlas_cols = {row['Field'] for row in cursor.fetchall()}
+
+                        atlas_migrations = [
+                            ("first_name", "ALTER TABLE atlas_contacts ADD COLUMN first_name VARCHAR(100)"),
+                            ("last_name", "ALTER TABLE atlas_contacts ADD COLUMN last_name VARCHAR(100)"),
+                            ("company", "ALTER TABLE atlas_contacts ADD COLUMN company VARCHAR(255)"),
+                            ("title", "ALTER TABLE atlas_contacts ADD COLUMN title VARCHAR(255)"),
+                            ("category", "ALTER TABLE atlas_contacts ADD COLUMN category VARCHAR(100)"),
+                            ("priority", "ALTER TABLE atlas_contacts ADD COLUMN priority VARCHAR(20) DEFAULT 'normal'"),
+                            ("relationship_score", "ALTER TABLE atlas_contacts ADD COLUMN relationship_score FLOAT DEFAULT 0.5"),
+                            ("target_contact_days", "ALTER TABLE atlas_contacts ADD COLUMN target_contact_days INT DEFAULT 30"),
+                            ("family_notes", "ALTER TABLE atlas_contacts ADD COLUMN family_notes TEXT"),
+                            ("interests", "ALTER TABLE atlas_contacts ADD COLUMN interests TEXT"),
+                            ("important_dates", "ALTER TABLE atlas_contacts ADD COLUMN important_dates JSON"),
+                            ("photo_url", "ALTER TABLE atlas_contacts ADD COLUMN photo_url VARCHAR(500)"),
+                            ("photo_data", "ALTER TABLE atlas_contacts ADD COLUMN photo_data LONGBLOB"),
+                            ("linkedin_url", "ALTER TABLE atlas_contacts ADD COLUMN linkedin_url VARCHAR(500)"),
+                            ("twitter_handle", "ALTER TABLE atlas_contacts ADD COLUMN twitter_handle VARCHAR(100)"),
+                            ("source", "ALTER TABLE atlas_contacts ADD COLUMN source VARCHAR(50)"),
+                            ("apple_id", "ALTER TABLE atlas_contacts ADD COLUMN apple_id VARCHAR(100)"),
+                            ("google_id", "ALTER TABLE atlas_contacts ADD COLUMN google_id VARCHAR(100)"),
+                            ("ai_description", "ALTER TABLE atlas_contacts ADD COLUMN ai_description TEXT"),
+                            ("last_interaction_at", "ALTER TABLE atlas_contacts ADD COLUMN last_interaction_at TIMESTAMP"),
+                        ]
+
+                        for col_name, alter_sql in atlas_migrations:
+                            if col_name not in atlas_cols:
+                                try:
+                                    cursor.execute(alter_sql)
+                                    print(f"  ✅ Added atlas_contacts column: {col_name}")
+                                except Exception as e:
+                                    if "Duplicate column" not in str(e):
+                                        print(f"  ⚠️  atlas_contacts migration for {col_name}: {e}")
+                except Exception as e:
+                    print(f"  ⚠️  atlas_contacts migration check: {e}")
+
+                # Commit is handled by context manager
         except Exception as e:
             print(f"⚠️  Migrations error: {e}", flush=True)
 
     def _init_atlas_schema(self):
         """Initialize ATLAS Relationship Intelligence schema"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return
 
         try:
-            cursor = self.conn.cursor()
-
-            # Extend contacts table with ATLAS fields (add missing columns)
-            atlas_contact_columns = [
-                ("display_name", "VARCHAR(255)"),
-                ("nickname", "VARCHAR(100)"),
-                ("photo_url", "VARCHAR(500)"),
-                ("linkedin_url", "VARCHAR(500)"),
-                ("twitter_handle", "VARCHAR(100)"),
-                ("birthday", "DATE"),
-                ("relationship_type", "VARCHAR(100)"),  # friend, colleague, family, client, vendor
-                ("relationship_strength", "DECIMAL(3,2) DEFAULT 0.5"),  # 0-1 score
-                ("touch_frequency_days", "INT DEFAULT 30"),  # desired contact frequency
-                ("last_touch_date", "DATE"),
-                ("next_touch_date", "DATE"),
-                ("total_interactions", "INT DEFAULT 0"),
-                ("source", "VARCHAR(100)"),  # apple, google, linkedin, manual
-                ("source_id", "VARCHAR(255)"),  # external ID from source
-                ("google_resource_name", "VARCHAR(255)"),  # Google People API resource
-                ("apple_contact_id", "VARCHAR(255)"),
-                ("merged_from", "TEXT"),  # JSON array of merged contact IDs
-                ("tags", "TEXT"),  # JSON array of tags
-                ("context", "TEXT"),  # how you know them
-                ("priority_score", "DECIMAL(5,2) DEFAULT 0"),
-            ]
-
-            cursor.execute("SHOW COLUMNS FROM contacts")
-            existing_cols = {row['Field'] for row in cursor.fetchall()}
-
-            for col_name, col_def in atlas_contact_columns:
-                if col_name not in existing_cols:
-                    try:
-                        cursor.execute(f"ALTER TABLE contacts ADD COLUMN {col_name} {col_def}")
-                    except Exception as e:
-                        if "Duplicate column" not in str(e):
-                            print(f"  ⚠️  Contact column {col_name}: {e}")
-
-            # Create contact_emails table (multiple emails per contact)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS contact_emails (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    contact_id INT NOT NULL,
-                    email VARCHAR(255) NOT NULL,
-                    email_type VARCHAR(50) DEFAULT 'personal',
-                    is_primary BOOLEAN DEFAULT FALSE,
-                    verified BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_contact (contact_id),
-                    INDEX idx_email (email),
-                    UNIQUE KEY unique_contact_email (contact_id, email),
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create contact_phones table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS contact_phones (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    contact_id INT NOT NULL,
-                    phone VARCHAR(50) NOT NULL,
-                    phone_type VARCHAR(50) DEFAULT 'mobile',
-                    is_primary BOOLEAN DEFAULT FALSE,
-                    normalized VARCHAR(20),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_contact (contact_id),
-                    INDEX idx_phone (phone),
-                    INDEX idx_normalized (normalized),
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create contact_addresses table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS contact_addresses (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    contact_id INT NOT NULL,
-                    address_type VARCHAR(50) DEFAULT 'home',
-                    street VARCHAR(500),
-                    city VARCHAR(100),
-                    state VARCHAR(100),
-                    postal_code VARCHAR(20),
-                    country VARCHAR(100),
-                    formatted VARCHAR(1000),
-                    is_primary BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_contact (contact_id),
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create interactions table (all touchpoints)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS interactions (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    interaction_type VARCHAR(100) NOT NULL,
-                    channel VARCHAR(50),
-                    occurred_at DATETIME NOT NULL,
-                    content TEXT,
-                    summary VARCHAR(500),
-                    sentiment VARCHAR(20),
-                    is_outgoing BOOLEAN DEFAULT TRUE,
-                    duration_minutes INT,
-                    location VARCHAR(255),
-                    attendees TEXT,
-                    expense_id INT,
-                    calendar_event_id INT,
-                    email_thread_id INT,
-                    external_id VARCHAR(255),
-                    source VARCHAR(100),
-                    ai_summary TEXT,
-                    ai_action_items TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX idx_type (interaction_type),
-                    INDEX idx_occurred (occurred_at),
-                    INDEX idx_channel (channel),
-                    INDEX idx_expense (expense_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create interaction_contacts junction table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS interaction_contacts (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    interaction_id INT NOT NULL,
-                    contact_id INT NOT NULL,
-                    role VARCHAR(50) DEFAULT 'participant',
-                    INDEX idx_interaction (interaction_id),
-                    INDEX idx_contact (contact_id),
-                    UNIQUE KEY unique_interaction_contact (interaction_id, contact_id),
-                    FOREIGN KEY (interaction_id) REFERENCES interactions(id) ON DELETE CASCADE,
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create calendar_events table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS calendar_events (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    google_event_id VARCHAR(255),
-                    calendar_id VARCHAR(255),
-                    title VARCHAR(500) NOT NULL,
-                    description TEXT,
-                    location VARCHAR(500),
-                    start_time DATETIME NOT NULL,
-                    end_time DATETIME,
-                    all_day BOOLEAN DEFAULT FALSE,
-                    status VARCHAR(50),
-                    attendees TEXT,
-                    organizer_email VARCHAR(255),
-                    recurring_event_id VARCHAR(255),
-                    conference_url VARCHAR(500),
-                    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_google_event (google_event_id),
-                    INDEX idx_start (start_time),
-                    INDEX idx_calendar (calendar_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create email_threads table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS email_threads (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    gmail_thread_id VARCHAR(255) NOT NULL,
-                    gmail_account VARCHAR(255),
-                    subject VARCHAR(500),
-                    snippet TEXT,
-                    message_count INT DEFAULT 1,
-                    last_message_at DATETIME,
-                    labels TEXT,
-                    is_read BOOLEAN DEFAULT TRUE,
-                    is_starred BOOLEAN DEFAULT FALSE,
-                    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE KEY unique_thread (gmail_thread_id, gmail_account),
-                    INDEX idx_thread (gmail_thread_id),
-                    INDEX idx_account (gmail_account),
-                    INDEX idx_last_message (last_message_at)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create email_messages table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS email_messages (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    thread_id INT,
-                    gmail_message_id VARCHAR(255) NOT NULL,
-                    gmail_account VARCHAR(255),
-                    from_email VARCHAR(255),
-                    from_name VARCHAR(255),
-                    to_emails TEXT,
-                    cc_emails TEXT,
-                    subject VARCHAR(500),
-                    snippet TEXT,
-                    body_text TEXT,
-                    body_html MEDIUMTEXT,
-                    sent_at DATETIME,
-                    is_outgoing BOOLEAN DEFAULT FALSE,
-                    has_attachments BOOLEAN DEFAULT FALSE,
-                    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE KEY unique_message (gmail_message_id, gmail_account),
-                    INDEX idx_thread (thread_id),
-                    INDEX idx_message (gmail_message_id),
-                    INDEX idx_from (from_email),
-                    INDEX idx_sent (sent_at),
-                    FOREIGN KEY (thread_id) REFERENCES email_threads(id) ON DELETE SET NULL
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create reminders table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS reminders (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    contact_id INT,
-                    reminder_type VARCHAR(100) NOT NULL,
-                    title VARCHAR(500) NOT NULL,
-                    description TEXT,
-                    due_date DATE NOT NULL,
-                    due_time TIME,
-                    is_recurring BOOLEAN DEFAULT FALSE,
-                    recurrence_pattern VARCHAR(100),
-                    status VARCHAR(50) DEFAULT 'pending',
-                    priority VARCHAR(20) DEFAULT 'normal',
-                    snoozed_until DATETIME,
-                    completed_at DATETIME,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_contact (contact_id),
-                    INDEX idx_due (due_date),
-                    INDEX idx_status (status),
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create contact_photos table (for face recognition)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS contact_photos (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    contact_id INT NOT NULL,
-                    photo_url VARCHAR(1000),
-                    photo_data MEDIUMBLOB,
-                    is_primary BOOLEAN DEFAULT FALSE,
-                    source VARCHAR(100),
-                    quality_score DECIMAL(3,2),
-                    has_face_encoding BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_contact (contact_id),
-                    INDEX idx_primary (is_primary),
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create face_encodings table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS face_encodings (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    contact_id INT NOT NULL,
-                    photo_id INT,
-                    encoding BLOB NOT NULL,
-                    confidence DECIMAL(3,2) DEFAULT 1.0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_contact (contact_id),
-                    INDEX idx_photo (photo_id),
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
-                    FOREIGN KEY (photo_id) REFERENCES contact_photos(id) ON DELETE SET NULL
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create enrichments table (cached external data)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS contact_enrichments (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    contact_id INT NOT NULL,
-                    enrichment_type VARCHAR(100) NOT NULL,
-                    source VARCHAR(100) NOT NULL,
-                    data JSON,
-                    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    expires_at DATETIME,
-                    INDEX idx_contact (contact_id),
-                    INDEX idx_type (enrichment_type),
-                    UNIQUE KEY unique_enrichment (contact_id, enrichment_type, source),
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create activity_feed table (denormalized timeline)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS activity_feed (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    contact_id INT,
-                    activity_type VARCHAR(100) NOT NULL,
-                    title VARCHAR(500) NOT NULL,
-                    description TEXT,
-                    occurred_at DATETIME NOT NULL,
-                    metadata JSON,
-                    source_type VARCHAR(50),
-                    source_id INT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_contact (contact_id),
-                    INDEX idx_type (activity_type),
-                    INDEX idx_occurred (occurred_at),
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create contact_expense_links table (link contacts to expenses)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS contact_expense_links (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    contact_id INT NOT NULL,
-                    transaction_index INT NOT NULL,
-                    link_type VARCHAR(50) DEFAULT 'attendee',
-                    notes TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_contact (contact_id),
-                    INDEX idx_transaction (transaction_index),
-                    UNIQUE KEY unique_link (contact_id, transaction_index),
-                    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            # Create imessage_sync_state table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS imessage_sync_state (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    last_rowid BIGINT DEFAULT 0,
-                    last_sync DATETIME,
-                    messages_synced INT DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """)
-
-            self.conn.commit()
+            with self._pool.connection() as conn:
+                cursor = conn.cursor()
+                self._create_atlas_tables(cursor)
+                # Commit is handled by context manager
             print(f"  ✅ ATLAS schema initialized", flush=True)
-
         except Exception as e:
             print(f"⚠️  ATLAS schema initialization failed: {e}", flush=True)
-            self.conn.rollback()
+
+    def _create_atlas_tables(self, cursor):
+        """Create all ATLAS tables. Called within a connection context."""
+        # Create atlas_contacts table (used by smart_notes_engine)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS atlas_contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100),
+                last_name VARCHAR(100),
+                email VARCHAR(255),
+                phone VARCHAR(50),
+                company VARCHAR(255),
+                title VARCHAR(255),
+                category VARCHAR(100),
+                priority VARCHAR(20) DEFAULT 'normal',
+                relationship_score FLOAT DEFAULT 0.5,
+                target_contact_days INT DEFAULT 30,
+                family_notes TEXT,
+                interests TEXT,
+                important_dates JSON,
+                photo_url VARCHAR(500),
+                photo_data LONGBLOB,
+                linkedin_url VARCHAR(500),
+                twitter_handle VARCHAR(100),
+                source VARCHAR(50),
+                apple_id VARCHAR(100),
+                google_id VARCHAR(100),
+                notes TEXT,
+                ai_description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                last_interaction_at TIMESTAMP,
+                INDEX idx_email (email),
+                INDEX idx_name (name),
+                INDEX idx_company (company),
+                INDEX idx_category (category)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Extend contacts table with ATLAS fields (add missing columns)
+        atlas_contact_columns = [
+            ("display_name", "VARCHAR(255)"),
+            ("nickname", "VARCHAR(100)"),
+            ("photo_url", "VARCHAR(500)"),
+            ("linkedin_url", "VARCHAR(500)"),
+            ("twitter_handle", "VARCHAR(100)"),
+            ("birthday", "DATE"),
+            ("relationship_type", "VARCHAR(100)"),  # friend, colleague, family, client, vendor
+            ("relationship_strength", "DECIMAL(3,2) DEFAULT 0.5"),  # 0-1 score
+            ("touch_frequency_days", "INT DEFAULT 30"),  # desired contact frequency
+            ("last_touch_date", "DATE"),
+            ("next_touch_date", "DATE"),
+            ("total_interactions", "INT DEFAULT 0"),
+            ("source", "VARCHAR(100)"),  # apple, google, linkedin, manual
+            ("source_id", "VARCHAR(255)"),  # external ID from source
+            ("google_resource_name", "VARCHAR(255)"),  # Google People API resource
+            ("apple_contact_id", "VARCHAR(255)"),
+            ("merged_from", "TEXT"),  # JSON array of merged contact IDs
+            ("tags", "TEXT"),  # JSON array of tags
+            ("context", "TEXT"),  # how you know them
+            ("priority_score", "DECIMAL(5,2) DEFAULT 0"),
+        ]
+
+        cursor.execute("SHOW COLUMNS FROM contacts")
+        existing_cols = {row['Field'] for row in cursor.fetchall()}
+
+        for col_name, col_def in atlas_contact_columns:
+            if col_name not in existing_cols:
+                try:
+                    cursor.execute(f"ALTER TABLE contacts ADD COLUMN {col_name} {col_def}")
+                except Exception as e:
+                    if "Duplicate column" not in str(e):
+                        print(f"  ⚠️  Contact column {col_name}: {e}")
+
+        # Create contact_emails table (multiple emails per contact)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contact_emails (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                email_type VARCHAR(50) DEFAULT 'personal',
+                is_primary BOOLEAN DEFAULT FALSE,
+                verified BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact (contact_id),
+                INDEX idx_email (email),
+                UNIQUE KEY unique_contact_email (contact_id, email),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create contact_phones table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contact_phones (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT NOT NULL,
+                phone VARCHAR(50) NOT NULL,
+                phone_type VARCHAR(50) DEFAULT 'mobile',
+                is_primary BOOLEAN DEFAULT FALSE,
+                normalized VARCHAR(20),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact (contact_id),
+                INDEX idx_phone (phone),
+                INDEX idx_normalized (normalized),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create contact_addresses table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contact_addresses (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT NOT NULL,
+                address_type VARCHAR(50) DEFAULT 'home',
+                street VARCHAR(500),
+                city VARCHAR(100),
+                state VARCHAR(100),
+                postal_code VARCHAR(20),
+                country VARCHAR(100),
+                formatted VARCHAR(1000),
+                is_primary BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact (contact_id),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create interactions table (all touchpoints)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS interactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                interaction_type VARCHAR(100) NOT NULL,
+                channel VARCHAR(50),
+                occurred_at DATETIME NOT NULL,
+                content TEXT,
+                summary VARCHAR(500),
+                sentiment VARCHAR(20),
+                is_outgoing BOOLEAN DEFAULT TRUE,
+                duration_minutes INT,
+                location VARCHAR(255),
+                attendees TEXT,
+                expense_id INT,
+                calendar_event_id INT,
+                email_thread_id INT,
+                external_id VARCHAR(255),
+                source VARCHAR(100),
+                ai_summary TEXT,
+                ai_action_items TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_type (interaction_type),
+                INDEX idx_occurred (occurred_at),
+                INDEX idx_channel (channel),
+                INDEX idx_expense (expense_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create interaction_contacts junction table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS interaction_contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                interaction_id INT NOT NULL,
+                contact_id INT NOT NULL,
+                role VARCHAR(50) DEFAULT 'participant',
+                INDEX idx_interaction (interaction_id),
+                INDEX idx_contact (contact_id),
+                UNIQUE KEY unique_interaction_contact (interaction_id, contact_id),
+                FOREIGN KEY (interaction_id) REFERENCES interactions(id) ON DELETE CASCADE,
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create calendar_events table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS calendar_events (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                google_event_id VARCHAR(255),
+                calendar_id VARCHAR(255),
+                title VARCHAR(500) NOT NULL,
+                description TEXT,
+                location VARCHAR(500),
+                start_time DATETIME NOT NULL,
+                end_time DATETIME,
+                all_day BOOLEAN DEFAULT FALSE,
+                status VARCHAR(50),
+                attendees TEXT,
+                organizer_email VARCHAR(255),
+                recurring_event_id VARCHAR(255),
+                conference_url VARCHAR(500),
+                synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_google_event (google_event_id),
+                INDEX idx_start (start_time),
+                INDEX idx_calendar (calendar_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create email_threads table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS email_threads (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                gmail_thread_id VARCHAR(255) NOT NULL,
+                gmail_account VARCHAR(255),
+                subject VARCHAR(500),
+                snippet TEXT,
+                message_count INT DEFAULT 1,
+                last_message_at DATETIME,
+                labels TEXT,
+                is_read BOOLEAN DEFAULT TRUE,
+                is_starred BOOLEAN DEFAULT FALSE,
+                synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_thread (gmail_thread_id, gmail_account),
+                INDEX idx_thread (gmail_thread_id),
+                INDEX idx_account (gmail_account),
+                INDEX idx_last_message (last_message_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create email_messages table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS email_messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                thread_id INT,
+                gmail_message_id VARCHAR(255) NOT NULL,
+                gmail_account VARCHAR(255),
+                from_email VARCHAR(255),
+                from_name VARCHAR(255),
+                to_emails TEXT,
+                cc_emails TEXT,
+                subject VARCHAR(500),
+                snippet TEXT,
+                body_text TEXT,
+                body_html MEDIUMTEXT,
+                sent_at DATETIME,
+                is_outgoing BOOLEAN DEFAULT FALSE,
+                has_attachments BOOLEAN DEFAULT FALSE,
+                synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_message (gmail_message_id, gmail_account),
+                INDEX idx_thread (thread_id),
+                INDEX idx_message (gmail_message_id),
+                INDEX idx_from (from_email),
+                INDEX idx_sent (sent_at),
+                FOREIGN KEY (thread_id) REFERENCES email_threads(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create reminders table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reminders (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT,
+                reminder_type VARCHAR(100) NOT NULL,
+                title VARCHAR(500) NOT NULL,
+                description TEXT,
+                due_date DATE NOT NULL,
+                due_time TIME,
+                is_recurring BOOLEAN DEFAULT FALSE,
+                recurrence_pattern VARCHAR(100),
+                status VARCHAR(50) DEFAULT 'pending',
+                priority VARCHAR(20) DEFAULT 'normal',
+                snoozed_until DATETIME,
+                completed_at DATETIME,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact (contact_id),
+                INDEX idx_due (due_date),
+                INDEX idx_status (status),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create contact_photos table (for face recognition)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contact_photos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT NOT NULL,
+                photo_url VARCHAR(1000),
+                photo_data MEDIUMBLOB,
+                is_primary BOOLEAN DEFAULT FALSE,
+                source VARCHAR(100),
+                quality_score DECIMAL(3,2),
+                has_face_encoding BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact (contact_id),
+                INDEX idx_primary (is_primary),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create face_encodings table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS face_encodings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT NOT NULL,
+                photo_id INT,
+                encoding BLOB NOT NULL,
+                confidence DECIMAL(3,2) DEFAULT 1.0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact (contact_id),
+                INDEX idx_photo (photo_id),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
+                FOREIGN KEY (photo_id) REFERENCES contact_photos(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create enrichments table (cached external data)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contact_enrichments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT NOT NULL,
+                enrichment_type VARCHAR(100) NOT NULL,
+                source VARCHAR(100) NOT NULL,
+                data JSON,
+                fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME,
+                INDEX idx_contact (contact_id),
+                INDEX idx_type (enrichment_type),
+                UNIQUE KEY unique_enrichment (contact_id, enrichment_type, source),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create activity_feed table (denormalized timeline)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS activity_feed (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT,
+                activity_type VARCHAR(100) NOT NULL,
+                title VARCHAR(500) NOT NULL,
+                description TEXT,
+                occurred_at DATETIME NOT NULL,
+                metadata JSON,
+                source_type VARCHAR(50),
+                source_id INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact (contact_id),
+                INDEX idx_type (activity_type),
+                INDEX idx_occurred (occurred_at),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create contact_expense_links table (link contacts to expenses)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contact_expense_links (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT NOT NULL,
+                transaction_index INT NOT NULL,
+                link_type VARCHAR(50) DEFAULT 'attendee',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_contact (contact_id),
+                INDEX idx_transaction (transaction_index),
+                UNIQUE KEY unique_link (contact_id, transaction_index),
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create imessage_sync_state table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS imessage_sync_state (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                last_rowid BIGINT DEFAULT 0,
+                last_sync DATETIME,
+                messages_synced INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
 
     def get_all_transactions(self) -> pd.DataFrame:
         """Get all transactions as DataFrame (with UI-friendly column names)"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         query = "SELECT * FROM transactions ORDER BY _index"
-        df = pd.read_sql_query(query, self.conn)
+        with self._pool.connection() as conn:
+            df = pd.read_sql_query(query, conn)
 
         # Map database columns to UI-friendly names
         column_map = {
@@ -878,22 +1282,20 @@ class MySQLReceiptDatabase:
 
     def get_transaction_by_index(self, index: int) -> Optional[Dict]:
         """Get single transaction by _index"""
-        if not self.use_mysql:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
-        self.ensure_connection()
-        cursor = self.conn.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM transactions WHERE _index = %s", (index,))
-        result = cursor.fetchone()
-        cursor.close()
-        return result
+        with self._pool.connection() as conn:
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute("SELECT * FROM transactions WHERE _index = %s", (index,))
+            result = cursor.fetchone()
+            cursor.close()
+            return result
 
     def update_transaction(self, index: int, patch: Dict[str, Any]) -> bool:
         """Update transaction with patch data"""
-        if not self.use_mysql:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
-
-        self.ensure_connection()
 
         # Map user-facing column names to database columns
         column_map = {
@@ -933,13 +1335,13 @@ class MySQLReceiptDatabase:
         sql = f"UPDATE transactions SET {', '.join(set_clauses)} WHERE _index = %s"
 
         try:
-            cursor = self.conn.cursor()
-            cursor.execute(sql, values)
-            self.conn.commit()
-            return cursor.rowcount > 0
+            with self._pool.connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(sql, values)
+                # Commit is handled by context manager
+                return cursor.rowcount > 0
         except Exception as e:
-            print(f"❌ Update failed: {e}", flush=True)
-            self.conn.rollback()
+            logger.error(f"Update failed: {e}")
             return False
 
     def search_transactions(
@@ -951,7 +1353,7 @@ class MySQLReceiptDatabase:
         review_status: Optional[str] = None
     ) -> pd.DataFrame:
         """Search transactions with filters"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         where_clauses = []
@@ -982,17 +1384,19 @@ class MySQLReceiptDatabase:
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
         query = f"SELECT * FROM transactions WHERE {where_sql} ORDER BY _index"
 
-        df = pd.read_sql_query(query, self.conn, params=params)
+        with self._pool.connection() as conn:
+            df = pd.read_sql_query(query, conn, params=params)
         return df
 
     def get_receipt_metadata(self, filename: str) -> Optional[Dict]:
         """Get cached receipt metadata"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM receipt_metadata WHERE filename = %s", (filename,))
-        return cursor.fetchone()
+        with self._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM receipt_metadata WHERE filename = %s", (filename,))
+            return cursor.fetchone()
 
     def cache_receipt_metadata(
         self,
@@ -1003,7 +1407,7 @@ class MySQLReceiptDatabase:
         raw_text: str = ""
     ) -> bool:
         """Cache receipt metadata for fast matching"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         sql = """
@@ -1017,75 +1421,77 @@ class MySQLReceiptDatabase:
         """
 
         try:
-            cursor = self.conn.cursor()
-            cursor.execute(sql, (filename, merchant, date, amount, raw_text))
-            self.conn.commit()
+            with self._pool.connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(sql, (filename, merchant, date, amount, raw_text))
+                # Commit is handled by context manager
             return True
         except Exception as e:
-            print(f"❌ Cache failed for {filename}: {e}", flush=True)
-            self.conn.rollback()
+            logger.error(f"Cache failed for {filename}: {e}")
             return False
 
     def get_all_receipt_metadata(self) -> List[Dict]:
         """Get all cached receipt metadata"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM receipt_metadata ORDER BY filename")
-        return cursor.fetchall()
+        with self._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM receipt_metadata ORDER BY filename")
+            return cursor.fetchall()
 
     def get_analytics(self) -> Dict[str, Any]:
         """Get analytics/stats from database"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
-        cursor = self.conn.cursor()
+        with self._pool.connection() as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("SELECT COUNT(*) as count FROM transactions")
-        total = cursor.fetchone()['count']
+            cursor.execute("SELECT COUNT(*) as count FROM transactions")
+            total = cursor.fetchone()['count']
 
-        cursor.execute("""
-            SELECT COUNT(*) as count FROM transactions
-            WHERE receipt_file IS NOT NULL AND receipt_file != ''
-        """)
-        with_receipts = cursor.fetchone()['count']
+            cursor.execute("""
+                SELECT COUNT(*) as count FROM transactions
+                WHERE receipt_file IS NOT NULL AND receipt_file != ''
+            """)
+            with_receipts = cursor.fetchone()['count']
 
-        cursor.execute("""
-            SELECT business_type, COUNT(*) as count
-            FROM transactions
-            WHERE business_type IS NOT NULL AND business_type != ''
-            GROUP BY business_type
-            ORDER BY count DESC
-        """)
-        by_business = {row['business_type']: row['count'] for row in cursor.fetchall()}
+            cursor.execute("""
+                SELECT business_type, COUNT(*) as count
+                FROM transactions
+                WHERE business_type IS NOT NULL AND business_type != ''
+                GROUP BY business_type
+                ORDER BY count DESC
+            """)
+            by_business = {row['business_type']: row['count'] for row in cursor.fetchall()}
 
-        cursor.execute("""
-            SELECT COUNT(*) as count FROM transactions
-            WHERE ai_confidence > 0
-        """)
-        ai_matched = cursor.fetchone()['count']
+            cursor.execute("""
+                SELECT COUNT(*) as count FROM transactions
+                WHERE ai_confidence > 0
+            """)
+            ai_matched = cursor.fetchone()['count']
 
-        cursor.execute("""
-            SELECT review_status, COUNT(*) as count
-            FROM transactions
-            WHERE review_status IS NOT NULL AND review_status != ''
-            GROUP BY review_status
-        """)
-        by_status = {row['review_status']: row['count'] for row in cursor.fetchall()}
+            cursor.execute("""
+                SELECT review_status, COUNT(*) as count
+                FROM transactions
+                WHERE review_status IS NOT NULL AND review_status != ''
+                GROUP BY review_status
+            """)
+            by_status = {row['review_status']: row['count'] for row in cursor.fetchall()}
 
-        return {
-            'total_transactions': total,
-            'with_receipts': with_receipts,
-            'without_receipts': total - with_receipts,
-            'by_business_type': by_business,
-            'ai_matched': ai_matched,
-            'by_review_status': by_status
-        }
+            return {
+                'total_transactions': total,
+                'with_receipts': with_receipts,
+                'without_receipts': total - with_receipts,
+                'by_business_type': by_business,
+                'ai_matched': ai_matched,
+                'by_review_status': by_status
+            }
 
     def export_to_csv(self, output_path: str) -> bool:
         """Export database to CSV format"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         try:
@@ -1099,74 +1505,76 @@ class MySQLReceiptDatabase:
 
     def get_missing_receipts(self, limit: int = 100) -> List[Dict]:
         """Get transactions without receipts (for batch matching)"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT * FROM transactions
-            WHERE (receipt_file IS NULL OR receipt_file = '')
-            AND chase_date IS NOT NULL
-            AND chase_description IS NOT NULL
-            ORDER BY chase_date DESC
-            LIMIT %s
-        """, (limit,))
-        return cursor.fetchall()
+        with self._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM transactions
+                WHERE (receipt_file IS NULL OR receipt_file = '')
+                AND chase_date IS NOT NULL
+                AND chase_description IS NOT NULL
+                ORDER BY chase_date DESC
+                LIMIT %s
+            """, (limit,))
+            return cursor.fetchall()
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get detailed statistics for dashboard"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
-        cursor = self.conn.cursor()
-        stats = {}
+        with self._pool.connection() as conn:
+            cursor = conn.cursor()
+            stats = {}
 
-        cursor.execute("""
-            SELECT
-                business_type,
-                SUM(ABS(chase_amount)) as total,
-                COUNT(*) as count
-            FROM transactions
-            WHERE business_type IS NOT NULL
-            GROUP BY business_type
-            ORDER BY total DESC
-        """)
-        stats['spending_by_business'] = [
-            {'business': row['business_type'], 'total': float(row['total']), 'count': row['count']}
-            for row in cursor.fetchall()
-        ]
+            cursor.execute("""
+                SELECT
+                    business_type,
+                    SUM(ABS(chase_amount)) as total,
+                    COUNT(*) as count
+                FROM transactions
+                WHERE business_type IS NOT NULL
+                GROUP BY business_type
+                ORDER BY total DESC
+            """)
+            stats['spending_by_business'] = [
+                {'business': row['business_type'], 'total': float(row['total']), 'count': row['count']}
+                for row in cursor.fetchall()
+            ]
 
-        cursor.execute("""
-            SELECT
-                DATE_FORMAT(chase_date, '%Y-%m') as month,
-                SUM(ABS(chase_amount)) as total
-            FROM transactions
-            WHERE chase_date IS NOT NULL
-            GROUP BY month
-            ORDER BY month DESC
-            LIMIT 12
-        """)
-        stats['monthly_spending'] = [
-            {'month': row['month'], 'total': float(row['total'])}
-            for row in cursor.fetchall()
-        ]
+            cursor.execute("""
+                SELECT
+                    DATE_FORMAT(chase_date, '%Y-%m') as month,
+                    SUM(ABS(chase_amount)) as total
+                FROM transactions
+                WHERE chase_date IS NOT NULL
+                GROUP BY month
+                ORDER BY month DESC
+                LIMIT 12
+            """)
+            stats['monthly_spending'] = [
+                {'month': row['month'], 'total': float(row['total'])}
+                for row in cursor.fetchall()
+            ]
 
-        cursor.execute("""
-            SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as matched
-            FROM transactions
-        """)
-        row = cursor.fetchone()
-        total = row['total']
-        matched = row['matched']
-        stats['match_rate'] = {
-            'total': total,
-            'matched': matched,
-            'percentage': round((matched / total * 100), 1) if total > 0 else 0
-        }
+            cursor.execute("""
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as matched
+                FROM transactions
+            """)
+            row = cursor.fetchone()
+            total = row['total']
+            matched = row['matched']
+            stats['match_rate'] = {
+                'total': total,
+                'matched': matched,
+                'percentage': round((matched / total * 100), 1) if total > 0 else 0
+            }
 
-        return stats
+            return stats
 
     def get_reportable_expenses(
         self,
@@ -1175,7 +1583,7 @@ class MySQLReceiptDatabase:
         date_to: Optional[str] = None
     ) -> List[Dict]:
         """Get expenses that can be added to reports (not already submitted)"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         where_clauses = [
@@ -1214,7 +1622,7 @@ class MySQLReceiptDatabase:
         expense_indexes: List[int]
     ) -> str:
         """Create a report and assign report_id to selected expenses"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -1254,7 +1662,7 @@ class MySQLReceiptDatabase:
 
     def get_all_reports(self) -> List[Dict]:
         """Get all submitted reports with metadata"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         cursor = self.conn.cursor()
@@ -1263,7 +1671,7 @@ class MySQLReceiptDatabase:
 
     def get_report(self, report_id: str) -> Optional[Dict]:
         """Get a single report by ID"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         cursor = self.conn.cursor()
@@ -1272,7 +1680,7 @@ class MySQLReceiptDatabase:
 
     def get_report_expenses(self, report_id: str) -> List[Dict]:
         """Get all expenses for a specific report"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         cursor = self.conn.cursor()
@@ -1285,7 +1693,7 @@ class MySQLReceiptDatabase:
 
     def delete_report(self, report_id: str) -> bool:
         """Delete a report and unassign all expenses from it"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         try:
@@ -1324,7 +1732,7 @@ class MySQLReceiptDatabase:
 
     def get_all_merchants(self) -> Dict[str, Dict]:
         """Get all merchants as dict keyed by raw_description (uppercase)"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return {}
 
         self.ensure_connection()
@@ -1363,7 +1771,7 @@ class MySQLReceiptDatabase:
         confidence: float = 0.7
     ) -> bool:
         """Insert or update a merchant in the knowledge base"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return False
 
         self.ensure_connection()
@@ -1402,7 +1810,7 @@ class MySQLReceiptDatabase:
         learned_business_type: str = None
     ) -> bool:
         """Record a user correction for merchant learning"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return False
 
         self.ensure_connection()
@@ -1429,7 +1837,7 @@ class MySQLReceiptDatabase:
 
     def get_learned_merchant(self, raw_description: str) -> Optional[Dict]:
         """Get learned merchant info if it exists"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return None
 
         self.ensure_connection()
@@ -1489,7 +1897,7 @@ class MySQLReceiptDatabase:
         notes: str = None
     ) -> bool:
         """Insert or update a contact"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return False
 
         # Parse first/last name
@@ -1526,7 +1934,7 @@ class MySQLReceiptDatabase:
 
     def get_all_contacts(self) -> List[Dict]:
         """Get all contacts"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -1591,7 +1999,7 @@ class MySQLReceiptDatabase:
         sort_by: str = 'name'
     ) -> Dict[str, Any]:
         """Get contacts with ATLAS relationship data"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return {"items": [], "total": 0}
 
         self.ensure_connection()
@@ -1648,7 +2056,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_contact(self, contact_id: int) -> Optional[Dict]:
         """Get single contact with full ATLAS data"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return None
 
         self.ensure_connection()
@@ -1701,7 +2109,7 @@ class MySQLReceiptDatabase:
 
     def atlas_create_contact(self, data: Dict) -> Optional[int]:
         """Create a new ATLAS contact"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return None
 
         self.ensure_connection()
@@ -1767,7 +2175,7 @@ class MySQLReceiptDatabase:
 
     def atlas_update_contact(self, contact_id: int, data: Dict) -> bool:
         """Update an ATLAS contact"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return False
 
         self.ensure_connection()
@@ -1812,7 +2220,7 @@ class MySQLReceiptDatabase:
 
     def atlas_create_interaction(self, data: Dict) -> Optional[int]:
         """Create a new interaction"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return None
 
         self.ensure_connection()
@@ -1878,7 +2286,7 @@ class MySQLReceiptDatabase:
         offset: int = 0
     ) -> Dict[str, Any]:
         """Get interactions with optional filters"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return {"items": [], "total": 0}
 
         self.ensure_connection()
@@ -1921,7 +2329,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_touch_needed(self, limit: int = 20) -> List[Dict]:
         """Get contacts that need to be touched"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -1946,7 +2354,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_contact_timeline(self, contact_id: int, limit: int = 50) -> List[Dict]:
         """Get unified timeline for a contact"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -2003,7 +2411,7 @@ class MySQLReceiptDatabase:
 
     def atlas_link_expense_to_contact(self, contact_id: int, transaction_index: int, link_type: str = 'attendee', notes: str = None) -> bool:
         """Link an expense to a contact"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return False
 
         self.ensure_connection()
@@ -2026,7 +2434,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_relationship_digest(self) -> Dict[str, Any]:
         """Get relationship intelligence digest"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return {}
 
         self.ensure_connection()
@@ -2091,7 +2499,7 @@ class MySQLReceiptDatabase:
 
     def atlas_create_reminder(self, data: Dict) -> Optional[int]:
         """Create a reminder"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return None
 
         self.ensure_connection()
@@ -2126,7 +2534,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_reminders(self, status: str = 'pending', limit: int = 20) -> List[Dict]:
         """Get reminders"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -2147,7 +2555,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_contact_expenses(self, contact_id: int, limit: int = 50) -> List[Dict]:
         """Get all expenses linked to a contact"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -2168,7 +2576,7 @@ class MySQLReceiptDatabase:
 
     def atlas_unlink_expense(self, contact_id: int, transaction_index: int) -> bool:
         """Remove a contact-expense link"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return False
 
         self.ensure_connection()
@@ -2190,7 +2598,7 @@ class MySQLReceiptDatabase:
 
     def atlas_suggest_contacts_for_expense(self, transaction_index: int, limit: int = 5) -> List[Dict]:
         """Suggest contacts based on expense merchant name using fuzzy matching"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -2231,7 +2639,7 @@ class MySQLReceiptDatabase:
 
     def atlas_auto_link_expenses(self, dry_run: bool = True) -> Dict[str, Any]:
         """Auto-link expenses to contacts by matching merchant to company name"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return {'linked': 0, 'errors': 0}
 
         self.ensure_connection()
@@ -2301,7 +2709,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_expense_contacts(self, transaction_index: int) -> List[Dict]:
         """Get all contacts linked to an expense"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -2321,7 +2729,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_spending_by_contact(self, limit: int = 20) -> List[Dict]:
         """Get spending summary by contact"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -2346,7 +2754,7 @@ class MySQLReceiptDatabase:
 
     def atlas_create_contact_from_merchant(self, merchant: str, transaction_index: int = None) -> Optional[int]:
         """Create a new contact from a merchant name and optionally link an expense"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return None
 
         self.ensure_connection()
@@ -2382,7 +2790,7 @@ class MySQLReceiptDatabase:
 
     def atlas_calculate_relationship_strength(self, contact_id: int) -> Dict[str, Any]:
         """Calculate relationship strength based on interactions and touchpoints"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return {}
 
         self.ensure_connection()
@@ -2491,7 +2899,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_relationship_insights(self, contact_id: int) -> Dict[str, Any]:
         """Get AI-ready relationship insights for a contact"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return {}
 
         self.ensure_connection()
@@ -2549,7 +2957,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_contact_recommendations(self, limit: int = 10) -> List[Dict]:
         """Get recommended actions for contacts based on patterns"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -2625,7 +3033,7 @@ class MySQLReceiptDatabase:
 
     def atlas_get_interaction_analysis(self, days: int = 30) -> Dict[str, Any]:
         """Analyze interaction patterns across all contacts"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return {}
 
         self.ensure_connection()
@@ -2720,7 +3128,7 @@ Generate a brief relationship summary and 2-3 actionable recommendations.
 
     def atlas_sync_calendar_event(self, event_data: Dict) -> Optional[int]:
         """Sync a calendar event to the database"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return None
 
         self.ensure_connection()
@@ -2799,7 +3207,7 @@ Generate a brief relationship summary and 2-3 actionable recommendations.
 
     def atlas_get_calendar_events(self, contact_id: int = None, start_date: str = None, end_date: str = None, limit: int = 50) -> List[Dict]:
         """Get calendar events, optionally filtered by contact"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
@@ -2834,7 +3242,7 @@ Generate a brief relationship summary and 2-3 actionable recommendations.
 
     def atlas_log_interaction(self, data: Dict) -> Optional[int]:
         """Log a new interaction and optionally link to contacts"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return None
 
         self.ensure_connection()
@@ -2894,7 +3302,7 @@ Generate a brief relationship summary and 2-3 actionable recommendations.
 
     def atlas_get_upcoming_events_with_contacts(self, days: int = 7) -> List[Dict]:
         """Get upcoming calendar events with matched contacts"""
-        if not self.use_mysql or not self.conn:
+        if not self.use_mysql or not self._pool:
             return []
 
         self.ensure_connection()
