@@ -9368,6 +9368,357 @@ def export_reconciliation_csv():
         abort(500, str(e))
 
 
+@app.route("/api/vision-verify", methods=["POST"])
+def api_vision_verify_batch():
+    """
+    Vision verify a batch of transactions and return results.
+    Runs on server side where DB connection is stable.
+
+    POST body: {"indices": [1, 2, 3, ...]} or {"all": true}
+    Returns: {"results": [...], "summary": {...}}
+    """
+    if not USE_DATABASE or not db:
+        abort(503, "Requires database mode")
+
+    try:
+        import base64
+        import requests as http_requests
+        import json
+        import re
+
+        data = request.json or {}
+        indices = data.get('indices', [])
+        verify_all = data.get('all', False)
+        limit = data.get('limit', 600)
+        offset = data.get('offset', 0)
+
+        conn, db_type = get_db_connection()
+
+        # Fetch transactions
+        if verify_all:
+            cursor = db_execute(conn, db_type, '''
+                SELECT _index, chase_date, chase_amount, chase_description,
+                       receipt_file, receipt_url, r2_url, review_status
+                FROM transactions
+                WHERE business_type = 'Down Home'
+                AND chase_date >= '2024-07-01'
+                AND chase_date <= '2025-12-01'
+                ORDER BY chase_date DESC
+                LIMIT ? OFFSET ?
+            ''', (limit, offset))
+        else:
+            placeholders = ','.join(['?' for _ in indices])
+            cursor = db_execute(conn, db_type, f'''
+                SELECT _index, chase_date, chase_amount, chase_description,
+                       receipt_file, receipt_url, r2_url, review_status
+                FROM transactions
+                WHERE _index IN ({placeholders})
+            ''', tuple(indices))
+
+        transactions = [dict(r) for r in cursor.fetchall()]
+        return_db_connection(conn)
+
+        gemini_key = os.environ.get('GEMINI_API_KEY')
+        if not gemini_key:
+            return jsonify({"error": "No Gemini API key configured"}), 500
+
+        results = []
+        verified = 0
+        mismatch = 0
+        unclear = 0
+        no_receipt = 0
+
+        for tx in transactions:
+            idx = tx['_index']
+            date = str(tx['chase_date'])
+            amount = float(tx['chase_amount'] or 0)
+            merchant = tx['chase_description'] or ''
+
+            # Get receipt URL
+            receipt_url = tx.get('r2_url') or tx.get('receipt_url') or ''
+            if not receipt_url and tx.get('receipt_file'):
+                rf = tx['receipt_file']
+                if ',' in rf:
+                    rf = rf.split(',')[0].strip()
+                if rf and not rf.startswith('http'):
+                    receipt_url = f"https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/{rf}"
+                elif rf:
+                    receipt_url = rf
+
+            if not receipt_url:
+                results.append({
+                    'index': idx, 'date': date, 'amount': amount, 'merchant': merchant,
+                    'receipt_url': '', 'verdict': 'NO_RECEIPT', 'confidence': 0,
+                    'receipt_total': '', 'receipt_merchant': '', 'reasoning': 'No receipt attached'
+                })
+                no_receipt += 1
+                continue
+
+            # Fetch and verify with Gemini
+            try:
+                img_resp = http_requests.get(receipt_url, timeout=30)
+                if img_resp.status_code != 200:
+                    results.append({
+                        'index': idx, 'date': date, 'amount': amount, 'merchant': merchant,
+                        'receipt_url': receipt_url, 'verdict': 'UNCLEAR', 'confidence': 0,
+                        'receipt_total': '', 'receipt_merchant': '', 'reasoning': f'Could not fetch image: {img_resp.status_code}'
+                    })
+                    unclear += 1
+                    continue
+
+                image_data = base64.b64encode(img_resp.content).decode('utf-8')
+                content_type = img_resp.headers.get('content-type', 'image/jpeg')
+                mime_type = 'image/png' if 'png' in content_type.lower() else 'image/jpeg'
+
+                prompt = f"""Analyze this receipt image and compare it to the bank transaction:
+
+Bank Transaction:
+- Amount: ${abs(amount):.2f}
+- Date: {date}
+- Merchant: {merchant}
+
+Extract from the receipt:
+1. Total amount (look for "Total", "Amount Due", "Grand Total", etc.)
+2. Date on receipt
+3. Merchant/vendor name
+
+Then determine if this receipt MATCHES the bank transaction:
+- Amount must be within $1.00 OR within 20% for tips/gratuity
+- Merchant name should reasonably match (variations OK)
+- Date within 7 days is acceptable
+
+Respond in this exact JSON format:
+{{"receipt_total": "XX.XX", "receipt_date": "YYYY-MM-DD or null", "receipt_merchant": "name", "verdict": "VERIFIED" or "MISMATCH" or "UNCLEAR", "confidence": 0-100, "reasoning": "brief explanation"}}"""
+
+                api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+                payload = {
+                    "contents": [{"parts": [
+                        {"text": prompt},
+                        {"inline_data": {"mime_type": mime_type, "data": image_data}}
+                    ]}],
+                    "generationConfig": {"temperature": 0.1}
+                }
+
+                api_resp = http_requests.post(api_url, json=payload, timeout=60)
+                if api_resp.status_code != 200:
+                    results.append({
+                        'index': idx, 'date': date, 'amount': amount, 'merchant': merchant,
+                        'receipt_url': receipt_url, 'verdict': 'UNCLEAR', 'confidence': 0,
+                        'receipt_total': '', 'receipt_merchant': '', 'reasoning': f'API error: {api_resp.status_code}'
+                    })
+                    unclear += 1
+                    continue
+
+                result = api_resp.json()
+                text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+
+                # Parse JSON
+                json_match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
+                if json_match:
+                    parsed = json.loads(json_match.group())
+                    verdict = parsed.get('verdict', 'UNCLEAR')
+                    confidence = parsed.get('confidence', 0)
+                    reasoning = parsed.get('reasoning', '')
+                    receipt_total = parsed.get('receipt_total', '')
+                    receipt_merchant = parsed.get('receipt_merchant', '')
+
+                    results.append({
+                        'index': idx, 'date': date, 'amount': amount, 'merchant': merchant,
+                        'receipt_url': receipt_url, 'verdict': verdict, 'confidence': confidence,
+                        'receipt_total': receipt_total, 'receipt_merchant': receipt_merchant,
+                        'reasoning': reasoning
+                    })
+
+                    if verdict == 'VERIFIED':
+                        verified += 1
+                    elif verdict == 'MISMATCH':
+                        mismatch += 1
+                    else:
+                        unclear += 1
+                else:
+                    results.append({
+                        'index': idx, 'date': date, 'amount': amount, 'merchant': merchant,
+                        'receipt_url': receipt_url, 'verdict': 'UNCLEAR', 'confidence': 0,
+                        'receipt_total': '', 'receipt_merchant': '', 'reasoning': 'Could not parse response'
+                    })
+                    unclear += 1
+
+            except Exception as e:
+                results.append({
+                    'index': idx, 'date': date, 'amount': amount, 'merchant': merchant,
+                    'receipt_url': receipt_url, 'verdict': 'UNCLEAR', 'confidence': 0,
+                    'receipt_total': '', 'receipt_merchant': '', 'reasoning': str(e)
+                })
+                unclear += 1
+
+        return jsonify({
+            "results": results,
+            "summary": {
+                "total": len(transactions),
+                "verified": verified,
+                "mismatch": mismatch,
+                "unclear": unclear,
+                "no_receipt": no_receipt
+            }
+        })
+
+    except Exception as e:
+        print(f"❌ Vision verify error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        abort(500, str(e))
+
+
+@app.route("/export/vision-verify.csv", methods=["GET"])
+def export_vision_verify_csv():
+    """
+    Run vision verification on all Down Home transactions and export as CSV.
+    This runs server-side where DB connection is stable.
+
+    Query params:
+    - limit: Max transactions to process (default: 600)
+    - offset: Starting offset (default: 0)
+    """
+    if not USE_DATABASE or not db:
+        abort(503, "Requires database mode")
+
+    try:
+        import base64
+        import requests as http_requests
+        import json
+        import re
+        import io
+        import csv
+
+        limit = int(request.args.get('limit', 600))
+        offset = int(request.args.get('offset', 0))
+
+        conn, db_type = get_db_connection()
+
+        cursor = db_execute(conn, db_type, '''
+            SELECT _index, chase_date, chase_amount, chase_description,
+                   receipt_file, receipt_url, r2_url, review_status
+            FROM transactions
+            WHERE business_type = 'Down Home'
+            AND chase_date >= '2024-07-01'
+            AND chase_date <= '2025-12-01'
+            ORDER BY chase_date DESC
+            LIMIT ? OFFSET ?
+        ''', (limit, offset))
+
+        transactions = [dict(r) for r in cursor.fetchall()]
+        return_db_connection(conn)
+
+        gemini_key = os.environ.get('GEMINI_API_KEY')
+        if not gemini_key:
+            abort(500, "No Gemini API key configured")
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            'Index', 'Date', 'Amount', 'Merchant', 'Receipt_URL',
+            'Verdict', 'Confidence', 'Receipt_Total', 'Receipt_Merchant', 'Reasoning'
+        ])
+
+        for tx in transactions:
+            idx = tx['_index']
+            date = str(tx['chase_date'])
+            amount = float(tx['chase_amount'] or 0)
+            merchant = tx['chase_description'] or ''
+
+            # Get receipt URL
+            receipt_url = tx.get('r2_url') or tx.get('receipt_url') or ''
+            if not receipt_url and tx.get('receipt_file'):
+                rf = tx['receipt_file']
+                if ',' in rf:
+                    rf = rf.split(',')[0].strip()
+                if rf and not rf.startswith('http'):
+                    receipt_url = f"https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/{rf}"
+                elif rf:
+                    receipt_url = rf
+
+            if not receipt_url:
+                writer.writerow([idx, date, f"${amount:.2f}", merchant, '', 'NO_RECEIPT', '', '', '', 'No receipt attached'])
+                continue
+
+            # Fetch and verify with Gemini
+            try:
+                img_resp = http_requests.get(receipt_url, timeout=30)
+                if img_resp.status_code != 200:
+                    writer.writerow([idx, date, f"${amount:.2f}", merchant, receipt_url, 'UNCLEAR', '', '', '', f'Could not fetch: {img_resp.status_code}'])
+                    continue
+
+                image_data = base64.b64encode(img_resp.content).decode('utf-8')
+                content_type = img_resp.headers.get('content-type', 'image/jpeg')
+                mime_type = 'image/png' if 'png' in content_type.lower() else 'image/jpeg'
+
+                prompt = f"""Analyze this receipt image and compare it to the bank transaction:
+
+Bank Transaction:
+- Amount: ${abs(amount):.2f}
+- Date: {date}
+- Merchant: {merchant}
+
+Extract from the receipt:
+1. Total amount (look for "Total", "Amount Due", "Grand Total", etc.)
+2. Date on receipt
+3. Merchant/vendor name
+
+Then determine if this receipt MATCHES the bank transaction:
+- Amount must be within $1.00 OR within 20% for tips/gratuity
+- Merchant name should reasonably match (variations OK)
+- Date within 7 days is acceptable
+
+Respond in this exact JSON format:
+{{"receipt_total": "XX.XX", "receipt_date": "YYYY-MM-DD or null", "receipt_merchant": "name", "verdict": "VERIFIED" or "MISMATCH" or "UNCLEAR", "confidence": 0-100, "reasoning": "brief explanation"}}"""
+
+                api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+                payload = {
+                    "contents": [{"parts": [
+                        {"text": prompt},
+                        {"inline_data": {"mime_type": mime_type, "data": image_data}}
+                    ]}],
+                    "generationConfig": {"temperature": 0.1}
+                }
+
+                api_resp = http_requests.post(api_url, json=payload, timeout=60)
+                if api_resp.status_code != 200:
+                    writer.writerow([idx, date, f"${amount:.2f}", merchant, receipt_url, 'UNCLEAR', '', '', '', f'API error: {api_resp.status_code}'])
+                    continue
+
+                result = api_resp.json()
+                text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+
+                json_match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
+                if json_match:
+                    parsed = json.loads(json_match.group())
+                    writer.writerow([
+                        idx, date, f"${amount:.2f}", merchant, receipt_url,
+                        parsed.get('verdict', 'UNCLEAR'),
+                        f"{parsed.get('confidence', 0)}%",
+                        parsed.get('receipt_total', ''),
+                        parsed.get('receipt_merchant', ''),
+                        parsed.get('reasoning', '')[:200]
+                    ])
+                else:
+                    writer.writerow([idx, date, f"${amount:.2f}", merchant, receipt_url, 'UNCLEAR', '', '', '', 'Could not parse'])
+
+            except Exception as e:
+                writer.writerow([idx, date, f"${amount:.2f}", merchant, receipt_url, 'UNCLEAR', '', '', '', str(e)[:100]])
+
+        csv_content = output.getvalue()
+        response = make_response(csv_content)
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = 'attachment; filename=vision_verification_results.csv'
+        return response
+
+    except Exception as e:
+        print(f"❌ Vision verify CSV error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        abort(500, str(e))
+
+
 @app.route("/reports/<report_id>/export/downhome", methods=["GET"])
 def reports_export_downhome(report_id):
     """
