@@ -4335,12 +4335,32 @@ def atlas_contacts():
         # Use contacts table as the single source of truth
         try:
             if search:
+                # Normalize phone search (remove non-digits for phone matching)
+                search_term = f'%{search}%'
+                phone_search = ''.join(c for c in search if c.isdigit())
+                phone_search_term = f'%{phone_search}%' if len(phone_search) >= 3 else ''
+
+                # Enhanced search: name, first_name, last_name, email, phone, company, notes, location
                 cursor.execute("""
                     SELECT * FROM contacts
-                    WHERE name LIKE %s OR email LIKE %s OR company LIKE %s
-                    ORDER BY name
+                    WHERE name LIKE %s
+                       OR first_name LIKE %s
+                       OR last_name LIKE %s
+                       OR email LIKE %s
+                       OR company LIKE %s
+                       OR notes LIKE %s
+                       OR job_title LIKE %s
+                       OR (REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') LIKE %s AND %s != '')
+                    ORDER BY
+                        CASE WHEN name LIKE %s THEN 0
+                             WHEN first_name LIKE %s OR last_name LIKE %s THEN 1
+                             WHEN email LIKE %s THEN 2
+                             ELSE 3 END,
+                        name
                     LIMIT %s OFFSET %s
-                """, (f'%{search}%', f'%{search}%', f'%{search}%', limit, offset))
+                """, (search_term, search_term, search_term, search_term, search_term,
+                      search_term, search_term, phone_search_term, phone_search_term,
+                      search_term, search_term, search_term, search_term, limit, offset))
             else:
                 cursor.execute("""
                     SELECT * FROM contacts
@@ -4352,10 +4372,21 @@ def atlas_contacts():
 
             # Get total count
             if search:
+                search_term = f'%{search}%'
+                phone_search = ''.join(c for c in search if c.isdigit())
+                phone_search_term = f'%{phone_search}%' if len(phone_search) >= 3 else ''
                 cursor.execute("""
                     SELECT COUNT(*) as total FROM contacts
-                    WHERE name LIKE %s OR email LIKE %s OR company LIKE %s
-                """, (f'%{search}%', f'%{search}%', f'%{search}%'))
+                    WHERE name LIKE %s
+                       OR first_name LIKE %s
+                       OR last_name LIKE %s
+                       OR email LIKE %s
+                       OR company LIKE %s
+                       OR notes LIKE %s
+                       OR job_title LIKE %s
+                       OR (REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') LIKE %s AND %s != '')
+                """, (search_term, search_term, search_term, search_term, search_term,
+                      search_term, search_term, phone_search_term, phone_search_term))
             else:
                 cursor.execute("SELECT COUNT(*) as total FROM contacts")
 
@@ -4378,6 +4409,10 @@ def atlas_contacts():
                     "photo_url": c.get('photo_url', ''),
                     "source": c.get('source', 'manual'),
                     "relationship_score": c.get('relationship_score', 0),
+                    "location": c.get('location', ''),
+                    "city": c.get('city', ''),
+                    "state": c.get('state', ''),
+                    "country": c.get('country', ''),
                     "last_interaction": str(c.get('last_touch_date', '')) if c.get('last_touch_date') else None,
                     "interaction_count": c.get('total_interactions', 0),
                     "birthday": str(c.get('birthday', '')) if c.get('birthday') else None,
@@ -4459,23 +4494,41 @@ def atlas_contact_detail(contact_id):
         cursor.close()
         return_db_connection(conn)
 
+        # Build name from available fields
+        name = contact.get('name') or contact.get('display_name') or ''
+        if not name and (contact.get('first_name') or contact.get('last_name')):
+            name = f"{contact.get('first_name', '')} {contact.get('last_name', '')}".strip()
+
         return jsonify({
             "ok": True,
             "contact": {
                 "id": contact.get('id'),
-                "name": contact.get('display_name', ''),
+                "name": name,
+                "display_name": name,  # Alias for UI compatibility
+                "first_name": contact.get('first_name', ''),
+                "last_name": contact.get('last_name', ''),
                 "email": contact.get('email', ''),
                 "phone": contact.get('phone', ''),
                 "company": contact.get('company', ''),
                 "job_title": contact.get('job_title', ''),
+                "title": contact.get('job_title', ''),  # Alias for UI compatibility
                 "photo_url": contact.get('photo_url', ''),
                 "source": contact.get('source', 'manual'),
+                "category": contact.get('category', 'General'),
+                "priority": contact.get('priority', 'Normal'),
+                "location": contact.get('location', ''),
+                "city": contact.get('city', ''),
+                "state": contact.get('state', ''),
+                "country": contact.get('country', ''),
                 "last_interaction": str(contact.get('last_interaction', '')) if contact.get('last_interaction') else None,
                 "interaction_count": contact.get('interaction_count', 0),
+                "relationship_score": contact.get('relationship_score', 0),
                 "tags": contact.get('tags', '').split(',') if contact.get('tags') else [],
                 "notes": contact.get('notes', ''),
                 "linkedin_url": contact.get('linkedin_url', ''),
                 "twitter_handle": contact.get('twitter_handle', ''),
+                "birthday": str(contact.get('birthday', '')) if contact.get('birthday') else None,
+                "anniversary": str(contact.get('anniversary', '')) if contact.get('anniversary') else None,
                 "created_at": str(contact.get('created_at', '')) if contact.get('created_at') else None,
                 "updated_at": str(contact.get('updated_at', '')) if contact.get('updated_at') else None
             },
@@ -4484,6 +4537,100 @@ def atlas_contact_detail(contact_id):
 
     except Exception as e:
         print(f"ATLAS contact detail error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/<contact_id>/communications", methods=["GET"])
+def atlas_contact_communications(contact_id):
+    """Get recent emails and texts for a contact"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        limit = request.args.get('limit', 20, type=int)
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get contact info
+        cursor.execute("SELECT email, phone, name FROM contacts WHERE id = %s", (contact_id,))
+        contact = cursor.fetchone()
+        if not contact:
+            cursor.close()
+            return_db_connection(conn)
+            return jsonify({'error': 'Contact not found'}), 404
+
+        email = contact.get('email', '').lower()
+        phone = contact.get('phone', '')
+        # Normalize phone for matching
+        phone_digits = ''.join(c for c in phone if c.isdigit())[-10:] if phone else ''
+
+        emails = []
+        texts = []
+
+        # Get recent emails from gmail_cache if email exists
+        if email:
+            try:
+                cursor.execute("""
+                    SELECT id, subject, from_email, gmail_account, received_date, snippet
+                    FROM gmail_cache
+                    WHERE LOWER(from_email) LIKE %s OR LOWER(to_email) LIKE %s
+                    ORDER BY received_date DESC
+                    LIMIT %s
+                """, (f'%{email}%', f'%{email}%', limit))
+                for row in cursor.fetchall():
+                    emails.append({
+                        'id': row.get('id'),
+                        'subject': row.get('subject', ''),
+                        'from': row.get('from_email', ''),
+                        'account': row.get('gmail_account', ''),
+                        'date': str(row.get('received_date', '')) if row.get('received_date') else None,
+                        'snippet': row.get('snippet', '')[:100] if row.get('snippet') else ''
+                    })
+            except Exception as e:
+                print(f"Email lookup error: {e}")
+
+        # Get recent texts from imessage_cache if phone exists
+        if phone_digits:
+            try:
+                cursor.execute("""
+                    SELECT id, handle_id, text, is_from_me, message_date, service
+                    FROM imessage_cache
+                    WHERE REPLACE(REPLACE(REPLACE(handle_id, '-', ''), ' ', ''), '+1', '') LIKE %s
+                    ORDER BY message_date DESC
+                    LIMIT %s
+                """, (f'%{phone_digits}%', limit))
+                for row in cursor.fetchall():
+                    texts.append({
+                        'id': row.get('id'),
+                        'text': row.get('text', '')[:200] if row.get('text') else '',
+                        'from_me': bool(row.get('is_from_me')),
+                        'date': str(row.get('message_date', '')) if row.get('message_date') else None,
+                        'service': row.get('service', 'iMessage')
+                    })
+            except Exception as e:
+                print(f"iMessage lookup error: {e}")
+
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'contact_id': contact_id,
+            'contact_name': contact.get('name', ''),
+            'emails': emails,
+            'texts': texts,
+            'email_count': len(emails),
+            'text_count': len(texts)
+        })
+
+    except Exception as e:
+        print(f"Communications lookup error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -4521,7 +4668,16 @@ def atlas_contact_update(contact_id):
             'email': 'email',
             'phone': 'phone',
             'category': 'category',
-            'notes': 'notes'
+            'priority': 'priority',
+            'notes': 'notes',
+            'location': 'location',
+            'city': 'city',
+            'state': 'state',
+            'country': 'country',
+            'linkedin_url': 'linkedin_url',
+            'twitter_handle': 'twitter_handle',
+            'birthday': 'birthday',
+            'anniversary': 'anniversary'
         }
 
         for json_key, db_column in field_mapping.items():
@@ -6585,6 +6741,10 @@ def atlas_contacts_migrate():
             ("strategic_notes", "TEXT"),
             ("connected_on", "VARCHAR(100)"),
             ("name_tokens", "TEXT"),
+            ("location", "VARCHAR(255)"),
+            ("city", "VARCHAR(100)"),
+            ("state", "VARCHAR(50)"),
+            ("country", "VARCHAR(100)"),
             ("created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
             ("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
         ]
@@ -8442,11 +8602,19 @@ def detach_receipt():
         try:
             conn, db_type = get_db_connection()
 
-            # Get transaction by id (which is same as _index)
+            # Get transaction by _index (the frontend sends _index, not id)
+            # First try _index, then fall back to id for backwards compatibility
             cursor = db_execute(conn, db_type,
-                'SELECT id, receipt_file, receipt_url, chase_description, chase_amount, chase_date FROM transactions WHERE id = ?',
+                'SELECT id, _index, receipt_file, receipt_url, chase_description, chase_amount, chase_date FROM transactions WHERE _index = ?',
                 (idx,))
             row = cursor.fetchone()
+
+            # Fallback to id if _index not found (backwards compat)
+            if not row:
+                cursor = db_execute(conn, db_type,
+                    'SELECT id, _index, receipt_file, receipt_url, chase_description, chase_amount, chase_date FROM transactions WHERE id = ?',
+                    (idx,))
+                row = cursor.fetchone()
 
             if not row:
                 return_db_connection(conn)
@@ -8500,13 +8668,14 @@ def detach_receipt():
                 ''', (transaction_id, str(transaction_date), str(transaction_desc), str(transaction_amount),
                       filename or receipt_url or 'unknown', 'user_manually_removed'))
 
-            # Clear receipt from transaction
+            # Clear receipt from transaction - use _index which is what the frontend sends
+            actual_index = row_dict.get('_index', idx)
             db_execute(conn, db_type, '''
                 UPDATE transactions
                 SET receipt_file = '', receipt_url = '', review_status = '', r2_url = '',
                     ai_confidence = NULL, ai_receipt_merchant = '', ai_receipt_total = '', ai_receipt_date = ''
-                WHERE id = ?
-            ''', (idx,))
+                WHERE _index = ?
+            ''', (actual_index,))
 
             conn.commit()
             return_db_connection(conn)
@@ -10130,6 +10299,7 @@ GMAIL_ACCOUNTS = {
     'brian@downhome.com': {'token_file': 'tokens_brian_downhome_com.json', 'name': 'Down Home'},
     'kaplan.brian@gmail.com': {'token_file': 'tokens_kaplan_brian_gmail_com.json', 'name': 'Personal Gmail'},
     'brian@musiccityrodeo.com': {'token_file': 'tokens_brian_musiccityrodeo_com.json', 'name': 'Music City Rodeo'},
+    'brian@kaplan.com': {'token_file': 'tokens_brian_kaplan_com.json', 'name': 'Kaplan'},
 }
 
 GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
@@ -10197,22 +10367,31 @@ def get_gmail_credentials_with_autorefresh(account_email: str):
 
     # Create credentials object
     try:
-        # Get OAuth client info for token refresh
-        oauth_creds = get_oauth_credentials()
-        if not oauth_creds:
-            return None, "OAuth credentials not configured"
+        # Use client info from token itself first (preferred), fallback to OAuth credentials file
+        client_id = token_data.get('client_id')
+        client_secret = token_data.get('client_secret')
+        token_uri = token_data.get('token_uri', 'https://oauth2.googleapis.com/token')
+        scopes = token_data.get('scopes', GMAIL_SCOPES)
 
-        client_info = oauth_creds.get('web') or oauth_creds.get('installed')
-        if not client_info:
-            return None, "Invalid OAuth credentials format"
+        # If token doesn't have client info, try OAuth credentials file
+        if not client_id or not client_secret:
+            oauth_creds = get_oauth_credentials()
+            if not oauth_creds:
+                return None, "OAuth credentials not configured and token missing client info"
+            client_info = oauth_creds.get('web') or oauth_creds.get('installed')
+            if not client_info:
+                return None, "Invalid OAuth credentials format"
+            client_id = client_info.get('client_id')
+            client_secret = client_info.get('client_secret')
+            token_uri = client_info.get('token_uri', token_uri)
 
         creds = Credentials(
             token=token_data.get('token'),
             refresh_token=token_data.get('refresh_token'),
-            token_uri=client_info.get('token_uri', 'https://oauth2.googleapis.com/token'),
-            client_id=client_info.get('client_id'),
-            client_secret=client_info.get('client_secret'),
-            scopes=GMAIL_SCOPES
+            token_uri=token_uri,
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=scopes
         )
 
         # Auto-refresh if expired
@@ -12323,6 +12502,21 @@ def accept_incoming_receipt():
         # Handle date objects (from database)
         if hasattr(trans_date, 'strftime'):
             trans_date = trans_date.strftime('%Y-%m-%d')
+        # Handle RFC 2822 email date format (e.g., 'Sun, 26 Oct 2025 10:35:00 +0000')
+        if trans_date and isinstance(trans_date, str) and ',' in trans_date:
+            try:
+                from email.utils import parsedate_to_datetime
+                parsed_dt = parsedate_to_datetime(trans_date)
+                trans_date = parsed_dt.strftime('%Y-%m-%d')
+            except Exception:
+                # Fallback: try to extract date parts manually
+                import re
+                match = re.search(r'(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})', trans_date)
+                if match:
+                    day, month_str, year = match.groups()
+                    month_map = {'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                                 'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'}
+                    trans_date = f"{year}-{month_map.get(month_str, '01')}-{day.zfill(2)}"
         business_type = data.get('business_type', 'Personal')
 
         # Validate we have minimum required data
@@ -15377,9 +15571,15 @@ def api_contact_hub_ai_summary(contact_id):
 # ============================================================================
 
 @app.route("/api/contact-hub/calendar/sync", methods=["POST"])
-@login_required
 def api_contact_hub_calendar_sync():
     """Sync calendar events to ATLAS"""
+    # Auth check - allow admin_key or login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
     if not USE_DATABASE or not db:
         return jsonify({"error": "Database not available"}), 500
 
@@ -15589,31 +15789,35 @@ def api_atlas_sync_email_interactions():
 
         interactions_created = 0
         emails_scanned = 0
+        accounts_checked = []
+        accounts_with_errors = []
 
-        # Get Gmail accounts
-        gmail_accounts = [
-            os.getenv('GMAIL_ACCOUNT_1', 'brian@musiccityrodeo.com'),
-            os.getenv('GMAIL_ACCOUNT_2', 'brian@downhome.com'),
-            os.getenv('GMAIL_ACCOUNT_3', 'brian@kaplan.com'),
-        ]
+        # Get Gmail accounts from GMAIL_ACCOUNTS dictionary
+        gmail_accounts = list(GMAIL_ACCOUNTS.keys())
 
         for account_email in gmail_accounts:
             try:
-                service = get_gmail_service(account_email)
-                if not service:
+                service, error = get_gmail_service(account_email)
+                if not service or error:
+                    accounts_with_errors.append({'email': account_email, 'error': error or 'No service'})
                     continue
+                accounts_checked.append(account_email)
 
                 # Get recent emails (last 30 days)
                 from datetime import datetime, timedelta
                 after_date = (datetime.utcnow() - timedelta(days=30)).strftime('%Y/%m/%d')
 
-                results = service.users().messages().list(
-                    userId='me',
-                    q=f'after:{after_date}',
-                    maxResults=100
-                ).execute()
-
-                messages = results.get('messages', [])
+                try:
+                    results = service.users().messages().list(
+                        userId='me',
+                        q=f'after:{after_date}',
+                        maxResults=100
+                    ).execute()
+                    messages = results.get('messages', [])
+                    accounts_checked[-1] = f"{account_email} ({len(messages)} msgs)"
+                except Exception as api_err:
+                    accounts_with_errors.append({'email': account_email, 'error': f'API error: {str(api_err)}'})
+                    continue
 
                 for msg in messages:
                     try:
@@ -15702,7 +15906,10 @@ def api_atlas_sync_email_interactions():
             "ok": True,
             "emails_scanned": emails_scanned,
             "interactions_created": interactions_created,
-            "contacts_with_email": len(contacts_with_email)
+            "contacts_with_email": len(contacts_with_email),
+            "accounts_checked": accounts_checked,
+            "accounts_with_errors": accounts_with_errors,
+            "gmail_accounts_configured": gmail_accounts
         })
 
     except Exception as e:
