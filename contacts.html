@@ -2721,8 +2721,23 @@
         <input type="file" id="photoUploadInput" accept="image/*" style="display: none;" onchange="uploadContactPhoto(event)">
         <div class="modal-name" id="modalName">John Doe</div>
         <div class="modal-title" id="modalTitle">CEO at Company</div>
+        <div class="modal-location" id="modalLocation" style="display: none; font-size: 12px; color: var(--text-dim); margin-top: 4px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="vertical-align: middle; margin-right: 4px;">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span id="modalLocationText"></span>
+        </div>
       </div>
       <div class="modal-body">
+        <!-- Contact Info Section -->
+        <div class="modal-section" id="contactInfoSection">
+          <div class="modal-section-title">Contact Info</div>
+          <div id="contactInfoList" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
         <!-- Relationship Nudge (shown when needed) -->
         <div class="relationship-nudge" id="relationshipNudge" style="display: none;">
           <div class="nudge-icon">
@@ -2812,6 +2827,13 @@
               </svg>
               Other
             </button>
+          </div>
+        </div>
+
+        <div class="modal-section" id="communicationsSection" style="display: none;">
+          <div class="modal-section-title">Recent Communications</div>
+          <div id="communicationsList" style="max-height: 200px; overflow-y: auto;">
+            <div style="text-align: center; color: var(--text-dim); padding: 12px;">Loading...</div>
           </div>
         </div>
 
@@ -3001,6 +3023,9 @@
   </nav>
 
   <script>
+    // Constants
+    const ADMIN_KEY = 'tallyups-admin-2024';
+
     // State
     let contacts = [];
     let currentFilter = 'all';
@@ -3618,8 +3643,9 @@
                 ${contact.display_name || contact.name || 'Unknown'}
                 ${contact.is_vip ? '<span class="vip-badge">VIP</span>' : ''}
               </div>
-              ${contact.title ? `<div class="contact-title">${contact.title}</div>` : ''}
-              ${contact.company ? `<div class="contact-company">${contact.company}</div>` : ''}
+              ${(contact.title || contact.job_title || contact.company) ? `<div class="contact-title">${[contact.title || contact.job_title, contact.company].filter(Boolean).join(' at ')}</div>` : ''}
+              ${contact.phone ? `<div class="contact-phone" style="font-size: 12px; color: var(--text-dim); margin-top: 2px;">${contact.phone}</div>` : ''}
+              ${contact.email ? `<div class="contact-email" style="font-size: 12px; color: var(--text-dim); margin-top: 1px;">${contact.email}</div>` : ''}
             </div>
           </div>
           <div class="intelligence-row">
@@ -3899,11 +3925,98 @@
       }
       document.getElementById('modalName').textContent = currentContact.display_name || currentContact.name || 'Unknown';
       document.getElementById('modalTitle').textContent =
-        [currentContact.title, currentContact.company].filter(Boolean).join(' at ') || 'No title';
+        [currentContact.title || currentContact.job_title, currentContact.company].filter(Boolean).join(' at ') || 'No title';
+
+      // Show location if available
+      const locationParts = [currentContact.city, currentContact.state, currentContact.country].filter(Boolean);
+      const locationStr = currentContact.location || locationParts.join(', ');
+      const modalLocation = document.getElementById('modalLocation');
+      if (locationStr) {
+        document.getElementById('modalLocationText').textContent = locationStr;
+        modalLocation.style.display = 'block';
+      } else {
+        modalLocation.style.display = 'none';
+      }
+
+      // Populate Contact Info section
+      const contactInfoList = document.getElementById('contactInfoList');
+      let infoHtml = '';
+
+      if (currentContact.phone) {
+        infoHtml += `
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-card); border-radius: 8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="18" height="18">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+            </svg>
+            <div style="flex: 1;">
+              <div style="font-size: 13px; color: var(--text);">${currentContact.phone}</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Phone</div>
+            </div>
+            <a href="tel:${currentContact.phone}" style="color: var(--success); padding: 6px;" onclick="event.stopPropagation();">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+              </svg>
+            </a>
+          </div>
+        `;
+      }
+
+      if (currentContact.email) {
+        infoHtml += `
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-card); border-radius: 8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" width="18" height="18">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            <div style="flex: 1;">
+              <div style="font-size: 13px; color: var(--text);">${currentContact.email}</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Email</div>
+            </div>
+            <a href="mailto:${currentContact.email}" style="color: var(--purple); padding: 6px;" onclick="event.stopPropagation();">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </a>
+          </div>
+        `;
+      }
+
+      if (currentContact.notes) {
+        infoHtml += `
+          <div style="padding: 10px; background: var(--bg-card); border-radius: 8px;">
+            <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 4px;">Notes</div>
+            <div style="font-size: 13px; color: var(--text);">${currentContact.notes}</div>
+          </div>
+        `;
+      }
+
+      if (currentContact.category && currentContact.category !== 'General') {
+        infoHtml += `
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-card); border-radius: 8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" width="18" height="18">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+              <line x1="7" y1="7" x2="7.01" y2="7"/>
+            </svg>
+            <div style="flex: 1;">
+              <div style="font-size: 13px; color: var(--text);">${currentContact.category}</div>
+              <div style="font-size: 11px; color: var(--text-dim);">Category</div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (!infoHtml) {
+        infoHtml = '<div style="text-align: center; color: var(--text-dim); padding: 12px; font-size: 13px;">No contact info available</div>';
+      }
+      contactInfoList.innerHTML = infoHtml;
 
       document.getElementById('modalScore').textContent = currentContact.relationship_score || '--';
       document.getElementById('modalInteractions').textContent = currentContact.interaction_count || 0;
       document.getElementById('modalDays').textContent = currentContact.days_known || calculateDaysKnown(currentContact.created_at);
+
+      // Fetch recent communications (emails and texts)
+      loadContactCommunications(contactId);
 
       // Render timeline
       const timeline = document.getElementById('modalTimeline');
@@ -3932,6 +4045,67 @@
       if (event && event.target !== document.getElementById('contactModal')) return;
       document.getElementById('contactModal').classList.remove('visible');
       currentContact = null;
+    }
+
+    // Load recent communications (emails and texts) for a contact
+    async function loadContactCommunications(contactId) {
+      const section = document.getElementById('communicationsSection');
+      const list = document.getElementById('communicationsList');
+
+      try {
+        const response = await fetch(`/api/atlas/contacts/${contactId}/communications?admin_key=${ADMIN_KEY}`);
+        const data = await response.json();
+
+        if (!data.ok || (data.email_count === 0 && data.text_count === 0)) {
+          section.style.display = 'none';
+          return;
+        }
+
+        section.style.display = 'block';
+
+        let html = '';
+
+        // Show emails
+        if (data.emails && data.emails.length > 0) {
+          html += '<div style="font-size: 11px; color: var(--purple); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Emails</div>';
+          data.emails.slice(0, 5).forEach(email => {
+            const date = email.date ? new Date(email.date).toLocaleDateString() : '';
+            html += `
+              <div style="padding: 8px; background: var(--bg-card); border-radius: 8px; margin-bottom: 6px;">
+                <div style="font-size: 13px; font-weight: 500; color: var(--text);">${escapeHtml(email.subject || 'No subject')}</div>
+                <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">${date} - ${email.direction || ''}</div>
+              </div>
+            `;
+          });
+        }
+
+        // Show texts
+        if (data.texts && data.texts.length > 0) {
+          if (html) html += '<div style="margin-top: 12px;"></div>';
+          html += '<div style="font-size: 11px; color: var(--success); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">iMessages</div>';
+          data.texts.slice(0, 5).forEach(text => {
+            const date = text.date ? new Date(text.date).toLocaleDateString() : '';
+            const preview = (text.text || '').substring(0, 80) + ((text.text || '').length > 80 ? '...' : '');
+            html += `
+              <div style="padding: 8px; background: var(--bg-card); border-radius: 8px; margin-bottom: 6px;">
+                <div style="font-size: 13px; color: var(--text);">${escapeHtml(preview)}</div>
+                <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">${date}</div>
+              </div>
+            `;
+          });
+        }
+
+        list.innerHTML = html || '<div style="text-align: center; color: var(--text-dim); padding: 12px;">No recent communications</div>';
+      } catch (e) {
+        console.log('Error loading communications:', e);
+        section.style.display = 'none';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     // Photo upload functions
@@ -5595,3 +5769,4 @@
   </script>
 </body>
 </html>
+<!-- DEPLOY_CHECK_1764606874 -->
