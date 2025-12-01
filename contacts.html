@@ -2590,12 +2590,12 @@
               <circle class="health-ring-progress" id="healthRingProgress" cx="36" cy="36" r="30"
                 stroke="#22c55e" stroke-dasharray="188.5" stroke-dashoffset="47"/>
             </svg>
-            <div class="health-score-text" id="healthScoreText">75</div>
+            <div class="health-score-text" id="healthScoreText">--</div>
           </div>
           <div class="health-details">
-            <div class="health-status excellent" id="healthStatus">Excellent</div>
-            <div class="health-message" id="healthMessage">Strong relationship with regular contact</div>
-            <div class="health-last-contact" id="healthLastContact">Last contact: 3 days ago</div>
+            <div class="health-status" id="healthStatus">Loading...</div>
+            <div class="health-message" id="healthMessage">Fetching relationship data...</div>
+            <div class="health-last-contact" id="healthLastContact"></div>
           </div>
         </div>
 
@@ -4853,8 +4853,14 @@
         if (response.ok) {
           const data = await response.json();
           if (data.health) {
-            currentContact.relationship_score = data.health.score;
+            // Map API fields to frontend - API returns overall_score, frontend expects relationship_score
+            currentContact.relationship_score = data.health.overall_score || 0;
             currentContact.last_interaction = data.health.last_interaction;
+            // Store additional health metrics
+            currentContact.health_trend = data.health.trend;
+            currentContact.recency_score = data.health.recency_score;
+            currentContact.frequency_score = data.health.frequency_score;
+            currentContact.insights = data.health.insights;
             updateRelationshipHealth(currentContact);
           }
         }

@@ -4599,49 +4599,49 @@ def atlas_contacts_find_incomplete():
 
         # Phone only - has phone but no email and no company
         cursor.execute("""
-            SELECT id, display_name as name, first_name, last_name, company, job_title as title,
+            SELECT id, name, first_name, last_name, company, title,
                    email, phone, category, notes
-            FROM contacts
+            FROM atlas_contacts
             WHERE phone IS NOT NULL AND phone != ''
               AND (email IS NULL OR email = '')
               AND (company IS NULL OR company = '')
-            ORDER BY display_name
+            ORDER BY name
             LIMIT 200
         """)
         results['phone_only'] = cursor.fetchall() if db_type == 'mysql' else [dict(row) for row in cursor.fetchall()]
 
         # Name only - has name but no phone and no email
         cursor.execute("""
-            SELECT id, display_name as name, first_name, last_name, company, job_title as title,
+            SELECT id, name, first_name, last_name, company, title,
                    email, phone, category, notes
-            FROM contacts
+            FROM atlas_contacts
             WHERE (phone IS NULL OR phone = '')
               AND (email IS NULL OR email = '')
-              AND display_name IS NOT NULL AND display_name != ''
-            ORDER BY display_name
+              AND name IS NOT NULL AND name != ''
+            ORDER BY name
             LIMIT 200
         """)
         results['name_only'] = cursor.fetchall() if db_type == 'mysql' else [dict(row) for row in cursor.fetchall()]
 
         # No contact info - no phone and no email
         cursor.execute("""
-            SELECT id, display_name as name, first_name, last_name, company, job_title as title,
+            SELECT id, name, first_name, last_name, company, title,
                    email, phone, category, notes
-            FROM contacts
+            FROM atlas_contacts
             WHERE (phone IS NULL OR phone = '')
               AND (email IS NULL OR email = '')
-            ORDER BY display_name
+            ORDER BY name
             LIMIT 200
         """)
         results['no_contact_info'] = cursor.fetchall() if db_type == 'mysql' else [dict(row) for row in cursor.fetchall()]
 
         # Uncategorized - category is NULL or 'General'
         cursor.execute("""
-            SELECT id, display_name as name, first_name, last_name, company, job_title as title,
+            SELECT id, name, first_name, last_name, company, title,
                    email, phone, category, notes
-            FROM contacts
+            FROM atlas_contacts
             WHERE category IS NULL OR category = '' OR category = 'General'
-            ORDER BY display_name
+            ORDER BY name
             LIMIT 200
         """)
         results['uncategorized'] = cursor.fetchall() if db_type == 'mysql' else [dict(row) for row in cursor.fetchall()]
@@ -6559,7 +6559,7 @@ def atlas_ai_smart_filters():
         return jsonify({
             'ok': True,
             'filters': filters,
-            'generated_at': datetime.datetime.now().isoformat()
+            'generated_at': datetime.now().isoformat()
         })
 
     except Exception as e:
