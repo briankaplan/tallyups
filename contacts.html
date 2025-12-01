@@ -3275,8 +3275,21 @@
         return;
       }
 
+      console.log('=== renderContacts CALLED ===');
+      console.log('Total contacts loaded:', contacts.length);
+      console.log('currentCategoryFilter:', currentCategoryFilter);
+      console.log('currentFilter (VIP/recent/etc):', currentFilter);
+
       let filtered = filterContacts(contacts);
-      console.log(`renderContacts: ${contacts.length} total, ${filtered.length} after filter, categoryFilter=${currentCategoryFilter}`);
+      console.log(`After filterContacts: ${filtered.length} contacts`);
+
+      // Extra debug: show first 3 filtered contacts
+      if (filtered.length > 0 && currentCategoryFilter) {
+        console.log('First 3 filtered contacts:');
+        filtered.slice(0, 3).forEach(c => {
+          console.log(`  - ${c.name}: detected category = ${detectContactCategory(c)}, stored category = ${c.category}`);
+        });
+      }
 
       if (filtered.length === 0) {
         list.innerHTML = `
@@ -3585,19 +3598,36 @@
 
     // Set category filter
     function setCategoryFilter(categoryId) {
-      console.log('setCategoryFilter called with:', categoryId);
+      console.log('=== setCategoryFilter CALLED ===');
+      console.log('categoryId:', categoryId);
+      console.log('currentCategoryFilter before:', currentCategoryFilter);
+
       currentCategoryFilter = categoryId;
+
+      console.log('currentCategoryFilter after:', currentCategoryFilter);
+
+      // Update visual state
       document.querySelectorAll('.category-chip').forEach(el => el.classList.remove('active'));
       const activeChip = document.querySelector(`.category-chip[data-category="${categoryId || 'all'}"]`);
-      if (activeChip) activeChip.classList.add('active');
+      if (activeChip) {
+        activeChip.classList.add('active');
+        console.log('Active chip found and highlighted');
+      } else {
+        console.log('WARNING: Active chip not found for:', categoryId || 'all');
+      }
 
       // Debug: count how many contacts match this filter
       if (categoryId) {
         const matchCount = contacts.filter(c => detectContactCategory(c) === categoryId).length;
-        console.log(`Category ${categoryId}: ${matchCount} contacts match`);
+        console.log(`Category ${categoryId}: ${matchCount} contacts should match`);
+      } else {
+        console.log('Showing ALL contacts (no filter)');
       }
 
+      // Force re-render
+      console.log('Calling renderContacts...');
       renderContacts();
+      console.log('renderContacts completed');
     }
 
     // Filter
