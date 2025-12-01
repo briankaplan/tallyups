@@ -3276,6 +3276,7 @@
       }
 
       let filtered = filterContacts(contacts);
+      console.log(`renderContacts: ${contacts.length} total, ${filtered.length} after filter, categoryFilter=${currentCategoryFilter}`);
 
       if (filtered.length === 0) {
         list.innerHTML = `
@@ -3490,16 +3491,23 @@
       if (contact.category) {
         const storedCat = contact.category.toLowerCase().trim();
         for (const cat of INDUSTRY_CATEGORIES) {
-          // Match by name (case-insensitive)
-          if (cat.name.toLowerCase() === storedCat) {
+          const catNameLower = cat.name.toLowerCase();
+          const catIdLower = cat.id.toLowerCase();
+
+          // Match by exact name (case-insensitive)
+          if (catNameLower === storedCat) {
             return cat.id;
           }
-          // Match by id (case-insensitive)
-          if (cat.id.toLowerCase() === storedCat) {
+          // Match by exact id (case-insensitive)
+          if (catIdLower === storedCat) {
+            return cat.id;
+          }
+          // Match by id without dashes (e.g., "musicindustry" matches "music-industry")
+          if (catIdLower.replace(/-/g, '') === storedCat.replace(/[\s-]/g, '')) {
             return cat.id;
           }
           // Partial match for flexibility (e.g., "Music" matches "Music Industry")
-          if (cat.name.toLowerCase().includes(storedCat) || storedCat.includes(cat.name.toLowerCase())) {
+          if (catNameLower.includes(storedCat) || storedCat.includes(catNameLower)) {
             return cat.id;
           }
         }
@@ -3516,7 +3524,7 @@
 
       for (const cat of INDUSTRY_CATEGORIES) {
         if (cat.id === 'general') continue;
-        for (const keyword of cat.keywords) {
+        for (const keyword of cat.keywords || []) {
           if (searchText.includes(keyword.toLowerCase())) {
             return cat.id;
           }
@@ -3577,10 +3585,18 @@
 
     // Set category filter
     function setCategoryFilter(categoryId) {
+      console.log('setCategoryFilter called with:', categoryId);
       currentCategoryFilter = categoryId;
       document.querySelectorAll('.category-chip').forEach(el => el.classList.remove('active'));
       const activeChip = document.querySelector(`.category-chip[data-category="${categoryId || 'all'}"]`);
       if (activeChip) activeChip.classList.add('active');
+
+      // Debug: count how many contacts match this filter
+      if (categoryId) {
+        const matchCount = contacts.filter(c => detectContactCategory(c) === categoryId).length;
+        console.log(`Category ${categoryId}: ${matchCount} contacts match`);
+      }
+
       renderContacts();
     }
 
