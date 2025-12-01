@@ -1677,7 +1677,15 @@ def dashboard_stats():
     """
     Get dashboard statistics for the home page.
     Returns total receipts, pending count, month total, and match rate.
+    Requires authentication via session or admin_key.
     """
+    # Check authentication - session OR admin_key
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
     try:
         conn, db_type = get_db_connection()
     except Exception as e:
@@ -2116,7 +2124,7 @@ def mobile_upload():
     """
     # Auth check: admin_key OR login
     admin_key = request.form.get('admin_key') or request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required. Include admin_key in form data.'}), 401
@@ -2248,7 +2256,7 @@ def get_transactions():
     """
     # Auth check: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -2881,7 +2889,7 @@ def api_ai_categorize():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -2943,7 +2951,7 @@ def api_ai_note_gemini():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -2999,7 +3007,7 @@ def api_ai_auto_process():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3068,7 +3076,7 @@ def api_ai_batch_categorize():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3149,7 +3157,7 @@ def api_ai_apple_split_analyze():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3211,7 +3219,7 @@ def api_ai_apple_split_execute():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3256,7 +3264,7 @@ def api_ai_apple_split_candidates():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3288,7 +3296,7 @@ def api_ai_apple_split_all():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3333,7 +3341,7 @@ def api_contacts_search():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3369,7 +3377,7 @@ def api_contacts_stats():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3398,7 +3406,7 @@ def api_contacts_attendees():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3444,7 +3452,7 @@ def api_contacts_get(contact_id):
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3476,7 +3484,7 @@ def api_contacts_by_category(category):
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -3509,7 +3517,7 @@ def api_contacts_high_priority():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
@@ -4089,7 +4097,7 @@ def atlas_contacts():
     """Get all contacts from database with unified format for UI"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4283,7 +4291,7 @@ def atlas_contact_detail(contact_id):
     """Get detailed contact information"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4351,7 +4359,7 @@ def atlas_contact_update(contact_id):
     """Update a contact"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4421,7 +4429,7 @@ def atlas_contact_delete(contact_id):
     """Delete a contact"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4459,7 +4467,7 @@ def atlas_contact_upload_photo(contact_id):
     """Upload a photo for a contact and store in R2"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4547,7 +4555,7 @@ def atlas_contact_delete_photo(contact_id):
     """Delete a contact's photo"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4576,12 +4584,326 @@ def atlas_contact_delete_photo(contact_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route("/api/atlas/contacts/enrich", methods=["POST"])
+def atlas_contacts_enrich():
+    """
+    Free contact enrichment using:
+    1. Gravatar - profile photos from MD5 email hash
+    2. Email signature parsing - extract job titles and phone numbers from Gmail
+    """
+    import hashlib
+    import requests as req
+    import re
+
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json() or {}
+        contact_ids = data.get('contact_ids', [])  # Optional: specific contacts to enrich
+        enrich_gravatar = data.get('gravatar', True)
+        enrich_signatures = data.get('signatures', True)
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get contacts to enrich
+        if contact_ids:
+            placeholders = ', '.join(['%s'] * len(contact_ids))
+            cursor.execute(f"SELECT id, email, name, job_title, phone, photo_url FROM atlas_contacts WHERE id IN ({placeholders})", contact_ids)
+        else:
+            # Get contacts missing photo or job title
+            cursor.execute("""
+                SELECT id, email, name, job_title, phone, photo_url
+                FROM atlas_contacts
+                WHERE email IS NOT NULL AND email != ''
+                AND (photo_url IS NULL OR photo_url = '' OR job_title IS NULL OR job_title = '')
+                LIMIT 100
+            """)
+
+        contacts = cursor.fetchall()
+        enriched_count = 0
+        gravatar_found = 0
+        signatures_parsed = 0
+        results = []
+
+        for contact in contacts:
+            contact_id, email, name, job_title, phone, photo_url = contact
+            updates = {}
+            enrichment_info = {'contact_id': contact_id, 'email': email}
+
+            if not email:
+                continue
+
+            # 1. Gravatar enrichment - get profile photo
+            if enrich_gravatar and not photo_url:
+                try:
+                    email_lower = email.lower().strip()
+                    email_hash = hashlib.md5(email_lower.encode('utf-8')).hexdigest()
+                    # Check if gravatar exists (d=404 returns 404 if no image)
+                    gravatar_url = f"https://www.gravatar.com/avatar/{email_hash}?d=404&s=200"
+
+                    resp = req.head(gravatar_url, timeout=5)
+                    if resp.status_code == 200:
+                        # Gravatar exists! Use the URL without the 404 fallback
+                        final_gravatar_url = f"https://www.gravatar.com/avatar/{email_hash}?s=200"
+                        updates['photo_url'] = final_gravatar_url
+                        enrichment_info['gravatar'] = final_gravatar_url
+                        gravatar_found += 1
+                except Exception as e:
+                    print(f"Gravatar check failed for {email}: {e}")
+
+            # 2. Email signature parsing - extract job title and phone from Gmail
+            if enrich_signatures and (not job_title or not phone):
+                try:
+                    # Look for recent emails from this contact in email_messages table
+                    cursor.execute("""
+                        SELECT body_text, body_html
+                        FROM email_messages
+                        WHERE from_email = %s
+                        ORDER BY date DESC
+                        LIMIT 5
+                    """, (email,))
+
+                    emails = cursor.fetchall()
+                    for email_row in emails:
+                        body_text, body_html = email_row
+                        body = body_text or body_html or ''
+
+                        if not body:
+                            continue
+
+                        # Parse signature for job title
+                        if not job_title and not updates.get('job_title'):
+                            # Common job title patterns in signatures
+                            title_patterns = [
+                                r'(?:^|\n)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*\|\s*([A-Z][a-zA-Z\s&]+(?:Manager|Director|VP|President|CEO|CTO|CFO|COO|Founder|Partner|Engineer|Developer|Designer|Analyst|Consultant|Specialist|Coordinator|Lead|Head|Chief|Officer|Executive|Owner))',
+                                r'(?:Title|Position|Role):\s*([A-Za-z\s&,]+(?:Manager|Director|VP|President|CEO|CTO|CFO|COO|Founder|Partner|Engineer|Developer|Designer|Analyst|Consultant|Specialist|Coordinator|Lead|Head|Chief|Officer|Executive|Owner))',
+                                r'\n([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*,\s+(?:Manager|Director|VP|President|CEO|CTO|CFO|COO|Founder|Partner|Engineer|Developer|Designer|Analyst|Consultant|Specialist|Coordinator|Lead|Head|Chief|Officer|Executive|Owner)[A-Za-z\s&,]*)',
+                            ]
+
+                            for pattern in title_patterns:
+                                match = re.search(pattern, body, re.MULTILINE | re.IGNORECASE)
+                                if match:
+                                    extracted_title = match.group(1) if len(match.groups()) >= 1 else match.group(0)
+                                    extracted_title = extracted_title.strip()[:100]  # Limit length
+                                    if len(extracted_title) > 3 and len(extracted_title) < 80:
+                                        updates['job_title'] = extracted_title
+                                        enrichment_info['job_title'] = extracted_title
+                                        signatures_parsed += 1
+                                        break
+
+                        # Parse signature for phone number
+                        if not phone and not updates.get('phone'):
+                            # Phone patterns
+                            phone_patterns = [
+                                r'(?:Phone|Tel|Mobile|Cell|Office|Direct|P|M|T|C|O)[\s:.-]*(\+?1?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})',
+                                r'(?:^|\s)(\+?1?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})(?:\s|$)',
+                            ]
+
+                            for pattern in phone_patterns:
+                                match = re.search(pattern, body, re.IGNORECASE)
+                                if match:
+                                    extracted_phone = match.group(1).strip()
+                                    # Clean up phone
+                                    extracted_phone = re.sub(r'[^\d+()-.\s]', '', extracted_phone)
+                                    if len(extracted_phone) >= 10:
+                                        updates['phone'] = extracted_phone[:20]
+                                        enrichment_info['phone'] = extracted_phone[:20]
+                                        break
+
+                        if updates.get('job_title') and updates.get('phone'):
+                            break  # Found both, stop searching
+
+                except Exception as e:
+                    print(f"Signature parsing failed for {email}: {e}")
+
+            # Apply updates to database
+            if updates:
+                set_clauses = []
+                values = []
+                for key, val in updates.items():
+                    set_clauses.append(f"{key} = %s")
+                    values.append(val)
+                set_clauses.append("updated_at = NOW()")
+                values.append(contact_id)
+
+                sql = f"UPDATE atlas_contacts SET {', '.join(set_clauses)} WHERE id = %s"
+                cursor.execute(sql, values)
+                enriched_count += 1
+                enrichment_info['updated'] = True
+
+            results.append(enrichment_info)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "message": f"Enriched {enriched_count} contacts",
+            "stats": {
+                "contacts_processed": len(contacts),
+                "contacts_enriched": enriched_count,
+                "gravatar_photos_found": gravatar_found,
+                "signatures_parsed": signatures_parsed
+            },
+            "results": results
+        })
+
+    except Exception as e:
+        print(f"ATLAS contact enrichment error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/<contact_id>/enrich", methods=["POST"])
+def atlas_contact_enrich_single(contact_id):
+    """Enrich a single contact with Gravatar and signature parsing"""
+    import hashlib
+    import requests as req
+    import re
+
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get contact
+        cursor.execute("SELECT id, email, name, job_title, phone, photo_url FROM atlas_contacts WHERE id = %s", (contact_id,))
+        contact = cursor.fetchone()
+
+        if not contact:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Contact not found'}), 404
+
+        contact_id, email, name, job_title, phone, photo_url = contact
+        updates = {}
+        enrichment_info = {'contact_id': contact_id, 'email': email}
+
+        if not email:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Contact has no email address'}), 400
+
+        # 1. Gravatar enrichment
+        try:
+            email_lower = email.lower().strip()
+            email_hash = hashlib.md5(email_lower.encode('utf-8')).hexdigest()
+            gravatar_url = f"https://www.gravatar.com/avatar/{email_hash}?d=404&s=200"
+
+            resp = req.head(gravatar_url, timeout=5)
+            if resp.status_code == 200:
+                final_gravatar_url = f"https://www.gravatar.com/avatar/{email_hash}?s=200"
+                updates['photo_url'] = final_gravatar_url
+                enrichment_info['gravatar'] = final_gravatar_url
+        except Exception as e:
+            enrichment_info['gravatar_error'] = str(e)
+
+        # 2. Email signature parsing
+        try:
+            cursor.execute("""
+                SELECT body_text, body_html
+                FROM email_messages
+                WHERE from_email = %s
+                ORDER BY date DESC
+                LIMIT 5
+            """, (email,))
+
+            emails = cursor.fetchall()
+            for email_row in emails:
+                body_text, body_html = email_row
+                body = body_text or body_html or ''
+
+                if not body:
+                    continue
+
+                # Parse for job title
+                if not job_title and not updates.get('job_title'):
+                    title_patterns = [
+                        r'(?:Title|Position|Role):\s*([A-Za-z\s&,]+(?:Manager|Director|VP|President|CEO|CTO|CFO|COO|Founder|Partner|Engineer|Developer|Designer|Analyst|Consultant|Specialist|Coordinator|Lead|Head|Chief|Officer|Executive|Owner))',
+                    ]
+
+                    for pattern in title_patterns:
+                        match = re.search(pattern, body, re.MULTILINE | re.IGNORECASE)
+                        if match:
+                            extracted_title = match.group(1).strip()[:100]
+                            if 3 < len(extracted_title) < 80:
+                                updates['job_title'] = extracted_title
+                                enrichment_info['job_title'] = extracted_title
+                                break
+
+                # Parse for phone
+                if not phone and not updates.get('phone'):
+                    phone_patterns = [
+                        r'(?:Phone|Tel|Mobile|Cell|Office|Direct|P|M|T|C|O)[\s:.-]*(\+?1?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})',
+                        r'(?:^|\s)(\+?1?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})(?:\s|$)',
+                    ]
+
+                    for pattern in phone_patterns:
+                        match = re.search(pattern, body, re.IGNORECASE)
+                        if match:
+                            extracted_phone = re.sub(r'[^\d+()-.\s]', '', match.group(1).strip())
+                            if len(extracted_phone) >= 10:
+                                updates['phone'] = extracted_phone[:20]
+                                enrichment_info['phone'] = extracted_phone[:20]
+                                break
+
+                if updates.get('job_title') and updates.get('phone'):
+                    break
+
+        except Exception as e:
+            enrichment_info['signature_error'] = str(e)
+
+        # Apply updates
+        if updates:
+            set_clauses = []
+            values = []
+            for key, val in updates.items():
+                set_clauses.append(f"{key} = %s")
+                values.append(val)
+            set_clauses.append("updated_at = NOW()")
+            values.append(contact_id)
+
+            sql = f"UPDATE atlas_contacts SET {', '.join(set_clauses)} WHERE id = %s"
+            cursor.execute(sql, values)
+            conn.commit()
+            enrichment_info['updated'] = True
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "ok": True,
+            "message": "Contact enriched" if updates else "No new data found",
+            "enrichment": enrichment_info
+        })
+
+    except Exception as e:
+        print(f"ATLAS single contact enrichment error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/api/atlas/contacts/find-incomplete", methods=["POST"])
 def atlas_contacts_find_incomplete():
     """Find incomplete contacts for cleanup"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4672,7 +4994,7 @@ def atlas_contacts_bulk_delete():
     """Bulk delete contacts by ID list"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4721,7 +5043,7 @@ def atlas_contacts_bulk_update():
     """Bulk update contacts - apply category or other fields to multiple contacts at once"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4796,7 +5118,7 @@ def atlas_contacts_upcoming_events():
     """Get contacts with upcoming birthdays and anniversaries"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4930,7 +5252,7 @@ def atlas_contacts_upcoming_events():
 def atlas_sync_status():
     """Get sync status for all contacts"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -4994,7 +5316,7 @@ def atlas_sync_status():
 def atlas_sync_pending():
     """Get contacts pending sync"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -5035,7 +5357,7 @@ def atlas_sync_pending():
 def atlas_sync_mark_modified():
     """Mark a contact as modified (pending sync)"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -5072,7 +5394,7 @@ def atlas_sync_mark_modified():
 def atlas_sync_google_push():
     """Push local changes to Google Contacts"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -5205,7 +5527,7 @@ def atlas_sync_google_push():
 def atlas_sync_google_pull():
     """Pull contacts from Google and merge with local database"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -5343,7 +5665,7 @@ def atlas_sync_google_pull():
 def atlas_sync_resolve_conflict():
     """Resolve a sync conflict"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -5391,7 +5713,7 @@ def atlas_contact_create():
     """Create a new contact"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -5459,7 +5781,7 @@ def atlas_sync_adapters():
     """Get contact sync engine status and available adapters"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -5518,7 +5840,7 @@ def atlas_sync_apple():
     """Sync Apple Contacts to ATLAS"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -5580,7 +5902,7 @@ def atlas_sync_google():
     """Sync Google Contacts to ATLAS using Google People API"""
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -5884,7 +6206,7 @@ def atlas_sync_crm():
 
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -6033,7 +6355,7 @@ def atlas_contacts_migrate():
     """Migrate contacts table schema - add missing columns to existing table"""
     # Check admin_key
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         return jsonify({'error': 'Admin key required'}), 401
 
@@ -6171,7 +6493,7 @@ def atlas_contacts_upload():
     """Bulk upload contacts from JSON - used by Apple Contacts sync"""
     # Check admin_key
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         return jsonify({'error': 'Admin key required'}), 401
 
@@ -6315,7 +6637,7 @@ def atlas_sync_linkedin():
 def atlas_ai_analyze_contacts():
     """Use AI to analyze and categorize contacts"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -6470,7 +6792,7 @@ def _update_contact_ai_analysis(contact_id, analysis):
 def atlas_ai_smart_filters():
     """Get AI-generated smart filter suggestions based on contact patterns"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -6648,7 +6970,7 @@ def atlas_ai_smart_filters():
 def atlas_ai_search():
     """AI-powered natural language contact search"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -6849,7 +7171,7 @@ def _basic_contact_search(query):
 def atlas_ai_organize():
     """AI-powered contact organization - batch categorization and cleanup"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -8913,7 +9235,20 @@ def reports_download_receipts_zip(report_id):
 @app.route("/reports/<report_id>/receipts/<filename>", methods=["GET"])
 def reports_download_receipt(report_id, filename):
     """Download a specific receipt from a report"""
-    receipt_path = Path(RECEIPT_DIR) / filename
+    # Security: Prevent path traversal attacks
+    if '..' in filename or filename.startswith('/') or filename.startswith('\\'):
+        abort(400, "Invalid filename")
+
+    # Sanitize filename to only allow safe characters
+    safe_filename = ''.join(c for c in filename if c.isalnum() or c in '._-')
+    if safe_filename != filename:
+        abort(400, "Invalid characters in filename")
+
+    receipt_path = (RECEIPT_DIR / filename).resolve()
+
+    # Verify the resolved path is still within RECEIPT_DIR
+    if not str(receipt_path).startswith(str(RECEIPT_DIR.resolve())):
+        abort(403, "Access denied")
 
     if not receipt_path.exists():
         abort(404, f"Receipt not found: {filename}")
@@ -9598,7 +9933,7 @@ def gmail_refresh_all():
     """
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -9823,7 +10158,7 @@ def gmail_authorize(account_email):
 
     # Auth check: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return redirect(url_for('login', next=request.url))
@@ -11027,12 +11362,11 @@ def get_library_receipts():
     - limit: max results (default 500)
     - offset: pagination offset
     """
-    # Auth: admin_key OR login
+    # Auth: admin_key OR session login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
-    if admin_key != expected_key:
-        if not session.get('authenticated'):
-            return jsonify({'error': 'Authentication required'}), 401
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
         if not USE_DATABASE or not db:
@@ -11258,7 +11592,7 @@ def get_incoming_receipts():
     """
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required', 'ok': False}), 401
@@ -12398,7 +12732,7 @@ def recategorize_transactions():
 
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -12657,7 +12991,7 @@ def fix_incoming_receipt_dates():
 
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -12828,7 +13162,7 @@ def diagnose_incoming_dates():
 
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -12970,7 +13304,7 @@ def refetch_gmail_dates():
 
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -13174,7 +13508,7 @@ def scan_incoming_receipts():
 
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -13427,7 +13761,7 @@ def fix_missing_receipt_urls():
     """
     # Allow admin key or login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -13527,7 +13861,7 @@ def run_auto_match():
     """
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -13576,7 +13910,7 @@ def preview_auto_match():
     """
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -13680,7 +14014,7 @@ def check_duplicate_receipt():
     """
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -13723,7 +14057,7 @@ def auto_match_stats():
     """Get statistics about auto-matching status."""
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
@@ -14984,7 +15318,7 @@ def api_atlas_calculate_relationship_scores():
     """Calculate relationship scores based on interaction data"""
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
@@ -15082,7 +15416,7 @@ def api_atlas_sync_email_interactions():
     """Scan Gmail for emails and populate contact interactions"""
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
