@@ -138,6 +138,135 @@
       50% { box-shadow: 0 0 0 8px rgba(170, 102, 255, 0); }
     }
 
+    /* Multi-Select Mode */
+    .select-mode-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .select-mode-btn:hover {
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+
+    .select-mode-btn.active {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: #fff;
+    }
+
+    .contact-checkbox {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+      margin-right: 12px;
+    }
+
+    .select-mode .contact-checkbox {
+      display: flex;
+    }
+
+    .contact-checkbox.selected {
+      background: var(--purple);
+      border-color: var(--purple);
+    }
+
+    .contact-checkbox.selected::after {
+      content: '';
+      width: 10px;
+      height: 6px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(-45deg);
+      margin-bottom: 2px;
+    }
+
+    /* Bulk Action Bar */
+    .bulk-action-bar {
+      position: fixed;
+      bottom: calc(80px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--bg-elevated);
+      border: 1px solid var(--purple);
+      border-radius: 16px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 8px 32px rgba(170, 102, 255, 0.3);
+      z-index: 1000;
+      transition: transform 0.3s ease;
+      max-width: 90vw;
+    }
+
+    .bulk-action-bar.visible {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .bulk-count {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--purple);
+      white-space: nowrap;
+    }
+
+    .bulk-category-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .bulk-apply-btn {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .bulk-apply-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(170, 102, 255, 0.4);
+    }
+
+    .bulk-clear-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .bulk-clear-btn:hover {
+      border-color: var(--error);
+      color: var(--error);
+    }
+
     /* Search */
     .search-container {
       position: relative;
@@ -2347,6 +2476,9 @@
             <line x1="14" y1="11" x2="14" y2="17"/>
           </svg>
         </button>
+        <button class="select-mode-btn" onclick="toggleSelectMode()" id="selectModeBtn" title="Bulk Select & Categorize">
+          Select
+        </button>
       </div>
     </div>
 
@@ -2542,6 +2674,31 @@
     <div class="loading" id="loadingState">
       <div class="spinner"></div>
     </div>
+  </div>
+
+  <!-- Bulk Action Bar -->
+  <div class="bulk-action-bar" id="bulkActionBar">
+    <span class="bulk-count" id="bulkCount">0 selected</span>
+    <select class="bulk-category-select" id="bulkCategorySelect">
+      <option value="">Select Category...</option>
+      <option value="General">General</option>
+      <option value="Music Industry">Music Industry</option>
+      <option value="TV/Film">TV/Film</option>
+      <option value="Tech Industry">Tech Industry</option>
+      <option value="Friends">Friends</option>
+      <option value="Family">Family</option>
+      <option value="Business">Business</option>
+      <option value="Finance">Finance</option>
+      <option value="Media/Press">Media/Press</option>
+      <option value="Legal">Legal</option>
+      <option value="Healthcare">Healthcare</option>
+      <option value="Real Estate">Real Estate</option>
+      <option value="Hospitality">Hospitality</option>
+      <option value="Government">Government</option>
+      <option value="">-- Clear Category --</option>
+    </select>
+    <button class="bulk-apply-btn" onclick="applyBulkCategory()">Apply</button>
+    <button class="bulk-clear-btn" onclick="clearSelection()">Clear</button>
   </div>
 
   <!-- Alphabet Index Sidebar -->
@@ -2852,6 +3009,109 @@
     let hasMoreContacts = true;
     let currentOffset = 0;
     const BATCH_SIZE = 10000; // Load ALL contacts at once - no pagination
+
+    // Multi-Select State
+    let isSelectMode = false;
+    let selectedContacts = new Set();
+
+    // Toggle Select Mode
+    function toggleSelectMode() {
+      isSelectMode = !isSelectMode;
+      const btn = document.getElementById('selectModeBtn');
+      const list = document.getElementById('contactList');
+
+      if (isSelectMode) {
+        btn.classList.add('active');
+        btn.textContent = 'Done';
+        list.classList.add('select-mode');
+      } else {
+        btn.classList.remove('active');
+        btn.textContent = 'Select';
+        list.classList.remove('select-mode');
+        clearSelection();
+      }
+      renderContacts();
+    }
+
+    // Toggle contact selection
+    function toggleContactSelection(contactId, event) {
+      event.stopPropagation();
+      if (selectedContacts.has(contactId)) {
+        selectedContacts.delete(contactId);
+      } else {
+        selectedContacts.add(contactId);
+      }
+      updateBulkActionBar();
+      // Update checkbox visually
+      const checkbox = document.querySelector(`[data-contact-id="${contactId}"] .contact-checkbox`);
+      if (checkbox) {
+        checkbox.classList.toggle('selected', selectedContacts.has(contactId));
+      }
+    }
+
+    // Update bulk action bar visibility and count
+    function updateBulkActionBar() {
+      const bar = document.getElementById('bulkActionBar');
+      const count = document.getElementById('bulkCount');
+      if (selectedContacts.size > 0) {
+        bar.classList.add('visible');
+        count.textContent = `${selectedContacts.size} selected`;
+      } else {
+        bar.classList.remove('visible');
+      }
+    }
+
+    // Clear all selections
+    function clearSelection() {
+      selectedContacts.clear();
+      document.querySelectorAll('.contact-checkbox.selected').forEach(cb => {
+        cb.classList.remove('selected');
+      });
+      updateBulkActionBar();
+    }
+
+    // Apply bulk category update
+    async function applyBulkCategory() {
+      const category = document.getElementById('bulkCategorySelect').value;
+      if (selectedContacts.size === 0) {
+        showToast('No contacts selected', 'warning');
+        return;
+      }
+
+      const contactIds = Array.from(selectedContacts);
+
+      try {
+        const response = await fetch('/api/atlas/contacts/bulk-update?admin_key=tallyups-admin-2024', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contact_ids: contactIds,
+            updates: { category: category || null }
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          showToast(`Updated ${result.updated || contactIds.length} contacts`, 'success');
+
+          // Update local contacts array
+          contactIds.forEach(id => {
+            const contact = contacts.find(c => c.id === id);
+            if (contact) contact.category = category || null;
+          });
+
+          clearSelection();
+          toggleSelectMode();
+          renderContacts();
+          renderCategoryChips();
+        } else {
+          showToast('Failed to update contacts', 'error');
+        }
+      } catch (e) {
+        console.error('Bulk update error:', e);
+        showToast('Error updating contacts', 'error');
+      }
+    }
     let totalContactCount = 0;
     let availableLetters = new Set();
     let currentActiveLetter = '';
@@ -3343,7 +3603,12 @@
       if (contact.category === 'business') tags.push('<span class="intel-tag connected">Business</span>');
 
       return `
-        <div class="contact-card" onclick="openContact(${contact.id})">
+        <div class="contact-card" data-contact-id="${contact.id}" onclick="${isSelectMode ? `toggleContactSelection(${contact.id}, event)` : `openContact(${contact.id})`}">
+          <div class="contact-checkbox ${selectedContacts.has(contact.id) ? 'selected' : ''}" onclick="event.stopPropagation(); toggleContactSelection(${contact.id}, event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
           <div class="contact-header">
             <div class="contact-avatar">
               ${contact.photo_url ? `<img src="${contact.photo_url}" alt="">` : initials}

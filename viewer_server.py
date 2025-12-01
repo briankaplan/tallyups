@@ -4716,6 +4716,81 @@ def atlas_contacts_bulk_delete():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route("/api/atlas/contacts/bulk-update", methods=["POST"])
+def atlas_contacts_bulk_update():
+    """Bulk update contacts - apply category or other fields to multiple contacts at once"""
+    # Check admin_key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        contact_ids = data.get('contact_ids', [])
+        updates = data.get('updates', {})
+
+        if not contact_ids:
+            return jsonify({'error': 'No contact IDs provided'}), 400
+
+        if not updates:
+            return jsonify({'error': 'No updates provided'}), 400
+
+        if len(contact_ids) > 500:
+            return jsonify({'error': 'Maximum 500 contacts can be updated at once'}), 400
+
+        # Allowed fields that can be bulk updated
+        allowed_fields = ['category', 'is_vip', 'needs_attention', 'tags']
+
+        # Filter to only allowed fields
+        safe_updates = {k: v for k, v in updates.items() if k in allowed_fields}
+
+        if not safe_updates:
+            return jsonify({'error': 'No valid update fields provided. Allowed: ' + ', '.join(allowed_fields)}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Build SET clause
+        set_parts = []
+        values = []
+        for field, value in safe_updates.items():
+            set_parts.append(f"{field} = %s")
+            values.append(value)
+
+        # Add contact IDs to values
+        values.extend(contact_ids)
+
+        # Build placeholders for IN clause
+        placeholders = ','.join(['%s'] * len(contact_ids))
+
+        # Update contacts
+        query = f"UPDATE atlas_contacts SET {', '.join(set_parts)} WHERE id IN ({placeholders})"
+        cursor.execute(query, tuple(values))
+        updated_count = cursor.rowcount
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'message': f'Successfully updated {updated_count} contacts',
+            'updated_count': updated_count,
+            'updates_applied': safe_updates
+        })
+
+    except Exception as e:
+        print(f"ATLAS bulk update contacts error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/api/atlas/contacts/upcoming-events", methods=["GET"])
 def atlas_contacts_upcoming_events():
     """Get contacts with upcoming birthdays and anniversaries"""
