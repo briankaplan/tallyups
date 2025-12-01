@@ -89,18 +89,31 @@ except Exception as e:
 # === DATABASE HELPER FUNCTIONS (MySQL-only) ===
 def get_db_connection():
     """
-    Get a MySQL database connection.
+    Get a MySQL database connection from the pool.
 
     Returns: (conn, db_type) tuple where:
     - conn: MySQL connection object with DictCursor
     - db_type: always 'mysql'
 
-    IMPORTANT: Caller must close the connection when done!
+    IMPORTANT: Caller must return connection using return_db_connection(conn) when done!
+    Do NOT call return_db_connection(conn) directly - this will leak pool connections.
     """
     if not db:
         raise RuntimeError("MySQL database not available")
 
     return db.get_connection(), 'mysql'
+
+
+def return_db_connection(conn, discard: bool = False):
+    """
+    Return a database connection to the pool.
+
+    Args:
+        conn: The connection to return
+        discard: If True, discard the connection instead of reusing it
+    """
+    if db:
+        db.return_connection(conn, discard=discard)
 
 
 def db_execute(conn, db_type, sql, params=None):
@@ -1157,7 +1170,7 @@ def save_receipt_meta():
             ))
 
         conn.commit()
-        conn.close()
+        return_db_connection(conn)
         print(f"📑 Saved receipt metadata for {len(receipt_meta_cache)} files to MySQL")
     except Exception as e:
         print(f"⚠️ Could not save receipt metadata: {e}")
@@ -1925,7 +1938,7 @@ def dashboard_stats():
         })
     finally:
         try:
-            conn.close()
+            return_db_connection(conn)
         except:
             pass
 
@@ -2386,7 +2399,7 @@ def mobile_upload():
 
                 receipt_id = cursor.lastrowid
                 conn.commit()
-                conn.close()
+                return_db_connection(conn)
 
                 print(f"📱 Mobile receipt uploaded: {merchant} ${amount_float:.2f} -> {filename}")
 
@@ -2458,7 +2471,7 @@ def get_transactions():
                     print(f"ℹ️  rejected_receipts table not found, skipping: {e}", flush=True)
 
                 cursor.close()
-                conn.close()  # Close the NEW connection we got
+                return_db_connection(conn)  # Close the NEW connection we got
 
                 db_type = "MySQL"
             else:
@@ -2481,7 +2494,7 @@ def get_transactions():
                 cursor.execute('SELECT receipt_path FROM rejected_receipts')
                 rejected_paths = {r[0] for r in cursor.fetchall()}
 
-                conn.close()
+                return_db_connection(conn)
 
                 db_type = "SQLite"
 
@@ -3344,7 +3357,7 @@ def api_ai_apple_split_analyze():
                 "SELECT receipt_file FROM transactions WHERE id = ?",
                 (transaction_id,))
             row = cursor.fetchone()
-            conn.close()
+            return_db_connection(conn)
             if row and row.get('receipt_file'):
                 receipt_path = row['receipt_file']
             else:
@@ -4339,7 +4352,7 @@ def atlas_contacts():
                     })
 
                 cursor.close()
-                conn.close()
+                return_db_connection(conn)
 
                 return jsonify({
                     "ok": True,
@@ -4408,7 +4421,7 @@ def atlas_contacts():
                 })
 
             cursor.close()
-            conn.close()
+            return_db_connection(conn)
 
             return jsonify({
                 "ok": True,
@@ -4423,7 +4436,7 @@ def atlas_contacts():
         except Exception as atlas_err:
             print(f"atlas_contacts table query also failed: {atlas_err}")
             cursor.close()
-            conn.close()
+            return_db_connection(conn)
 
             # Final fallback: try Google People API
             if ATLAS_AVAILABLE and GooglePeopleAPI:
@@ -4472,7 +4485,7 @@ def atlas_contact_detail(contact_id):
 
         if not contact:
             cursor.close()
-            conn.close()
+            return_db_connection(conn)
             return jsonify({'error': 'Contact not found'}), 404
 
         # Get interaction history if available
@@ -4489,7 +4502,7 @@ def atlas_contact_detail(contact_id):
             pass  # Table might not exist
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -4563,7 +4576,7 @@ def atlas_contact_update(contact_id):
 
         if not update_fields:
             cursor.close()
-            conn.close()
+            return_db_connection(conn)
             return jsonify({'error': 'No valid fields to update'}), 400
 
         # Add updated_at
@@ -4576,7 +4589,7 @@ def atlas_contact_update(contact_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -4611,7 +4624,7 @@ def atlas_contact_delete(contact_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         if deleted:
             return jsonify({
@@ -4701,7 +4714,7 @@ def atlas_contact_upload_photo(contact_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -4736,7 +4749,7 @@ def atlas_contact_delete_photo(contact_id):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -4908,7 +4921,7 @@ def atlas_contacts_enrich():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -4953,7 +4966,7 @@ def atlas_contact_enrich_single(contact_id):
 
         if not contact:
             cursor.close()
-            conn.close()
+            return_db_connection(conn)
             return jsonify({'error': 'Contact not found'}), 404
 
         contact_id, email, name, job_title, phone, photo_url = contact
@@ -4962,7 +4975,7 @@ def atlas_contact_enrich_single(contact_id):
 
         if not email:
             cursor.close()
-            conn.close()
+            return_db_connection(conn)
             return jsonify({'error': 'Contact has no email address'}), 400
 
         # 1. Gravatar enrichment
@@ -5050,7 +5063,7 @@ def atlas_contact_enrich_single(contact_id):
             enrichment_info['updated'] = True
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -5136,7 +5149,7 @@ def atlas_contacts_find_incomplete():
         results['uncategorized'] = cursor.fetchall() if db_type == 'mysql' else [dict(row) for row in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -5190,7 +5203,7 @@ def atlas_contacts_bulk_delete():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -5264,7 +5277,7 @@ def atlas_contacts_bulk_update():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -5386,7 +5399,7 @@ def atlas_contacts_upcoming_events():
                         print(f"Anniversary parse error for {contact.get('name')}: {e}")
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         # Sort by days_until
         results['birthdays'].sort(key=lambda x: x['days_until'])
@@ -5460,7 +5473,7 @@ def atlas_sync_status():
             row = dict(zip([desc[0] for desc in cursor.description], row)) if row else {}
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -5507,7 +5520,7 @@ def atlas_sync_pending():
             rows = [dict(zip(columns, row)) for row in rows]
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -5548,7 +5561,7 @@ def atlas_sync_mark_modified():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({'ok': True, 'contact_id': contact_id, 'status': 'pending_push'})
 
@@ -5673,7 +5686,7 @@ def atlas_sync_google_push():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -5811,7 +5824,7 @@ def atlas_sync_google_pull():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -5866,7 +5879,7 @@ def atlas_sync_resolve_conflict():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({'ok': True, 'contact_id': contact_id, 'resolution': resolution})
 
@@ -5924,7 +5937,7 @@ def atlas_contact_create():
         new_id = cursor.lastrowid
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -6165,7 +6178,7 @@ def atlas_sync_google():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -6342,7 +6355,7 @@ def _import_contacts_from_json(contacts_data):
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -6497,7 +6510,7 @@ def atlas_sync_crm():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -6637,7 +6650,7 @@ def atlas_contacts_migrate():
         results.append(f"Current columns: {sorted(existing_cols)}")
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -6736,7 +6749,7 @@ def atlas_contacts_upload():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -6840,7 +6853,7 @@ def atlas_ai_analyze_contacts():
 
         contacts = cursor.fetchall()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         if not contacts:
             return jsonify({
@@ -6949,7 +6962,7 @@ def _update_contact_ai_analysis(contact_id, analysis):
         ))
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
     except Exception as e:
         print(f"Error updating contact AI analysis: {e}")
@@ -7118,7 +7131,7 @@ def atlas_ai_smart_filters():
             })
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -7257,7 +7270,7 @@ Return ONLY valid JSON."""
         results = cursor.fetchall()
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         # Format results
         contacts = []
@@ -7308,7 +7321,7 @@ def _basic_contact_search(query):
 
         results = cursor.fetchall()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         contacts = []
         for r in results:
@@ -7423,7 +7436,7 @@ def atlas_ai_organize():
                 results['processed'] += 1
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -8377,7 +8390,7 @@ def upload_receipt_new():
             ))
 
             conn.commit()
-            conn.close()
+            return_db_connection(conn)
 
             # Update in-memory DataFrame
             new_row = {
@@ -8472,7 +8485,7 @@ def detach_receipt():
             row = cursor.fetchone()
 
             if not row:
-                conn.close()
+                return_db_connection(conn)
                 abort(404, f"Transaction {idx} not found")
 
             row_dict = dict(row)
@@ -8484,7 +8497,7 @@ def detach_receipt():
             transaction_date = row_dict.get('chase_date', '')
 
             if not filename and not receipt_url:
-                conn.close()
+                return_db_connection(conn)
                 return jsonify({'ok': False, 'error': 'No receipt attached to this transaction'}), 400
 
             # Track the rejection PERMANENTLY with transaction_id
@@ -8532,7 +8545,7 @@ def detach_receipt():
             ''', (idx,))
 
             conn.commit()
-            conn.close()
+            return_db_connection(conn)
 
             print(f"✅ DETACHED & BLOCKED: Receipt from transaction #{idx} ({transaction_desc})", flush=True)
             print(f"   Receipt: {filename or receipt_url} will NEVER re-attach to this transaction", flush=True)
@@ -8698,7 +8711,7 @@ def add_manual_expense():
                 cursor.execute(sql, values)
                 conn.commit()
                 cursor.close()
-                conn.close()
+                return_db_connection(conn)
             else:
                 # SQLite path
                 placeholders = ", ".join(["?"] * len(columns))
@@ -8854,7 +8867,7 @@ def bulk_import_transactions():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         # Reload DataFrame
         df = db.get_all_transactions()
@@ -11044,7 +11057,7 @@ def init_receipt_sources_table():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_receipt_sources_merchant ON receipt_sources(merchant_normalized)')
 
     conn.commit()
-    conn.close()
+    return_db_connection(conn)
 
     print("✅ Receipt sources tracking table initialized")
 
@@ -11081,7 +11094,7 @@ def record_receipt_source(merchant, source_type, source_detail=None):
     ''', (merchant_norm, source_type, source_detail, datetime.now().isoformat(), datetime.now().isoformat()))
 
     conn.commit()
-    conn.close()
+    return_db_connection(conn)
 
     print(f"   📊 Recorded: {merchant_norm} → {source_type} ({source_detail or 'N/A'})")
 
@@ -11112,7 +11125,7 @@ def get_best_sources_for_merchant(merchant):
     ''', (merchant_norm,))
 
     results = cursor.fetchall()
-    conn.close()
+    return_db_connection(conn)
 
     return [dict(row) for row in results]
 
@@ -11207,7 +11220,7 @@ def smart_search_receipt():
 
                     cursor.execute(query)
                     results = cursor.fetchall()
-                    conn.close()
+                    return_db_connection(conn)
 
                     if results:
                         # Record this success
@@ -11382,7 +11395,7 @@ def search_imessage_receipt():
 
             cursor.execute(query)
             results = cursor.fetchall()
-            conn.close()
+            return_db_connection(conn)
 
             if results:
                 print(f"   📱 Found {len(results)} recent attachments in iMessage", flush=True)
@@ -11463,7 +11476,7 @@ def get_rejected_receipts():
         ''')
 
         rejected = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -11500,7 +11513,7 @@ def delete_rejection(rejection_id):
 
         cursor = db_execute(conn, db_type, 'DELETE FROM rejected_receipts WHERE id = ?', (rejection_id,))
         conn.commit()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -11665,7 +11678,7 @@ def get_library_receipts():
         except Exception as e:
             print(f"Note: Could not fetch incoming_receipts: {e}")
 
-        conn.close()
+        return_db_connection(conn)
 
         # Apply filters
         if source != 'all':
@@ -11804,7 +11817,7 @@ def get_incoming_receipts():
         cursor = db_execute(conn, db_type, 'SELECT status, COUNT(*) as count FROM incoming_receipts GROUP BY status')
         status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
 
-        conn.close()
+        return_db_connection(conn)
 
         # Apply smart merchant extraction from subject lines
         try:
@@ -12160,7 +12173,7 @@ def check_duplicate_transaction():
                     'has_receipt': has_receipt
                 })
 
-        conn.close()
+        return_db_connection(conn)
         return jsonify({
             'ok': True,
             'duplicates': duplicates,
@@ -12201,7 +12214,7 @@ def attach_receipt_to_transaction():
         receipt_row = cursor.fetchone()
 
         if not receipt_row:
-            conn.close()
+            return_db_connection(conn)
             return jsonify({'ok': False, 'error': 'Receipt not found'}), 404
 
         receipt = dict(receipt_row)
@@ -12228,7 +12241,7 @@ def attach_receipt_to_transaction():
                     receipt_file in rejected_path or
                     receipt_file.replace('receipts/', '') == rejected_path.replace('receipts/', '')
                 ):
-                    conn.close()
+                    return_db_connection(conn)
                     print(f"🚫 BLOCKED: Receipt '{receipt_file}' was previously rejected from transaction #{transaction_id}")
                     return jsonify({
                         'ok': False,
@@ -12242,7 +12255,7 @@ def attach_receipt_to_transaction():
                     rejected_path in receipt_url or
                     receipt_url in rejected_path
                 ):
-                    conn.close()
+                    return_db_connection(conn)
                     print(f"🚫 BLOCKED: Receipt URL '{receipt_url}' was previously rejected from transaction #{transaction_id}")
                     return jsonify({
                         'ok': False,
@@ -12267,7 +12280,7 @@ def attach_receipt_to_transaction():
             ('accepted', transaction_id, receipt_id))
 
         conn.commit()
-        conn.close()
+        return_db_connection(conn)
 
         print(f"✅ Receipt {receipt_id} attached to transaction {transaction_id}")
         return jsonify({
@@ -12325,7 +12338,7 @@ def accept_incoming_receipt():
         receipt_row = cursor.fetchone()
 
         if not receipt_row:
-            conn.close()
+            return_db_connection(conn)
             return jsonify({
                 'ok': False,
                 'error': 'Receipt not found'
@@ -12560,7 +12573,7 @@ def accept_incoming_receipt():
             print(f"   ⚠️  Could not update incoming_receipts status: {update_err}")
             # Transaction was already committed, so we continue
 
-        conn.close()
+        return_db_connection(conn)
 
         # === CRITICAL: Update in-memory DataFrame so viewer shows new transaction ===
         global df
@@ -12650,7 +12663,7 @@ def reject_incoming_receipt():
         receipt = cursor.fetchone()
 
         if not receipt:
-            conn.close()
+            return_db_connection(conn)
             return jsonify({
                 'ok': False,
                 'error': 'Receipt not found'
@@ -12705,7 +12718,7 @@ def reject_incoming_receipt():
                 print(f"⚠️  Could not record rejection pattern: {pattern_err}")
                 conn.commit()  # Still commit the status update
 
-        conn.close()
+        return_db_connection(conn)
 
         print(f"✅ Rejected incoming receipt {receipt_id} from {domain} (total rejections: {rejection_count})")
 
@@ -12765,7 +12778,7 @@ def reprocess_missing_receipts():
         rows = cursor.fetchall()
 
         if not rows:
-            conn.close()
+            return_db_connection(conn)
             return jsonify({
                 'ok': True,
                 'message': 'No missing receipts found - all accepted incoming receipts have files!',
@@ -12871,7 +12884,7 @@ def reprocess_missing_receipts():
                 fail_count += 1
                 results.append({'id': incoming_id, 'merchant': merchant, 'status': 'error', 'error': str(e)})
 
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -13120,7 +13133,7 @@ def recategorize_transactions():
                 updated_count += 1
             conn.commit()
 
-        conn.close()
+        return_db_connection(conn)
 
         # Group changes by category for summary
         by_category = {}
@@ -13251,7 +13264,7 @@ def fix_incoming_receipt_dates():
 
         if not rows:
             cursor.close()
-            conn.close()
+            return_db_connection(conn)
             return jsonify({
                 'ok': True,
                 'message': 'All transaction dates are correct!',
@@ -13304,7 +13317,7 @@ def fix_incoming_receipt_dates():
             conn.commit()
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -13383,7 +13396,7 @@ def diagnose_incoming_dates():
             rows = raw_rows
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         # Filter by merchants if specified
         if merchants_filter:
@@ -13532,7 +13545,7 @@ def refetch_gmail_dates():
 
         if not rows:
             cursor.close()
-            conn.close()
+            return_db_connection(conn)
             return jsonify({
                 'ok': True,
                 'message': 'No receipts with potentially wrong dates found',
@@ -13644,7 +13657,7 @@ def refetch_gmail_dates():
             conn.commit()
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -13766,7 +13779,7 @@ def scan_incoming_receipts():
                     auto_match_results = auto_match_pending_receipts(conn)
                     print(f"   ✅ Auto-matched: {auto_match_results.get('auto_matched', 0)}")
                     print(f"   📋 Needs review: {auto_match_results.get('needs_review', 0)}")
-                conn.close()
+                return_db_connection(conn)
             except Exception as match_err:
                 print(f"   ⚠️ Auto-match failed: {match_err}")
                 auto_match_results = {'error': str(match_err)}
@@ -13879,7 +13892,7 @@ def sync_receipt_urls():
 
             conn.commit()
             cursor.close()
-            conn.close()
+            return_db_connection(conn)
 
             print(f"✅ Updated {updated} receipt URLs in MySQL (not_found: {not_found}, failed: {failed})")
 
@@ -13910,7 +13923,7 @@ def sync_receipt_urls():
                     print(f"⚠️  Failed to update _index {mapping['_index']}: {e}")
 
             conn.commit()
-            conn.close()
+            return_db_connection(conn)
 
             return jsonify({
                 'ok': True,
@@ -13957,7 +13970,7 @@ def fix_missing_receipt_urls():
         print(f"📋 Found {len(rows)} transactions with receipt_file but no receipt_url")
 
         if not rows:
-            conn.close()
+            return_db_connection(conn)
             return jsonify({
                 'ok': True,
                 'message': 'No transactions need fixing',
@@ -14003,7 +14016,7 @@ def fix_missing_receipt_urls():
                     print(f"   ❌ Error: {e}")
 
         conn.commit()
-        conn.close()
+        return_db_connection(conn)
 
         print(f"✅ Fixed {fixed} receipt URLs")
 
@@ -14058,7 +14071,7 @@ def run_auto_match():
         print("🔄 Running smart auto-match...")
         result = auto_match_pending_receipts(conn)
 
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -14103,7 +14116,7 @@ def preview_auto_match():
         transactions = get_unmatched_transactions(conn, days_back=90)
         receipts = get_pending_receipts(conn)
 
-        conn.close()
+        return_db_connection(conn)
 
         if not transactions:
             return jsonify({
@@ -14267,7 +14280,7 @@ def auto_match_stats():
         except:
             receipt_stats = {'total': 0, 'pending': 0, 'auto_matched': 0, 'accepted': 0, 'rejected': 0, 'needs_review': 0}
 
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -14589,7 +14602,7 @@ def full_migration():
             print(f"  ✅ Migrated {migrated} contacts")
 
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         # Verify receipt URLs
         conn = db.get_connection()
@@ -14598,7 +14611,7 @@ def full_migration():
         url_count = cursor.fetchone()
         url_count = url_count['cnt'] if isinstance(url_count, dict) else url_count[0]
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         results['receipt_urls'] = url_count
 
@@ -15568,7 +15581,7 @@ def api_atlas_calculate_relationship_scores():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
@@ -15713,7 +15726,7 @@ def api_atlas_sync_email_interactions():
 
         conn.commit()
         cursor.close()
-        conn.close()
+        return_db_connection(conn)
 
         return jsonify({
             "ok": True,
