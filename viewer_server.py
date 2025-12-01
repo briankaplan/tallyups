@@ -9281,6 +9281,93 @@ def reports_unsubmit(report_id):
         abort(500, str(e))
 
 
+@app.route("/export/reconciliation.csv", methods=["GET"])
+def export_reconciliation_csv():
+    """
+    Export all Down Home transactions with reconciliation data as CSV.
+    No auth required - just exports the data.
+
+    Query params:
+    - start_date: Start date (default: 2024-07-01)
+    - end_date: End date (default: 2025-12-01)
+    - business_type: Business type filter (default: Down Home)
+    """
+    if not USE_DATABASE or not db:
+        abort(503, "Requires database mode")
+
+    try:
+        start_date = request.args.get('start_date', '2024-07-01')
+        end_date = request.args.get('end_date', '2025-12-01')
+        business_type = request.args.get('business_type', 'Down Home')
+
+        conn, db_type = get_db_connection()
+
+        cursor = db_execute(conn, db_type, '''
+            SELECT
+                _index, chase_date, chase_amount, chase_description,
+                mi_category, review_status, ai_confidence,
+                ai_receipt_merchant, ai_receipt_total, ai_receipt_date,
+                r2_url, receipt_url, receipt_file, notes, business_type
+            FROM transactions
+            WHERE business_type = ?
+            AND chase_date >= ?
+            AND chase_date <= ?
+            ORDER BY chase_date DESC
+        ''', (business_type, start_date, end_date))
+
+        rows = [dict(r) for r in cursor.fetchall()]
+        return_db_connection(conn)
+
+        import io
+        import csv
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        writer.writerow([
+            'Index', 'Date', 'Amount', 'Merchant', 'Category',
+            'Review_Status', 'AI_Confidence', 'Receipt_Merchant',
+            'Receipt_Total', 'Receipt_Date', 'Receipt_URL', 'Notes'
+        ])
+
+        for row in rows:
+            receipt_url = row.get('r2_url') or row.get('receipt_url') or ''
+            if not receipt_url and row.get('receipt_file'):
+                rf = row['receipt_file']
+                if rf and not rf.startswith('http'):
+                    receipt_url = f"https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/{rf}"
+                elif rf:
+                    receipt_url = rf
+
+            writer.writerow([
+                row.get('_index', ''),
+                str(row.get('chase_date', '')),
+                f"${float(row.get('chase_amount', 0) or 0):.2f}",
+                row.get('chase_description', ''),
+                row.get('mi_category', '') or '',
+                row.get('review_status', '') or '',
+                f"{int(row.get('ai_confidence', 0) or 0)}%" if row.get('ai_confidence') else '',
+                row.get('ai_receipt_merchant', '') or '',
+                row.get('ai_receipt_total', '') or '',
+                row.get('ai_receipt_date', '') or '',
+                receipt_url,
+                (row.get('notes', '') or '').replace('\n', ' ')[:300]
+            ])
+
+        csv_content = output.getvalue()
+
+        response = make_response(csv_content)
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=reconciliation_{business_type.replace(" ", "_")}_{start_date}_{end_date}.csv'
+        return response
+
+    except Exception as e:
+        print(f"❌ Export error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        abort(500, str(e))
+
+
 @app.route("/reports/<report_id>/export/downhome", methods=["GET"])
 def reports_export_downhome(report_id):
     """
