@@ -9418,9 +9418,19 @@ def api_vision_verify_batch():
         transactions = [dict(r) for r in cursor.fetchall()]
         return_db_connection(conn)
 
-        gemini_key = os.environ.get('GEMINI_API_KEY')
-        if not gemini_key:
+        # Load all Gemini API keys for rotation
+        gemini_keys = [
+            os.environ.get('GEMINI_API_KEY'),
+            os.environ.get('GEMINI_API_KEY_2'),
+            os.environ.get('GEMINI_API_KEY_3')
+        ]
+        gemini_keys = [k for k in gemini_keys if k]  # Filter out None
+        if not gemini_keys:
             return jsonify({"error": "No Gemini API key configured"}), 500
+
+        current_key_idx = 0
+        gemini_key = gemini_keys[current_key_idx]
+        print(f"Using Gemini key #{current_key_idx + 1} of {len(gemini_keys)}", flush=True)
 
         results = []
         verified = 0
@@ -9490,7 +9500,6 @@ Then determine if this receipt MATCHES the bank transaction:
 Respond in this exact JSON format:
 {{"receipt_total": "XX.XX", "receipt_date": "YYYY-MM-DD or null", "receipt_merchant": "name", "verdict": "VERIFIED" or "MISMATCH" or "UNCLEAR", "confidence": 0-100, "reasoning": "brief explanation"}}"""
 
-                api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
                 payload = {
                     "contents": [{"parts": [
                         {"text": prompt},
@@ -9499,7 +9508,25 @@ Respond in this exact JSON format:
                     "generationConfig": {"temperature": 0.1}
                 }
 
-                api_resp = http_requests.post(api_url, json=payload, timeout=60)
+                # Try with key rotation on 429 errors
+                api_resp = None
+                max_retries = len(gemini_keys) * 2  # Try each key twice
+                for retry in range(max_retries):
+                    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+                    api_resp = http_requests.post(api_url, json=payload, timeout=60)
+
+                    if api_resp.status_code == 200:
+                        break
+                    elif api_resp.status_code == 429:
+                        # Rate limited - rotate to next key
+                        current_key_idx = (current_key_idx + 1) % len(gemini_keys)
+                        gemini_key = gemini_keys[current_key_idx]
+                        print(f"  Rate limited, switching to key #{current_key_idx + 1}", flush=True)
+                        import time
+                        time.sleep(2)  # Brief pause before retry
+                    else:
+                        break  # Other errors, don't retry
+
                 if api_resp.status_code != 200:
                     results.append({
                         'index': idx, 'date': date, 'amount': amount, 'merchant': merchant,
