@@ -3470,13 +3470,23 @@
       renderContacts();
     }
 
-    // Detect category for a contact based on keywords
+    // Detect category for a contact based on stored category name or keywords
     function detectContactCategory(contact) {
+      // First, check if contact.category directly matches a category name
+      if (contact.category) {
+        const storedCat = contact.category.toLowerCase().trim();
+        for (const cat of INDUSTRY_CATEGORIES) {
+          if (cat.name.toLowerCase() === storedCat) {
+            return cat.id;
+          }
+        }
+      }
+
+      // Then check for keyword matches in company, title, notes
       const searchText = [
         contact.company || '',
         contact.title || '',
-        contact.notes || '',
-        contact.category || ''
+        contact.notes || ''
       ].join(' ').toLowerCase();
 
       for (const cat of INDUSTRY_CATEGORIES) {
