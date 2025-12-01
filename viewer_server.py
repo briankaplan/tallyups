@@ -2420,6 +2420,48 @@ def mobile_upload():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/transactions/<int:tx_id>", methods=["PUT"])
+def update_transaction(tx_id):
+    """Update a transaction's fields (admin only)"""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        return jsonify({'error': 'Admin key required'}), 401
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Build update query from allowed fields
+        allowed_fields = ['chase_date', 'chase_description', 'chase_amount', 'business_type',
+                          'review_status', 'notes', 'category', 'receipt_file', 'receipt_url']
+        updates = []
+        values = []
+        for field in allowed_fields:
+            if field in data:
+                updates.append(f"{field} = %s")
+                values.append(data[field])
+
+        if not updates:
+            return jsonify({'error': 'No valid fields to update'}), 400
+
+        values.append(tx_id)
+        query = f"UPDATE transactions SET {', '.join(updates)} WHERE _index = %s"
+        cursor.execute(query, values)
+        conn.commit()
+
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({'ok': True, 'message': f'Transaction {tx_id} updated'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/api/transactions")
 def get_transactions():
     """
@@ -12272,9 +12314,15 @@ def accept_incoming_receipt():
         # Use provided values or fall back to receipt data
         merchant = data.get('merchant') or receipt_data.get('merchant') or receipt_data.get('subject', 'Unknown')[:100]
         amount = float(data.get('amount', 0)) or float(receipt_data.get('amount', 0) or 0)
-        trans_date = data.get('date') or receipt_data.get('received_date', '')
+
+        # IMPORTANT: Use receipt_date (actual purchase date) first, then received_date as fallback
+        # The receipt_date is the date on the receipt itself (from OCR), received_date is when email arrived
+        trans_date = data.get('date') or receipt_data.get('receipt_date') or receipt_data.get('received_date', '')
         if trans_date and 'T' in str(trans_date):
             trans_date = str(trans_date).split('T')[0]
+        # Handle date objects (from database)
+        if hasattr(trans_date, 'strftime'):
+            trans_date = trans_date.strftime('%Y-%m-%d')
         business_type = data.get('business_type', 'Personal')
 
         # Validate we have minimum required data
