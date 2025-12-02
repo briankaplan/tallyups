@@ -567,8 +567,13 @@ def require_env(name: str) -> str:
     return v
 
 
-OPENAI_API_KEY = require_env("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Make OPENAI_API_KEY optional - app will start but AI features won't work
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = None
+if OPENAI_API_KEY:
+    client = OpenAI(api_key=OPENAI_API_KEY)
+else:
+    print("WARNING: OPENAI_API_KEY not set - AI features will be disabled")
 
 
 # =============================================================================
