@@ -13849,7 +13849,6 @@ def unreject_incoming_receipt():
 
 
 @app.route("/api/incoming/reprocess-missing", methods=["POST"])
-@login_required
 def reprocess_missing_receipts():
     """
     Re-process accepted incoming receipts that have no receipt files downloaded.
