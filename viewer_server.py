@@ -13904,10 +13904,108 @@ def reprocess_missing_receipts():
 
         print(f"🔄 Re-processing {len(rows)} accepted receipts with missing files...")
 
-        # Import here to avoid circular imports
-        import sys
-        sys.path.insert(0, str(BASE_DIR))
-        from incoming_receipts_service import process_receipt_files, load_gmail_service
+        # Inline helper functions instead of importing from incoming_receipts_service
+        # (which has sqlite3 dependencies that fail on Railway)
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+        from PIL import Image
+        import fitz  # PyMuPDF
+
+        def _load_gmail_service_inline(account_email):
+            """Load Gmail service using existing credentials system"""
+            creds, error = load_gmail_credentials_with_refresh(account_email)
+            if error or not creds:
+                print(f"   ⚠️ Gmail creds failed for {account_email}: {error}")
+                return None
+            try:
+                return build('gmail', 'v1', credentials=creds)
+            except Exception as e:
+                print(f"   ⚠️ Gmail build failed: {e}")
+                return None
+
+        def _download_attachment(service, message_id, attachment_id):
+            """Download attachment from Gmail"""
+            try:
+                attachment = service.users().messages().attachments().get(
+                    userId='me', messageId=message_id, id=attachment_id
+                ).execute()
+                import base64
+                return base64.urlsafe_b64decode(attachment['data'].encode('UTF-8'))
+            except Exception as e:
+                print(f"      ⚠️ Download error: {e}")
+                return None
+
+        def _convert_pdf_to_jpg(pdf_bytes, output_path):
+            """Convert PDF to JPG using PyMuPDF"""
+            try:
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                page = doc[0]
+                mat = fitz.Matrix(200/72, 200/72)
+                pix = page.get_pixmap(matrix=mat)
+                png_path = output_path.replace('.jpg', '_temp.png')
+                pix.save(png_path)
+                doc.close()
+                with Image.open(png_path) as img:
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        img = img.convert('RGB')
+                    img.save(output_path, 'JPEG', quality=90)
+                if os.path.exists(png_path):
+                    os.remove(png_path)
+                return output_path
+            except Exception as e:
+                print(f"      ⚠️ PDF conversion failed: {e}")
+                return None
+
+        def _process_receipt_files_inline(service, email_id, attachments, html_body=None):
+            """Process receipt files and upload to R2"""
+            saved_files = []
+            local_files = []
+            receipts_dir = "receipts/incoming"
+            os.makedirs(receipts_dir, exist_ok=True)
+            base_filename = f"receipt_{email_id[:12]}"
+
+            for i, attachment in enumerate(attachments):
+                filename = attachment.get('filename', '')
+                attachment_id = attachment.get('attachment_id', '')
+                if not attachment_id:
+                    continue
+                print(f"      📎 Downloading: {filename}")
+                file_data = _download_attachment(service, email_id, attachment_id)
+                if not file_data:
+                    continue
+                if filename.lower().endswith('.pdf'):
+                    output_path = os.path.join(receipts_dir, f"{base_filename}_att{i}.jpg")
+                    result = _convert_pdf_to_jpg(file_data, output_path)
+                    if result:
+                        local_files.append(result)
+                    else:
+                        pdf_output = os.path.join(receipts_dir, f"{base_filename}_att{i}.pdf")
+                        with open(pdf_output, 'wb') as f:
+                            f.write(file_data)
+                        local_files.append(pdf_output)
+                else:
+                    output_path = os.path.join(receipts_dir, f"{base_filename}_att{i}_{filename}")
+                    with open(output_path, 'wb') as f:
+                        f.write(file_data)
+                    local_files.append(output_path)
+
+            # Upload to R2
+            try:
+                from r2_service import upload_to_r2, R2_ENABLED
+                if R2_ENABLED:
+                    for local_path in local_files:
+                        filename = os.path.basename(local_path)
+                        r2_key = f"receipts/incoming/{filename}"
+                        success, result = upload_to_r2(local_path, r2_key)
+                        if success:
+                            saved_files.append(result)
+                        else:
+                            saved_files.append(local_path)
+                else:
+                    saved_files = local_files
+            except ImportError:
+                saved_files = local_files
+            return saved_files
 
         success_count = 0
         fail_count = 0
@@ -13934,7 +14032,7 @@ def reprocess_missing_receipts():
                     continue
 
                 # Load Gmail service
-                service = load_gmail_service(gmail_account)
+                service = _load_gmail_service_inline(gmail_account)
                 if not service:
                     print(f"   ❌ Gmail service failed")
                     fail_count += 1
@@ -13959,7 +14057,7 @@ def reprocess_missing_receipts():
                     print(f"   ⚠️  Could not get email body: {e}")
 
                 # Process receipt files
-                receipt_files = process_receipt_files(service, email_id, attachments, html_body)
+                receipt_files = _process_receipt_files_inline(service, email_id, attachments, html_body)
 
                 if not receipt_files:
                     print(f"   ❌ No files downloaded")
