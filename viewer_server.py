@@ -3357,13 +3357,17 @@ def api_ai_regenerate_notes():
         # Use provided indexes
         candidates = df[df["_index"].isin(indexes)]
     else:
-        # Find all transactions with AI notes
-        candidates = df[df.get("AI Note", "").fillna("").str.len() > 0]
+        # Find all transactions with AI notes (check both column name formats)
+        ai_note_col = "AI Note" if "AI Note" in df.columns else "ai_note"
+        if ai_note_col in df.columns:
+            candidates = df[df[ai_note_col].fillna("").str.len() > 0]
+        else:
+            candidates = df.head(0)  # Empty
 
     # Filter by criteria
     filtered_rows = []
     for _, row in candidates.head(limit * 3).iterrows():  # Check more than limit to find matches
-        ai_note = str(row.get("AI Note", "") or "").lower()
+        ai_note = str(row.get("AI Note", "") or row.get("ai_note", "") or "").lower()
 
         if not ai_note:
             continue
@@ -3473,7 +3477,7 @@ def api_ai_find_problematic_notes():
     matches = []
 
     for _, row in df.iterrows():
-        ai_note = str(row.get("AI Note", "") or "").lower()
+        ai_note = str(row.get("AI Note", "") or row.get("ai_note", "") or "").lower()
 
         if not ai_note:
             continue
@@ -3496,7 +3500,7 @@ def api_ai_find_problematic_notes():
                 "merchant": row.get("Chase Description") or row.get("merchant") or "",
                 "amount": row.get("Chase Amount") or row.get("amount") or 0,
                 "date": row.get("Chase Date") or row.get("transaction_date") or "",
-                "ai_note": row.get("AI Note", ""),
+                "ai_note": row.get("AI Note", "") or row.get("ai_note", ""),
                 "matched_keywords": list(set(matched_keywords))
             })
 
