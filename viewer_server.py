@@ -3357,17 +3357,29 @@ def api_ai_regenerate_notes():
         # Use provided indexes
         candidates = df[df["_index"].isin(indexes)]
     else:
-        # Find all transactions with AI notes (check both column name formats)
-        ai_note_col = "AI Note" if "AI Note" in df.columns else "ai_note"
-        if ai_note_col in df.columns:
-            candidates = df[df[ai_note_col].fillna("").str.len() > 0]
+        # Find all transactions with notes (check all possible column names)
+        note_cols = ["AI Note", "ai_note", "notes"]
+        has_notes = None
+        for col in note_cols:
+            if col in df.columns:
+                col_has_notes = df[col].fillna("").str.len() > 0
+                has_notes = col_has_notes if has_notes is None else (has_notes | col_has_notes)
+
+        if has_notes is not None:
+            candidates = df[has_notes]
         else:
             candidates = df.head(0)  # Empty
 
     # Filter by criteria
     filtered_rows = []
     for _, row in candidates.head(limit * 3).iterrows():  # Check more than limit to find matches
-        ai_note = str(row.get("AI Note", "") or row.get("ai_note", "") or "").lower()
+        # Check all possible note fields
+        ai_note = str(
+            row.get("AI Note", "") or
+            row.get("ai_note", "") or
+            row.get("notes", "") or
+            ""
+        ).lower()
 
         if not ai_note:
             continue
@@ -3477,7 +3489,13 @@ def api_ai_find_problematic_notes():
     matches = []
 
     for _, row in df.iterrows():
-        ai_note = str(row.get("AI Note", "") or row.get("ai_note", "") or "").lower()
+        # Check all possible note fields (AI Note, ai_note, notes)
+        ai_note = str(
+            row.get("AI Note", "") or
+            row.get("ai_note", "") or
+            row.get("notes", "") or
+            ""
+        ).lower()
 
         if not ai_note:
             continue
