@@ -3328,10 +3328,11 @@ def api_ai_regenerate_notes():
 
     Returns: {"ok": true, "processed": int, "updated": int, "results": [...]}
     """
-    # Auth check - allow admin key or session
+    # Auth check - allow admin key, auth password, or session
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    auth_password = os.getenv('AUTH_PASSWORD')
+    if admin_key not in (expected_key, auth_password):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -3451,10 +3452,11 @@ def api_ai_find_problematic_notes():
 
     Returns: {"ok": true, "count": int, "transactions": [...]}
     """
-    # Auth check - allow admin key or session
+    # Auth check - allow admin key, auth password, or session
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    auth_password = os.getenv('AUTH_PASSWORD')
+    if admin_key not in (expected_key, auth_password):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
