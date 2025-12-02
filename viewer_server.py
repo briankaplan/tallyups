@@ -13853,9 +13853,15 @@ def reprocess_missing_receipts():
     """
     Re-process accepted incoming receipts that have no receipt files downloaded.
     This fixes receipts that were accepted but PDF conversion failed.
+    Supports admin_key query param for API access.
     """
     import json
     import traceback
+
+    # Check admin key or login
+    admin_key = request.args.get('admin_key')
+    if admin_key != ADMIN_API_KEY and not session.get('logged_in'):
+        return jsonify({'error': 'Authentication required'}), 401
 
     try:
         if not USE_DATABASE or not db:
