@@ -3533,6 +3533,151 @@ def api_ai_find_problematic_notes():
     })
 
 
+@app.route("/api/ai/regenerate-birthday-notes", methods=["POST"])
+def api_ai_regenerate_birthday_notes():
+    """
+    Find and regenerate AI notes that reference birthdays.
+    Uses direct database access to bypass df caching issues.
+
+    POST body: {
+        "dry_run": bool (default: true),
+        "limit": int (default: 100, max: 200)
+    }
+
+    Returns: {"ok": true, "found": int, "updated": int, "results": [...]}
+    """
+    # Auth check - allow admin key
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    auth_password = os.getenv('AUTH_PASSWORD')
+    if admin_key not in (expected_key, auth_password):
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not USE_DATABASE or not db:
+        return jsonify({'error': 'Database not available'}), 503
+
+    data = request.get_json(force=True) or {}
+    dry_run = data.get("dry_run", True)
+    limit = min(int(data.get("limit", 100)), 200)
+
+    birthday_keywords = ['birthday', 'bday', "b'day", 'anniversary', 'party for']
+
+    # Build SQL LIKE clauses
+    like_clauses = []
+    for kw in birthday_keywords:
+        like_clauses.append(f"LOWER(ai_note) LIKE '%{kw}%'")
+
+    # Query database directly for birthday notes
+    conn, _ = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 503
+
+    try:
+        cursor = conn.cursor()
+        query = f"""
+            SELECT id, _index, chase_description, chase_amount, chase_date,
+                   chase_category, business_type, ai_note
+            FROM transactions
+            WHERE ai_note IS NOT NULL
+            AND ai_note != ''
+            AND ({' OR '.join(like_clauses)})
+            ORDER BY chase_date DESC
+            LIMIT {limit}
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        cursor.close()
+    except Exception as e:
+        return_db_connection(conn)
+        return jsonify({'error': f'Query failed: {e}'}), 500
+
+    if not rows:
+        return_db_connection(conn)
+        return jsonify({
+            'ok': True,
+            'found': 0,
+            'updated': 0,
+            'message': 'No birthday-referenced notes found',
+            'results': []
+        })
+
+    results = []
+    updated_count = 0
+
+    for row in rows:
+        tx_id = row['id']
+        idx = row['_index']
+        merchant = row.get('chase_description', '')
+        amount = parse_amount_str(row.get('chase_amount', 0))
+        date = row.get('chase_date', '')
+        category = row.get('chase_category', '')
+        business_type = row.get('business_type', 'Down Home')
+        old_note = row.get('ai_note', '')
+
+        result_entry = {
+            'id': tx_id,
+            '_index': idx,
+            'merchant': merchant,
+            'old_note': old_note,
+            'new_note': None,
+            'status': 'pending'
+        }
+
+        if dry_run:
+            result_entry['status'] = 'would_update'
+            results.append(result_entry)
+            continue
+
+        # Regenerate note using Gemini (with birthday filtering now active)
+        try:
+            note_result = gemini_generate_ai_note(
+                merchant, amount, str(date), category, business_type
+            )
+            new_note = note_result.get('note', '')
+
+            if new_note and new_note != old_note:
+                # Update directly in database
+                try:
+                    update_cursor = conn.cursor()
+                    update_cursor.execute(
+                        "UPDATE transactions SET ai_note = %s WHERE id = %s",
+                        (new_note, tx_id)
+                    )
+                    conn.commit()
+                    update_cursor.close()
+
+                    result_entry['new_note'] = new_note
+                    result_entry['status'] = 'updated'
+                    updated_count += 1
+                except Exception as e:
+                    result_entry['status'] = 'error'
+                    result_entry['error'] = f'DB update failed: {e}'
+            else:
+                result_entry['status'] = 'no_change'
+                result_entry['new_note'] = new_note
+
+        except Exception as e:
+            result_entry['status'] = 'error'
+            result_entry['error'] = str(e)
+
+        results.append(result_entry)
+
+    return_db_connection(conn)
+
+    # Reload df to sync with database changes
+    if updated_count > 0:
+        load_data(force_refresh=True)
+
+    return jsonify({
+        'ok': True,
+        'dry_run': dry_run,
+        'found': len(rows),
+        'updated': updated_count,
+        'results': results
+    })
+
+
 @app.route("/api/ai/batch-categorize", methods=["POST"])
 def api_ai_batch_categorize():
     """
