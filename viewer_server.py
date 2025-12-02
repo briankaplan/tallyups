@@ -13914,7 +13914,7 @@ def reprocess_missing_receipts():
 
         def _load_gmail_service_inline(account_email):
             """Load Gmail service using existing credentials system"""
-            creds, error = load_gmail_credentials_with_refresh(account_email)
+            creds, error = get_gmail_credentials_with_autorefresh(account_email)
             if error or not creds:
                 print(f"   ⚠️ Gmail creds failed for {account_email}: {error}")
                 return None
