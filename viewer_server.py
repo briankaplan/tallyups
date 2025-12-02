@@ -3563,10 +3563,12 @@ def api_ai_regenerate_birthday_notes():
 
     birthday_keywords = ['birthday', 'bday', "b'day", 'anniversary', 'party for']
 
-    # Build SQL LIKE clauses
+    # Build SQL LIKE clauses (escape single quotes for SQL)
     like_clauses = []
     for kw in birthday_keywords:
-        like_clauses.append(f"LOWER(ai_note) LIKE '%{kw}%'")
+        # Escape single quotes for MySQL
+        escaped_kw = kw.replace("'", "''")
+        like_clauses.append(f"LOWER(ai_note) LIKE '%{escaped_kw}%'")
 
     # Query database directly for birthday notes
     conn, _ = get_db_connection()

@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """
 Script to regenerate AI notes for transactions that incorrectly reference birthdays.
-Uses the deployed API endpoints with admin key authentication.
+
+Two modes:
+1. API mode: Uses deployed API (requires Railway deployment)
+2. Direct mode: Generates notes via API, updates DB directly (bypasses deployment issues)
 
 Usage:
     python regenerate_birthday_notes.py --dry-run       # Just find and list them
-    python regenerate_birthday_notes.py --regenerate    # Actually regenerate
+    python regenerate_birthday_notes.py --regenerate    # Regenerate via API (saves to DB)
+    python regenerate_birthday_notes.py --direct        # Generate via API, update DB directly
 """
 
 import argparse
 import json
+import os
 import time
 import urllib.request
 import urllib.error
@@ -29,7 +34,6 @@ def fetch_all_transactions(limit=2000):
     try:
         with urllib.request.urlopen(req, timeout=60) as response:
             data = json.loads(response.read().decode())
-            # Handle both list and dict response formats
             if isinstance(data, list):
                 return data
             return data.get('transactions', data)
@@ -53,8 +57,9 @@ def find_birthday_transactions(transactions):
                     'merchant': tx.get('chase_description') or tx.get('Chase Description') or '',
                     'amount': tx.get('chase_amount') or tx.get('Chase Amount') or '',
                     'date': tx.get('chase_date') or tx.get('Chase Date') or '',
+                    'category': tx.get('chase_category') or tx.get('Chase Category') or '',
                     'ai_note': tx.get('ai_note'),
-                    'business_type': tx.get('business_type') or tx.get('Business Type') or '',
+                    'business_type': tx.get('business_type') or tx.get('Business Type') or 'Down Home',
                     'keyword': kw
                 })
                 break
@@ -62,20 +67,42 @@ def find_birthday_transactions(transactions):
     return matches
 
 
-def regenerate_note(transaction):
-    """Regenerate AI note for a single transaction."""
-    idx = transaction.get('_index')
-    if idx is None:
-        return None, "No _index found"
-
+def generate_note_via_api(merchant, amount, date, category, business_type):
+    """Generate a new AI note using direct params (bypasses _index lookup)."""
     url = f"{BASE_URL}/api/ai/note"
     headers = {
         "X-Admin-Key": ADMIN_KEY,
         "Content-Type": "application/json"
     }
-    data = json.dumps({"_index": idx}).encode()
 
+    # Clean up amount
+    try:
+        amount_float = float(str(amount).replace('$', '').replace(',', ''))
+    except:
+        amount_float = 0
+
+    # Clean up date - extract just the date part
+    date_str = str(date)
+    if ',' in date_str:  # Format like "Sat, 04 Oct 2025 00:00:00 GMT"
+        # Parse and reformat
+        try:
+            from datetime import datetime
+            dt = datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S %Z")
+            date_str = dt.strftime("%Y-%m-%d")
+        except:
+            date_str = ""
+
+    payload = {
+        "merchant": merchant,
+        "amount": amount_float,
+        "date": date_str,
+        "category": category or "",
+        "business_type": business_type or "Down Home"
+    }
+
+    data = json.dumps(payload).encode()
     req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
             result = json.loads(response.read().decode())
@@ -88,15 +115,69 @@ def regenerate_note(transaction):
         return None, str(e)
 
 
+def get_db_connection():
+    """Get MySQL connection using Railway environment or local config."""
+    try:
+        import pymysql
+    except ImportError:
+        print("Error: pymysql not installed. Run: pip install pymysql")
+        return None
+
+    # Try Railway-style env vars first
+    host = os.getenv('MYSQL_HOST') or os.getenv('MYSQLHOST')
+    user = os.getenv('MYSQL_USER') or os.getenv('MYSQLUSER')
+    password = os.getenv('MYSQL_PASSWORD') or os.getenv('MYSQLPASSWORD')
+    database = os.getenv('MYSQL_DATABASE') or os.getenv('MYSQLDATABASE')
+    port = int(os.getenv('MYSQL_PORT') or os.getenv('MYSQLPORT') or 3306)
+
+    if not all([host, user, password, database]):
+        print("Error: MySQL environment variables not set.")
+        print("Set MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE")
+        return None
+
+    try:
+        conn = pymysql.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database,
+            port=port,
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        return conn
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        return None
+
+
+def update_note_in_db(conn, tx_id, new_note):
+    """Update ai_note directly in database."""
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE transactions SET ai_note = %s WHERE id = %s",
+            (new_note, tx_id)
+        )
+        conn.commit()
+        cursor.close()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Regenerate birthday-referenced AI notes")
     parser.add_argument('--dry-run', action='store_true', help='Just find and list, do not regenerate')
-    parser.add_argument('--regenerate', action='store_true', help='Regenerate the notes')
+    parser.add_argument('--regenerate', action='store_true', help='Regenerate via full API (requires deployment)')
+    parser.add_argument('--direct', action='store_true', help='Generate via API, update DB directly')
     parser.add_argument('--limit', type=int, default=2000, help='Max transactions to fetch')
     args = parser.parse_args()
 
-    if not args.dry_run and not args.regenerate:
-        print("Please specify --dry-run or --regenerate")
+    if not args.dry_run and not args.regenerate and not args.direct:
+        print("Please specify --dry-run, --regenerate, or --direct")
+        print("\n  --dry-run    : Just find and list birthday notes")
+        print("  --regenerate : Use API to regenerate (requires Railway to have new code)")
+        print("  --direct     : Generate via API, update DB directly (recommended)")
         return
 
     print(f"🔍 Fetching up to {args.limit} transactions...")
@@ -114,7 +195,7 @@ def main():
     print(f"\n📋 Transactions with birthday references:")
     for i, m in enumerate(matches[:20]):
         print(f"\n{i+1}. {m['merchant'][:50]}")
-        print(f"   _index: {m['_index']}, Amount: {m['amount']}")
+        print(f"   id: {m['id']}, Amount: {m['amount']}")
         print(f"   Old note: {m['ai_note'][:80]}...")
         print(f"   Matched: '{m['keyword']}'")
 
@@ -123,25 +204,47 @@ def main():
 
     if args.dry_run:
         print(f"\n📊 Summary: {len(matches)} notes need regeneration")
-        print("   Run with --regenerate to fix them")
+        print("   Run with --direct to fix them (recommended)")
         return
 
-    # Regenerate
-    print(f"\n🔄 Regenerating {len(matches)} notes...")
-    print("   (This may take a while due to API rate limits)\n")
+    # Direct mode - generate via API, update DB directly
+    if args.direct:
+        conn = get_db_connection()
+        if not conn:
+            print("\n❌ Cannot connect to database. Set MySQL environment variables:")
+            print("   MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE")
+            return
 
-    updated = 0
-    failed = 0
-    still_birthday = 0
+        print(f"\n🔄 Regenerating {len(matches)} notes (direct mode)...")
+        print("   Generating notes via API, updating database directly\n")
 
-    for i, m in enumerate(matches):
-        old_note = m['ai_note']
-        new_note, error = regenerate_note(m)
+        updated = 0
+        failed = 0
+        still_birthday = 0
 
-        if error:
-            print(f"❌ {m['merchant'][:40]}: {error}")
-            failed += 1
-        elif new_note:
+        for i, m in enumerate(matches):
+            old_note = m['ai_note']
+            tx_id = m['id']
+
+            # Generate new note via API (using direct params, not _index)
+            new_note, error = generate_note_via_api(
+                m['merchant'],
+                m['amount'],
+                m['date'],
+                m['category'],
+                m['business_type']
+            )
+
+            if error:
+                print(f"❌ {m['merchant'][:40]}: {error}")
+                failed += 1
+                continue
+
+            if not new_note:
+                print(f"❓ {m['merchant'][:40]}: No note returned")
+                failed += 1
+                continue
+
             # Check if new note still has birthday reference
             has_birthday = any(kw in new_note.lower() for kw in BIRTHDAY_KEYWORDS)
 
@@ -149,30 +252,85 @@ def main():
                 print(f"⚠️  {m['merchant'][:40]}: Still has birthday ref")
                 print(f"   New: {new_note[:70]}...")
                 still_birthday += 1
-            else:
+                continue
+
+            # Update in database directly
+            success, db_error = update_note_in_db(conn, tx_id, new_note)
+
+            if success:
                 print(f"✅ {m['merchant'][:40]}")
                 print(f"   Old: {old_note[:50]}...")
                 print(f"   New: {new_note[:50]}...")
                 updated += 1
-        else:
-            print(f"❓ {m['merchant'][:40]}: No note returned")
+            else:
+                print(f"❌ {m['merchant'][:40]}: DB update failed: {db_error}")
+                failed += 1
+
+            # Rate limiting
+            if (i + 1) % 5 == 0:
+                print(f"\n   Progress: {i+1}/{len(matches)} processed...")
+                time.sleep(0.5)
+
+        conn.close()
+
+        print(f"\n📊 Results:")
+        print(f"   ✅ Successfully updated: {updated}")
+        print(f"   ⚠️  Still has birthday: {still_birthday}")
+        print(f"   ❌ Failed: {failed}")
+        print(f"   Total processed: {len(matches)}")
+
+        if still_birthday > 0:
+            print(f"\n⚠️  {still_birthday} notes still reference birthdays.")
+            print("   The calendar filtering code may not be deployed yet.")
+            print("   Once deployed, re-run this script.")
+        return
+
+    # Regular regenerate mode (via full API)
+    print(f"\n🔄 Regenerating {len(matches)} notes via API...")
+    print("   Note: This requires the new code to be deployed on Railway\n")
+
+    from urllib.request import Request, urlopen
+
+    updated = 0
+    failed = 0
+
+    for i, m in enumerate(matches):
+        idx = m.get('_index')
+        if idx is None:
+            print(f"❌ {m['merchant'][:40]}: No _index")
+            failed += 1
+            continue
+
+        url = f"{BASE_URL}/api/ai/note"
+        headers = {"X-Admin-Key": ADMIN_KEY, "Content-Type": "application/json"}
+        data = json.dumps({"_index": idx}).encode()
+
+        try:
+            req = Request(url, data=data, headers=headers, method='POST')
+            with urlopen(req, timeout=30) as response:
+                result = json.loads(response.read().decode())
+                if result.get('ok'):
+                    new_note = result.get('note', '')
+                    if new_note:
+                        print(f"✅ {m['merchant'][:40]}: {new_note[:50]}...")
+                        updated += 1
+                    else:
+                        print(f"❓ {m['merchant'][:40]}: Empty note")
+                        failed += 1
+                else:
+                    print(f"❌ {m['merchant'][:40]}: {result.get('error')}")
+                    failed += 1
+        except Exception as e:
+            print(f"❌ {m['merchant'][:40]}: {e}")
             failed += 1
 
-        # Rate limiting - don't hammer the API
         if (i + 1) % 5 == 0:
-            print(f"\n   Progress: {i+1}/{len(matches)} processed...")
-            time.sleep(1)  # Brief pause every 5 requests
+            print(f"\n   Progress: {i+1}/{len(matches)}...")
+            time.sleep(1)
 
     print(f"\n📊 Results:")
-    print(f"   ✅ Successfully updated: {updated}")
-    print(f"   ⚠️  Still has birthday: {still_birthday}")
+    print(f"   ✅ Updated: {updated}")
     print(f"   ❌ Failed: {failed}")
-    print(f"   Total processed: {len(matches)}")
-
-    if still_birthday > 0:
-        print(f"\n⚠️  {still_birthday} notes still reference birthdays.")
-        print("   This likely means the new calendar filtering code isn't deployed yet.")
-        print("   Check Railway deployment status and try again.")
 
 
 if __name__ == "__main__":
