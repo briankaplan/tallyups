@@ -13848,7 +13848,7 @@ def unreject_incoming_receipt():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-@app.route("/api/incoming/reprocess-missing", methods=["POST"])
+@app.route("/api/incoming/reprocess-missing", methods=["GET", "POST"])
 def reprocess_missing_receipts():
     """
     Re-process accepted incoming receipts that have no receipt files downloaded.
