@@ -3313,7 +3313,6 @@ def api_ai_auto_process():
 
 
 @app.route("/api/ai/regenerate-notes", methods=["POST"])
-@login_required
 def api_ai_regenerate_notes():
     """
     Regenerate AI notes for transactions matching certain criteria.
@@ -3329,6 +3328,13 @@ def api_ai_regenerate_notes():
 
     Returns: {"ok": true, "processed": int, "updated": int, "results": [...]}
     """
+    # Auth check - allow admin key or session
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
     data = request.get_json(force=True) or {}
     filter_type = data.get("filter", "birthday")
     indexes = data.get("indexes", [])
@@ -3434,7 +3440,6 @@ def api_ai_regenerate_notes():
 
 
 @app.route("/api/ai/find-problematic-notes", methods=["GET"])
-@login_required
 def api_ai_find_problematic_notes():
     """
     Find transactions with AI notes that reference birthdays or are too vague.
@@ -3446,6 +3451,13 @@ def api_ai_find_problematic_notes():
 
     Returns: {"ok": true, "count": int, "transactions": [...]}
     """
+    # Auth check - allow admin key or session
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
     filter_type = request.args.get("filter", "birthday")
     limit = min(int(request.args.get("limit", 100)), 500)
 
