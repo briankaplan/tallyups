@@ -13857,10 +13857,11 @@ def reprocess_missing_receipts():
     """
     import json
     import traceback
+    import os as _os  # Explicit import to avoid scope shadowing with nested functions
 
     # Check admin key or login
     admin_key = request.args.get('admin_key')
-    expected_key = os.getenv('ADMIN_API_KEY')
+    expected_key = _os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key and not session.get('logged_in'):
         return jsonify({'error': 'Authentication required'}), 401
 
@@ -13950,8 +13951,8 @@ def reprocess_missing_receipts():
                     if img.mode in ('RGBA', 'LA', 'P'):
                         img = img.convert('RGB')
                     img.save(output_path, 'JPEG', quality=90)
-                if os.path.exists(png_path):
-                    os.remove(png_path)
+                if _os.path.exists(png_path):
+                    _os.remove(png_path)
                 return output_path
             except Exception as e:
                 print(f"      ⚠️ PDF conversion failed: {e}")
@@ -13962,7 +13963,7 @@ def reprocess_missing_receipts():
             saved_files = []
             local_files = []
             receipts_dir = "receipts/incoming"
-            os.makedirs(receipts_dir, exist_ok=True)
+            _os.makedirs(receipts_dir, exist_ok=True)
             base_filename = f"receipt_{email_id[:12]}"
 
             for i, attachment in enumerate(attachments):
@@ -13975,17 +13976,17 @@ def reprocess_missing_receipts():
                 if not file_data:
                     continue
                 if filename.lower().endswith('.pdf'):
-                    output_path = os.path.join(receipts_dir, f"{base_filename}_att{i}.jpg")
+                    output_path = _os.path.join(receipts_dir, f"{base_filename}_att{i}.jpg")
                     result = _convert_pdf_to_jpg(file_data, output_path)
                     if result:
                         local_files.append(result)
                     else:
-                        pdf_output = os.path.join(receipts_dir, f"{base_filename}_att{i}.pdf")
+                        pdf_output = _os.path.join(receipts_dir, f"{base_filename}_att{i}.pdf")
                         with open(pdf_output, 'wb') as f:
                             f.write(file_data)
                         local_files.append(pdf_output)
                 else:
-                    output_path = os.path.join(receipts_dir, f"{base_filename}_att{i}_{filename}")
+                    output_path = _os.path.join(receipts_dir, f"{base_filename}_att{i}_{filename}")
                     with open(output_path, 'wb') as f:
                         f.write(file_data)
                     local_files.append(output_path)
@@ -13995,7 +13996,7 @@ def reprocess_missing_receipts():
                 from r2_service import upload_to_r2, R2_ENABLED
                 if R2_ENABLED:
                     for local_path in local_files:
-                        filename = os.path.basename(local_path)
+                        filename = _os.path.basename(local_path)
                         r2_key = f"receipts/incoming/{filename}"
                         success, result = upload_to_r2(local_path, r2_key)
                         if success:
