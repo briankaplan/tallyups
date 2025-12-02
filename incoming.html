@@ -2003,6 +2003,30 @@ async function mobileReject(id, btn) {
   }
 }
 
+async function quickUnreject(id) {
+  try {
+    const res = await fetch(`${API_BASE}/api/incoming/unreject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ receipt_id: id })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      // Update local data
+      const receipt = allReceipts.find(r => r.id === id);
+      if (receipt) receipt.status = 'pending';
+
+      showToast('Restored to pending', 'success');
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Failed to unreject', 'error');
+    }
+  } catch (e) {
+    console.error('Unreject error:', e);
+    showToast('Error unrejecting', 'error');
+  }
+}
+
 function renderRow(receipt) {
   const confidenceClass = receipt.confidence_score >= 80 ? 'confidence-high' :
                           receipt.confidence_score >= 60 ? 'confidence-medium' : 'confidence-low';
@@ -2493,9 +2517,13 @@ function showPreview(receiptId) {
       <button class="btn-danger" onclick="closePreview();quickReject(${receipt.id})">✕ Reject</button>
       <button class="btn-success" onclick="closePreview();quickAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}')">✓ Accept</button>
     `;
+  } else if (receipt.status === 'rejected') {
+    actionsEl.innerHTML = `
+      <button class="btn-primary" onclick="closePreview();quickUnreject(${receipt.id})">↩ Restore to Pending</button>
+      <span style="color:var(--muted);margin-left:8px">✕ Rejected</span>
+    `;
   } else {
-    const statusText = receipt.status === 'accepted' ? '✓ Accepted' : '✕ Rejected';
-    actionsEl.innerHTML = `<span style="color:var(--muted)">${statusText}</span>`;
+    actionsEl.innerHTML = `<span style="color:var(--muted)">✓ Accepted</span>`;
   }
 
   // Show modal

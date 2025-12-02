@@ -13772,6 +13772,82 @@ def reject_incoming_receipt():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/unreject", methods=["POST"])
+@login_required
+def unreject_incoming_receipt():
+    """
+    Unreject a previously rejected incoming receipt - moves it back to pending
+
+    Body:
+    {
+        "receipt_id": 123
+    }
+    """
+    from datetime import datetime
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({
+                'ok': False,
+                'error': 'Database not available'
+            }), 500
+
+        data = request.json
+        receipt_id = data.get('receipt_id')
+
+        if not receipt_id:
+            return jsonify({
+                'ok': False,
+                'error': 'Missing receipt_id'
+            }), 400
+
+        conn, db_type = get_db_connection()
+
+        # Get the receipt data to verify it exists and is rejected
+        cursor = db_execute(conn, db_type, 'SELECT * FROM incoming_receipts WHERE id = ?', (receipt_id,))
+        receipt = cursor.fetchone()
+
+        if not receipt:
+            return_db_connection(conn)
+            return jsonify({
+                'ok': False,
+                'error': 'Receipt not found'
+            }), 404
+
+        # Check if it's actually rejected
+        receipt_status = receipt['status'] if isinstance(receipt, dict) else receipt[list(receipt.keys()).index('status')]
+        if receipt_status != 'rejected':
+            return_db_connection(conn)
+            return jsonify({
+                'ok': False,
+                'error': f'Receipt is not rejected (status: {receipt_status})'
+            }), 400
+
+        # Update receipt status back to pending
+        cursor = db_execute(conn, db_type, '''
+            UPDATE incoming_receipts
+            SET status = 'pending',
+                rejection_reason = NULL,
+                reviewed_at = ?
+            WHERE id = ?
+        ''', (datetime.now().isoformat(), receipt_id))
+
+        conn.commit()
+        return_db_connection(conn)
+
+        print(f"Unrejected incoming receipt {receipt_id}")
+
+        return jsonify({
+            'ok': True,
+            'message': 'Receipt restored to pending',
+            'receipt_id': receipt_id
+        })
+
+    except Exception as e:
+        print(f"Error unrejecting receipt: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/reprocess-missing", methods=["POST"])
 @login_required
 def reprocess_missing_receipts():

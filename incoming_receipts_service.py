@@ -531,19 +531,52 @@ def download_gmail_attachment(service, message_id, attachment_id, filename):
 
 def convert_pdf_to_jpg(pdf_bytes, output_path):
     """
-    Convert PDF bytes to JPG image
+    Convert PDF bytes to JPG image using multiple fallback methods.
+    Method 1: PyMuPDF (fitz) - Pure Python, no external dependencies
+    Method 2: pdf2image - Requires poppler-utils system package
     Returns: path to saved JPG file
     """
+    # Method 1: Try PyMuPDF (no external dependencies - works on Railway!)
     try:
-        # Lazy import pdf2image
+        import fitz  # PyMuPDF
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        page = doc[0]
+        # Render at 200 DPI for good quality
+        mat = fitz.Matrix(200/72, 200/72)  # 72 is default PDF DPI
+        pix = page.get_pixmap(matrix=mat)
+
+        # Save as PNG first then convert to JPG for better compatibility
+        png_path = output_path.replace('.jpg', '_temp.png')
+        pix.save(png_path)
+        doc.close()
+
+        # Convert to JPG using Pillow
+        from PIL import Image
+        with Image.open(png_path) as img:
+            if img.mode in ('RGBA', 'LA', 'P'):
+                img = img.convert('RGB')
+            img.save(output_path, 'JPEG', quality=90)
+
+        # Clean up temp PNG
+        import os
+        if os.path.exists(png_path):
+            os.remove(png_path)
+
+        print(f"      ✓ Converted PDF to JPG (PyMuPDF): {output_path}")
+        return output_path
+    except ImportError:
+        print("      ⚠️  PyMuPDF not available, trying pdf2image...")
+    except Exception as e:
+        print(f"      ⚠️  PyMuPDF failed: {e}, trying pdf2image...")
+
+    # Method 2: Fallback to pdf2image (requires poppler)
+    try:
         pdf_convert = _lazy_import_pdf2image()
-        # Convert PDF to images
         images = pdf_convert(pdf_bytes, dpi=200, first_page=1, last_page=1)
 
         if images:
-            # Save first page as JPG
             images[0].save(output_path, 'JPEG', quality=90)
-            print(f"      ✓ Converted PDF to JPG: {output_path}")
+            print(f"      ✓ Converted PDF to JPG (pdf2image): {output_path}")
             return output_path
         return None
     except Exception as e:
