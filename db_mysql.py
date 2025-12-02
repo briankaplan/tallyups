@@ -938,6 +938,7 @@ class MySQLReceiptDatabase:
             ("last_touch_date", "DATE"),
             ("next_touch_date", "DATE"),
             ("total_interactions", "INT DEFAULT 0"),
+            ("interaction_count", "INT DEFAULT 0"),  # alias for total_interactions, used by UI
             ("source", "VARCHAR(100)"),  # apple, google, linkedin, manual
             ("source_id", "VARCHAR(255)"),  # external ID from source
             ("google_resource_name", "VARCHAR(255)"),  # Google People API resource

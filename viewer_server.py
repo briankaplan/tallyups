@@ -436,6 +436,30 @@ def csrf_exempt_route(f):
 
 
 # =============================================================================
+# PERIODIC BACKGROUND SYNC
+# =============================================================================
+
+@app.before_request
+def periodic_interaction_sync():
+    """Check if interaction sync is needed on each request (rate limited to hourly)"""
+    # Only check on specific endpoints to avoid overhead
+    from flask import request
+    sync_endpoints = (
+        'contact_hub_page',           # Main contacts page
+        'api_atlas_contacts_list',    # Contacts API
+        'api_contact_hub_list',       # Contact hub API
+        'api_atlas_frequency_stats',  # Frequency stats endpoint
+    )
+    if request.endpoint in sync_endpoints:
+        try:
+            # Import here to avoid circular dependency at module level
+            if 'trigger_sync_if_needed' in globals():
+                trigger_sync_if_needed()
+        except Exception:
+            pass  # Non-critical, don't block request
+
+
+# =============================================================================
 # CENTRALIZED ERROR HANDLERS
 # =============================================================================
 
@@ -3288,6 +3312,191 @@ def api_ai_auto_process():
     })
 
 
+@app.route("/api/ai/regenerate-notes", methods=["POST"])
+@login_required
+def api_ai_regenerate_notes():
+    """
+    Regenerate AI notes for transactions matching certain criteria.
+    Useful for fixing notes that incorrectly reference birthdays or other personal events.
+
+    POST body:
+    {
+        "filter": "birthday" | "vague" | "all",  # What notes to regenerate
+        "indexes": [int, ...],  # Optional: specific indexes to regenerate
+        "limit": 50,  # Max transactions to process (default 50, max 200)
+        "dry_run": false  # If true, just return what would be regenerated
+    }
+
+    Returns: {"ok": true, "processed": int, "updated": int, "results": [...]}
+    """
+    data = request.get_json(force=True) or {}
+    filter_type = data.get("filter", "birthday")
+    indexes = data.get("indexes", [])
+    limit = min(data.get("limit", 50), 200)
+    dry_run = data.get("dry_run", False)
+
+    ensure_df()
+
+    # Keywords that indicate problematic notes
+    birthday_keywords = ['birthday', 'bday', "b'day", 'anniversary', 'party for']
+    vague_keywords = ['business expense', 'business meal', 'client meeting', 'software subscription',
+                      'travel expense', 'meal with team', 'various business']
+
+    results = []
+    updated_count = 0
+
+    # Get transactions to check
+    if indexes:
+        # Use provided indexes
+        candidates = df[df["_index"].isin(indexes)]
+    else:
+        # Find all transactions with AI notes
+        candidates = df[df.get("AI Note", "").fillna("").str.len() > 0]
+
+    # Filter by criteria
+    filtered_rows = []
+    for _, row in candidates.head(limit * 3).iterrows():  # Check more than limit to find matches
+        ai_note = str(row.get("AI Note", "") or "").lower()
+
+        if not ai_note:
+            continue
+
+        should_include = False
+
+        if filter_type == "birthday":
+            should_include = any(kw in ai_note for kw in birthday_keywords)
+        elif filter_type == "vague":
+            should_include = any(kw in ai_note for kw in vague_keywords)
+        elif filter_type == "all":
+            should_include = True
+
+        if should_include:
+            filtered_rows.append(row)
+
+        if len(filtered_rows) >= limit:
+            break
+
+    # Process each matching transaction
+    for row in filtered_rows:
+        idx = int(row["_index"])
+        old_note = row.get("AI Note", "")
+        merchant = row.get("Chase Description") or row.get("merchant") or ""
+        amount = parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0)
+        date = row.get("Chase Date") or row.get("transaction_date") or ""
+        category = row.get("category") or row.get("Chase Category") or ""
+        business_type = row.get("Business Type") or "Down Home"
+
+        result_entry = {
+            "_index": idx,
+            "merchant": merchant,
+            "old_note": old_note,
+            "new_note": None,
+            "status": "pending"
+        }
+
+        if dry_run:
+            result_entry["status"] = "would_update"
+            results.append(result_entry)
+            continue
+
+        # Regenerate the note
+        try:
+            note_result = gemini_generate_ai_note(
+                merchant, amount, date, category, business_type,
+                row=row.to_dict()
+            )
+
+            new_note = note_result.get("note", "")
+
+            if new_note and new_note != old_note:
+                # Update the transaction
+                update_row_by_index(idx, {"AI Note": new_note}, source="ai_regenerate")
+                result_entry["new_note"] = new_note
+                result_entry["status"] = "updated"
+                updated_count += 1
+            else:
+                result_entry["status"] = "no_change"
+
+        except Exception as e:
+            result_entry["status"] = "error"
+            result_entry["error"] = str(e)
+
+        results.append(result_entry)
+
+    return jsonify({
+        "ok": True,
+        "filter": filter_type,
+        "dry_run": dry_run,
+        "processed": len(results),
+        "updated": updated_count,
+        "results": results
+    })
+
+
+@app.route("/api/ai/find-problematic-notes", methods=["GET"])
+@login_required
+def api_ai_find_problematic_notes():
+    """
+    Find transactions with AI notes that reference birthdays or are too vague.
+    Useful for identifying notes that need regeneration.
+
+    Query params:
+    - filter: "birthday" | "vague" | "all" (default: "birthday")
+    - limit: max results (default: 100)
+
+    Returns: {"ok": true, "count": int, "transactions": [...]}
+    """
+    filter_type = request.args.get("filter", "birthday")
+    limit = min(int(request.args.get("limit", 100)), 500)
+
+    ensure_df()
+
+    # Keywords
+    birthday_keywords = ['birthday', 'bday', "b'day", 'anniversary', 'party for']
+    vague_keywords = ['business expense', 'business meal', 'client meeting', 'software subscription',
+                      'travel expense', 'meal with team', 'various business']
+
+    matches = []
+
+    for _, row in df.iterrows():
+        ai_note = str(row.get("AI Note", "") or "").lower()
+
+        if not ai_note:
+            continue
+
+        matched_keywords = []
+
+        if filter_type in ["birthday", "all"]:
+            for kw in birthday_keywords:
+                if kw in ai_note:
+                    matched_keywords.append(kw)
+
+        if filter_type in ["vague", "all"]:
+            for kw in vague_keywords:
+                if kw in ai_note:
+                    matched_keywords.append(kw)
+
+        if matched_keywords:
+            matches.append({
+                "_index": int(row["_index"]),
+                "merchant": row.get("Chase Description") or row.get("merchant") or "",
+                "amount": row.get("Chase Amount") or row.get("amount") or 0,
+                "date": row.get("Chase Date") or row.get("transaction_date") or "",
+                "ai_note": row.get("AI Note", ""),
+                "matched_keywords": list(set(matched_keywords))
+            })
+
+        if len(matches) >= limit:
+            break
+
+    return jsonify({
+        "ok": True,
+        "filter": filter_type,
+        "count": len(matches),
+        "transactions": matches
+    })
+
+
 @app.route("/api/ai/batch-categorize", methods=["POST"])
 def api_ai_batch_categorize():
     """
@@ -4328,9 +4537,20 @@ def atlas_contacts():
         limit = request.args.get('limit', 100, type=int)
         offset = request.args.get('offset', 0, type=int)
         search = request.args.get('search', '')
+        sort = request.args.get('sort', 'name')  # name, frequency, recent, score
 
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
+
+        # Determine sort order based on parameter
+        if sort == 'frequency':
+            order_clause = "ORDER BY COALESCE(interaction_count, 0) DESC, name"
+        elif sort == 'recent':
+            order_clause = "ORDER BY COALESCE(last_touch_date, '1970-01-01') DESC, name"
+        elif sort == 'score':
+            order_clause = "ORDER BY COALESCE(relationship_score, 0) DESC, name"
+        else:
+            order_clause = "ORDER BY name"
 
         # Use contacts table as the single source of truth
         try:
@@ -4362,9 +4582,9 @@ def atlas_contacts():
                       search_term, search_term, phone_search_term, phone_search_term,
                       search_term, search_term, search_term, search_term, limit, offset))
             else:
-                cursor.execute("""
+                cursor.execute(f"""
                     SELECT * FROM contacts
-                    ORDER BY name
+                    {order_clause}
                     LIMIT %s OFFSET %s
                 """, (limit, offset))
 
@@ -8047,8 +8267,8 @@ def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", catego
             pass
 
     try:
-        prompt = f"""You are Brian Kaplan's executive assistant writing expense notes for tax documentation.
-Brian is a Nashville music industry executive (Down Home, Music City Rodeo).
+        prompt = f"""You are Brian Kaplan's executive assistant writing expense notes for IRS tax documentation.
+Brian is a Nashville music industry executive running Down Home (artist management/publishing) and Music City Rodeo (event production).
 
 TRANSACTION:
 - Merchant: {merchant}
@@ -8057,39 +8277,41 @@ TRANSACTION:
 - Category: {category or "Unknown"}
 - Business: {business_type or "Down Home"}{merchant_context}{attendees_context}{calendar_context}
 
-BRIAN'S KEY CONTACTS (use when relevant for meals):
-- Down Home Team: Jason Ross, Tim Staples, Joel Bergvall, Kevin Sabbe, Andrew Cohen
+BRIAN'S KEY CONTACTS (use when relevant):
+- Down Home Team: Jason Ross (GM), Tim Staples, Joel Bergvall, Kevin Sabbe, Andrew Cohen
 - MCR Team: Patrick Humes, Barry Stephenson
 - Industry Execs: Scott Siman, Cindy Mabe, Ken Robold, Ben Kline
+- Artists: Morgan Wade, Jelly Roll, Wynonna, and other roster artists
 
 KNOWN VENUES:
-- Soho House / SH Nashville = Members-only club for industry meetings
-- 12 South Taproom = Local Nashville restaurant
-- Corner Pub = Casual meeting spot
+- Soho House / SH Nashville = Members-only club for industry networking and artist meetings
+- 12 South Taproom = Nashville restaurant for team lunches
+- Corner Pub = Casual industry meeting spot
 
-Write a professional expense note that:
-1. Explains the SPECIFIC business purpose (not generic "business expense")
-2. Is 1-2 sentences, concise but substantive
-3. Would satisfy an IRS auditor asking "what was this for?"
-4. Uses calendar events to add context (e.g., "Flight to LA for [event name]")
-5. For meals, mention the business discussion topic or attendee context
-6. For subscriptions, explain how it's used for business
+CRITICAL REQUIREMENTS - Your note MUST:
+1. Be SPECIFIC enough to satisfy an IRS auditor asking "What was this for?"
+2. Name WHO was there when known (from calendar/attendees context)
+3. State WHAT was discussed or the PURPOSE (artist deals, release strategy, contracts, etc.)
+4. For travel: specify DESTINATION and REASON (event name, meeting purpose)
+5. For subscriptions: explain SPECIFIC business use (not just "for business")
+6. NEVER use vague phrases like "business expense", "client meeting", or "various business purposes"
 
-EXCELLENT NOTES:
-- "Client lunch with Jason Ross at Soho House to review Q4 artist release schedule"
-- "Delta flight to Los Angeles for Grammy week artist showcases"
-- "Monthly Claude AI subscription for business writing and contract analysis"
-- "Uber to BNA for Music City Rodeo event planning trip"
-- "Adobe Creative Cloud for artist promotional materials and social media content"
+EXCELLENT NOTES (be this specific):
+- "Artist development dinner at Soho House with Jason Ross - discussed Morgan Wade European tour logistics and Q1 release schedule"
+- "Delta flight to Los Angeles for Grammy week: artist showcase at The Troubadour and UMG label meetings"
+- "Claude AI monthly subscription - used for contract draft review, press release writing, and tour routing analysis"
+- "Uber to BNA airport for Las Vegas NFR production meetings with venue coordinators"
+- "Team lunch at 12 South Taproom with Joel Bergvall and Kevin Sabbe - Q4 budget review and artist roster planning"
 
-BAD NOTES (too vague):
-- "Business expense"
-- "Meal with client"
-- "Software subscription"
-- "Travel"
+BAD NOTES (NEVER write these - too vague):
+- "Business expense" / "Business meal"
+- "Client meeting" / "Meeting with client"
+- "Software subscription" / "Monthly subscription"
+- "Travel" / "Transportation"
+- "Meal with team" / "Team dinner"
 
 Return ONLY valid JSON:
-{{"note": "your professional expense note here", "confidence": 0-100}}"""
+{{"note": "your specific, IRS-ready expense note here", "confidence": 0-100}}"""
 
         response_text = generate_content_with_fallback(prompt)
         if not response_text:
@@ -16384,6 +16606,364 @@ def api_atlas_sync_email_interactions():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/atlas/contacts/sync-imessage-interactions", methods=["POST"])
+def api_atlas_sync_imessage_interactions():
+    """Scan iMessage (chat.db) for messages and populate contact interactions"""
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        import sqlite3
+        from pathlib import Path
+        from datetime import datetime, timedelta
+
+        # Check if iMessage DB is accessible (macOS only)
+        chat_db_path = Path.home() / "Library" / "Messages" / "chat.db"
+        if not chat_db_path.exists():
+            return jsonify({
+                "ok": False,
+                "error": "iMessage database not found (macOS only)",
+                "path": str(chat_db_path)
+            }), 400
+
+        # Get days parameter (default 90 days)
+        days = request.args.get('days', 90, type=int)
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get all contacts with phone numbers
+        cursor.execute("SELECT id, phone, name, email FROM contacts WHERE phone IS NOT NULL AND phone != ''")
+        contacts_with_phone = {}
+        for c in cursor.fetchall():
+            if c['phone']:
+                # Normalize phone number - extract just digits
+                phone_digits = ''.join(ch for ch in c['phone'] if ch.isdigit())
+                # Store last 10 digits (US format) for matching
+                if len(phone_digits) >= 10:
+                    phone_key = phone_digits[-10:]
+                    contacts_with_phone[phone_key] = c
+
+        if not contacts_with_phone:
+            cursor.close()
+            return_db_connection(conn)
+            return jsonify({
+                "ok": True,
+                "message": "No contacts with phone numbers found",
+                "contacts_with_phone": 0
+            })
+
+        # Connect to iMessage database
+        try:
+            imsg_conn = sqlite3.connect(str(chat_db_path))
+            imsg_conn.row_factory = sqlite3.Row
+            imsg_cursor = imsg_conn.cursor()
+        except Exception as e:
+            cursor.close()
+            return_db_connection(conn)
+            return jsonify({
+                "ok": False,
+                "error": f"Cannot access iMessage database: {e}. Grant Full Disk Access to Terminal/Python in System Preferences."
+            }), 400
+
+        # Calculate date threshold (Apple timestamp is nanoseconds since 2001-01-01)
+        threshold_date = datetime.now() - timedelta(days=days)
+        apple_epoch = datetime(2001, 1, 1)
+        threshold_ns = int((threshold_date - apple_epoch).total_seconds() * 1e9)
+
+        # Query recent messages
+        imsg_cursor.execute("""
+            SELECT
+                m.ROWID as msg_id,
+                m.text,
+                m.is_from_me,
+                m.date,
+                datetime(m.date/1000000000 + strftime('%s', '2001-01-01'), 'unixepoch', 'localtime') as message_date,
+                h.id as handle_id
+            FROM message m
+            JOIN handle h ON m.handle_id = h.ROWID
+            WHERE m.date > ?
+            AND m.text IS NOT NULL
+            AND m.text != ''
+            ORDER BY m.date DESC
+            LIMIT 5000
+        """, (threshold_ns,))
+
+        messages = imsg_cursor.fetchall()
+        imsg_conn.close()
+
+        interactions_created = 0
+        messages_scanned = len(messages)
+        contacts_matched = set()
+        handle_stats = {}
+
+        for msg in messages:
+            handle = msg['handle_id'] or ''
+
+            # Track handle stats
+            if handle not in handle_stats:
+                handle_stats[handle] = {'count': 0, 'matched': False}
+            handle_stats[handle]['count'] += 1
+
+            # Extract phone digits from handle (could be phone or email)
+            handle_digits = ''.join(ch for ch in handle if ch.isdigit())
+            if len(handle_digits) >= 10:
+                handle_key = handle_digits[-10:]
+            else:
+                continue  # Skip if not a phone number
+
+            # Try to match to a contact
+            if handle_key in contacts_with_phone:
+                contact = contacts_with_phone[handle_key]
+                handle_stats[handle]['matched'] = True
+                contacts_matched.add(contact['id'])
+
+                # Check if interaction already exists
+                msg_date = msg['message_date']
+                interaction_type = 'imessage_sent' if msg['is_from_me'] else 'imessage_received'
+
+                # Check for duplicate using external_id
+                cursor.execute("""
+                    SELECT id FROM interactions
+                    WHERE source = 'imessage' AND external_id = %s
+                    LIMIT 1
+                """, (str(msg['msg_id']),))
+
+                if cursor.fetchone():
+                    continue  # Already exists
+
+                # Create interaction
+                try:
+                    text_preview = (msg['text'] or '')[:500]
+                    is_outgoing = msg['is_from_me']
+
+                    cursor.execute("""
+                        INSERT INTO interactions (
+                            interaction_type, channel, occurred_at, summary, content,
+                            source, external_id, is_outgoing
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        interaction_type,
+                        'imessage',
+                        msg_date,
+                        text_preview[:200],
+                        text_preview,
+                        'imessage',
+                        str(msg['msg_id']),
+                        is_outgoing
+                    ))
+                    interaction_id = cursor.lastrowid
+
+                    # Link to contact via junction table
+                    cursor.execute("""
+                        INSERT INTO interaction_contacts (interaction_id, contact_id, role)
+                        VALUES (%s, %s, %s)
+                    """, (interaction_id, contact['id'], 'participant'))
+
+                    interactions_created += 1
+
+                    # Update contact's last touch date and interaction count
+                    cursor.execute("""
+                        UPDATE contacts
+                        SET last_touch_date = GREATEST(COALESCE(last_touch_date, '1970-01-01'), %s),
+                            interaction_count = COALESCE(interaction_count, 0) + 1
+                        WHERE id = %s
+                    """, (msg_date, contact['id']))
+
+                except Exception as e:
+                    print(f"Error creating iMessage interaction: {e}")
+                    continue
+
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        # Build handle summary for debugging
+        top_handles = sorted(handle_stats.items(), key=lambda x: x[1]['count'], reverse=True)[:20]
+
+        return jsonify({
+            "ok": True,
+            "messages_scanned": messages_scanned,
+            "interactions_created": interactions_created,
+            "contacts_with_phone": len(contacts_with_phone),
+            "contacts_matched": len(contacts_matched),
+            "days_scanned": days,
+            "top_handles": [{"handle": h, "count": s['count'], "matched": s['matched']} for h, s in top_handles]
+        })
+
+    except Exception as e:
+        print(f"Sync iMessage interactions error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/atlas/contacts/sync-all-interactions", methods=["POST"])
+def api_atlas_sync_all_interactions():
+    """Sync interactions from all sources (Gmail + iMessage) and recalculate scores"""
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    results = {
+        "gmail": None,
+        "imessage": None,
+        "scores_updated": 0
+    }
+
+    # Sync Gmail
+    try:
+        with app.test_request_context():
+            gmail_response = api_atlas_sync_email_interactions()
+            if hasattr(gmail_response, 'get_json'):
+                results["gmail"] = gmail_response.get_json()
+            else:
+                results["gmail"] = {"error": "Gmail sync failed"}
+    except Exception as e:
+        results["gmail"] = {"error": str(e)}
+
+    # Sync iMessage
+    try:
+        with app.test_request_context():
+            imessage_response = api_atlas_sync_imessage_interactions()
+            if hasattr(imessage_response, 'get_json'):
+                results["imessage"] = imessage_response.get_json()
+            else:
+                results["imessage"] = {"error": "iMessage sync failed"}
+    except Exception as e:
+        results["imessage"] = {"error": str(e)}
+
+    # Recalculate interaction counts for all contacts
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Update interaction counts from the interactions table (using junction table)
+        cursor.execute("""
+            UPDATE contacts c
+            SET interaction_count = (
+                SELECT COUNT(*) FROM interaction_contacts ic WHERE ic.contact_id = c.id
+            )
+        """)
+
+        # Update last touch dates from interactions (using junction table)
+        cursor.execute("""
+            UPDATE contacts c
+            SET last_touch_date = (
+                SELECT MAX(i.occurred_at)
+                FROM interactions i
+                JOIN interaction_contacts ic ON i.id = ic.interaction_id
+                WHERE ic.contact_id = c.id
+            )
+            WHERE EXISTS (SELECT 1 FROM interaction_contacts ic WHERE ic.contact_id = c.id)
+        """)
+
+        results["scores_updated"] = cursor.rowcount
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+    except Exception as e:
+        results["score_update_error"] = str(e)
+
+    return jsonify({
+        "ok": True,
+        **results
+    })
+
+
+@app.route("/api/atlas/contacts/frequency-stats", methods=["GET"])
+def api_atlas_frequency_stats():
+    """Get contacts sorted by interaction frequency with detailed stats"""
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        days = request.args.get('days', 90, type=int)
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get contacts with interaction stats (using junction table)
+        cursor.execute("""
+            SELECT
+                c.id, c.name, c.email, c.phone, c.company, c.photo_url,
+                COALESCE(c.interaction_count, 0) as total_interactions,
+                c.last_touch_date,
+                (SELECT COUNT(*)
+                 FROM interaction_contacts ic
+                 JOIN interactions i ON i.id = ic.interaction_id
+                 WHERE ic.contact_id = c.id
+                 AND i.occurred_at >= DATE_SUB(NOW(), INTERVAL %s DAY)) as recent_interactions,
+                (SELECT COUNT(*)
+                 FROM interaction_contacts ic
+                 JOIN interactions i ON i.id = ic.interaction_id
+                 WHERE ic.contact_id = c.id AND i.is_outgoing = TRUE) as sent_count,
+                (SELECT COUNT(*)
+                 FROM interaction_contacts ic
+                 JOIN interactions i ON i.id = ic.interaction_id
+                 WHERE ic.contact_id = c.id AND i.is_outgoing = FALSE) as received_count
+            FROM contacts c
+            WHERE c.interaction_count > 0 OR c.last_touch_date IS NOT NULL
+            ORDER BY COALESCE(c.interaction_count, 0) DESC
+            LIMIT %s
+        """, (days, limit))
+
+        contacts = []
+        for row in cursor.fetchall():
+            days_since = None
+            if row['last_touch_date']:
+                try:
+                    last_touch = row['last_touch_date']
+                    if isinstance(last_touch, str):
+                        last_touch = datetime.fromisoformat(last_touch.replace('Z', '+00:00'))
+                    days_since = (datetime.now() - last_touch.replace(tzinfo=None)).days
+                except:
+                    pass
+
+            contacts.append({
+                "id": row['id'],
+                "name": row['name'],
+                "email": row['email'],
+                "phone": row['phone'],
+                "company": row['company'],
+                "photo_url": row['photo_url'],
+                "total_interactions": row['total_interactions'],
+                "recent_interactions": row['recent_interactions'],
+                "sent_count": row['sent_count'],
+                "received_count": row['received_count'],
+                "last_touch_date": str(row['last_touch_date']) if row['last_touch_date'] else None,
+                "days_since_contact": days_since
+            })
+
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({
+            "ok": True,
+            "contacts": contacts,
+            "count": len(contacts),
+            "period_days": days
+        })
+
+    except Exception as e:
+        print(f"Frequency stats error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 # Contact Hub HTML Template (PWA-ready)
 CONTACT_HUB_TEMPLATE = '''
 <!DOCTYPE html>
@@ -17237,6 +17817,92 @@ CONTACT_HUB_TEMPLATE = '''
 
 
 # =============================================================================
+# AUTOMATIC INTERACTION SYNC (Background)
+# =============================================================================
+
+_last_interaction_sync = None
+_interaction_sync_interval = 3600  # Sync every hour (in seconds)
+
+def should_sync_interactions():
+    """Check if enough time has passed since last sync"""
+    global _last_interaction_sync
+    if _last_interaction_sync is None:
+        return True
+    from datetime import datetime, timedelta
+    return (datetime.now() - _last_interaction_sync).total_seconds() > _interaction_sync_interval
+
+def background_sync_interactions():
+    """Run interaction sync in background thread"""
+    global _last_interaction_sync
+    import threading
+    from datetime import datetime
+
+    def do_sync():
+        global _last_interaction_sync
+        try:
+            print("🔄 Starting automatic interaction sync...")
+
+            # Sync iMessage (if on macOS)
+            imessage_result = None
+            try:
+                from pathlib import Path
+                chat_db = Path.home() / "Library" / "Messages" / "chat.db"
+                if chat_db.exists():
+                    with app.test_request_context():
+                        response = api_atlas_sync_imessage_interactions()
+                        if hasattr(response, 'get_json'):
+                            imessage_result = response.get_json()
+                            if imessage_result.get('ok'):
+                                print(f"  ✅ iMessage: {imessage_result.get('interactions_created', 0)} new interactions")
+            except Exception as e:
+                print(f"  ⚠️ iMessage sync error: {e}")
+
+            # Update interaction counts
+            try:
+                conn, db_type = get_db_connection()
+                if conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        UPDATE contacts c
+                        SET interaction_count = (
+                            SELECT COUNT(*) FROM interaction_contacts ic WHERE ic.contact_id = c.id
+                        )
+                    """)
+                    cursor.execute("""
+                        UPDATE contacts c
+                        SET last_touch_date = (
+                            SELECT MAX(i.occurred_at)
+                            FROM interactions i
+                            JOIN interaction_contacts ic ON i.id = ic.interaction_id
+                            WHERE ic.contact_id = c.id
+                        )
+                        WHERE EXISTS (SELECT 1 FROM interaction_contacts ic WHERE ic.contact_id = c.id)
+                    """)
+                    conn.commit()
+                    cursor.close()
+                    return_db_connection(conn)
+                    print("  ✅ Interaction counts updated")
+            except Exception as e:
+                print(f"  ⚠️ Count update error: {e}")
+
+            _last_interaction_sync = datetime.now()
+            print("✅ Automatic interaction sync complete")
+
+        except Exception as e:
+            print(f"❌ Background sync error: {e}")
+
+    # Run in background thread
+    thread = threading.Thread(target=do_sync, daemon=True)
+    thread.start()
+
+
+def trigger_sync_if_needed():
+    """Trigger background sync if enough time has passed"""
+    if should_sync_interactions():
+        background_sync_interactions()
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -17276,6 +17942,10 @@ if __name__ == "__main__":
     RECEIPT_DIR.mkdir(exist_ok=True)
     TRASH_DIR.mkdir(exist_ok=True)
     load_receipt_meta()
+
+    # Trigger initial interaction sync in background
+    print("🔄 Triggering initial interaction sync...")
+    trigger_sync_if_needed()
 
     print(f"🚀 Starting Flask on port {args.port}...")
     # debug=True to keep hot-reloading while you iterate

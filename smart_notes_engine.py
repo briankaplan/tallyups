@@ -323,9 +323,41 @@ def get_imessage_context(date_str: str, merchant: str = "") -> Dict:
 # CALENDAR CONTEXT LOOKUP
 # =============================================================================
 
+# Keywords that indicate personal/non-business events to exclude from expense context
+PERSONAL_EVENT_KEYWORDS = [
+    'birthday', 'bday', 'b-day', "b'day",
+    'anniversary',
+    'dentist', 'doctor', 'appointment', 'checkup', 'physical',
+    'school', 'pickup', 'drop off', 'dropoff', 'carpool',
+    'recital', 'game', 'practice', 'soccer', 'basketball', 'football', 'baseball',
+    'vacation', 'holiday', 'pto', 'day off',
+    'haircut', 'salon', 'spa',
+]
+
+
+def is_business_relevant_event(event: dict) -> bool:
+    """
+    Check if a calendar event is business-relevant for expense categorization.
+    Filters out birthdays, personal appointments, kids' events, etc.
+    """
+    title = (event.get('title') or '').lower()
+    description = (event.get('description') or '').lower()
+
+    # Check title and description for personal keywords
+    combined_text = f"{title} {description}"
+
+    for keyword in PERSONAL_EVENT_KEYWORDS:
+        if keyword in combined_text:
+            return False
+
+    return True
+
+
 def get_calendar_context(date_str: str) -> Dict:
     """
     Get calendar events for a transaction date.
+    Automatically filters out personal events (birthdays, etc.) that shouldn't
+    be used for business expense categorization.
 
     Returns dict with 'events' list and 'attendees' set
     """
@@ -340,6 +372,9 @@ def get_calendar_context(date_str: str) -> Dict:
 
     try:
         events = get_events_around_date(date_str, days_before=0, days_after=0)
+
+        # Filter out personal events (birthdays, etc.) - these should not be used for business expense notes
+        events = [e for e in events if is_business_relevant_event(e)]
 
         for event in events:
             title = event.get('title', '')
@@ -620,19 +655,29 @@ def _build_note_prompt(
 
     parts.extend([
         "",
-        "Write a 1-2 sentence note that:",
-        "1. Explains the business purpose",
-        "2. Mentions specific attendees if this is a meal/meeting",
-        "3. Is factual and professional",
+        "IMPORTANT: Write a SPECIFIC expense note that would satisfy an IRS auditor asking 'What was this for?'",
         "",
-        "Format: [Business Purpose] - [Attendees if applicable]",
+        "REQUIREMENTS:",
+        "1. Be SPECIFIC - name people, projects, or events when known",
+        "2. For meals: specify WHO was there and WHAT was discussed (artist deals, contracts, etc.)",
+        "3. For travel: specify WHERE and WHY (event name, meeting purpose)",
+        "4. For subscriptions: specify HOW it's used for business",
+        "5. Never use generic phrases like 'business expense' or 'client meeting'",
         "",
-        "Example outputs:",
-        "- Business development dinner at Soho House Nashville with Scott Siman (Industry Executive).",
-        "- Software subscription for Anthropic Claude AI - used for content strategy and business analysis.",
-        "- Airport parking during Las Vegas travel for NFR (National Finals Rodeo) business meetings.",
+        "EXCELLENT NOTES:",
+        "- 'Artist development dinner at Soho House with Jason Ross discussing Q4 release strategy for Morgan Wade'",
+        "- 'Claude AI subscription - contract analysis, press release drafting, and business correspondence'",
+        "- 'Delta flight to Los Angeles for Grammy week artist showcases and label meetings'",
+        "- 'Parking at BNA airport during Las Vegas trip for NFR (National Finals Rodeo) production meetings'",
+        "- 'Team lunch at 12 South Taproom with Joel Bergvall and Kevin Sabbe - quarterly planning review'",
         "",
-        "Note:"
+        "BAD NOTES (too vague - NEVER write these):",
+        "- 'Business dinner' or 'Client meeting'",
+        "- 'Software subscription'",
+        "- 'Travel expense'",
+        "- 'Meal with team'",
+        "",
+        "Write 1-2 sentences. Be factual and specific:",
     ])
 
     return "\n".join(parts)

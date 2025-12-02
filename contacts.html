@@ -349,6 +349,118 @@
       font-size: 11px;
     }
 
+    /* Sort Controls */
+    .sort-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sort-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .sort-buttons {
+      display: flex;
+      gap: 6px;
+      flex: 1;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .sort-buttons::-webkit-scrollbar {
+      display: none;
+    }
+
+    .sort-btn {
+      padding: 6px 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sort-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .sort-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+    }
+
+    .sort-btn svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .sync-interactions-btn {
+      padding: 6px 12px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      border: none;
+      border-radius: 16px;
+      font-size: 12px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sync-interactions-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 2px 8px rgba(170, 102, 255, 0.4);
+    }
+
+    .sync-interactions-btn.syncing {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .sync-interactions-btn.syncing svg {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Interaction count badge on contact cards */
+    .interaction-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      background: var(--accent-dim);
+      border-radius: 12px;
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .interaction-badge svg {
+      width: 12px;
+      height: 12px;
+    }
+
     /* Sync Panel */
     .sync-panel {
       margin: 16px;
@@ -2645,6 +2757,45 @@
     <div class="filter-chip" data-filter="needs-attention" onclick="setFilter('needs-attention', this)">Needs Attention</div>
   </div>
 
+  <!-- Sort Controls -->
+  <div class="sort-controls">
+    <span class="sort-label">Sort:</span>
+    <div class="sort-buttons">
+      <button class="sort-btn active" data-sort="name" onclick="setSortOrder('name', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18M3 12h12M3 18h6"/>
+        </svg>
+        A-Z
+      </button>
+      <button class="sort-btn" data-sort="frequency" onclick="setSortOrder('frequency', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+        Most Frequent
+      </button>
+      <button class="sort-btn" data-sort="recent" onclick="setSortOrder('recent', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        Recent
+      </button>
+      <button class="sort-btn" data-sort="score" onclick="setSortOrder('score', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        Score
+      </button>
+    </div>
+    <button class="sync-interactions-btn" id="syncInteractionsBtn" onclick="syncAllInteractions()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 4v6h-6M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+      </svg>
+      Sync
+    </button>
+  </div>
+
   <!-- Industry Category Chips -->
   <div class="category-chips-container" id="categoryChips">
     <!-- Dynamically populated -->
@@ -3039,6 +3190,78 @@
     let isSelectMode = false;
     let selectedContacts = new Set();
 
+    // Sort State
+    let currentSort = 'name';  // name, frequency, recent, score
+
+    // Set sort order and reload contacts
+    async function setSortOrder(sort, element) {
+      currentSort = sort;
+
+      // Update button states
+      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+      element.classList.add('active');
+
+      // Reload contacts with new sort
+      await loadContacts();
+
+      showToast(`Sorted by ${sort === 'name' ? 'A-Z' : sort === 'frequency' ? 'most frequent' : sort === 'recent' ? 'most recent' : 'score'}`, 'success');
+    }
+
+    // Sync all interactions (Gmail + iMessage)
+    async function syncAllInteractions() {
+      const btn = document.getElementById('syncInteractionsBtn');
+      btn.classList.add('syncing');
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+        Syncing...
+      `;
+
+      try {
+        showToast('Syncing Gmail & iMessage interactions...', 'info');
+
+        const response = await fetch('/api/atlas/contacts/sync-all-interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+          let message = 'Sync complete! ';
+          if (data.gmail && data.gmail.interactions_created) {
+            message += `Gmail: ${data.gmail.interactions_created} new. `;
+          }
+          if (data.imessage && data.imessage.interactions_created) {
+            message += `iMessage: ${data.imessage.interactions_created} new.`;
+          }
+          if (data.scores_updated) {
+            message += ` Updated ${data.scores_updated} contacts.`;
+          }
+          showToast(message, 'success');
+
+          // Reload contacts to show updated counts
+          await loadContacts();
+        } else {
+          showToast('Sync had some issues: ' + (data.error || 'Unknown'), 'warning');
+        }
+      } catch (e) {
+        console.error('Sync error:', e);
+        showToast('Sync failed: ' + e.message, 'error');
+      }
+
+      btn.classList.remove('syncing');
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+        </svg>
+        Sync
+      `;
+    }
+
     // Toggle Select Mode
     function toggleSelectMode() {
       isSelectMode = !isSelectMode;
@@ -3287,10 +3510,27 @@
     document.addEventListener('DOMContentLoaded', () => {
       loadContacts();
       checkSyncStatus();
+      triggerInteractionSyncIfNeeded();  // Trigger background interaction sync
       setupInfiniteScroll();
       renderAlphabetIndex();
       setupAlphabetScrollTracking();
     });
+
+    // Trigger background interaction sync on page load (server handles rate-limiting)
+    async function triggerInteractionSyncIfNeeded() {
+      try {
+        // Just hit the frequency-stats endpoint - the before_request hook will trigger sync if needed
+        // This is a lightweight GET that returns quickly
+        const response = await fetch('/api/atlas/contacts/frequency-stats');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📊 Interaction stats:', data.total_with_interactions, 'contacts have interactions');
+        }
+      } catch (e) {
+        // Non-critical, ignore errors
+        console.log('Interaction sync check skipped');
+      }
+    }
 
     // Render alphabet index sidebar
     function renderAlphabetIndex() {
@@ -3454,7 +3694,7 @@
 
       try {
         isLoading = true;
-        const response = await fetch(`/api/atlas/contacts?limit=${BATCH_SIZE}&offset=0`);
+        const response = await fetch(`/api/atlas/contacts?limit=${BATCH_SIZE}&offset=0&sort=${currentSort}`);
         const data = await response.json();
 
         if (data.contacts && data.contacts.length > 0) {
@@ -3661,6 +3901,14 @@
               </div>
               <span class="intel-label">Score</span>
             </div>
+            ${contact.interaction_count > 0 ? `
+              <div class="interaction-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                ${contact.interaction_count} ${contact.interaction_count === 1 ? 'interaction' : 'interactions'}
+              </div>
+            ` : ''}
             <div class="intel-tags">
               ${tags.join('')}
             </div>

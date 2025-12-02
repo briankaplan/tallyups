@@ -244,8 +244,56 @@ def get_events_around_date(receipt_date: str, days_before: int = 1, days_after: 
         return []
 
 
-def format_events_for_prompt(events: list) -> str:
-    """Format events list into a string for AI prompt."""
+# Keywords that indicate personal/non-business events to exclude from expense context
+PERSONAL_EVENT_KEYWORDS = [
+    'birthday', 'bday', 'b-day', "b'day",
+    'anniversary',
+    'dentist', 'doctor', 'appointment', 'checkup', 'physical',
+    'school', 'pickup', 'drop off', 'dropoff', 'carpool',
+    'recital', 'game', 'practice', 'soccer', 'basketball', 'football', 'baseball',
+    'vacation', 'holiday', 'pto', 'day off',
+    'haircut', 'salon', 'spa',
+]
+
+
+def is_business_relevant_event(event: dict) -> bool:
+    """
+    Check if a calendar event is business-relevant for expense categorization.
+    Filters out birthdays, personal appointments, kids' events, etc.
+    """
+    title = (event.get('title') or '').lower()
+    description = (event.get('description') or '').lower()
+
+    # Check title and description for personal keywords
+    combined_text = f"{title} {description}"
+
+    for keyword in PERSONAL_EVENT_KEYWORDS:
+        if keyword in combined_text:
+            return False
+
+    return True
+
+
+def filter_business_events(events: list) -> list:
+    """Filter a list of events to only include business-relevant ones."""
+    return [e for e in events if is_business_relevant_event(e)]
+
+
+def format_events_for_prompt(events: list, filter_personal: bool = True) -> str:
+    """
+    Format events list into a string for AI prompt.
+
+    Args:
+        events: List of calendar events
+        filter_personal: If True, exclude birthday/personal events (default True)
+    """
+    if not events:
+        return ""
+
+    # Filter out personal events by default
+    if filter_personal:
+        events = filter_business_events(events)
+
     if not events:
         return ""
 
@@ -275,8 +323,15 @@ def generate_contextual_note(
     Generate a contextual note for a receipt based on calendar events.
 
     This is used by the OCR endpoint to enhance receipt notes.
+    Automatically filters out personal events like birthdays.
     """
     events = get_events_around_date(receipt_date)
+
+    if not events:
+        return None
+
+    # Filter out personal events (birthdays, etc.) - these should not be used for business expense notes
+    events = filter_business_events(events)
 
     if not events:
         return None
