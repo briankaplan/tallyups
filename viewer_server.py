@@ -13860,7 +13860,8 @@ def reprocess_missing_receipts():
 
     # Check admin key or login
     admin_key = request.args.get('admin_key')
-    if admin_key != ADMIN_API_KEY and not session.get('logged_in'):
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key and not session.get('logged_in'):
         return jsonify({'error': 'Authentication required'}), 401
 
     try:
