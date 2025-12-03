@@ -1172,13 +1172,26 @@ function renderTable() {
       ? `<div class="notes-cell" onclick="editNotes(event, ${rowIndex})" title="${miDescription}">${miDescription}</div>`
       : `<div class="notes-cell empty" onclick="editNotes(event, ${rowIndex})">Click to add note</div>`;
 
-    // Receipt indicator - check both local file and R2 URL
+    // Receipt indicator - check both local file and R2 URL + validation status
     const receiptFile = row['Receipt File'] || '';
     const r2Url = row['r2_url'] || row['R2 URL'] || row['receipt_url'] || '';
     const hasReceipt = receiptFile || r2Url;
-    const receiptHtml = hasReceipt
-      ? `<span class="receipt-indicator has-receipt" title="${receiptFile || r2Url}">✓</span>`
-      : `<span class="receipt-indicator no-receipt">–</span>`;
+    const validationStatus = row['receipt_validation_status'] || '';
+    const validationNote = row['receipt_validation_note'] || '';
+    let receiptHtml;
+    if (hasReceipt) {
+      if (validationStatus === 'verified') {
+        receiptHtml = `<span class="receipt-indicator verified" title="Verified: ${validationNote}">✓✓</span>`;
+      } else if (validationStatus === 'mismatch') {
+        receiptHtml = `<span class="receipt-indicator mismatch" title="MISMATCH: ${validationNote}">✗</span>`;
+      } else if (validationStatus === 'needs_review') {
+        receiptHtml = `<span class="receipt-indicator needs-review" title="Needs Review: ${validationNote}">?</span>`;
+      } else {
+        receiptHtml = `<span class="receipt-indicator has-receipt" title="${receiptFile || r2Url}">✓</span>`;
+      }
+    } else {
+      receiptHtml = `<span class="receipt-indicator no-receipt">–</span>`;
+    }
 
     tr.innerHTML = `
       <td>${dateHtml}</td>
@@ -1260,13 +1273,27 @@ function renderMobileCards() {
     const business = row['Business Type'] || '';
     const status = row['Review Status'] || 'pending';
 
-    // Receipt check
+    // Receipt check + validation status
     const receiptFile = row['Receipt File'] || '';
     const r2Url = row['r2_url'] || row['R2 URL'] || row['receipt_url'] || '';
     const hasReceipt = receiptFile || r2Url;
-    const receiptClass = hasReceipt ? 'has-receipt' : 'no-receipt';
-    const receiptIcon = hasReceipt ? '✓' : '!';
-    const receiptIconClass = hasReceipt ? 'has' : 'missing';
+    const validationStatus = row['receipt_validation_status'] || '';
+    let receiptClass = hasReceipt ? 'has-receipt' : 'no-receipt';
+    let receiptIcon = hasReceipt ? '✓' : '!';
+    let receiptIconClass = hasReceipt ? 'has' : 'missing';
+    if (hasReceipt && validationStatus === 'verified') {
+      receiptClass = 'verified';
+      receiptIcon = '✓✓';
+      receiptIconClass = 'verified';
+    } else if (hasReceipt && validationStatus === 'mismatch') {
+      receiptClass = 'mismatch';
+      receiptIcon = '✗';
+      receiptIconClass = 'mismatch';
+    } else if (hasReceipt && validationStatus === 'needs_review') {
+      receiptClass = 'needs-review';
+      receiptIcon = '?';
+      receiptIconClass = 'needs-review';
+    }
 
     // Status badge
     let statusHtml = '';
