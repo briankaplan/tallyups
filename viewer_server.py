@@ -2,8 +2,11 @@
 """
 Tallyups Receipt Reconciliation Server
 MySQL-only database backend - all SQLite/CSV code has been removed.
-Last rebuild: 2025-12-03T04:40:00Z - Force cache bust for Railway deployment
 """
+
+# Version info for deployment verification - increment on each deploy
+APP_VERSION = "2025.12.03.v3"
+APP_BUILD_TIME = "2025-12-03T05:00:00Z"
 import os
 import math
 import json
@@ -1901,6 +1904,8 @@ def health_check():
     health_data = {
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat() + "Z",
+        "version": APP_VERSION,
+        "build_time": APP_BUILD_TIME,
         "services": {}
     }
 

@@ -1,4 +1,5 @@
 # Flask web framework
+# Cache bust: 2025-12-03 - force fresh pip install
 flask>=3.0.0
 flask-cors>=4.0.0
 
