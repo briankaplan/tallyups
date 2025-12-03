@@ -367,6 +367,75 @@ except Exception as e:
     api_monitor = None
 
 # =============================================================================
+# AUTOMATIC INBOX SCANNING SCHEDULER
+# =============================================================================
+scheduler = None
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.interval import IntervalTrigger
+    import atexit
+
+    def scheduled_inbox_scan():
+        """Background job to scan Gmail for new receipts every 4 hours."""
+        print(f"\n⏰ [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled inbox scan...")
+        try:
+            from incoming_receipts_service import scan_gmail_for_new_receipts, save_incoming_receipt
+
+            accounts = [
+                'kaplan.brian@gmail.com',
+                'brian@downhome.com',
+                'brian@musiccityrodeo.com'
+            ]
+
+            total_new = 0
+            for account in accounts:
+                try:
+                    receipts = scan_gmail_for_new_receipts(account, '2024-09-01')
+                    for receipt in receipts:
+                        if save_incoming_receipt(receipt):
+                            total_new += 1
+                except Exception as acc_error:
+                    print(f"   ❌ Error scanning {account}: {acc_error}")
+
+            print(f"   ✅ Scheduled scan complete: {total_new} new receipts added")
+
+            # Auto-match if we found new receipts
+            if total_new > 0:
+                try:
+                    from smart_auto_matcher import auto_match_pending_receipts
+                    auto_match_pending_receipts()
+                    print(f"   ✅ Auto-matching complete")
+                except Exception as match_error:
+                    print(f"   ⚠️ Auto-match failed: {match_error}")
+
+        except Exception as e:
+            print(f"   ❌ Scheduled scan error: {e}")
+
+    # Only start scheduler in production (Railway) to avoid multiple instances during dev
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        scheduler = BackgroundScheduler()
+        # Run every 4 hours
+        scheduler.add_job(
+            func=scheduled_inbox_scan,
+            trigger=IntervalTrigger(hours=4),
+            id='inbox_scan_job',
+            name='Scan Gmail for new receipts',
+            replace_existing=True
+        )
+        scheduler.start()
+        print("✅ Background inbox scanner started (runs every 4 hours)")
+
+        # Shut down scheduler when app exits
+        atexit.register(lambda: scheduler.shutdown() if scheduler else None)
+    else:
+        print("ℹ️  Background scheduler disabled in development mode")
+
+except ImportError as e:
+    print(f"⚠️ APScheduler not available - automatic inbox scanning disabled: {e}")
+except Exception as e:
+    print(f"⚠️ Failed to initialize scheduler: {e}")
+
+# =============================================================================
 # AUTHENTICATION SETUP
 # =============================================================================
 from auth import (
@@ -9141,114 +9210,75 @@ def detach_receipt():
     """
     Body: { "_index": int } or { "transaction_id": int }
 
-    Detaches receipt from transaction, tracks rejection so it NEVER comes back.
-    Works in both CSV mode (via _index) and MySQL mode (via transaction_id).
+    Detaches receipt from transaction by clearing receipt fields.
     """
     data = request.get_json(force=True) or {}
 
     # Support both _index (legacy) and transaction_id (new)
     idx = data.get("_index") or data.get("transaction_id")
     if idx is None:
-        abort(400, "Missing _index or transaction_id")
+        return jsonify({'ok': False, 'error': 'Missing _index or transaction_id'}), 400
 
     try:
         idx = int(idx)
     except (TypeError, ValueError):
-        abort(400, f"Invalid _index/transaction_id: {idx}")
+        return jsonify({'ok': False, 'error': f'Invalid _index/transaction_id: {idx}'}), 400
 
     # ===== MySQL Mode (Primary) =====
     if USE_DATABASE and db:
+        conn = None
         try:
             conn, db_type = get_db_connection()
 
-            # Get transaction by _index (the frontend sends _index, not id)
-            # First try _index, then fall back to id for backwards compatibility
+            # Get transaction by _index first, then by id
             cursor = db_execute(conn, db_type,
-                'SELECT id, _index, receipt_file, receipt_url, chase_description, chase_amount, chase_date FROM transactions WHERE _index = ?',
+                'SELECT id, _index, receipt_file, receipt_url, r2_url, chase_description FROM transactions WHERE _index = ?',
                 (idx,))
             row = cursor.fetchone()
 
-            # Fallback to id if _index not found (backwards compat)
             if not row:
                 cursor = db_execute(conn, db_type,
-                    'SELECT id, _index, receipt_file, receipt_url, chase_description, chase_amount, chase_date FROM transactions WHERE id = ?',
+                    'SELECT id, _index, receipt_file, receipt_url, r2_url, chase_description FROM transactions WHERE id = ?',
                     (idx,))
                 row = cursor.fetchone()
 
             if not row:
                 return_db_connection(conn)
-                abort(404, f"Transaction {idx} not found")
+                return jsonify({'ok': False, 'error': f'Transaction {idx} not found'}), 404
 
             row_dict = dict(row)
-            transaction_id = row_dict.get('id')
-            filename = row_dict.get('receipt_file', '')
-            receipt_url = row_dict.get('receipt_url', '')
-            transaction_desc = row_dict.get('chase_description', '')
-            transaction_amount = row_dict.get('chase_amount', 0)
-            transaction_date = row_dict.get('chase_date', '')
+            actual_index = row_dict.get('_index', idx)
+            filename = row_dict.get('receipt_file') or ''
+            receipt_url = row_dict.get('receipt_url') or ''
+            r2_url = row_dict.get('r2_url') or ''
+            transaction_desc = row_dict.get('chase_description') or ''
 
-            if not filename and not receipt_url:
+            if not filename and not receipt_url and not r2_url:
                 return_db_connection(conn)
                 return jsonify({'ok': False, 'error': 'No receipt attached to this transaction'}), 400
 
-            # Track the rejection PERMANENTLY with transaction_id
-            # This blocks re-attaching the same receipt to this specific transaction
-            if db_type == 'mysql':
-                # Add transaction_id column if needed
-                try:
-                    db_execute(conn, db_type, '''
-                        ALTER TABLE rejected_receipts ADD COLUMN transaction_id INT DEFAULT NULL
-                    ''', ())
-                    conn.commit()
-                except:
-                    pass  # Column already exists
-
-                db_execute(conn, db_type, '''
-                    INSERT INTO rejected_receipts
-                    (transaction_id, transaction_date, transaction_description, transaction_amount, receipt_path, reason)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE reason = VALUES(reason), rejected_at = NOW()
-                ''', (transaction_id, str(transaction_date), str(transaction_desc), str(transaction_amount),
-                      filename or receipt_url or 'unknown', 'user_manually_removed'))
-            else:
-                # SQLite
-                try:
-                    db_execute(conn, db_type, '''
-                        ALTER TABLE rejected_receipts ADD COLUMN transaction_id INTEGER DEFAULT NULL
-                    ''', ())
-                    conn.commit()
-                except:
-                    pass
-
-                db_execute(conn, db_type, '''
-                    INSERT OR REPLACE INTO rejected_receipts
-                    (transaction_id, transaction_date, transaction_description, transaction_amount, receipt_path, reason)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (transaction_id, str(transaction_date), str(transaction_desc), str(transaction_amount),
-                      filename or receipt_url or 'unknown', 'user_manually_removed'))
-
-            # Clear receipt from transaction - use _index which is what the frontend sends
-            actual_index = row_dict.get('_index', idx)
+            # Clear receipt from transaction
             db_execute(conn, db_type, '''
                 UPDATE transactions
                 SET receipt_file = '', receipt_url = '', review_status = '', r2_url = '',
-                    ai_confidence = NULL, ai_receipt_merchant = '', ai_receipt_total = '', ai_receipt_date = ''
+                    ai_confidence = NULL, ai_receipt_merchant = '', ai_receipt_total = NULL, ai_receipt_date = NULL
                 WHERE _index = ?
             ''', (actual_index,))
 
             conn.commit()
             return_db_connection(conn)
 
-            print(f"✅ DETACHED & BLOCKED: Receipt from transaction #{idx} ({transaction_desc})", flush=True)
-            print(f"   Receipt: {filename or receipt_url} will NEVER re-attach to this transaction", flush=True)
+            print(f"✅ DETACHED: Receipt from transaction #{idx} ({transaction_desc})", flush=True)
 
             return jsonify({
                 'ok': True,
                 'message': f'Receipt detached from transaction #{idx}',
-                'blocked_receipt': filename or receipt_url
+                'detached_receipt': filename or receipt_url or r2_url
             })
 
         except Exception as e:
+            if conn:
+                return_db_connection(conn, discard=True)
             print(f"❌ Detach error: {e}", flush=True)
             import traceback
             traceback.print_exc()
