@@ -8,11 +8,12 @@ nixPkgs = ["python311", "python311Packages.pip", "poppler_utils"]
 cmds = [
     "python -m venv /opt/venv",
     "/opt/venv/bin/pip install --upgrade pip",
-    "/opt/venv/bin/pip install -r requirements.txt"
+    "/opt/venv/bin/pip install -r requirements.txt",
+    "echo 'Cache bust: 2025-12-03-v2'"
 ]
 
 [phases.build]
-cmds = ["echo 'Build complete'"]
+cmds = ["echo 'Build complete - v2025.12.03'"]
 
 [start]
 cmd = "/opt/venv/bin/gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"

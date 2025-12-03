@@ -78,13 +78,24 @@ class ConnectionPool:
         logger.info(f"Connection pool initialized: size={pool_size}, max_overflow={max_overflow}")
 
     def _initialize_pool(self):
-        """Pre-allocate connections for the pool."""
-        for _ in range(self.pool_size):
+        """Pre-allocate connections for the pool (lazy, non-blocking)."""
+        # Only try to create a few initial connections - rest will be created on demand
+        # This prevents blocking app startup if MySQL is slow
+        initial_connections = min(2, self.pool_size)  # Just create 2 connections initially
+        created = 0
+
+        for _ in range(initial_connections):
             try:
                 conn = self._create_connection()
                 self._pool.put_nowait(conn)
+                created += 1
             except Exception as e:
                 logger.warning(f"Failed to pre-allocate connection: {e}")
+                # Don't block startup - connections will be created on demand
+                break
+
+        if created == 0:
+            logger.warning("No initial connections created - will create on demand")
 
     def _create_connection(self) -> pymysql.Connection:
         """Create a new database connection."""
@@ -97,9 +108,9 @@ class ConnectionPool:
             charset=self.config.get('charset', 'utf8mb4'),
             cursorclass=pymysql.cursors.DictCursor,
             autocommit=False,
-            connect_timeout=10,
-            read_timeout=30,
-            write_timeout=30,
+            connect_timeout=30,  # Increased from 10 - Railway internal network can be slow
+            read_timeout=60,     # Increased from 30 for longer queries
+            write_timeout=60,    # Increased from 30 for larger writes
         )
         # Set isolation level explicitly
         cursor = conn.cursor()

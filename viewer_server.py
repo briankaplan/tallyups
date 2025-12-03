@@ -2,6 +2,7 @@
 """
 Tallyups Receipt Reconciliation Server
 MySQL-only database backend - all SQLite/CSV code has been removed.
+Last rebuild: 2025-12-03T04:40:00Z - Force cache bust for Railway deployment
 """
 import os
 import math
