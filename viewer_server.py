@@ -436,6 +436,149 @@ def csrf_exempt_route(f):
 
 
 # =============================================================================
+# DATABASE CONNECTION CLEANUP (CRITICAL FOR STABILITY)
+# =============================================================================
+
+@app.teardown_appcontext
+def cleanup_db_connection(exception=None):
+    """
+    Auto-return any database connection left on this request.
+    This prevents connection leaks when exceptions occur or code forgets to return.
+    """
+    db_conn = g.pop('db_connection', None)
+    if db_conn is not None:
+        try:
+            if exception:
+                # Discard connection if there was an error
+                return_db_connection(db_conn, discard=True)
+            else:
+                return_db_connection(db_conn)
+        except Exception as e:
+            logger.warning(f"Error returning connection in teardown: {e}")
+
+
+def get_request_db_connection():
+    """
+    Get a database connection for the current request.
+    The connection will be automatically returned at the end of the request.
+
+    Usage:
+        conn = get_request_db_connection()
+        # use conn...
+        # No need to return - handled by teardown_appcontext
+    """
+    if 'db_connection' not in g:
+        g.db_connection, _ = get_db_connection()
+    return g.db_connection
+
+
+# =============================================================================
+# POOL HEALTH MONITORING ENDPOINT
+# =============================================================================
+
+@app.route("/api/health/pool-status")
+def api_pool_status():
+    """
+    Get connection pool health status.
+    Critical for monitoring database stability.
+    """
+    # Allow admin key or authenticated users
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    auth_password = os.getenv('AUTH_PASSWORD')
+
+    if admin_key not in (expected_key, auth_password):
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        from db_mysql import get_pool_status, get_connection_pool
+
+        status = get_pool_status()
+
+        # Add health assessment
+        utilization = status.get('utilization_percent', 0)
+        if utilization > 90:
+            health = 'critical'
+        elif utilization > 70:
+            health = 'warning'
+        else:
+            health = 'healthy'
+
+        status['health'] = health
+        status['timestamp'] = datetime.now().isoformat()
+
+        return jsonify({
+            'ok': True,
+            **status
+        })
+    except Exception as e:
+        return jsonify({
+            'ok': False,
+            'error': str(e),
+            'health': 'unknown'
+        }), 500
+
+
+@app.route("/api/health/pool-reset", methods=["POST"])
+def api_pool_reset():
+    """
+    Reset the connection pool. Use when pool is corrupted.
+    Admin only.
+    """
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+
+    if admin_key != expected_key:
+        return jsonify({'error': 'Admin key required'}), 401
+
+    try:
+        from db_mysql import get_connection_pool
+        pool = get_connection_pool()
+        pool.reset_pool()
+
+        return jsonify({
+            'ok': True,
+            'message': 'Connection pool reset successfully',
+            'new_status': pool.status()
+        })
+    except Exception as e:
+        return jsonify({
+            'ok': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route("/api/health/pool-keepalive", methods=["POST"])
+def api_pool_keepalive():
+    """
+    Manually trigger keep-alive ping on all pool connections.
+    """
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    auth_password = os.getenv('AUTH_PASSWORD')
+
+    if admin_key not in (expected_key, auth_password):
+        return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        from db_mysql import get_connection_pool
+        pool = get_connection_pool()
+        refreshed = pool.keep_alive()
+
+        return jsonify({
+            'ok': True,
+            'connections_refreshed': refreshed,
+            'status': pool.status()
+        })
+    except Exception as e:
+        return jsonify({
+            'ok': False,
+            'error': str(e)
+        }), 500
+
+
+# =============================================================================
 # PERIODIC BACKGROUND SYNC
 # =============================================================================
 

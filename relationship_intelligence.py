@@ -33,8 +33,8 @@ from dataclasses import dataclass, field, asdict
 from enum import Enum
 from collections import defaultdict
 
-# Database
-from db_mysql import get_db_connection
+# Database - CRITICAL: Always use return_db_connection to prevent pool leaks
+from db_mysql import get_db_connection, return_db_connection
 
 # AI
 try:
@@ -244,174 +244,182 @@ class Nudge:
 
 def create_atlas_tables():
     """Create ATLAS tables in MySQL"""
-    conn = get_db_connection()
-    if not conn:
-        print("Failed to connect to database")
+    conn = None
+    try:
+        conn = get_db_connection()
+        if not conn:
+            print("Failed to connect to database")
+            return False
+
+        cursor = conn.cursor()
+
+        # Contacts table (enhanced)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS atlas_contacts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                first_name VARCHAR(100),
+                last_name VARCHAR(100),
+                email VARCHAR(255),
+                phone VARCHAR(50),
+                company VARCHAR(255),
+                title VARCHAR(255),
+
+                -- Relationship metadata
+                category VARCHAR(100),
+                priority VARCHAR(20) DEFAULT 'normal',
+                relationship_score FLOAT DEFAULT 0.5,
+
+                -- Contact frequency targets
+                target_contact_days INT DEFAULT 30,
+
+                -- Personal notes
+                family_notes TEXT,
+                interests TEXT,
+                important_dates JSON,
+
+                -- Photos
+                photo_url VARCHAR(500),
+                photo_data LONGBLOB,
+
+                -- Social
+                linkedin_url VARCHAR(500),
+                twitter_handle VARCHAR(100),
+
+                -- Source tracking
+                source VARCHAR(50),
+                apple_id VARCHAR(100),
+                google_id VARCHAR(100),
+
+                -- Timestamps
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                last_interaction_at TIMESTAMP,
+
+                INDEX idx_email (email),
+                INDEX idx_name (name),
+                INDEX idx_company (company)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
+        # Interactions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS atlas_interactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT,
+                contact_name VARCHAR(255),
+                contact_email VARCHAR(255),
+
+                type VARCHAR(50) NOT NULL,
+                occurred_at TIMESTAMP NOT NULL,
+
+                subject VARCHAR(500),
+                summary TEXT,
+                content LONGTEXT,
+
+                -- Source tracking
+                source VARCHAR(50),
+                source_id VARCHAR(255),
+
+                -- Analysis
+                sentiment_score FLOAT DEFAULT 0,
+                sentiment_label VARCHAR(20) DEFAULT 'neutral',
+
+                -- Metadata
+                metadata JSON,
+
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                INDEX idx_contact (contact_id),
+                INDEX idx_contact_email (contact_email),
+                INDEX idx_occurred (occurred_at),
+                INDEX idx_type (type),
+                INDEX idx_source (source, source_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
+        # Commitments table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS atlas_commitments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT,
+                contact_name VARCHAR(255),
+                interaction_id INT,
+
+                description TEXT NOT NULL,
+                made_by VARCHAR(10) DEFAULT 'me',
+                due_date DATE,
+
+                status VARCHAR(20) DEFAULT 'pending',
+                completed_at TIMESTAMP,
+
+                extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                confidence FLOAT DEFAULT 0.8,
+
+                INDEX idx_contact (contact_id),
+                INDEX idx_status (status),
+                INDEX idx_due (due_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
+        # Contact relationships (network graph)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS atlas_contact_relationships (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_a_id INT NOT NULL,
+                contact_b_id INT NOT NULL,
+
+                relationship_type VARCHAR(50),
+                strength FLOAT DEFAULT 0.5,
+
+                evidence JSON,
+
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                UNIQUE KEY unique_pair (contact_a_id, contact_b_id),
+                INDEX idx_contact_a (contact_a_id),
+                INDEX idx_contact_b (contact_b_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
+        # Nudges table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS atlas_nudges (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                contact_id INT,
+                contact_name VARCHAR(255),
+
+                type VARCHAR(50) NOT NULL,
+                priority VARCHAR(20) DEFAULT 'medium',
+
+                title VARCHAR(255),
+                body TEXT,
+                action TEXT,
+
+                is_dismissed BOOLEAN DEFAULT FALSE,
+                dismissed_at TIMESTAMP,
+
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                INDEX idx_contact (contact_id),
+                INDEX idx_type (type),
+                INDEX idx_dismissed (is_dismissed)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """)
+
+        conn.commit()
+        cursor.close()
+        print("ATLAS tables created successfully")
+        return True
+
+    except Exception as e:
+        print(f"Error creating ATLAS tables: {e}")
         return False
-
-    cursor = conn.cursor()
-
-    # Contacts table (enhanced)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS atlas_contacts (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            first_name VARCHAR(100),
-            last_name VARCHAR(100),
-            email VARCHAR(255),
-            phone VARCHAR(50),
-            company VARCHAR(255),
-            title VARCHAR(255),
-
-            -- Relationship metadata
-            category VARCHAR(100),
-            priority VARCHAR(20) DEFAULT 'normal',
-            relationship_score FLOAT DEFAULT 0.5,
-
-            -- Contact frequency targets
-            target_contact_days INT DEFAULT 30,
-
-            -- Personal notes
-            family_notes TEXT,
-            interests TEXT,
-            important_dates JSON,
-
-            -- Photos
-            photo_url VARCHAR(500),
-            photo_data LONGBLOB,
-
-            -- Social
-            linkedin_url VARCHAR(500),
-            twitter_handle VARCHAR(100),
-
-            -- Source tracking
-            source VARCHAR(50),
-            apple_id VARCHAR(100),
-            google_id VARCHAR(100),
-
-            -- Timestamps
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            last_interaction_at TIMESTAMP,
-
-            INDEX idx_email (email),
-            INDEX idx_name (name),
-            INDEX idx_company (company)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    """)
-
-    # Interactions table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS atlas_interactions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            contact_id INT,
-            contact_name VARCHAR(255),
-            contact_email VARCHAR(255),
-
-            type VARCHAR(50) NOT NULL,
-            occurred_at TIMESTAMP NOT NULL,
-
-            subject VARCHAR(500),
-            summary TEXT,
-            content LONGTEXT,
-
-            -- Source tracking
-            source VARCHAR(50),
-            source_id VARCHAR(255),
-
-            -- Analysis
-            sentiment_score FLOAT DEFAULT 0,
-            sentiment_label VARCHAR(20) DEFAULT 'neutral',
-
-            -- Metadata
-            metadata JSON,
-
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-            INDEX idx_contact (contact_id),
-            INDEX idx_contact_email (contact_email),
-            INDEX idx_occurred (occurred_at),
-            INDEX idx_type (type),
-            INDEX idx_source (source, source_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    """)
-
-    # Commitments table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS atlas_commitments (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            contact_id INT,
-            contact_name VARCHAR(255),
-            interaction_id INT,
-
-            description TEXT NOT NULL,
-            made_by VARCHAR(10) DEFAULT 'me',
-            due_date DATE,
-
-            status VARCHAR(20) DEFAULT 'pending',
-            completed_at TIMESTAMP,
-
-            extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            confidence FLOAT DEFAULT 0.8,
-
-            INDEX idx_contact (contact_id),
-            INDEX idx_status (status),
-            INDEX idx_due (due_date)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    """)
-
-    # Contact relationships (network graph)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS atlas_contact_relationships (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            contact_a_id INT NOT NULL,
-            contact_b_id INT NOT NULL,
-
-            relationship_type VARCHAR(50),
-            strength FLOAT DEFAULT 0.5,
-
-            evidence JSON,
-
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-            UNIQUE KEY unique_pair (contact_a_id, contact_b_id),
-            INDEX idx_contact_a (contact_a_id),
-            INDEX idx_contact_b (contact_b_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    """)
-
-    # Nudges table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS atlas_nudges (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            contact_id INT,
-            contact_name VARCHAR(255),
-
-            type VARCHAR(50) NOT NULL,
-            priority VARCHAR(20) DEFAULT 'medium',
-
-            title VARCHAR(255),
-            body TEXT,
-            action TEXT,
-
-            is_dismissed BOOLEAN DEFAULT FALSE,
-            dismissed_at TIMESTAMP,
-
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-            INDEX idx_contact (contact_id),
-            INDEX idx_type (type),
-            INDEX idx_dismissed (is_dismissed)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    """)
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    print("ATLAS tables created successfully")
-    return True
+    finally:
+        # CRITICAL: Always return connection to pool
+        if conn:
+            return_db_connection(conn)
 
 
 # =============================================================================
@@ -954,50 +962,57 @@ class InteractionTracker:
 
     def log_interaction(self, interaction: Interaction) -> Optional[int]:
         """Log an interaction to the database"""
-        conn = get_db_connection()
-        if not conn:
-            return None
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return None
 
-        cursor = conn.cursor()
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            INSERT INTO atlas_interactions (
-                contact_id, contact_name, contact_email,
-                type, occurred_at, subject, summary, content,
-                source, source_id, sentiment_score, sentiment_label,
-                metadata
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            interaction.contact_id,
-            interaction.contact_name,
-            interaction.contact_email,
-            interaction.type.value,
-            interaction.occurred_at,
-            interaction.subject,
-            interaction.summary,
-            interaction.content,
-            interaction.source,
-            interaction.source_id,
-            interaction.sentiment_score,
-            interaction.sentiment_label,
-            json.dumps(interaction.metadata),
-        ))
-
-        interaction_id = cursor.lastrowid
-
-        # Update contact's last interaction
-        if interaction.contact_id:
             cursor.execute("""
-                UPDATE atlas_contacts
-                SET last_interaction_at = %s
-                WHERE id = %s
-            """, (interaction.occurred_at, interaction.contact_id))
+                INSERT INTO atlas_interactions (
+                    contact_id, contact_name, contact_email,
+                    type, occurred_at, subject, summary, content,
+                    source, source_id, sentiment_score, sentiment_label,
+                    metadata
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                interaction.contact_id,
+                interaction.contact_name,
+                interaction.contact_email,
+                interaction.type.value,
+                interaction.occurred_at,
+                interaction.subject,
+                interaction.summary,
+                interaction.content,
+                interaction.source,
+                interaction.source_id,
+                interaction.sentiment_score,
+                interaction.sentiment_label,
+                json.dumps(interaction.metadata),
+            ))
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+            interaction_id = cursor.lastrowid
 
-        return interaction_id
+            # Update contact's last interaction
+            if interaction.contact_id:
+                cursor.execute("""
+                    UPDATE atlas_contacts
+                    SET last_interaction_at = %s
+                    WHERE id = %s
+                """, (interaction.occurred_at, interaction.contact_id))
+
+            conn.commit()
+            cursor.close()
+            return interaction_id
+
+        except Exception as e:
+            print(f"Error logging interaction: {e}")
+            return None
+        finally:
+            if conn:
+                return_db_connection(conn)
 
     def get_interactions_with(
         self,
@@ -1007,54 +1022,60 @@ class InteractionTracker:
         limit: int = 50
     ) -> List[Interaction]:
         """Get recent interactions with a contact"""
-        conn = get_db_connection()
-        if not conn:
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return []
+
+            cursor = conn.cursor()
+            threshold = datetime.now() - timedelta(days=days)
+
+            if contact_id:
+                cursor.execute("""
+                    SELECT * FROM atlas_interactions
+                    WHERE contact_id = %s AND occurred_at > %s
+                    ORDER BY occurred_at DESC
+                    LIMIT %s
+                """, (contact_id, threshold, limit))
+            elif contact_email:
+                cursor.execute("""
+                    SELECT * FROM atlas_interactions
+                    WHERE contact_email = %s AND occurred_at > %s
+                    ORDER BY occurred_at DESC
+                    LIMIT %s
+                """, (contact_email, threshold, limit))
+            else:
+                return []
+
+            interactions = []
+            for row in cursor.fetchall():
+                interactions.append(Interaction(
+                    id=row['id'],
+                    contact_id=row['contact_id'],
+                    contact_name=row['contact_name'],
+                    contact_email=row['contact_email'],
+                    type=InteractionType(row['type']),
+                    occurred_at=row['occurred_at'],
+                    subject=row['subject'] or '',
+                    summary=row['summary'] or '',
+                    content=row['content'] or '',
+                    source=row['source'] or '',
+                    source_id=row['source_id'] or '',
+                    sentiment_score=row['sentiment_score'] or 0,
+                    sentiment_label=row['sentiment_label'] or 'neutral',
+                    metadata=json.loads(row['metadata']) if row['metadata'] else {},
+                ))
+
+            cursor.close()
+            return interactions
+
+        except Exception as e:
+            print(f"Error getting interactions: {e}")
             return []
-
-        cursor = conn.cursor()
-
-        threshold = datetime.now() - timedelta(days=days)
-
-        if contact_id:
-            cursor.execute("""
-                SELECT * FROM atlas_interactions
-                WHERE contact_id = %s AND occurred_at > %s
-                ORDER BY occurred_at DESC
-                LIMIT %s
-            """, (contact_id, threshold, limit))
-        elif contact_email:
-            cursor.execute("""
-                SELECT * FROM atlas_interactions
-                WHERE contact_email = %s AND occurred_at > %s
-                ORDER BY occurred_at DESC
-                LIMIT %s
-            """, (contact_email, threshold, limit))
-        else:
-            return []
-
-        interactions = []
-        for row in cursor.fetchall():
-            interactions.append(Interaction(
-                id=row['id'],
-                contact_id=row['contact_id'],
-                contact_name=row['contact_name'],
-                contact_email=row['contact_email'],
-                type=InteractionType(row['type']),
-                occurred_at=row['occurred_at'],
-                subject=row['subject'] or '',
-                summary=row['summary'] or '',
-                content=row['content'] or '',
-                source=row['source'] or '',
-                source_id=row['source_id'] or '',
-                sentiment_score=row['sentiment_score'] or 0,
-                sentiment_label=row['sentiment_label'] or 'neutral',
-                metadata=json.loads(row['metadata']) if row['metadata'] else {},
-            ))
-
-        cursor.close()
-        conn.close()
-
-        return interactions
+        finally:
+            if conn:
+                return_db_connection(conn)
 
     def sync_imessage_interactions(
         self,
@@ -1098,22 +1119,29 @@ class InteractionTracker:
 
     def _interaction_exists(self, source: str, source_id: str) -> bool:
         """Check if interaction already logged"""
-        conn = get_db_connection()
-        if not conn:
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return False
+
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id FROM atlas_interactions
+                WHERE source = %s AND source_id = %s
+                LIMIT 1
+            """, (source, source_id))
+
+            exists = cursor.fetchone() is not None
+            cursor.close()
+            return exists
+
+        except Exception as e:
+            print(f"Error checking interaction exists: {e}")
             return False
-
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id FROM atlas_interactions
-            WHERE source = %s AND source_id = %s
-            LIMIT 1
-        """, (source, source_id))
-
-        exists = cursor.fetchone() is not None
-        cursor.close()
-        conn.close()
-
-        return exists
+        finally:
+            if conn:
+                return_db_connection(conn)
 
 
 # =============================================================================
@@ -1125,35 +1153,42 @@ class CommitmentTracker:
 
     def log_commitment(self, commitment: Commitment) -> Optional[int]:
         """Log a commitment to the database"""
-        conn = get_db_connection()
-        if not conn:
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return None
+
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO atlas_commitments (
+                    contact_id, contact_name, interaction_id,
+                    description, made_by, due_date,
+                    status, confidence
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                commitment.contact_id,
+                commitment.contact_name,
+                commitment.interaction_id,
+                commitment.description,
+                commitment.made_by,
+                commitment.due_date,
+                commitment.status.value,
+                commitment.confidence,
+            ))
+
+            commitment_id = cursor.lastrowid
+            conn.commit()
+            cursor.close()
+            return commitment_id
+
+        except Exception as e:
+            print(f"Error logging commitment: {e}")
             return None
-
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT INTO atlas_commitments (
-                contact_id, contact_name, interaction_id,
-                description, made_by, due_date,
-                status, confidence
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            commitment.contact_id,
-            commitment.contact_name,
-            commitment.interaction_id,
-            commitment.description,
-            commitment.made_by,
-            commitment.due_date,
-            commitment.status.value,
-            commitment.confidence,
-        ))
-
-        commitment_id = cursor.lastrowid
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return commitment_id
+        finally:
+            if conn:
+                return_db_connection(conn)
 
     def get_open_commitments(
         self,
@@ -1161,68 +1196,82 @@ class CommitmentTracker:
         made_by: Optional[str] = None
     ) -> List[Commitment]:
         """Get open (pending/overdue) commitments"""
-        conn = get_db_connection()
-        if not conn:
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return []
+
+            cursor = conn.cursor()
+
+            query = """
+                SELECT * FROM atlas_commitments
+                WHERE status IN ('pending', 'overdue')
+            """
+            params = []
+
+            if contact_id:
+                query += " AND contact_id = %s"
+                params.append(contact_id)
+
+            if made_by:
+                query += " AND made_by = %s"
+                params.append(made_by)
+
+            query += " ORDER BY due_date ASC, extracted_at DESC"
+
+            cursor.execute(query, params)
+
+            commitments = []
+            for row in cursor.fetchall():
+                commitments.append(Commitment(
+                    id=row['id'],
+                    contact_id=row['contact_id'],
+                    contact_name=row['contact_name'] or '',
+                    interaction_id=row['interaction_id'],
+                    description=row['description'],
+                    made_by=row['made_by'],
+                    due_date=row['due_date'],
+                    status=CommitmentStatus(row['status']),
+                    completed_at=row['completed_at'],
+                    confidence=row['confidence'] or 0.8,
+                ))
+
+            cursor.close()
+            return commitments
+
+        except Exception as e:
+            print(f"Error getting open commitments: {e}")
             return []
-
-        cursor = conn.cursor()
-
-        query = """
-            SELECT * FROM atlas_commitments
-            WHERE status IN ('pending', 'overdue')
-        """
-        params = []
-
-        if contact_id:
-            query += " AND contact_id = %s"
-            params.append(contact_id)
-
-        if made_by:
-            query += " AND made_by = %s"
-            params.append(made_by)
-
-        query += " ORDER BY due_date ASC, extracted_at DESC"
-
-        cursor.execute(query, params)
-
-        commitments = []
-        for row in cursor.fetchall():
-            commitments.append(Commitment(
-                id=row['id'],
-                contact_id=row['contact_id'],
-                contact_name=row['contact_name'] or '',
-                interaction_id=row['interaction_id'],
-                description=row['description'],
-                made_by=row['made_by'],
-                due_date=row['due_date'],
-                status=CommitmentStatus(row['status']),
-                completed_at=row['completed_at'],
-                confidence=row['confidence'] or 0.8,
-            ))
-
-        cursor.close()
-        conn.close()
-
-        return commitments
+        finally:
+            if conn:
+                return_db_connection(conn)
 
     def complete_commitment(self, commitment_id: int) -> bool:
         """Mark a commitment as completed"""
-        conn = get_db_connection()
-        if not conn:
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return False
+
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE atlas_commitments
+                SET status = 'completed', completed_at = NOW()
+                WHERE id = %s
+            """, (commitment_id,))
+
+            conn.commit()
+            cursor.close()
+            return True
+
+        except Exception as e:
+            print(f"Error completing commitment: {e}")
             return False
-
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE atlas_commitments
-            SET status = 'completed', completed_at = NOW()
-            WHERE id = %s
-        """, (commitment_id,))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return True
+        finally:
+            if conn:
+                return_db_connection(conn)
 
     def extract_commitments_from_text(self, text: str, contact_name: str = "") -> List[Dict]:
         """Use AI to extract commitments from conversation text"""
@@ -1544,44 +1593,50 @@ class NudgeEngine:
     def _overdue_contact_nudges(self) -> List[Nudge]:
         """Generate nudges for overdue contacts"""
         nudges = []
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return nudges
 
-        conn = get_db_connection()
-        if not conn:
+            cursor = conn.cursor()
+
+            # Find contacts overdue for contact
+            cursor.execute("""
+                SELECT id, name, email, target_contact_days, last_interaction_at,
+                       DATEDIFF(NOW(), last_interaction_at) as days_since
+                FROM atlas_contacts
+                WHERE last_interaction_at IS NOT NULL
+                AND DATEDIFF(NOW(), last_interaction_at) > COALESCE(target_contact_days, 30)
+                ORDER BY days_since DESC
+                LIMIT 10
+            """)
+
+            for row in cursor.fetchall():
+                days = row['days_since']
+                target = row['target_contact_days'] or 30
+
+                priority = 'high' if days > target * 2 else 'medium'
+
+                nudges.append(Nudge(
+                    type='overdue_contact',
+                    priority=priority,
+                    contact_id=row['id'],
+                    contact_name=row['name'],
+                    title=f"Reconnect with {row['name']}",
+                    body=f"It's been {days} days since you connected (target: {target} days)",
+                    action="Schedule a call or send a quick message",
+                ))
+
+            cursor.close()
             return nudges
 
-        cursor = conn.cursor()
-
-        # Find contacts overdue for contact
-        cursor.execute("""
-            SELECT id, name, email, target_contact_days, last_interaction_at,
-                   DATEDIFF(NOW(), last_interaction_at) as days_since
-            FROM atlas_contacts
-            WHERE last_interaction_at IS NOT NULL
-            AND DATEDIFF(NOW(), last_interaction_at) > COALESCE(target_contact_days, 30)
-            ORDER BY days_since DESC
-            LIMIT 10
-        """)
-
-        for row in cursor.fetchall():
-            days = row['days_since']
-            target = row['target_contact_days'] or 30
-
-            priority = 'high' if days > target * 2 else 'medium'
-
-            nudges.append(Nudge(
-                type='overdue_contact',
-                priority=priority,
-                contact_id=row['id'],
-                contact_name=row['name'],
-                title=f"Reconnect with {row['name']}",
-                body=f"It's been {days} days since you connected (target: {target} days)",
-                action="Schedule a call or send a quick message",
-            ))
-
-        cursor.close()
-        conn.close()
-
-        return nudges
+        except Exception as e:
+            print(f"Error generating overdue contact nudges: {e}")
+            return nudges
+        finally:
+            if conn:
+                return_db_connection(conn)
 
     def _commitment_nudges(self) -> List[Nudge]:
         """Generate nudges for overdue/upcoming commitments"""
@@ -1623,52 +1678,66 @@ class NudgeEngine:
 
     def save_nudge(self, nudge: Nudge) -> Optional[int]:
         """Save a nudge to the database"""
-        conn = get_db_connection()
-        if not conn:
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return None
+
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO atlas_nudges (
+                    contact_id, contact_name, type, priority,
+                    title, body, action
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                nudge.contact_id,
+                nudge.contact_name,
+                nudge.type,
+                nudge.priority,
+                nudge.title,
+                nudge.body,
+                nudge.action,
+            ))
+
+            nudge_id = cursor.lastrowid
+            conn.commit()
+            cursor.close()
+            return nudge_id
+
+        except Exception as e:
+            print(f"Error saving nudge: {e}")
             return None
-
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT INTO atlas_nudges (
-                contact_id, contact_name, type, priority,
-                title, body, action
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (
-            nudge.contact_id,
-            nudge.contact_name,
-            nudge.type,
-            nudge.priority,
-            nudge.title,
-            nudge.body,
-            nudge.action,
-        ))
-
-        nudge_id = cursor.lastrowid
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return nudge_id
+        finally:
+            if conn:
+                return_db_connection(conn)
 
     def dismiss_nudge(self, nudge_id: int) -> bool:
         """Dismiss a nudge"""
-        conn = get_db_connection()
-        if not conn:
+        conn = None
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return False
+
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE atlas_nudges
+                SET is_dismissed = TRUE, dismissed_at = NOW()
+                WHERE id = %s
+            """, (nudge_id,))
+
+            conn.commit()
+            cursor.close()
+            return True
+
+        except Exception as e:
+            print(f"Error dismissing nudge: {e}")
             return False
-
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE atlas_nudges
-            SET is_dismissed = TRUE, dismissed_at = NOW()
-            WHERE id = %s
-        """, (nudge_id,))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-        return True
+        finally:
+            if conn:
+                return_db_connection(conn)
 
 
 # =============================================================================

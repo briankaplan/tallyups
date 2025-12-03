@@ -53,10 +53,10 @@ class ConnectionPool:
     def __init__(
         self,
         config: Dict[str, Any],
-        pool_size: int = 5,
-        max_overflow: int = 10,
-        pool_timeout: float = 30.0,
-        pool_recycle: int = 3600,  # Recycle connections after 1 hour
+        pool_size: int = 20,       # Increased from 5 for better concurrency
+        max_overflow: int = 30,    # Increased from 10 for peak load
+        pool_timeout: float = 60.0,  # Increased from 30 for slower queries
+        pool_recycle: int = 300,   # Reduced from 3600 - Railway connections timeout faster
     ):
         self.config = config
         self.pool_size = pool_size
@@ -71,6 +71,9 @@ class ConnectionPool:
 
         # Initialize the pool
         self._initialize_pool()
+
+        # Start background keep-alive thread to prevent Railway connection timeouts
+        self._start_keepalive_thread()
 
         logger.info(f"Connection pool initialized: size={pool_size}, max_overflow={max_overflow}")
 
@@ -116,11 +119,12 @@ class ConnectionPool:
                 logger.debug(f"Connection {conn_id} expired (age={age:.0f}s)")
                 return False
 
-        # Ping to verify connection is alive
+        # Ping to verify connection is alive and reconnect if needed
         try:
-            conn.ping(reconnect=False)
+            conn.ping(reconnect=True)  # Changed from False - actually reconnect dead connections
             return True
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Connection ping failed: {e}")
             return False
 
     def get_connection(self) -> pymysql.Connection:
@@ -262,12 +266,103 @@ class ConnectionPool:
 
     def status(self) -> Dict[str, Any]:
         """Get pool status information."""
+        available = self._pool.qsize()
+        in_use = self.pool_size - available + self._overflow_count
+        max_capacity = self.pool_size + self.max_overflow
+        utilization = (in_use / max_capacity * 100) if max_capacity > 0 else 0
+
         return {
             'pool_size': self.pool_size,
-            'available': self._pool.qsize(),
+            'available': available,
+            'in_use': in_use,
             'overflow_count': self._overflow_count,
             'max_overflow': self.max_overflow,
+            'max_capacity': max_capacity,
+            'utilization_percent': round(utilization, 2),
+            'pool_recycle_seconds': self.pool_recycle,
+            'pool_timeout_seconds': self.pool_timeout,
         }
+
+    def keep_alive(self):
+        """
+        Keep pool connections alive by pinging them.
+        Call this periodically (e.g., every 60 seconds) to prevent Railway timeout.
+        """
+        refreshed = 0
+        pool_items = []
+
+        # Drain the pool temporarily
+        while True:
+            try:
+                conn = self._pool.get_nowait()
+                pool_items.append(conn)
+            except queue.Empty:
+                break
+
+        # Ping each connection and return to pool
+        for conn in pool_items:
+            try:
+                conn.ping(reconnect=True)
+                self._pool.put_nowait(conn)
+                refreshed += 1
+            except Exception as e:
+                logger.debug(f"Keep-alive failed for connection, replacing: {e}")
+                self._close_connection(conn)
+                try:
+                    new_conn = self._create_connection()
+                    self._pool.put_nowait(new_conn)
+                    refreshed += 1
+                except Exception as e2:
+                    logger.warning(f"Failed to replace dead connection: {e2}")
+
+        logger.debug(f"Keep-alive refreshed {refreshed} connections")
+        return refreshed
+
+    def reset_pool(self):
+        """
+        Reset the entire connection pool.
+        Use this when pool becomes corrupted or after extended errors.
+        """
+        logger.info("Resetting connection pool...")
+
+        # Stop keep-alive thread if running
+        self._stop_keepalive = True
+
+        # Close all existing connections
+        self.close_all()
+
+        # Reinitialize
+        self._initialize_pool()
+
+        # Restart keep-alive
+        self._stop_keepalive = False
+        self._start_keepalive_thread()
+
+        logger.info(f"Connection pool reset complete: {self._pool.qsize()} connections available")
+
+    def _start_keepalive_thread(self):
+        """Start background thread to keep connections alive."""
+        if hasattr(self, '_keepalive_thread') and self._keepalive_thread.is_alive():
+            return  # Already running
+
+        def keepalive_loop():
+            interval = min(self.pool_recycle // 2, 120)  # Half recycle time, max 2 minutes
+            while not getattr(self, '_stop_keepalive', False):
+                time.sleep(interval)
+                if not getattr(self, '_stop_keepalive', False):
+                    try:
+                        self.keep_alive()
+                    except Exception as e:
+                        logger.warning(f"Keep-alive error: {e}")
+
+        self._stop_keepalive = False
+        self._keepalive_thread = threading.Thread(
+            target=keepalive_loop,
+            daemon=True,  # Dies with main process
+            name="db-pool-keepalive"
+        )
+        self._keepalive_thread.start()
+        logger.info(f"Keep-alive thread started (interval: {min(self.pool_recycle // 2, 120)}s)")
 
 
 # Global connection pool instance
@@ -335,9 +430,10 @@ def get_connection_pool() -> ConnectionPool:
                     raise RuntimeError("MySQL configuration not available")
                 _connection_pool = ConnectionPool(
                     config,
-                    pool_size=int(os.environ.get('DB_POOL_SIZE', '5')),
-                    max_overflow=int(os.environ.get('DB_POOL_OVERFLOW', '10')),
-                    pool_timeout=float(os.environ.get('DB_POOL_TIMEOUT', '30')),
+                    pool_size=int(os.environ.get('DB_POOL_SIZE', '20')),
+                    max_overflow=int(os.environ.get('DB_POOL_OVERFLOW', '30')),
+                    pool_timeout=float(os.environ.get('DB_POOL_TIMEOUT', '60')),
+                    pool_recycle=int(os.environ.get('DB_POOL_RECYCLE', '300')),
                 )
     return _connection_pool
 

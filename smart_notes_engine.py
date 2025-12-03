@@ -23,13 +23,14 @@ load_dotenv()
 BASE_DIR = Path(__file__).parent
 IMESSAGE_DB = os.path.expanduser("~/Library/Messages/chat.db")
 
-# MySQL connection for contacts
+# MySQL connection for contacts - use return_db_connection to prevent pool leaks
 try:
-    from db_mysql import get_db_connection
+    from db_mysql import get_db_connection, return_db_connection
     MYSQL_AVAILABLE = True
 except ImportError:
     MYSQL_AVAILABLE = False
     get_db_connection = None
+    return_db_connection = None
 
 # Load OpenAI for note generation
 try:
@@ -82,8 +83,13 @@ class ContactsDatabase:
             print("Warning: MySQL not available for contacts database")
             return
 
+        conn = None
         try:
             conn = get_db_connection()
+            if not conn:
+                print("Warning: Could not get database connection for contacts")
+                return
+
             cursor = conn.cursor()
 
             # Query atlas_contacts table
@@ -130,13 +136,18 @@ class ContactsDatabase:
                     self.by_company[company_lower].append(contact)
 
             cursor.close()
-            conn.close()
-
             self._loaded = True
             print(f"Loaded {len(self.contacts)} contacts from MySQL atlas_contacts")
 
         except Exception as e:
             print(f"Error loading contacts from MySQL: {e}")
+        finally:
+            # CRITICAL: Always return connection to pool, never call conn.close() directly
+            if conn and return_db_connection:
+                try:
+                    return_db_connection(conn)
+                except Exception as e:
+                    print(f"Error returning connection to pool: {e}")
 
     def search_by_name(self, name: str) -> Optional[Dict]:
         """Find contact by full or partial name"""
