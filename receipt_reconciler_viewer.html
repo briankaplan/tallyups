@@ -5347,18 +5347,18 @@ function updateDashboard() {
       const submitted = (r['Already Submitted'] || '').toLowerCase().trim();
       return submitted === 'yes';
     }).length,
-    // Receipt Validation Status counts
+    // Receipt Validation Status counts (check both old and new OCR fields)
     receiptVerified: csvData.filter(r => {
-      const status = (r.receipt_validation_status || '').toLowerCase().trim();
+      const status = (r.ocr_verification_status || r.receipt_validation_status || '').toLowerCase().trim();
       return status === 'verified';
     }).length,
     receiptMismatch: csvData.filter(r => {
-      const status = (r.receipt_validation_status || '').toLowerCase().trim();
+      const status = (r.ocr_verification_status || r.receipt_validation_status || '').toLowerCase().trim();
       return status === 'mismatch';
     }).length,
     receiptError: csvData.filter(r => {
-      const status = (r.receipt_validation_status || '').toLowerCase().trim();
-      return status === 'error';
+      const status = (r.ocr_verification_status || r.receipt_validation_status || '').toLowerCase().trim();
+      return status === 'error' || status === 'unclear';
     }).length
   };
 
@@ -7075,23 +7075,23 @@ function applyFilters() {
         return submitted === 'yes';
       });
     }
-    // Receipt Validation Status filters
+    // Receipt Validation Status filters (check both old and new OCR fields)
     else if (filter === 'receipt-verified') {
       filtered = filtered.filter(r => {
-        const status = (r.receipt_validation_status || '').toLowerCase().trim();
+        const status = (r.ocr_verification_status || r.receipt_validation_status || '').toLowerCase().trim();
         return status === 'verified';
       });
     }
     else if (filter === 'receipt-mismatch') {
       filtered = filtered.filter(r => {
-        const status = (r.receipt_validation_status || '').toLowerCase().trim();
+        const status = (r.ocr_verification_status || r.receipt_validation_status || '').toLowerCase().trim();
         return status === 'mismatch';
       });
     }
     else if (filter === 'receipt-error') {
       filtered = filtered.filter(r => {
-        const status = (r.receipt_validation_status || '').toLowerCase().trim();
-        return status === 'error';
+        const status = (r.ocr_verification_status || r.receipt_validation_status || '').toLowerCase().trim();
+        return status === 'error' || status === 'unclear';
       });
     }
   }
