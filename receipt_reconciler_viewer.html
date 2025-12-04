@@ -2078,6 +2078,205 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   background: var(--ok);
   color: #000;
 }
+
+/* ============================================
+   FLOATING REPORT PANEL
+   ============================================ */
+.report-panel {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 360px;
+  max-height: 70vh;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.report-panel.visible { display: flex; }
+.report-panel.minimized { max-height: 60px; }
+.report-panel.minimized .report-panel-content,
+.report-panel.minimized .report-panel-footer { display: none; }
+
+.report-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, var(--brand) 0%, #00cc6a 100%);
+  color: #000;
+  font-weight: 700;
+  cursor: pointer;
+}
+.report-panel-header .report-icon { font-size: 20px; }
+.report-panel-header .report-title { flex: 1; font-size: 14px; }
+.report-panel-header .report-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.report-panel-header .report-minimize { cursor: pointer; font-size: 18px; opacity: 0.7; }
+.report-panel-header .report-minimize:hover { opacity: 1; }
+
+.report-panel-tabs {
+  display: flex;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--edge);
+}
+.report-tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.report-tab:hover { color: var(--ink); background: rgba(255,255,255,0.03); }
+.report-tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+
+.report-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  max-height: 350px;
+}
+.report-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--panel2);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+.report-item:hover { background: var(--edge); }
+.report-item-info { flex: 1; min-width: 0; }
+.report-item-merchant { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.report-item-meta { font-size: 11px; color: var(--muted); display: flex; gap: 8px; margin-top: 2px; }
+.report-item-amount { font-size: 14px; font-weight: 700; color: var(--neg); }
+.report-item-actions { display: flex; gap: 4px; }
+.report-item-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--edge);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.report-item-btn:hover { background: var(--edge); color: var(--ink); }
+.report-item-btn.remove:hover { background: rgba(255,78,106,0.2); color: var(--bad); border-color: var(--bad); }
+
+.report-panel-footer {
+  padding: 12px 16px;
+  background: var(--panel2);
+  border-top: 1px solid var(--edge);
+  display: flex;
+  gap: 8px;
+}
+.report-panel-footer .btn { flex: 1; }
+
+.report-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+.report-empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+.report-empty-text { font-size: 13px; }
+
+/* Report FAB Button */
+.report-fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, var(--brand) 0%, #00cc6a 100%);
+  color: #000;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,255,136,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  z-index: 999;
+  transition: all 0.2s;
+}
+.report-fab:hover { transform: scale(1.05); box-shadow: 0 6px 24px rgba(0,255,136,0.4); }
+.report-fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--bad);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+.report-fab.hidden { display: none; }
+
+/* Report selector dropdown */
+.report-selector {
+  position: relative;
+}
+.report-selector-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  width: 220px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+  margin-bottom: 8px;
+  display: none;
+  overflow: hidden;
+}
+.report-selector-menu.visible { display: block; }
+.report-selector-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.2s;
+}
+.report-selector-item:hover { background: var(--panel2); }
+.report-selector-item.active { background: rgba(0,255,136,0.1); color: var(--brand); }
+.report-selector-item .report-selector-icon { font-size: 16px; }
+.report-selector-item .report-selector-name { flex: 1; font-size: 13px; font-weight: 500; }
+.report-selector-item .report-selector-count { font-size: 11px; color: var(--muted); }
+.report-selector-new {
+  border-top: 1px solid var(--edge);
+  color: var(--brand);
+}
 </style>
 </head>
 <body>
@@ -2189,6 +2388,10 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
             <option value="bad">Bad</option>
             <option value="not needed">Not Needed</option>
           </select>
+          <div class="toolbar-divider"></div>
+          <button class="btn-primary btn-sm" onclick="addSelectedToReport()" title="Add selected transactions to current report">
+            📋 Add to Report
+          </button>
           <span id="batch-count" style="font-size:11px;color:var(--muted);margin-left:8px">0 selected</span>
         </div>
       </div>
@@ -4454,7 +4657,15 @@ function renderTable() {
   // Pre-calculate selected index for faster comparison
   const selectedIndex = selectedRow ? selectedRow._index : null;
 
-  filteredData.forEach(row => {
+  // Filter out transactions that are in open reports (they're hidden from main view)
+  const visibleData = filteredData.filter(row => {
+    if (typeof isInAnyReport === 'function' && isInAnyReport(row._index)) {
+      return false;
+    }
+    return true;
+  });
+
+  visibleData.forEach(row => {
     const tr = document.createElement('tr');
     const rowIndex = row._index;
 
@@ -9255,6 +9466,501 @@ if (filterSheet) {
     Contacts
   </a>
 </nav>
+
+<!-- Floating Report FAB Button -->
+<button class="report-fab hidden" id="report-fab" onclick="toggleReportPanel()">
+  📋
+  <span class="report-fab-badge" id="report-fab-badge">0</span>
+</button>
+
+<!-- Floating Report Panel -->
+<div class="report-panel" id="report-panel">
+  <div class="report-panel-header" onclick="toggleReportMinimize()">
+    <span class="report-icon">📋</span>
+    <span class="report-title" id="report-panel-title">New Report</span>
+    <div class="report-stats">
+      <span id="report-panel-count">0 items</span>
+      <span id="report-panel-total">$0.00</span>
+    </div>
+    <span class="report-minimize" id="report-minimize-icon">−</span>
+  </div>
+  <div class="report-panel-tabs">
+    <div class="report-tab active" data-tab="items" onclick="switchReportTab('items')">Items</div>
+    <div class="report-tab" data-tab="reports" onclick="switchReportTab('reports')">Reports</div>
+  </div>
+  <div class="report-panel-content" id="report-panel-content">
+    <div class="report-empty" id="report-empty">
+      <div class="report-empty-icon">📭</div>
+      <div class="report-empty-text">No transactions added yet.<br>Select transactions and click "Add to Report"</div>
+    </div>
+    <div id="report-items-list"></div>
+  </div>
+  <div class="report-panel-footer">
+    <button class="btn btn-ghost" onclick="clearCurrentReport()">Clear</button>
+    <button class="btn btn-primary" onclick="submitCurrentReport()">Submit Report</button>
+  </div>
+</div>
+
+<!-- Report Selector Dropdown (for moving between reports) -->
+<div class="report-selector-menu" id="report-selector-menu">
+  <div class="report-selector-item report-selector-new" onclick="createNewReport()">
+    <span class="report-selector-icon">➕</span>
+    <span class="report-selector-name">New Report</span>
+  </div>
+</div>
+
+<script>
+// ============================================
+// REPORT PANEL FUNCTIONALITY
+// ============================================
+
+// Report state management
+let openReports = JSON.parse(localStorage.getItem('tallyups_open_reports') || '[]');
+let currentReportId = localStorage.getItem('tallyups_current_report') || null;
+let reportPanelVisible = false;
+let reportPanelMinimized = false;
+let reportPanelTab = 'items';
+
+// Transactions in current report (tracked by _index)
+let reportTransactions = new Map(); // reportId -> Set of transaction indices
+
+// Initialize reports from localStorage
+function initReportPanel() {
+  // Load open reports
+  openReports = JSON.parse(localStorage.getItem('tallyups_open_reports') || '[]');
+
+  // Load transactions for each report
+  openReports.forEach(report => {
+    const stored = localStorage.getItem(`tallyups_report_${report.id}`);
+    if (stored) {
+      reportTransactions.set(report.id, new Set(JSON.parse(stored)));
+    } else {
+      reportTransactions.set(report.id, new Set());
+    }
+  });
+
+  // Create default report if none exist
+  if (openReports.length === 0) {
+    createNewReport();
+  } else {
+    // Use stored current report or first report
+    currentReportId = localStorage.getItem('tallyups_current_report');
+    if (!currentReportId || !openReports.find(r => r.id === currentReportId)) {
+      currentReportId = openReports[0].id;
+    }
+  }
+
+  updateReportUI();
+  updateReportFAB();
+}
+
+// Create a new report
+function createNewReport() {
+  const id = 'report_' + Date.now();
+  const report = {
+    id: id,
+    name: 'Report ' + (openReports.length + 1),
+    created: new Date().toISOString()
+  };
+  openReports.push(report);
+  reportTransactions.set(id, new Set());
+  currentReportId = id;
+  saveReportsState();
+  updateReportUI();
+  showToast('Created new report', 'success');
+}
+
+// Save reports state to localStorage
+function saveReportsState() {
+  localStorage.setItem('tallyups_open_reports', JSON.stringify(openReports));
+  localStorage.setItem('tallyups_current_report', currentReportId);
+
+  // Save each report's transactions
+  reportTransactions.forEach((indices, reportId) => {
+    localStorage.setItem(`tallyups_report_${reportId}`, JSON.stringify([...indices]));
+  });
+}
+
+// Add selected transactions to current report
+function addSelectedToReport() {
+  if (selectedTransactions.size === 0) {
+    showToast('No transactions selected', 'warning');
+    return;
+  }
+
+  if (!currentReportId) {
+    createNewReport();
+  }
+
+  const currentSet = reportTransactions.get(currentReportId) || new Set();
+  let added = 0;
+
+  selectedTransactions.forEach(index => {
+    if (!currentSet.has(index)) {
+      currentSet.add(index);
+      added++;
+    }
+  });
+
+  reportTransactions.set(currentReportId, currentSet);
+  saveReportsState();
+
+  // Clear selection and exit batch mode
+  selectedTransactions.clear();
+  updateBatchCount();
+
+  // Re-render table to hide added transactions
+  renderTable();
+
+  // Show and update report panel
+  showReportPanel();
+  updateReportUI();
+
+  showToast(`Added ${added} transaction${added !== 1 ? 's' : ''} to report`, 'success');
+}
+
+// Remove transaction from report
+function removeFromReport(index) {
+  if (!currentReportId) return;
+
+  const currentSet = reportTransactions.get(currentReportId);
+  if (currentSet) {
+    currentSet.delete(index);
+    reportTransactions.set(currentReportId, currentSet);
+    saveReportsState();
+    updateReportUI();
+    renderTable(); // Show transaction again in main table
+    showToast('Removed from report', 'info');
+  }
+}
+
+// Move transaction to another report
+function moveToReport(index, targetReportId) {
+  if (!currentReportId || currentReportId === targetReportId) return;
+
+  // Remove from current
+  const currentSet = reportTransactions.get(currentReportId);
+  if (currentSet) {
+    currentSet.delete(index);
+  }
+
+  // Add to target
+  const targetSet = reportTransactions.get(targetReportId) || new Set();
+  targetSet.add(index);
+  reportTransactions.set(targetReportId, targetSet);
+
+  saveReportsState();
+  updateReportUI();
+  showToast('Moved to ' + (openReports.find(r => r.id === targetReportId)?.name || 'report'), 'success');
+}
+
+// Clear current report
+function clearCurrentReport() {
+  if (!currentReportId) return;
+
+  if (!confirm('Clear all transactions from this report?')) return;
+
+  reportTransactions.set(currentReportId, new Set());
+  saveReportsState();
+  updateReportUI();
+  renderTable();
+  showToast('Report cleared', 'info');
+}
+
+// Submit current report
+async function submitCurrentReport() {
+  if (!currentReportId) return;
+
+  const indices = [...(reportTransactions.get(currentReportId) || [])];
+  if (indices.length === 0) {
+    showToast('No transactions in report', 'warning');
+    return;
+  }
+
+  const reportName = openReports.find(r => r.id === currentReportId)?.name || 'Report';
+
+  if (!confirm(`Submit "${reportName}" with ${indices.length} transactions?`)) return;
+
+  try {
+    showToast('Submitting report...', 'info');
+
+    const resp = await fetch('/reports/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        name: reportName,
+        expenses: indices
+      })
+    });
+
+    if (resp.ok) {
+      const data = await resp.json();
+
+      // Clear the submitted report
+      reportTransactions.delete(currentReportId);
+      localStorage.removeItem(`tallyups_report_${currentReportId}`);
+
+      // Remove from open reports list
+      openReports = openReports.filter(r => r.id !== currentReportId);
+
+      // Switch to next report or create new one
+      if (openReports.length > 0) {
+        currentReportId = openReports[0].id;
+      } else {
+        createNewReport();
+      }
+
+      saveReportsState();
+      updateReportUI();
+      renderTable();
+
+      showToast(`Report submitted! ID: ${data.report_id}`, 'success');
+    } else {
+      throw new Error('Failed to submit report');
+    }
+  } catch (e) {
+    console.error('Submit error:', e);
+    showToast('Failed to submit report: ' + e.message, 'error');
+  }
+}
+
+// Toggle report panel visibility
+function toggleReportPanel() {
+  reportPanelVisible = !reportPanelVisible;
+  const panel = document.getElementById('report-panel');
+  const fab = document.getElementById('report-fab');
+
+  if (reportPanelVisible) {
+    panel.classList.add('visible');
+    fab.classList.add('hidden');
+  } else {
+    panel.classList.remove('visible');
+    updateReportFAB();
+  }
+}
+
+// Show report panel
+function showReportPanel() {
+  reportPanelVisible = true;
+  document.getElementById('report-panel').classList.add('visible');
+  document.getElementById('report-fab').classList.add('hidden');
+}
+
+// Toggle minimize
+function toggleReportMinimize() {
+  reportPanelMinimized = !reportPanelMinimized;
+  const panel = document.getElementById('report-panel');
+  const icon = document.getElementById('report-minimize-icon');
+
+  if (reportPanelMinimized) {
+    panel.classList.add('minimized');
+    icon.textContent = '+';
+  } else {
+    panel.classList.remove('minimized');
+    icon.textContent = '−';
+  }
+}
+
+// Switch report tabs
+function switchReportTab(tab) {
+  reportPanelTab = tab;
+  document.querySelectorAll('.report-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  updateReportUI();
+}
+
+// Switch between open reports
+function switchReport(reportId) {
+  if (!openReports.find(r => r.id === reportId)) return;
+  currentReportId = reportId;
+  saveReportsState();
+  updateReportUI();
+  renderTable();
+}
+
+// Update report FAB badge
+function updateReportFAB() {
+  const fab = document.getElementById('report-fab');
+  const badge = document.getElementById('report-fab-badge');
+
+  const totalItems = [...reportTransactions.values()].reduce((sum, set) => sum + set.size, 0);
+
+  if (totalItems > 0) {
+    fab.classList.remove('hidden');
+    badge.textContent = totalItems;
+  } else if (!reportPanelVisible) {
+    fab.classList.add('hidden');
+  }
+}
+
+// Update report panel UI
+function updateReportUI() {
+  const titleEl = document.getElementById('report-panel-title');
+  const countEl = document.getElementById('report-panel-count');
+  const totalEl = document.getElementById('report-panel-total');
+  const contentEl = document.getElementById('report-panel-content');
+  const emptyEl = document.getElementById('report-empty');
+  const listEl = document.getElementById('report-items-list');
+
+  const currentReport = openReports.find(r => r.id === currentReportId);
+  const currentIndices = reportTransactions.get(currentReportId) || new Set();
+
+  // Update header
+  titleEl.textContent = currentReport?.name || 'New Report';
+  countEl.textContent = `${currentIndices.size} items`;
+
+  // Calculate total
+  let total = 0;
+  currentIndices.forEach(index => {
+    const row = csvData.find(r => r._index === index);
+    if (row) {
+      total += Math.abs(parseFloat(row['Chase Amount']) || 0);
+    }
+  });
+  totalEl.textContent = '$' + total.toFixed(2);
+
+  // Update FAB
+  updateReportFAB();
+
+  // Render content based on tab
+  if (reportPanelTab === 'items') {
+    renderReportItems(currentIndices, listEl, emptyEl);
+  } else {
+    renderReportsTab(listEl, emptyEl);
+  }
+}
+
+// Render report items
+function renderReportItems(indices, listEl, emptyEl) {
+  if (indices.size === 0) {
+    emptyEl.style.display = 'block';
+    listEl.innerHTML = '';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+
+  let html = '';
+  indices.forEach(index => {
+    const row = csvData.find(r => r._index === index);
+    if (!row) return;
+
+    const merchant = row['MI Merchant'] || row['Chase Description'] || 'Unknown';
+    const amount = Math.abs(parseFloat(row['Chase Amount']) || 0);
+    const date = row['Chase Date'] || '';
+
+    html += `
+      <div class="report-item">
+        <div class="report-item-info">
+          <div class="report-item-merchant">${escapeHtml(merchant)}</div>
+          <div class="report-item-meta">
+            <span>${formatDate(date)}</span>
+            <span>${row['Business Type'] || ''}</span>
+          </div>
+        </div>
+        <div class="report-item-amount">$${amount.toFixed(2)}</div>
+        <div class="report-item-actions">
+          <button class="report-item-btn remove" onclick="removeFromReport(${index})" title="Remove from report">✕</button>
+        </div>
+      </div>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+// Render reports tab (list of open reports)
+function renderReportsTab(listEl, emptyEl) {
+  emptyEl.style.display = 'none';
+
+  let html = '';
+  openReports.forEach(report => {
+    const count = (reportTransactions.get(report.id) || new Set()).size;
+    const isActive = report.id === currentReportId;
+
+    html += `
+      <div class="report-item ${isActive ? 'active' : ''}" onclick="switchReport('${report.id}')" style="${isActive ? 'border: 1px solid var(--brand);' : ''}">
+        <div class="report-item-info">
+          <div class="report-item-merchant">${escapeHtml(report.name)}</div>
+          <div class="report-item-meta">
+            <span>${count} items</span>
+            <span>${new Date(report.created).toLocaleDateString()}</span>
+          </div>
+        </div>
+        <div class="report-item-actions">
+          ${!isActive ? `<button class="report-item-btn" onclick="event.stopPropagation(); deleteReport('${report.id}')" title="Delete report">🗑</button>` : ''}
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+    <div class="report-item" onclick="createNewReport()" style="border: 1px dashed var(--edge); cursor: pointer;">
+      <div class="report-item-info">
+        <div class="report-item-merchant" style="color: var(--brand)">➕ New Report</div>
+      </div>
+    </div>
+  `;
+
+  listEl.innerHTML = html;
+}
+
+// Delete an open report
+function deleteReport(reportId) {
+  if (reportId === currentReportId) {
+    showToast('Cannot delete active report', 'warning');
+    return;
+  }
+
+  if (!confirm('Delete this report?')) return;
+
+  reportTransactions.delete(reportId);
+  localStorage.removeItem(`tallyups_report_${reportId}`);
+  openReports = openReports.filter(r => r.id !== reportId);
+  saveReportsState();
+  updateReportUI();
+  renderTable();
+  showToast('Report deleted', 'info');
+}
+
+// Check if transaction is in any report
+function isInAnyReport(index) {
+  for (const [_, indices] of reportTransactions) {
+    if (indices.has(index)) return true;
+  }
+  return false;
+}
+
+// Format date helper
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+// Escape HTML helper
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[m]);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Give a moment for csvData to load
+  setTimeout(initReportPanel, 500);
+});
+
+// Override renderTable to filter out report transactions
+const originalRenderTable = typeof renderTable === 'function' ? renderTable : null;
+</script>
 
 </body>
 </html>
