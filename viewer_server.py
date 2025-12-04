@@ -4048,7 +4048,7 @@ def update_row():
     if not isinstance(patch, dict):
         abort(400, "patch must be an object")
 
-    # Use database if available (MySQL or SQLite)
+    # Use MySQL database
     if USE_DATABASE and db:
         try:
             success = db.update_transaction(idx, patch)
@@ -4059,8 +4059,8 @@ def update_row():
             df = db.get_all_transactions()
             return jsonify(safe_json({"ok": True}))
         except Exception as e:
-            print(f"⚠️  SQLite update failed: {e}, falling back to CSV")
-            # Fall through to CSV mode
+            print(f"⚠️  MySQL update failed for _index {idx}: {e}")
+            abort(500, f"Database update failed: {e}")
 
     # CSV mode
     mask = df["_index"] == idx
@@ -10419,7 +10419,8 @@ def detach_receipt():
 
             if not filename and not receipt_url and not r2_url:
                 return_db_connection(conn)
-                return jsonify({'ok': False, 'error': 'No receipt attached to this transaction'}), 400
+                # Return success - nothing to detach but that's fine
+                return jsonify({'ok': True, 'message': f'No receipt attached to transaction #{idx}', 'already_empty': True})
 
             # Clear receipt from transaction
             db_execute(conn, db_type, '''

@@ -786,6 +786,42 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 .compare-value.mismatch{color:#ff6b6b}
 .compare-value.date{font-family:monospace;font-size:13px}
 
+/* Verification Banner */
+.verification-banner{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;border-radius:10px;margin-bottom:16px;
+  font-weight:600;font-size:14px;
+}
+.verification-banner.verified{
+  background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(22,163,74,0.1));
+  border:2px solid rgba(34,197,94,0.5);color:#22c55e;
+}
+.verification-banner.mismatch{
+  background:linear-gradient(135deg,rgba(239,68,68,0.2),rgba(220,38,38,0.1));
+  border:2px solid rgba(239,68,68,0.5);color:#ef4444;
+}
+.verification-banner.unclear{
+  background:linear-gradient(135deg,rgba(251,191,36,0.2),rgba(245,158,11,0.1));
+  border:2px solid rgba(251,191,36,0.5);color:#fbbf24;
+}
+.verification-banner.no-ocr{
+  background:linear-gradient(135deg,rgba(107,114,128,0.2),rgba(75,85,99,0.1));
+  border:2px solid rgba(107,114,128,0.5);color:#9ca3af;
+}
+.verification-icon{font-size:20px}
+
+/* OCR Extra Details */
+.ocr-details{
+  margin-top:12px;padding-top:10px;
+  border-top:1px dashed rgba(255,255,255,0.15);
+}
+.ocr-detail-row{
+  display:flex;justify-content:space-between;
+  padding:4px 0;font-size:12px;
+}
+.ocr-detail-label{color:var(--muted)}
+.ocr-detail-value{color:var(--ink);font-weight:500}
+
 /* Quick Viewer Interactive Fields */
 .quick-field-select{
   width:100%;padding:8px 12px;font-size:14px;
@@ -3295,12 +3331,18 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
         </div>
       </div>
       <div class="quick-viewer-data" id="quick-data">
+        <!-- VERIFICATION STATUS BANNER -->
+        <div class="verification-banner" id="verification-banner" style="display:none">
+          <span class="verification-icon" id="verification-icon"></span>
+          <span class="verification-text" id="verification-text"></span>
+        </div>
+
         <!-- COMPARISON SECTION -->
         <div class="compare-section">
-          <div class="compare-header">COMPARE</div>
+          <div class="compare-header">TRANSACTION vs RECEIPT</div>
           <div class="compare-grid">
             <div class="compare-col">
-              <div class="compare-col-header">BANK</div>
+              <div class="compare-col-header">BANK TRANSACTION</div>
               <div class="compare-field">
                 <div class="compare-label">Merchant</div>
                 <div class="compare-value" id="compare-bank-merchant">—</div>
@@ -3315,7 +3357,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
               </div>
             </div>
             <div class="compare-col">
-              <div class="compare-col-header">RECEIPT</div>
+              <div class="compare-col-header" id="receipt-col-header">RECEIPT OCR</div>
               <div class="compare-field">
                 <div class="compare-label">Merchant</div>
                 <div class="compare-value" id="compare-receipt-merchant">—</div>
@@ -3328,6 +3370,25 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
                 <div class="compare-label">Date</div>
                 <div class="compare-value date" id="compare-receipt-date">—</div>
               </div>
+            </div>
+          </div>
+          <!-- OCR Extra Details -->
+          <div class="ocr-details" id="ocr-details" style="display:none">
+            <div class="ocr-detail-row" id="ocr-subtotal-row" style="display:none">
+              <span class="ocr-detail-label">Subtotal:</span>
+              <span class="ocr-detail-value" id="ocr-subtotal">—</span>
+            </div>
+            <div class="ocr-detail-row" id="ocr-tax-row" style="display:none">
+              <span class="ocr-detail-label">Tax:</span>
+              <span class="ocr-detail-value" id="ocr-tax">—</span>
+            </div>
+            <div class="ocr-detail-row" id="ocr-tip-row" style="display:none">
+              <span class="ocr-detail-label">Tip:</span>
+              <span class="ocr-detail-value" id="ocr-tip">—</span>
+            </div>
+            <div class="ocr-detail-row" id="ocr-payment-row" style="display:none">
+              <span class="ocr-detail-label">Payment:</span>
+              <span class="ocr-detail-value" id="ocr-payment">—</span>
             </div>
           </div>
         </div>
