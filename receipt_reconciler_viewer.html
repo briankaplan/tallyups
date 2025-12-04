@@ -5423,62 +5423,62 @@ function updateQuickViewer() {
   updateQuickDataRow('quick-date', receipt['Chase Date'] || '—', isAIMatched);
 
   // === COMPARISON PANEL UPDATE ===
-  // Format date simply (M/D)
-  function simpleDate(dateStr) {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    if (isNaN(d)) return dateStr.substring(0, 10);
-    return `${d.getMonth()+1}/${d.getDate()}`;
+  // Helper function to update comparison panel
+  function updateComparePanel(receipt, amt) {
+    // Format date as M/D
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '—';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return String(dateStr).substring(0, 10);
+      return `${d.getMonth()+1}/${d.getDate()}`;
+    };
+
+    // BANK side - use the same fields that work for the title (line 5296)
+    const bankMerchant = receipt['Chase Description'] || receipt['MI Merchant'] || '—';
+    const bankDate = receipt['Chase Date'] || '—';
+    const bankAmount = parseFloat(receipt['Chase Amount']) || amt || 0;
+
+    // Update BANK panel elements directly
+    const bankMerchEl = document.getElementById('compare-bank-merchant');
+    const bankAmtEl = document.getElementById('compare-bank-amount');
+    const bankDateEl = document.getElementById('compare-bank-date');
+
+    if (bankMerchEl) bankMerchEl.textContent = bankMerchant;
+    if (bankAmtEl) bankAmtEl.textContent = `$${Math.abs(bankAmount).toFixed(2)}`;
+    if (bankDateEl) bankDateEl.textContent = formatDate(bankDate);
+
+    // RECEIPT side - extract from AI Note if available
+    const aiNote = receipt['AI Note'] || '';
+    let rcptMerchant = '—';
+    let rcptAmount = '—';
+    let rcptDate = '—';
+
+    if (aiNote) {
+      // Extract merchant name (first line or before dollar amount)
+      const merchantMatch = aiNote.match(/^([A-Za-z][A-Za-z\s'&.-]+?)(?:\s*[\$\d,]|\s*-\s*|\n|$)/);
+      if (merchantMatch) rcptMerchant = merchantMatch[1].trim().substring(0, 25);
+
+      // Extract dollar amount
+      const amountMatch = aiNote.match(/\$[\d,]+\.?\d*/);
+      if (amountMatch) rcptAmount = amountMatch[0];
+
+      // Extract date
+      const dateMatch = aiNote.match(/(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/);
+      if (dateMatch) rcptDate = dateMatch[1];
+    }
+
+    // Update RECEIPT panel elements
+    const rcptMerchEl = document.getElementById('compare-receipt-merchant');
+    const rcptAmtEl = document.getElementById('compare-receipt-amount');
+    const rcptDateEl = document.getElementById('compare-receipt-date');
+
+    if (rcptMerchEl) rcptMerchEl.textContent = rcptMerchant;
+    if (rcptAmtEl) rcptAmtEl.textContent = rcptAmount;
+    if (rcptDateEl) rcptDateEl.textContent = rcptDate;
   }
 
-  // Debug: Log receipt keys to find correct field names
-  console.log('Receipt keys:', Object.keys(receipt).filter(k => k.toLowerCase().includes('chase') || k.toLowerCase().includes('merchant')));
-  console.log('Receipt sample:', {
-    'Chase Description': receipt['Chase Description'],
-    'chase_description': receipt['chase_description'],
-    'MI Merchant': receipt['MI Merchant'],
-    'mi_merchant': receipt['mi_merchant']
-  });
-
-  // Get values with fallbacks for both snake_case and Title Case field names
-  const bankMerchant = receipt['Chase Description'] || receipt['chase_description'] || receipt['MI Merchant'] || receipt['mi_merchant'] || '—';
-  const bankDate = receipt['Chase Date'] || receipt['chase_date'] || '—';
-  const bankAmount = receipt['Chase Amount'] || receipt['chase_amount'] || amt;
-
-  console.log('Compare panel values:', { bankMerchant, bankDate, bankAmount, amt });
-
-  // Bank side - verify elements exist first
-  const cmpBankMerchant = document.getElementById('compare-bank-merchant');
-  const cmpBankAmount = document.getElementById('compare-bank-amount');
-  const cmpBankDate = document.getElementById('compare-bank-date');
-
-  if (cmpBankMerchant) cmpBankMerchant.textContent = bankMerchant;
-  if (cmpBankAmount) cmpBankAmount.textContent = `$${Math.abs(parseFloat(bankAmount) || amt).toFixed(2)}`;
-  if (cmpBankDate) cmpBankDate.textContent = simpleDate(bankDate);
-
-  // Receipt side (from AI Note if available, or placeholder)
-  const aiNote = receipt['AI Note'] || receipt['ai_note'] || '';
-  let rcptMerchant = '—';
-  let rcptAmount = '—';
-  let rcptDate = '—';
-
-  // Try to parse AI note for receipt info (multiple patterns)
-  if (aiNote) {
-    // Match patterns like "Merchant: XYZ" or "Receipt: XYZ" or just extract first capitalized word
-    const merchantMatch = aiNote.match(/(?:merchant|vendor|store|receipt)[:\s]+([^,\n$]+)/i) ||
-                          aiNote.match(/^([A-Z][A-Za-z\s']+?)[\s,\-]/);
-    // Match dollar amounts
-    const amountMatch = aiNote.match(/\$[\d,]+\.?\d*/);
-    // Match dates in various formats
-    const dateMatch = aiNote.match(/(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/);
-    if (merchantMatch) rcptMerchant = merchantMatch[1].trim().substring(0, 25);
-    if (amountMatch) rcptAmount = amountMatch[0];
-    if (dateMatch) rcptDate = dateMatch[1];
-  }
-
-  document.getElementById('compare-receipt-merchant').textContent = rcptMerchant;
-  document.getElementById('compare-receipt-amount').textContent = rcptAmount;
-  document.getElementById('compare-receipt-date').textContent = rcptDate;
+  // Call the comparison panel update
+  updateComparePanel(receipt, amt);
 
   // Update Business Type dropdown
   const businessSelect = document.getElementById('quick-business');
