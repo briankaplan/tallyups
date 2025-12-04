@@ -63,6 +63,15 @@ load_dotenv()
 # Import Gemini utility with automatic key fallback
 from gemini_utils import generate_content_with_fallback, analyze_receipt_image, get_model as get_gemini_model
 
+# Import unified OCR service (Mindee-quality extraction)
+try:
+    from receipt_ocr_service import ReceiptOCRService, extract_receipt, verify_receipt
+    OCR_SERVICE_AVAILABLE = True
+    print("✅ Receipt OCR Service loaded (Gemini + Ollama fallback)")
+except ImportError as e:
+    OCR_SERVICE_AVAILABLE = False
+    print(f"⚠️ Receipt OCR Service not available: {e}")
+
 # === MERCHANT INTELLIGENCE ===
 try:
     from merchant_intelligence import get_merchant_intelligence, process_transaction_mi, process_all_mi
@@ -2534,6 +2543,125 @@ Return ONLY valid JSON, no explanation."""
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/ocr/extract", methods=["POST"])
+@login_required
+def ocr_extract_full():
+    """
+    Full receipt extraction using unified OCR service (Mindee-quality).
+    Returns complete receipt data including line items.
+
+    Request:
+        - file: Receipt image (PNG, JPG, PDF, HEIC)
+
+    Response (JSON):
+        {
+            "supplier_name": "CLEAR",
+            "supplier_address": "85 10th Avenue...",
+            "receipt_number": "7994BFE1-0001",
+            "date": "2025-10-21",
+            "total_amount": 334.00,
+            "subtotal": 334.00,
+            "tax_amount": 0.0,
+            "tip_amount": 0.0,
+            "line_items": [...],
+            "payment_method": "Visa - 6771",
+            "currency": "USD",
+            "confidence": 0.95,
+            "ocr_method": "gemini"
+        }
+    """
+    if not OCR_SERVICE_AVAILABLE:
+        return jsonify({"error": "OCR service not available"}), 503
+
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    try:
+        import tempfile
+
+        # Determine file extension
+        ext = Path(file.filename).suffix.lower() or '.jpg'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            file.save(tmp.name)
+            tmp_path = tmp.name
+
+        # Extract using unified OCR service
+        result = extract_receipt(tmp_path)
+
+        # Clean up
+        os.unlink(tmp_path)
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"OCR extract error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ocr/verify", methods=["POST"])
+@login_required
+def ocr_verify_receipt():
+    """
+    Verify a receipt matches expected transaction data.
+
+    Request:
+        - file: Receipt image
+        - merchant: Expected merchant name (optional)
+        - amount: Expected amount (required)
+        - date: Expected date YYYY-MM-DD (optional)
+
+    Response:
+        {
+            "matches": {"merchant": true, "amount": true, "date": true},
+            "overall_match": true,
+            "confidence": 0.95,
+            "extracted": {...},
+            "expected": {...}
+        }
+    """
+    if not OCR_SERVICE_AVAILABLE:
+        return jsonify({"error": "OCR service not available"}), 503
+
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    expected_merchant = request.form.get('merchant')
+    expected_amount = request.form.get('amount')
+    expected_date = request.form.get('date')
+
+    if not expected_amount:
+        return jsonify({"error": "Expected amount is required"}), 400
+
+    try:
+        import tempfile
+
+        ext = Path(file.filename).suffix.lower() or '.jpg'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            file.save(tmp.name)
+            tmp_path = tmp.name
+
+        # Verify receipt
+        result = verify_receipt(
+            tmp_path,
+            merchant=expected_merchant,
+            amount=float(expected_amount),
+            date=expected_date
+        )
+
+        os.unlink(tmp_path)
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"OCR verify error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/mobile-upload", methods=["POST"])
 def mobile_upload():
     """
@@ -2564,33 +2692,64 @@ def mobile_upload():
         return jsonify({"error": f"Invalid file: {error_msg}"}), 400
 
     try:
-        # Get form data
-        merchant = request.form.get('merchant', 'Unknown')
-        amount = request.form.get('amount', '0.00')
-        date_str = request.form.get('date', datetime.now().strftime('%Y-%m-%d'))
+        # Get form data (may be overridden by OCR if auto_ocr=true)
+        merchant = request.form.get('merchant', '')
+        amount = request.form.get('amount', '')
+        date_str = request.form.get('date', '')
         category = request.form.get('category', '')
         business = request.form.get('business', '')
         notes = request.form.get('notes', '')
         source = request.form.get('source', 'mobile_scanner')
+        auto_ocr = request.form.get('auto_ocr', 'true').lower() == 'true'
 
-        # Parse amount
-        try:
-            amount_float = float(amount.replace('$', '').replace(',', ''))
-        except:
-            amount_float = 0.0
-
-        # Save receipt file to incoming folder
+        # Save receipt file to incoming folder first
         incoming_dir = RECEIPT_DIR / "incoming"
         incoming_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate unique filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_merchant = re.sub(r'[^\w\-]', '_', merchant)[:30]
         ext = Path(file.filename).suffix or '.jpg'
-        filename = f"mobile_{safe_merchant}_{timestamp}{ext}"
-
-        file_path = incoming_dir / filename
+        temp_filename = f"mobile_upload_{timestamp}{ext}"
+        file_path = incoming_dir / temp_filename
         file.save(str(file_path))
+
+        # Auto-OCR: Extract data from receipt if enabled and OCR service available
+        ocr_result = None
+        if auto_ocr and OCR_SERVICE_AVAILABLE:
+            try:
+                print(f"🔍 Running OCR on uploaded receipt...")
+                ocr_result = extract_receipt(str(file_path))
+
+                # Use OCR results if form fields are empty
+                if ocr_result.get('confidence', 0) > 0.5:
+                    if not merchant and ocr_result.get('supplier_name'):
+                        merchant = ocr_result['supplier_name']
+                    if not amount and ocr_result.get('total_amount'):
+                        amount = str(ocr_result['total_amount'])
+                    if not date_str and ocr_result.get('date'):
+                        date_str = ocr_result['date']
+
+                    print(f"✅ OCR extracted: {merchant} ${amount} on {date_str}")
+            except Exception as ocr_err:
+                print(f"⚠️ OCR extraction failed (using form data): {ocr_err}")
+
+        # Default values if still empty
+        merchant = merchant or 'Unknown'
+        date_str = date_str or datetime.now().strftime('%Y-%m-%d')
+
+        # Parse amount
+        try:
+            amount_float = float(str(amount).replace('$', '').replace(',', '')) if amount else 0.0
+        except:
+            amount_float = 0.0
+
+        # Rename file with extracted merchant name
+        safe_merchant = re.sub(r'[^\w\-]', '_', merchant)[:30]
+        filename = f"mobile_{safe_merchant}_{timestamp}{ext}"
+        new_file_path = incoming_dir / filename
+        if file_path != new_file_path:
+            file_path.rename(new_file_path)
+            file_path = new_file_path
 
         # Create incoming receipt record in database
         receipt_id = None
@@ -2653,14 +2812,34 @@ def mobile_upload():
             except Exception as e:
                 print(f"⚠️ Database error saving mobile receipt: {e}")
 
-        return jsonify({
+        response_data = {
             "success": True,
             "id": receipt_id,
             "filename": filename,
             "merchant": merchant,
             "amount": amount_float,
-            "message": "Receipt uploaded to Inbox"
-        })
+            "date": date_str,
+            "message": "Receipt uploaded to Inbox",
+            "ocr_used": ocr_result is not None
+        }
+
+        # Include full OCR data if extraction was performed
+        if ocr_result:
+            response_data["ocr"] = {
+                "supplier_name": ocr_result.get('supplier_name'),
+                "supplier_address": ocr_result.get('supplier_address'),
+                "receipt_number": ocr_result.get('receipt_number'),
+                "total_amount": ocr_result.get('total_amount'),
+                "subtotal": ocr_result.get('subtotal'),
+                "tax_amount": ocr_result.get('tax_amount'),
+                "tip_amount": ocr_result.get('tip_amount'),
+                "line_items": ocr_result.get('line_items', []),
+                "payment_method": ocr_result.get('payment_method'),
+                "confidence": ocr_result.get('confidence'),
+                "ocr_method": ocr_result.get('ocr_method')
+            }
+
+        return jsonify(response_data)
 
     except Exception as e:
         print(f"❌ Mobile upload error: {e}")
