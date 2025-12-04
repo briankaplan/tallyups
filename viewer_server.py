@@ -2862,6 +2862,125 @@ def ocr_cache_stats():
     return jsonify(get_cache_stats())
 
 
+@app.route("/api/ocr/pre-extract", methods=["POST"])
+def ocr_pre_extract():
+    """
+    Pre-extract and cache receipts from database.
+    This populates the cache for fast bulk verification.
+
+    Auth: admin_key required
+
+    Request (JSON):
+        {
+            "limit": 50,  // Max receipts to process (default 50, max 200)
+            "skip_cached": true  // Skip already cached receipts
+        }
+
+    Response:
+        {
+            "total": 50,
+            "extracted": 45,
+            "cached": 3,
+            "errors": 2,
+            "duration_seconds": 120.5
+        }
+    """
+    import time
+
+    # Auth: admin_key required
+    admin_key = (request.json or {}).get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
+
+    if not OCR_SERVICE_AVAILABLE:
+        return jsonify({"error": "OCR service not available"}), 503
+
+    data = request.get_json() or {}
+    limit = min(data.get('limit', 50), 200)  # Cap at 200
+    skip_cached = data.get('skip_cached', True)
+
+    from receipt_ocr_service import get_ocr_service, get_ocr_cache
+
+    service = get_ocr_service()
+    cache = get_ocr_cache()
+
+    # Get receipts from database
+    try:
+        conn, db_type = get_db_connection()
+        cursor = db_execute(conn, db_type, """
+            SELECT transaction_id, description, amount, date, receipt_file_path
+            FROM receipt_reconciliation
+            WHERE receipt_file_path IS NOT NULL
+            AND receipt_file_path != ''
+            ORDER BY date DESC
+            LIMIT %s
+        """, (limit * 2,))
+        rows = cursor.fetchall()
+        return_db_connection(conn)
+    except Exception as e:
+        return jsonify({"error": f"Database error: {e}"}), 500
+
+    # Filter to existing files
+    receipts = []
+    for row in rows:
+        if len(receipts) >= limit:
+            break
+
+        path = row.get('receipt_file_path')
+        if not path or not Path(path).exists():
+            continue
+
+        # Check cache
+        if skip_cached and cache:
+            cached = cache.get(path)
+            if cached:
+                continue
+
+        receipts.append({
+            'transaction_id': row.get('transaction_id'),
+            'path': path
+        })
+
+    if not receipts:
+        return jsonify({
+            "total": 0,
+            "extracted": 0,
+            "cached": 0,
+            "errors": 0,
+            "message": "All receipts already cached or no receipts found"
+        })
+
+    # Extract each receipt
+    start_time = time.time()
+    extracted = 0
+    cached_count = 0
+    errors = 0
+
+    for receipt in receipts:
+        try:
+            result = service.extract(receipt['path'])
+            if result.get('from_cache'):
+                cached_count += 1
+            elif result.get('confidence', 0) > 0.3:
+                extracted += 1
+            else:
+                errors += 1
+        except Exception as e:
+            errors += 1
+
+    duration = time.time() - start_time
+
+    return jsonify({
+        "total": len(receipts),
+        "extracted": extracted,
+        "cached": cached_count,
+        "errors": errors,
+        "duration_seconds": round(duration, 2),
+        "cache_stats": cache.get_stats() if cache else {}
+    })
+
+
 @app.route("/mobile-upload", methods=["POST"])
 def mobile_upload():
     """
