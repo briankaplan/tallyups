@@ -8179,15 +8179,31 @@ async function submitReport() {
   }
 
   if (reportPreviewData.length === 0) {
-    showToast('No expenses to submit', '⚠️');
+    showToast('No expenses to submit - click Preview first', '⚠️');
     return;
   }
 
-  showToast('Submitting report...', '📤');
+  // Extract _index values, filtering out any undefined/null
+  const expenseIndexes = reportPreviewData
+    .map(exp => exp._index || exp['_index'])
+    .filter(idx => idx !== undefined && idx !== null);
+
+  console.log('Report submit: ', {
+    reportName,
+    businessType,
+    totalExpenses: reportPreviewData.length,
+    validIndexes: expenseIndexes.length,
+    sampleIndexes: expenseIndexes.slice(0, 5)
+  });
+
+  if (expenseIndexes.length === 0) {
+    showToast('No valid expense indexes found - please reload preview', '⚠️');
+    return;
+  }
+
+  showToast(`Submitting ${expenseIndexes.length} expenses...`, '📤');
 
   try {
-    const expenseIndexes = reportPreviewData.map(exp => exp._index);
-
     const res = await fetch('/reports/submit', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -8202,7 +8218,7 @@ async function submitReport() {
 
     if (data.ok) {
       currentReportId = data.report_id;
-      showToast(`Report ${data.report_id} created successfully!`, '✅');
+      showToast(`Report ${data.report_id} created with ${expenseIndexes.length} expenses!`, '✅');
 
       // Show report actions
       document.getElementById('report-actions').style.display = 'block';
@@ -8213,9 +8229,11 @@ async function submitReport() {
       // Reload archived reports list
       await loadArchivedReports();
     } else {
-      showToast('Failed to submit report: ' + (data.error || 'Unknown error'), '❌');
+      console.error('Report submit failed:', data);
+      showToast('Failed to submit report: ' + (data.error || data.message || 'Unknown error'), '❌');
     }
   } catch (e) {
+    console.error('Report submit exception:', e);
     showToast('Failed to submit report: ' + e.message, '❌');
   }
 }
