@@ -56,9 +56,8 @@ async function loadCSV() {
     const res = await fetch('/api/transactions');
     const data = await res.json();
     csvData = data || [];  // Server returns array directly from MySQL
-    filteredData = [...csvData];
-    renderTable();
-    updateDashboard();
+    // Re-apply existing filters instead of resetting
+    applyFilters();  // This calls renderTable() + updateDashboard() internally
     showToast(`Loaded ${csvData.length} transactions`, '📊');
   } catch (e) {
     showToast('Failed to load CSV: ' + e.message, '❌');
@@ -1832,7 +1831,11 @@ function updateDashboard() {
     alreadySubmitted: csvData.filter(r => {
       const submitted = (r['Already Submitted'] || '').toLowerCase().trim();
       return submitted === 'yes';
-    }).length
+    }).length,
+    // Receipt validation status counts
+    receiptVerified: csvData.filter(r => r.receipt_validation_status === 'verified').length,
+    receiptMismatch: csvData.filter(r => r.receipt_validation_status === 'mismatch').length,
+    receiptError: csvData.filter(r => r.receipt_validation_status === 'error').length
   };
 
   // Update badge elements (badges are now shown on hover via CSS)
@@ -1857,6 +1860,10 @@ function updateDashboard() {
   updateBadge('personal-count', counts.personal);
   updateBadge('unassigned-count', counts.unassigned);
   updateBadge('already-submitted-count', counts.alreadySubmitted);
+  // Receipt validation status badges
+  updateBadge('receipt-verified-count', counts.receiptVerified);
+  updateBadge('receipt-mismatch-count', counts.receiptMismatch);
+  updateBadge('receipt-error-count', counts.receiptError);
 }
 
 // Image controls
@@ -3453,6 +3460,19 @@ function applyFilters() {
         const submitted = (r['Already Submitted'] || '').toLowerCase().trim();
         return submitted === 'yes';
       });
+    }
+    // Receipt validation status filters
+    else if (filter === 'receipt-verified') {
+      // ✅ Receipt verified by AI vision
+      filtered = filtered.filter(r => r.receipt_validation_status === 'verified');
+    }
+    else if (filter === 'receipt-mismatch') {
+      // ✗ Receipt doesn't match transaction (wrong date, amount, or merchant)
+      filtered = filtered.filter(r => r.receipt_validation_status === 'mismatch');
+    }
+    else if (filter === 'receipt-error') {
+      // ⚠ Error during validation (download failed, API error, etc)
+      filtered = filtered.filter(r => r.receipt_validation_status === 'error');
     }
   }
 

@@ -2219,6 +2219,17 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
         Already Submitted <span class="notification-badge" id="already-submitted-count">0</span>
       </div>
       <div class="toolbar-divider"></div>
+      <span style="font-size:12px;color:var(--muted);font-weight:600">RECEIPTS:</span>
+      <div class="chip chip-with-badge" data-filter="receipt-verified" style="border-color:#22c55e">
+        ✓✓ Verified <span class="notification-badge" id="receipt-verified-count" style="background:#22c55e">0</span>
+      </div>
+      <div class="chip chip-with-badge" data-filter="receipt-mismatch" style="border-color:#ef4444">
+        ✗ Mismatch <span class="notification-badge" id="receipt-mismatch-count" style="background:#ef4444">0</span>
+      </div>
+      <div class="chip chip-with-badge" data-filter="receipt-error" style="border-color:#f59e0b">
+        ⚠ Error <span class="notification-badge" id="receipt-error-count" style="background:#f59e0b">0</span>
+      </div>
+      <div class="toolbar-divider"></div>
       <span style="font-size:12px;color:var(--muted);font-weight:600">BUSINESS:</span>
       <div class="chip chip-with-badge" data-biz="Music City Rodeo">
         MCR <span class="notification-badge" id="mcr-count">0</span>
