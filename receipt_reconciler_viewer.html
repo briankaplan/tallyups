@@ -5062,6 +5062,19 @@ function updateDashboard() {
     alreadySubmitted: csvData.filter(r => {
       const submitted = (r['Already Submitted'] || '').toLowerCase().trim();
       return submitted === 'yes';
+    }).length,
+    // Receipt Validation Status counts
+    receiptVerified: csvData.filter(r => {
+      const status = (r.receipt_validation_status || '').toLowerCase().trim();
+      return status === 'verified';
+    }).length,
+    receiptMismatch: csvData.filter(r => {
+      const status = (r.receipt_validation_status || '').toLowerCase().trim();
+      return status === 'mismatch';
+    }).length,
+    receiptError: csvData.filter(r => {
+      const status = (r.receipt_validation_status || '').toLowerCase().trim();
+      return status === 'error';
     }).length
   };
 
@@ -5087,6 +5100,10 @@ function updateDashboard() {
   updateBadge('personal-count', counts.personal);
   updateBadge('unassigned-count', counts.unassigned);
   updateBadge('already-submitted-count', counts.alreadySubmitted);
+  // Receipt validation status badges
+  updateBadge('receipt-verified-count', counts.receiptVerified);
+  updateBadge('receipt-mismatch-count', counts.receiptMismatch);
+  updateBadge('receipt-error-count', counts.receiptError);
 }
 
 // Image controls
@@ -6682,6 +6699,25 @@ function applyFilters() {
       filtered = filtered.filter(r => {
         const submitted = (r['Already Submitted'] || '').toLowerCase().trim();
         return submitted === 'yes';
+      });
+    }
+    // Receipt Validation Status filters
+    else if (filter === 'receipt-verified') {
+      filtered = filtered.filter(r => {
+        const status = (r.receipt_validation_status || '').toLowerCase().trim();
+        return status === 'verified';
+      });
+    }
+    else if (filter === 'receipt-mismatch') {
+      filtered = filtered.filter(r => {
+        const status = (r.receipt_validation_status || '').toLowerCase().trim();
+        return status === 'mismatch';
+      });
+    }
+    else if (filter === 'receipt-error') {
+      filtered = filtered.filter(r => {
+        const status = (r.receipt_validation_status || '').toLowerCase().trim();
+        return status === 'error';
       });
     }
   }
