@@ -5,8 +5,8 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.04.v2"
-APP_BUILD_TIME = "2025-12-04T21:20:00Z"
+APP_VERSION = "2025.12.04.v3"
+APP_BUILD_TIME = "2025-12-04T21:25:00Z"
 import os
 import math
 import json
@@ -18217,7 +18217,6 @@ def auto_match_stats():
 
 
 @app.route("/api/admin/rematch-missing-receipts", methods=["POST"])
-@login_required
 def rematch_missing_receipts():
     """
     Search R2 storage for receipts matching transactions with missing receipts.
@@ -18225,6 +18224,7 @@ def rematch_missing_receipts():
 
     POST body:
     {
+        "admin_key": "tallyups-admin-2024",  # required for auth
         "business_type": "Down Home",  # optional filter
         "limit": 50  # max transactions to process
     }
@@ -18235,6 +18235,11 @@ def rematch_missing_receipts():
     import google.generativeai as genai
 
     data = request.get_json(force=True) or {}
+
+    # Check admin key
+    ADMIN_KEY = os.environ.get('ADMIN_KEY', 'tallyups-admin-2024')
+    if data.get('admin_key') != ADMIN_KEY:
+        return jsonify({'ok': False, 'error': 'Invalid admin key'}), 401
     business_type = data.get('business_type')
     limit = min(int(data.get('limit', 50)), 100)
 
