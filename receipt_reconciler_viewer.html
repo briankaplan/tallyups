@@ -1802,19 +1802,26 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
     display: flex;
   }
 
-  /* Add padding to body for bottom nav */
-  body {
+  /* Main container needs to account for bottom nav */
+  .main {
+    min-height: calc(100vh - 60px - 60px - var(--safe-bottom)); /* header + bottom nav */
     padding-bottom: calc(60px + var(--safe-bottom));
   }
 
-  /* Adjust table wrap max height */
+  /* Adjust table wrap max height - account for header, dashboard, toolbar, and bottom nav */
   .table-wrap {
-    max-height: calc(100vh - 280px - var(--safe-bottom));
+    max-height: calc(100vh - 280px - 60px - var(--safe-bottom)) !important;
+  }
+
+  /* Right panel (receipt viewer) also needs bottom padding */
+  .right {
+    height: calc(100vh - 60px - 60px - var(--safe-bottom));
+    padding-bottom: calc(60px + var(--safe-bottom));
   }
 
   /* Toast position above bottom nav */
   .toast {
-    bottom: calc(70px + var(--safe-bottom));
+    bottom: calc(80px + var(--safe-bottom));
   }
 
   /* Hide desktop filter row on mobile - use filter sheet instead */
@@ -1836,6 +1843,11 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
     padding: 2px 6px;
     border-radius: 10px;
     font-size: 10px;
+  }
+
+  /* Ensure modal content doesn't get cut off by bottom nav */
+  .modal-box, .filter-sheet {
+    max-height: calc(100vh - 120px - var(--safe-bottom));
   }
 }
 
@@ -1860,17 +1872,17 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 
 .filter-sheet {
   position: fixed;
-  bottom: 0;
+  bottom: calc(60px + var(--safe-bottom)); /* Sits above bottom nav */
   left: 0;
   right: 0;
   background: var(--panel);
   border-radius: 20px 20px 0 0;
   z-index: 1001;
-  transform: translateY(100%);
+  transform: translateY(calc(100% + 60px + var(--safe-bottom)));
   transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-  max-height: 85vh;
+  max-height: calc(85vh - 60px - var(--safe-bottom));
   overflow: hidden;
-  padding-bottom: var(--safe-bottom);
+  padding-bottom: 16px;
 }
 .filter-sheet.active {
   transform: translateY(0);
@@ -1917,7 +1929,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 .filter-sheet-body {
   padding: 16px 20px;
   overflow-y: auto;
-  max-height: calc(85vh - 100px);
+  max-height: calc(85vh - 160px - var(--safe-bottom));
 }
 
 .filter-section {
