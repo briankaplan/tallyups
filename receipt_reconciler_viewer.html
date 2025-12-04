@@ -4121,11 +4121,14 @@ async function detachReceipt() {
     selectedRow['Receipt File'] = '';
     selectedRow.receipt_file = '';
     selectedRow.receipt_url = '';
+    selectedRow.r2_url = '';
     selectedRow['Review Status'] = '';  // This moves it to "Missing Receipt"
     selectedRow['AI Confidence'] = '';
     selectedRow.ai_receipt_merchant = '';
     selectedRow.ai_receipt_total = '';
     selectedRow.ai_receipt_date = '';
+    selectedRow.receipt_validation_status = 'missing';
+    selectedRow.receipt_validated = 0;
 
     // Re-apply filters - this will move the row to Missing Receipts if that filter exists
     applyFilters();

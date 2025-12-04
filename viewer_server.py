@@ -9261,7 +9261,8 @@ def detach_receipt():
             db_execute(conn, db_type, '''
                 UPDATE transactions
                 SET receipt_file = '', receipt_url = '', review_status = '', r2_url = '',
-                    ai_confidence = NULL, ai_receipt_merchant = '', ai_receipt_total = NULL, ai_receipt_date = NULL
+                    ai_confidence = NULL, ai_receipt_merchant = '', ai_receipt_total = NULL, ai_receipt_date = NULL,
+                    receipt_validation_status = 'missing', receipt_validated = 0, receipt_validation_note = 'Receipt detached'
                 WHERE _index = ?
             ''', (actual_index,))
 
