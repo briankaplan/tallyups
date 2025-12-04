@@ -5431,15 +5431,30 @@ function updateQuickViewer() {
     return `${d.getMonth()+1}/${d.getDate()}`;
   }
 
+  // Debug: Log receipt keys to find correct field names
+  console.log('Receipt keys:', Object.keys(receipt).filter(k => k.toLowerCase().includes('chase') || k.toLowerCase().includes('merchant')));
+  console.log('Receipt sample:', {
+    'Chase Description': receipt['Chase Description'],
+    'chase_description': receipt['chase_description'],
+    'MI Merchant': receipt['MI Merchant'],
+    'mi_merchant': receipt['mi_merchant']
+  });
+
   // Get values with fallbacks for both snake_case and Title Case field names
   const bankMerchant = receipt['Chase Description'] || receipt['chase_description'] || receipt['MI Merchant'] || receipt['mi_merchant'] || '—';
   const bankDate = receipt['Chase Date'] || receipt['chase_date'] || '—';
   const bankAmount = receipt['Chase Amount'] || receipt['chase_amount'] || amt;
 
-  // Bank side
-  document.getElementById('compare-bank-merchant').textContent = bankMerchant;
-  document.getElementById('compare-bank-amount').textContent = `$${Math.abs(parseFloat(bankAmount) || amt).toFixed(2)}`;
-  document.getElementById('compare-bank-date').textContent = simpleDate(bankDate);
+  console.log('Compare panel values:', { bankMerchant, bankDate, bankAmount, amt });
+
+  // Bank side - verify elements exist first
+  const cmpBankMerchant = document.getElementById('compare-bank-merchant');
+  const cmpBankAmount = document.getElementById('compare-bank-amount');
+  const cmpBankDate = document.getElementById('compare-bank-date');
+
+  if (cmpBankMerchant) cmpBankMerchant.textContent = bankMerchant;
+  if (cmpBankAmount) cmpBankAmount.textContent = `$${Math.abs(parseFloat(bankAmount) || amt).toFixed(2)}`;
+  if (cmpBankDate) cmpBankDate.textContent = simpleDate(bankDate);
 
   // Receipt side (from AI Note if available, or placeholder)
   const aiNote = receipt['AI Note'] || receipt['ai_note'] || '';
