@@ -5,8 +5,8 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.03.v3"
-APP_BUILD_TIME = "2025-12-03T05:00:00Z"
+APP_VERSION = "2025.12.04.v1"
+APP_BUILD_TIME = "2025-12-04T08:30:00Z"
 import os
 import math
 import json
@@ -13831,9 +13831,38 @@ def get_library_receipts():
 
         # Apply filters
 
-        # Filter to only receipts with images if has_image is true (default)
+        # Filter to only receipts with VALID images (not placeholders or truncated URLs)
+        def is_valid_receipt_url(url):
+            if not url:
+                return False
+            # Filter out placeholder URLs
+            if 'NO_RECEIPT' in url.upper():
+                return False
+            # Filter out truncated URLs (ends with /receipts without filename)
+            if url.endswith('/receipts') or url.endswith('/receipts/'):
+                return False
+            # Filter out URLs with special unicode characters that often cause 404s
+            # %E2%80%AF is narrow no-break space, common in macOS screenshot names
+            if '%E2%80%AF' in url or '%E2%80' in url:
+                return False
+            # Filter out Screenshot filenames (often broken uploads)
+            if 'Screenshot%20' in url or 'Screenshot ' in url:
+                return False
+            # Must have a file extension or be a valid path
+            return True
+
         if has_image:
-            all_receipts = [r for r in all_receipts if r.get('receipt_url') or r.get('thumbnail')]
+            all_receipts = [r for r in all_receipts
+                          if is_valid_receipt_url(r.get('receipt_url')) or is_valid_receipt_url(r.get('thumbnail'))]
+
+        # Filter out non-receipt transactions (interest charges, fees, etc.)
+        non_receipt_keywords = ['INTEREST CHARGE', 'LATE FEE', 'ANNUAL FEE', 'FINANCE CHARGE', 'FOREIGN TRANSACTION FEE']
+        all_receipts = [r for r in all_receipts
+                       if not any(kw in (r.get('merchant') or '').upper() for kw in non_receipt_keywords)]
+
+        # Filter out Unknown/blank merchants with zero amount
+        all_receipts = [r for r in all_receipts
+                       if not ((r.get('merchant') == 'Unknown' or not r.get('merchant')) and r.get('amount', 0) == 0)]
 
         if source != 'all':
             all_receipts = [r for r in all_receipts if r['source'] == source]
@@ -17231,6 +17260,86 @@ def scan_incoming_receipts():
 
     except Exception as e:
         print(f"❌ Error during scan: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/admin/cleanup-broken-receipt-urls", methods=["POST"])
+def cleanup_broken_receipt_urls():
+    """
+    Clean up broken receipt URLs in the database.
+    Removes URLs that are:
+    - NO_RECEIPT placeholders
+    - Screenshot URLs with unicode characters (often 404)
+    - Truncated /receipts URLs without filenames
+
+    Admin key required.
+    """
+    admin_key = request.json.get('admin_key') if request.json else request.args.get('admin_key')
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not expected_key or admin_key != expected_key:
+        return jsonify({'error': 'Admin key required', 'ok': False}), 401
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Patterns to clean up
+        cleanup_results = {
+            'no_receipt_placeholders': 0,
+            'screenshot_urls': 0,
+            'truncated_urls': 0,
+            'total_cleaned': 0
+        }
+
+        # 1. Clear NO_RECEIPT placeholder URLs
+        cursor.execute("""
+            UPDATE transactions
+            SET receipt_url = NULL, r2_url = NULL
+            WHERE (receipt_url LIKE '%NO_RECEIPT%' OR r2_url LIKE '%NO_RECEIPT%')
+        """)
+        cleanup_results['no_receipt_placeholders'] = cursor.rowcount
+
+        # 2. Clear Screenshot URLs with unicode characters (broken uploads)
+        cursor.execute("""
+            UPDATE transactions
+            SET receipt_url = NULL, r2_url = NULL
+            WHERE (receipt_url LIKE '%Screenshot%%' AND receipt_url LIKE '%%E2%%80%%')
+               OR (r2_url LIKE '%Screenshot%%' AND r2_url LIKE '%%E2%%80%%')
+        """)
+        cleanup_results['screenshot_urls'] = cursor.rowcount
+
+        # 3. Clear truncated URLs ending with /receipts
+        cursor.execute("""
+            UPDATE transactions
+            SET receipt_url = NULL, r2_url = NULL
+            WHERE receipt_url LIKE '%/receipts'
+               OR r2_url LIKE '%/receipts'
+        """)
+        cleanup_results['truncated_urls'] = cursor.rowcount
+
+        conn.commit()
+        return_db_connection(conn)
+
+        cleanup_results['total_cleaned'] = (
+            cleanup_results['no_receipt_placeholders'] +
+            cleanup_results['screenshot_urls'] +
+            cleanup_results['truncated_urls']
+        )
+
+        return jsonify({
+            'ok': True,
+            'message': f"Cleaned up {cleanup_results['total_cleaned']} broken receipt URLs",
+            'details': cleanup_results
+        })
+
+    except Exception as e:
+        print(f"❌ Error cleaning up broken URLs: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
