@@ -2678,6 +2678,190 @@ def ocr_verify_receipt():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/ocr/verify-batch", methods=["POST"])
+def ocr_verify_batch():
+    """
+    Batch verify multiple receipts against transactions.
+    Optimized for verifying 500+ receipts quickly.
+
+    Auth: admin_key required
+
+    Request (JSON):
+        {
+            "items": [
+                {
+                    "transaction_id": "abc123",
+                    "receipt_path": "/path/to/receipt.pdf",
+                    "merchant": "CLEAR",
+                    "amount": 334.00,
+                    "date": "2025-10-21"
+                },
+                ...
+            ]
+        }
+
+    Response:
+        {
+            "total": 500,
+            "verified": 450,
+            "failed": 30,
+            "errors": 20,
+            "duration_seconds": 45.2,
+            "results": [...]
+        }
+    """
+    # Auth: admin_key required
+    admin_key = (request.json or {}).get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
+
+    if not OCR_SERVICE_AVAILABLE:
+        return jsonify({"error": "OCR service not available"}), 503
+
+    data = request.get_json()
+    if not data or 'items' not in data:
+        return jsonify({"error": "Request must include 'items' array"}), 400
+
+    items = data['items']
+    if not items:
+        return jsonify({"error": "Items array is empty"}), 400
+
+    # Import batch function
+    from receipt_ocr_service import verify_receipts_batch, get_cache_stats
+
+    # Transform items to expected format
+    batch_items = []
+    for item in items:
+        batch_items.append({
+            'transaction_id': item.get('transaction_id'),
+            'image_path': item.get('receipt_path'),
+            'merchant': item.get('merchant'),
+            'amount': item.get('amount'),
+            'date': item.get('date')
+        })
+
+    # Run batch verification
+    result = verify_receipts_batch(batch_items)
+
+    # Add cache stats
+    result['cache_stats'] = get_cache_stats()
+
+    return jsonify(result)
+
+
+@app.route("/api/ocr/verify-transactions", methods=["POST"])
+def ocr_verify_transactions():
+    """
+    Verify receipts for transactions from database.
+    Pass transaction IDs, and we'll look up receipt paths and expected data.
+
+    Auth: admin_key required
+
+    Request (JSON):
+        {
+            "transaction_ids": ["abc123", "def456", ...],
+            "limit": 100  // optional, default 100
+        }
+
+    Response:
+        Same as verify-batch
+    """
+    # Auth: admin_key required
+    admin_key = (request.json or {}).get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
+
+    if not OCR_SERVICE_AVAILABLE:
+        return jsonify({"error": "OCR service not available"}), 503
+
+    data = request.get_json()
+    transaction_ids = data.get('transaction_ids', [])
+    limit = min(data.get('limit', 100), 1000)  # Cap at 1000
+
+    # If no IDs provided, get unverified transactions from database
+    if not transaction_ids:
+        try:
+            conn, db_type = get_db_connection()
+            cursor = db_execute(conn, db_type, """
+                SELECT transaction_id, description, amount, date, receipt_file_path
+                FROM receipt_reconciliation
+                WHERE receipt_file_path IS NOT NULL
+                AND verification_status != 'verified'
+                LIMIT %s
+            """, (limit,))
+            rows = cursor.fetchall()
+            return_db_connection(conn)
+
+            # Build batch items from database
+            batch_items = []
+            for row in rows:
+                if row.get('receipt_file_path'):
+                    batch_items.append({
+                        'transaction_id': row.get('transaction_id'),
+                        'image_path': row.get('receipt_file_path'),
+                        'merchant': row.get('description'),
+                        'amount': float(row.get('amount', 0)),
+                        'date': str(row.get('date', ''))
+                    })
+
+        except Exception as e:
+            return jsonify({"error": f"Database error: {e}"}), 500
+    else:
+        # Look up specific transactions
+        try:
+            conn, db_type = get_db_connection()
+            placeholders = ', '.join(['%s'] * len(transaction_ids))
+            cursor = db_execute(conn, db_type, f"""
+                SELECT transaction_id, description, amount, date, receipt_file_path
+                FROM receipt_reconciliation
+                WHERE transaction_id IN ({placeholders})
+            """, tuple(transaction_ids))
+            rows = cursor.fetchall()
+            return_db_connection(conn)
+
+            batch_items = []
+            for row in rows:
+                if row.get('receipt_file_path'):
+                    batch_items.append({
+                        'transaction_id': row.get('transaction_id'),
+                        'image_path': row.get('receipt_file_path'),
+                        'merchant': row.get('description'),
+                        'amount': float(row.get('amount', 0)),
+                        'date': str(row.get('date', ''))
+                    })
+
+        except Exception as e:
+            return jsonify({"error": f"Database error: {e}"}), 500
+
+    if not batch_items:
+        return jsonify({
+            "total": 0,
+            "verified": 0,
+            "failed": 0,
+            "errors": 0,
+            "message": "No transactions with receipt paths found"
+        })
+
+    # Run batch verification
+    from receipt_ocr_service import verify_receipts_batch, get_cache_stats
+    result = verify_receipts_batch(batch_items)
+    result['cache_stats'] = get_cache_stats()
+
+    return jsonify(result)
+
+
+@app.route("/api/ocr/cache-stats", methods=["GET"])
+def ocr_cache_stats():
+    """Get OCR cache statistics"""
+    if not OCR_SERVICE_AVAILABLE:
+        return jsonify({"error": "OCR service not available"}), 503
+
+    from receipt_ocr_service import get_cache_stats
+    return jsonify(get_cache_stats())
+
+
 @app.route("/mobile-upload", methods=["POST"])
 def mobile_upload():
     """
