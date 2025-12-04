@@ -10422,6 +10422,24 @@ def detach_receipt():
                 # Return success - nothing to detach but that's fine
                 return jsonify({'ok': True, 'message': f'No receipt attached to transaction #{idx}', 'already_empty': True})
 
+            # AUDIT LOG: Save what we're about to detach so it can be restored
+            detached_url = r2_url or receipt_url or filename
+            ocr_status = row_dict.get('ocr_verification_status') or ''
+            try:
+                db_execute(conn, db_type, '''
+                    INSERT INTO receipt_audit_log
+                    (receipt_type, receipt_id, action, field_changed, old_value, new_value, changed_by, changed_at)
+                    VALUES ('transaction', ?, 'detach', 'r2_url', ?, '', 'user', NOW())
+                ''', (actual_index, detached_url))
+                if ocr_status:
+                    db_execute(conn, db_type, '''
+                        INSERT INTO receipt_audit_log
+                        (receipt_type, receipt_id, action, field_changed, old_value, new_value, changed_by, changed_at)
+                        VALUES ('transaction', ?, 'detach', 'ocr_verification_status', ?, '', 'user', NOW())
+                    ''', (actual_index, ocr_status))
+            except Exception as audit_err:
+                print(f"⚠️ Audit log failed (non-fatal): {audit_err}", flush=True)
+
             # Clear receipt from transaction - including ALL OCR verification data
             db_execute(conn, db_type, '''
                 UPDATE transactions
@@ -18195,6 +18213,247 @@ def auto_match_stats():
         })
 
     except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/admin/rematch-missing-receipts", methods=["POST"])
+@login_required
+def rematch_missing_receipts():
+    """
+    Search R2 storage for receipts matching transactions with missing receipts.
+    OCR verifies each candidate and ONLY attaches if verified.
+
+    POST body:
+    {
+        "business_type": "Down Home",  # optional filter
+        "limit": 50  # max transactions to process
+    }
+    """
+    import boto3
+    from botocore.config import Config
+    import requests
+    import google.generativeai as genai
+
+    data = request.get_json(force=True) or {}
+    business_type = data.get('business_type')
+    limit = min(int(data.get('limit', 50)), 100)
+
+    # R2 config from environment
+    R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID', '0e5e0352d7e86c3ad2950c3c6a7f2192')
+    R2_ACCESS_KEY = os.environ.get('R2_ACCESS_KEY_ID', '95db0c86dbb6d49fb1a1a9cfce31546d')
+    R2_SECRET_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '1fb14eec34e2eac2f4ee89d3d64eea41ba7a7a430839bdabe46a2f3dd51dde23')
+    R2_BUCKET = os.environ.get('R2_BUCKET', 'tallyups-receipts')
+    R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL', 'https://pub-f0fa143240d4452e836320be0bac6138.r2.dev')
+
+    GEMINI_KEYS = [
+        os.environ.get('GEMINI_API_KEY_1', os.environ.get('GEMINI_API_KEY', '')),
+        os.environ.get('GEMINI_API_KEY_2', ''),
+        os.environ.get('GEMINI_API_KEY_3', '')
+    ]
+    GEMINI_KEYS = [k for k in GEMINI_KEYS if k]
+
+    if not GEMINI_KEYS:
+        return jsonify({'ok': False, 'error': 'No Gemini API keys configured'}), 500
+
+    try:
+        # Connect to R2
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=f'https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com',
+            aws_access_key_id=R2_ACCESS_KEY,
+            aws_secret_access_key=R2_SECRET_KEY,
+            config=Config(signature_version='s3v4'),
+            region_name='auto'
+        )
+
+        # Get missing receipts from database
+        conn = db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        query = '''
+            SELECT _index, chase_description, chase_amount, chase_date
+            FROM transactions
+            WHERE deleted = FALSE
+            AND (r2_url IS NULL OR r2_url = '')
+            AND (receipt_url IS NULL OR receipt_url = '')
+        '''
+        params = []
+
+        if business_type:
+            query += ' AND business_type = %s'
+            params.append(business_type)
+
+        query += ' ORDER BY chase_date DESC LIMIT %s'
+        params.append(limit)
+
+        cursor.execute(query, params)
+        missing = cursor.fetchall()
+
+        if not missing:
+            conn.close()
+            return jsonify({
+                'ok': True,
+                'message': 'No missing receipts found',
+                'stats': {'processed': 0, 'verified': 0, 'no_match': 0}
+            })
+
+        # Helper: normalize merchant name
+        def normalize_merchant(name):
+            if not name:
+                return ''
+            name = name.lower()
+            name = re.sub(r'\s*(inc\.?|llc|corp\.?|ltd\.?|co\.?)\s*$', '', name, flags=re.I)
+            name = re.sub(r'[^a-z0-9\s]', '', name)
+            name = re.sub(r'\s+', ' ', name).strip()
+            return name
+
+        # Helper: search R2 for merchant
+        def search_r2(merchant):
+            matches = []
+            keywords = [w for w in normalize_merchant(merchant).split() if len(w) > 2][:3]
+            if not keywords:
+                return matches
+
+            seen = set()
+            for prefix in ['receipts/', 'incoming/', '']:
+                try:
+                    paginator = s3_client.get_paginator('list_objects_v2')
+                    for page in paginator.paginate(Bucket=R2_BUCKET, Prefix=prefix, MaxKeys=1000):
+                        for obj in page.get('Contents', []):
+                            key = obj['Key']
+                            if key in seen:
+                                continue
+                            seen.add(key)
+                            filename = key.lower()
+                            if not any(filename.endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.pdf']):
+                                continue
+                            # Check keyword match
+                            for kw in keywords:
+                                if kw in filename:
+                                    matches.append({
+                                        'key': key,
+                                        'url': f"{R2_PUBLIC_URL}/{key}",
+                                        'size': obj.get('Size', 0)
+                                    })
+                                    break
+                except Exception:
+                    continue
+            return matches[:10]  # Return top 10
+
+        # Helper: OCR verify receipt
+        def ocr_verify(r2_url, tx_merchant, tx_amount, tx_date, key_idx):
+            api_key = GEMINI_KEYS[key_idx % len(GEMINI_KEYS)]
+            genai.configure(api_key=api_key)
+
+            try:
+                img_response = requests.get(r2_url, timeout=30)
+                if img_response.status_code != 200:
+                    return {'verdict': 'DOWNLOAD_ERROR'}
+                img_data = img_response.content
+            except Exception:
+                return {'verdict': 'DOWNLOAD_ERROR'}
+
+            mime_type = "image/jpeg"
+            if r2_url.lower().endswith('.png'):
+                mime_type = "image/png"
+            elif r2_url.lower().endswith('.pdf'):
+                mime_type = "application/pdf"
+
+            prompt = f"""Analyze this receipt and verify against bank transaction.
+TRANSACTION: {tx_merchant} ${float(tx_amount):.2f} {tx_date}
+
+Return JSON: {{"ocr_merchant":"...", "ocr_amount":0.00, "verdict":"VERIFIED" or "MISMATCH", "reasoning":"..."}}
+VERIFIED: amounts match within $2, merchants similar. MISMATCH: different merchant or amount differs >$5."""
+
+            try:
+                model = genai.GenerativeModel('gemini-2.0-flash')
+                response = model.generate_content([prompt, {"mime_type": mime_type, "data": img_data}])
+                text = response.text.strip()
+                json_match = re.search(r'\{[\s\S]*\}', text)
+                if json_match:
+                    return json.loads(json_match.group())
+                return {'verdict': 'PARSE_ERROR'}
+            except Exception as e:
+                if "429" in str(e) or "quota" in str(e).lower():
+                    return {'verdict': 'RATE_LIMITED'}
+                return {'verdict': 'API_ERROR'}
+
+        # Process each missing receipt
+        stats = {'processed': 0, 'verified': 0, 'no_match': 0, 'mismatch': 0, 'errors': 0}
+        results = []
+        key_idx = 0
+
+        for tx in missing:
+            idx = tx['_index']
+            merchant = tx['chase_description']
+            amount = float(tx['chase_amount'])
+            date_str = str(tx['chase_date']) if tx['chase_date'] else ''
+
+            stats['processed'] += 1
+
+            # Search R2
+            candidates = search_r2(merchant)
+            if not candidates:
+                stats['no_match'] += 1
+                results.append({'_index': idx, 'status': 'no_candidates'})
+                continue
+
+            # Try each candidate
+            matched = False
+            for candidate in candidates[:5]:
+                result = ocr_verify(candidate['url'], merchant, amount, date_str, key_idx)
+                key_idx += 1
+
+                verdict = result.get('verdict', 'UNCLEAR')
+
+                if verdict == 'VERIFIED':
+                    # Attach receipt
+                    cursor.execute('''
+                        UPDATE transactions SET
+                            r2_url = %s,
+                            receipt_validation_status = 'matched',
+                            receipt_validated = 1,
+                            receipt_validation_note = 'Re-matched via API',
+                            ocr_merchant = %s,
+                            ocr_amount = %s,
+                            ocr_verified = 1,
+                            ocr_verification_status = 'verified',
+                            ocr_method = 'gemini',
+                            ocr_extracted_at = NOW()
+                        WHERE _index = %s
+                    ''', (candidate['url'], result.get('ocr_merchant'), result.get('ocr_amount'), idx))
+                    conn.commit()
+
+                    stats['verified'] += 1
+                    results.append({
+                        '_index': idx,
+                        'status': 'verified',
+                        'r2_url': candidate['url'],
+                        'ocr_merchant': result.get('ocr_merchant')
+                    })
+                    matched = True
+                    break
+                elif verdict == 'RATE_LIMITED':
+                    stats['errors'] += 1
+                    results.append({'_index': idx, 'status': 'rate_limited'})
+                    matched = True  # Stop trying
+                    break
+
+            if not matched:
+                stats['mismatch'] += 1
+                results.append({'_index': idx, 'status': 'no_verified_match'})
+
+        conn.close()
+
+        return jsonify({
+            'ok': True,
+            'stats': stats,
+            'results': results
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
