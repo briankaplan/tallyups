@@ -5431,23 +5431,32 @@ function updateQuickViewer() {
     return `${d.getMonth()+1}/${d.getDate()}`;
   }
 
+  // Get values with fallbacks for both snake_case and Title Case field names
+  const bankMerchant = receipt['Chase Description'] || receipt['chase_description'] || receipt['MI Merchant'] || receipt['mi_merchant'] || '—';
+  const bankDate = receipt['Chase Date'] || receipt['chase_date'] || '—';
+  const bankAmount = receipt['Chase Amount'] || receipt['chase_amount'] || amt;
+
   // Bank side
-  document.getElementById('compare-bank-merchant').textContent = receipt['Chase Description'] || '—';
-  document.getElementById('compare-bank-amount').textContent = `$${Math.abs(amt).toFixed(2)}`;
-  document.getElementById('compare-bank-date').textContent = simpleDate(receipt['Chase Date']);
+  document.getElementById('compare-bank-merchant').textContent = bankMerchant;
+  document.getElementById('compare-bank-amount').textContent = `$${Math.abs(parseFloat(bankAmount) || amt).toFixed(2)}`;
+  document.getElementById('compare-bank-date').textContent = simpleDate(bankDate);
 
   // Receipt side (from AI Note if available, or placeholder)
-  const aiNote = receipt['AI Note'] || '';
+  const aiNote = receipt['AI Note'] || receipt['ai_note'] || '';
   let rcptMerchant = '—';
   let rcptAmount = '—';
   let rcptDate = '—';
 
-  // Try to parse AI note for receipt info
+  // Try to parse AI note for receipt info (multiple patterns)
   if (aiNote) {
-    const merchantMatch = aiNote.match(/merchant[:\s]+([^,\n]+)/i);
+    // Match patterns like "Merchant: XYZ" or "Receipt: XYZ" or just extract first capitalized word
+    const merchantMatch = aiNote.match(/(?:merchant|vendor|store|receipt)[:\s]+([^,\n$]+)/i) ||
+                          aiNote.match(/^([A-Z][A-Za-z\s']+?)[\s,\-]/);
+    // Match dollar amounts
     const amountMatch = aiNote.match(/\$[\d,]+\.?\d*/);
+    // Match dates in various formats
     const dateMatch = aiNote.match(/(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/);
-    if (merchantMatch) rcptMerchant = merchantMatch[1].trim();
+    if (merchantMatch) rcptMerchant = merchantMatch[1].trim().substring(0, 25);
     if (amountMatch) rcptAmount = amountMatch[0];
     if (dateMatch) rcptDate = dateMatch[1];
   }
