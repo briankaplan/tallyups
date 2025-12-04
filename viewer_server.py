@@ -2544,11 +2544,12 @@ Return ONLY valid JSON, no explanation."""
 
 
 @app.route("/api/ocr/extract", methods=["POST"])
-@login_required
 def ocr_extract_full():
     """
     Full receipt extraction using unified OCR service (Mindee-quality).
     Returns complete receipt data including line items.
+
+    Auth: admin_key OR session login
 
     Request:
         - file: Receipt image (PNG, JPG, PDF, HEIC)
@@ -2570,6 +2571,13 @@ def ocr_extract_full():
             "ocr_method": "gemini"
         }
     """
+    # Auth: admin_key OR session login
+    admin_key = request.form.get('admin_key') or request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
+
     if not OCR_SERVICE_AVAILABLE:
         return jsonify({"error": "OCR service not available"}), 503
 
@@ -2603,10 +2611,11 @@ def ocr_extract_full():
 
 
 @app.route("/api/ocr/verify", methods=["POST"])
-@login_required
 def ocr_verify_receipt():
     """
     Verify a receipt matches expected transaction data.
+
+    Auth: admin_key OR session login
 
     Request:
         - file: Receipt image
@@ -2623,6 +2632,13 @@ def ocr_verify_receipt():
             "expected": {...}
         }
     """
+    # Auth: admin_key OR session login
+    admin_key = request.form.get('admin_key') or request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
+
     if not OCR_SERVICE_AVAILABLE:
         return jsonify({"error": "OCR service not available"}), 503
 
