@@ -13875,6 +13875,1069 @@ def serve_report_builder():
 
 
 # =============================================================================
+# ENHANCED RECEIPT LIBRARY - TAGS, FAVORITES, ANNOTATIONS, COLLECTIONS
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# TAGS API
+# -----------------------------------------------------------------------------
+
+@app.route("/api/library/tags", methods=["GET"])
+def get_receipt_tags():
+    """Get all available receipt tags."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        if not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM receipt_tags ORDER BY usage_count DESC, name ASC")
+        tags = [dict(row) for row in cursor.fetchall()]
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'tags': tags})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/tags", methods=["POST"])
+def create_receipt_tag():
+    """Create a new tag."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'ok': False, 'error': 'Tag name required'}), 400
+
+        color = data.get('color', '#00ff88')
+        icon = data.get('icon', '')
+        description = data.get('description', '')
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO receipt_tags (name, color, icon, description)
+            VALUES (%s, %s, %s, %s)
+        """, (name, color, icon, description))
+        conn.commit()
+        tag_id = cursor.lastrowid
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'tag_id': tag_id, 'message': f'Tag "{name}" created'})
+    except Exception as e:
+        if 'Duplicate' in str(e):
+            return jsonify({'ok': False, 'error': f'Tag "{name}" already exists'}), 409
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/tags/<int:tag_id>", methods=["PUT"])
+def update_receipt_tag(tag_id):
+    """Update a tag."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        updates = []
+        params = []
+
+        if 'name' in data:
+            updates.append("name = %s")
+            params.append(data['name'])
+        if 'color' in data:
+            updates.append("color = %s")
+            params.append(data['color'])
+        if 'icon' in data:
+            updates.append("icon = %s")
+            params.append(data['icon'])
+        if 'description' in data:
+            updates.append("description = %s")
+            params.append(data['description'])
+
+        if not updates:
+            return jsonify({'ok': False, 'error': 'No fields to update'}), 400
+
+        params.append(tag_id)
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE receipt_tags SET {', '.join(updates)} WHERE id = %s", params)
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Tag updated'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/tags/<int:tag_id>", methods=["DELETE"])
+def delete_receipt_tag(tag_id):
+    """Delete a tag (cascades to assignments)."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM receipt_tags WHERE id = %s", (tag_id,))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Tag deleted'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/tags", methods=["GET"])
+def get_receipt_tags_for_receipt(receipt_type, receipt_id):
+    """Get tags assigned to a specific receipt."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    if receipt_type not in ('transaction', 'incoming', 'metadata'):
+        return jsonify({'ok': False, 'error': 'Invalid receipt type'}), 400
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT t.* FROM receipt_tags t
+            JOIN receipt_tag_assignments a ON t.id = a.tag_id
+            WHERE a.receipt_type = %s AND a.receipt_id = %s
+        """, (receipt_type, receipt_id))
+        tags = [dict(row) for row in cursor.fetchall()]
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'tags': tags})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/tags", methods=["POST"])
+def assign_tag_to_receipt(receipt_type, receipt_id):
+    """Assign a tag to a receipt."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    if receipt_type not in ('transaction', 'incoming', 'metadata'):
+        return jsonify({'ok': False, 'error': 'Invalid receipt type'}), 400
+
+    try:
+        data = request.get_json() or {}
+        tag_id = data.get('tag_id')
+        if not tag_id:
+            return jsonify({'ok': False, 'error': 'tag_id required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Insert assignment
+        cursor.execute("""
+            INSERT INTO receipt_tag_assignments (receipt_type, receipt_id, tag_id)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE assigned_at = CURRENT_TIMESTAMP
+        """, (receipt_type, receipt_id, tag_id))
+
+        # Update usage count
+        cursor.execute("UPDATE receipt_tags SET usage_count = usage_count + 1 WHERE id = %s", (tag_id,))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Tag assigned'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/tags/<int:tag_id>", methods=["DELETE"])
+def remove_tag_from_receipt(receipt_type, receipt_id, tag_id):
+    """Remove a tag from a receipt."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM receipt_tag_assignments
+            WHERE receipt_type = %s AND receipt_id = %s AND tag_id = %s
+        """, (receipt_type, receipt_id, tag_id))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Tag removed'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# -----------------------------------------------------------------------------
+# FAVORITES API
+# -----------------------------------------------------------------------------
+
+@app.route("/api/library/favorites", methods=["GET"])
+def get_favorites():
+    """Get all favorited receipts."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM receipt_favorites ORDER BY priority DESC, favorited_at DESC")
+        favorites = [dict(row) for row in cursor.fetchall()]
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'favorites': favorites})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/favorite", methods=["POST"])
+def favorite_receipt(receipt_type, receipt_id):
+    """Add a receipt to favorites."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    if receipt_type not in ('transaction', 'incoming', 'metadata'):
+        return jsonify({'ok': False, 'error': 'Invalid receipt type'}), 400
+
+    try:
+        data = request.get_json() or {}
+        priority = data.get('priority', 0)
+        note = data.get('note', '')
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO receipt_favorites (receipt_type, receipt_id, priority, note)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE priority = VALUES(priority), note = VALUES(note)
+        """, (receipt_type, receipt_id, priority, note))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Receipt favorited'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/favorite", methods=["DELETE"])
+def unfavorite_receipt(receipt_type, receipt_id):
+    """Remove a receipt from favorites."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM receipt_favorites WHERE receipt_type = %s AND receipt_id = %s
+        """, (receipt_type, receipt_id))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Removed from favorites'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# -----------------------------------------------------------------------------
+# ANNOTATIONS API
+# -----------------------------------------------------------------------------
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/annotations", methods=["GET"])
+def get_receipt_annotations(receipt_type, receipt_id):
+    """Get all annotations for a receipt."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT * FROM receipt_annotations
+            WHERE receipt_type = %s AND receipt_id = %s
+            ORDER BY created_at DESC
+        """, (receipt_type, receipt_id))
+        annotations = [dict(row) for row in cursor.fetchall()]
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'annotations': annotations})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/annotations", methods=["POST"])
+def add_receipt_annotation(receipt_type, receipt_id):
+    """Add an annotation to a receipt."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    if receipt_type not in ('transaction', 'incoming', 'metadata'):
+        return jsonify({'ok': False, 'error': 'Invalid receipt type'}), 400
+
+    try:
+        data = request.get_json() or {}
+        content = data.get('content', '').strip()
+        if not content:
+            return jsonify({'ok': False, 'error': 'Annotation content required'}), 400
+
+        annotation_type = data.get('type', 'note')
+        metadata = json.dumps(data.get('metadata', {}))
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO receipt_annotations (receipt_type, receipt_id, annotation_type, content, metadata)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (receipt_type, receipt_id, annotation_type, content, metadata))
+        conn.commit()
+        annotation_id = cursor.lastrowid
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'annotation_id': annotation_id, 'message': 'Annotation added'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/annotations/<int:annotation_id>", methods=["DELETE"])
+def delete_annotation(annotation_id):
+    """Delete an annotation."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM receipt_annotations WHERE id = %s", (annotation_id,))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Annotation deleted'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# -----------------------------------------------------------------------------
+# ATTENDEES API
+# -----------------------------------------------------------------------------
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/attendees", methods=["GET"])
+def get_receipt_attendees(receipt_type, receipt_id):
+    """Get attendees for a receipt (meal receipts, events)."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT * FROM receipt_attendees
+            WHERE receipt_type = %s AND receipt_id = %s
+            ORDER BY attendee_name ASC
+        """, (receipt_type, receipt_id))
+        attendees = [dict(row) for row in cursor.fetchall()]
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'attendees': attendees})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/attendees", methods=["POST"])
+def add_receipt_attendee(receipt_type, receipt_id):
+    """Add an attendee to a receipt."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'ok': False, 'error': 'Attendee name required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO receipt_attendees (receipt_type, receipt_id, attendee_name, attendee_email, attendee_company, relationship, contact_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (receipt_type, receipt_id, name, data.get('email'), data.get('company'), data.get('relationship'), data.get('contact_id')))
+        conn.commit()
+        attendee_id = cursor.lastrowid
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'attendee_id': attendee_id, 'message': 'Attendee added'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/attendees/<int:attendee_id>", methods=["DELETE"])
+def delete_attendee(attendee_id):
+    """Remove an attendee from a receipt."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM receipt_attendees WHERE id = %s", (attendee_id,))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Attendee removed'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# -----------------------------------------------------------------------------
+# COLLECTIONS API
+# -----------------------------------------------------------------------------
+
+@app.route("/api/library/collections", methods=["GET"])
+def get_collections():
+    """Get all receipt collections."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Get collections with item counts
+        cursor.execute("""
+            SELECT c.*,
+                   COUNT(i.id) as receipt_count,
+                   COALESCE(SUM(
+                       CASE
+                           WHEN i.receipt_type = 'transaction' THEN (SELECT chase_amount FROM transactions WHERE _index = i.receipt_id)
+                           WHEN i.receipt_type = 'incoming' THEN (SELECT amount FROM incoming_receipts WHERE id = i.receipt_id)
+                           ELSE 0
+                       END
+                   ), 0) as total_amount
+            FROM receipt_collections c
+            LEFT JOIN receipt_collection_items i ON c.id = i.collection_id
+            GROUP BY c.id
+            ORDER BY c.is_active DESC, c.updated_at DESC
+        """)
+        collections = [dict(row) for row in cursor.fetchall()]
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'collections': collections})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/collections", methods=["POST"])
+def create_collection():
+    """Create a new receipt collection."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({'ok': False, 'error': 'Collection name required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO receipt_collections (name, description, collection_type, color, icon, start_date, end_date, budget)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            name,
+            data.get('description', ''),
+            data.get('type', 'custom'),
+            data.get('color', '#00ff88'),
+            data.get('icon', ''),
+            data.get('start_date'),
+            data.get('end_date'),
+            data.get('budget')
+        ))
+        conn.commit()
+        collection_id = cursor.lastrowid
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'collection_id': collection_id, 'message': f'Collection "{name}" created'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/collections/<int:collection_id>", methods=["GET"])
+def get_collection(collection_id):
+    """Get a collection with all its receipts."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Get collection
+        cursor.execute("SELECT * FROM receipt_collections WHERE id = %s", (collection_id,))
+        collection = cursor.fetchone()
+        if not collection:
+            return jsonify({'ok': False, 'error': 'Collection not found'}), 404
+        collection = dict(collection)
+
+        # Get items
+        cursor.execute("""
+            SELECT i.*,
+                   CASE i.receipt_type
+                       WHEN 'transaction' THEN (SELECT chase_description FROM transactions WHERE _index = i.receipt_id)
+                       WHEN 'incoming' THEN (SELECT merchant FROM incoming_receipts WHERE id = i.receipt_id)
+                   END as merchant,
+                   CASE i.receipt_type
+                       WHEN 'transaction' THEN (SELECT chase_amount FROM transactions WHERE _index = i.receipt_id)
+                       WHEN 'incoming' THEN (SELECT amount FROM incoming_receipts WHERE id = i.receipt_id)
+                   END as amount,
+                   CASE i.receipt_type
+                       WHEN 'transaction' THEN (SELECT chase_date FROM transactions WHERE _index = i.receipt_id)
+                       WHEN 'incoming' THEN (SELECT receipt_date FROM incoming_receipts WHERE id = i.receipt_id)
+                   END as date
+            FROM receipt_collection_items i
+            WHERE i.collection_id = %s
+            ORDER BY date DESC
+        """, (collection_id,))
+        items = [dict(row) for row in cursor.fetchall()]
+        db.return_connection(conn)
+
+        collection['items'] = items
+        collection['receipt_count'] = len(items)
+        collection['total_amount'] = sum(float(i.get('amount') or 0) for i in items)
+
+        return jsonify({'ok': True, 'collection': collection})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/collections/<int:collection_id>/add", methods=["POST"])
+def add_to_collection(collection_id):
+    """Add a receipt to a collection."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        receipt_type = data.get('receipt_type')
+        receipt_id = data.get('receipt_id')
+
+        if not receipt_type or not receipt_id:
+            return jsonify({'ok': False, 'error': 'receipt_type and receipt_id required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO receipt_collection_items (collection_id, receipt_type, receipt_id)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE added_at = CURRENT_TIMESTAMP
+        """, (collection_id, receipt_type, receipt_id))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Added to collection'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/collections/<int:collection_id>/remove", methods=["POST"])
+def remove_from_collection(collection_id):
+    """Remove a receipt from a collection."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        receipt_type = data.get('receipt_type')
+        receipt_id = data.get('receipt_id')
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM receipt_collection_items
+            WHERE collection_id = %s AND receipt_type = %s AND receipt_id = %s
+        """, (collection_id, receipt_type, receipt_id))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Removed from collection'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/collections/<int:collection_id>", methods=["DELETE"])
+def delete_collection(collection_id):
+    """Delete a collection (cascades to items)."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM receipt_collections WHERE id = %s", (collection_id,))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Collection deleted'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# -----------------------------------------------------------------------------
+# STATISTICS & DASHBOARD API
+# -----------------------------------------------------------------------------
+
+@app.route("/api/library/stats", methods=["GET"])
+def get_library_stats():
+    """Get comprehensive receipt library statistics."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        stats = {}
+
+        # Total receipts by source
+        cursor.execute("""
+            SELECT
+                COALESCE(source, 'manual') as source,
+                COUNT(*) as count,
+                SUM(chase_amount) as total_amount
+            FROM transactions
+            WHERE (receipt_file IS NOT NULL AND receipt_file != '')
+               OR (receipt_url IS NOT NULL AND receipt_url != '')
+               OR (r2_url IS NOT NULL AND r2_url != '')
+            GROUP BY COALESCE(source, 'manual')
+        """)
+        stats['by_source'] = [dict(row) for row in cursor.fetchall()]
+
+        # Monthly totals (last 12 months)
+        cursor.execute("""
+            SELECT
+                DATE_FORMAT(chase_date, '%%Y-%%m') as month,
+                COUNT(*) as receipt_count,
+                SUM(chase_amount) as total_amount
+            FROM transactions
+            WHERE chase_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+              AND ((receipt_file IS NOT NULL AND receipt_file != '')
+               OR (receipt_url IS NOT NULL AND receipt_url != '')
+               OR (r2_url IS NOT NULL AND r2_url != ''))
+            GROUP BY DATE_FORMAT(chase_date, '%%Y-%%m')
+            ORDER BY month DESC
+        """)
+        stats['monthly'] = [dict(row) for row in cursor.fetchall()]
+
+        # By business type
+        cursor.execute("""
+            SELECT
+                COALESCE(business_type, 'Personal') as business_type,
+                COUNT(*) as count,
+                SUM(chase_amount) as total_amount
+            FROM transactions
+            WHERE (receipt_file IS NOT NULL AND receipt_file != '')
+               OR (receipt_url IS NOT NULL AND receipt_url != '')
+               OR (r2_url IS NOT NULL AND r2_url != '')
+            GROUP BY COALESCE(business_type, 'Personal')
+            ORDER BY total_amount DESC
+        """)
+        stats['by_business_type'] = [dict(row) for row in cursor.fetchall()]
+
+        # Top merchants
+        cursor.execute("""
+            SELECT
+                chase_description as merchant,
+                COUNT(*) as receipt_count,
+                SUM(chase_amount) as total_amount,
+                AVG(chase_amount) as avg_amount
+            FROM transactions
+            WHERE (receipt_file IS NOT NULL AND receipt_file != '')
+               OR (receipt_url IS NOT NULL AND receipt_url != '')
+               OR (r2_url IS NOT NULL AND r2_url != '')
+            GROUP BY chase_description
+            ORDER BY receipt_count DESC
+            LIMIT 20
+        """)
+        stats['top_merchants'] = [dict(row) for row in cursor.fetchall()]
+
+        # OCR coverage
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN ocr_extracted_at IS NOT NULL THEN 1 ELSE 0 END) as with_ocr,
+                SUM(CASE WHEN ocr_verified = TRUE THEN 1 ELSE 0 END) as verified,
+                AVG(CASE WHEN ocr_confidence IS NOT NULL THEN ocr_confidence ELSE NULL END) as avg_confidence
+            FROM transactions
+            WHERE (receipt_file IS NOT NULL AND receipt_file != '')
+               OR (receipt_url IS NOT NULL AND receipt_url != '')
+               OR (r2_url IS NOT NULL AND r2_url != '')
+        """)
+        ocr_stats = cursor.fetchone()
+        stats['ocr'] = dict(ocr_stats) if ocr_stats else {}
+
+        # Tag usage
+        cursor.execute("SELECT name, color, usage_count FROM receipt_tags ORDER BY usage_count DESC LIMIT 10")
+        stats['top_tags'] = [dict(row) for row in cursor.fetchall()]
+
+        # Collection summary
+        cursor.execute("SELECT COUNT(*) as count FROM receipt_collections WHERE is_active = TRUE")
+        stats['active_collections'] = cursor.fetchone().get('count', 0)
+
+        # Favorites count
+        cursor.execute("SELECT COUNT(*) as count FROM receipt_favorites")
+        stats['favorites_count'] = cursor.fetchone().get('count', 0)
+
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'stats': stats})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# -----------------------------------------------------------------------------
+# BULK OPERATIONS API
+# -----------------------------------------------------------------------------
+
+@app.route("/api/library/bulk/tag", methods=["POST"])
+def bulk_tag_receipts():
+    """Add a tag to multiple receipts at once."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        tag_id = data.get('tag_id')
+        receipts = data.get('receipts', [])  # List of {type, id}
+
+        if not tag_id or not receipts:
+            return jsonify({'ok': False, 'error': 'tag_id and receipts required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        added = 0
+
+        for r in receipts:
+            try:
+                cursor.execute("""
+                    INSERT INTO receipt_tag_assignments (receipt_type, receipt_id, tag_id)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE assigned_at = CURRENT_TIMESTAMP
+                """, (r['type'], r['id'], tag_id))
+                added += 1
+            except:
+                pass
+
+        # Update usage count
+        cursor.execute("UPDATE receipt_tags SET usage_count = usage_count + %s WHERE id = %s", (added, tag_id))
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'tagged': added, 'message': f'Tagged {added} receipts'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/bulk/collection", methods=["POST"])
+def bulk_add_to_collection():
+    """Add multiple receipts to a collection."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        collection_id = data.get('collection_id')
+        receipts = data.get('receipts', [])
+
+        if not collection_id or not receipts:
+            return jsonify({'ok': False, 'error': 'collection_id and receipts required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        added = 0
+
+        for r in receipts:
+            try:
+                cursor.execute("""
+                    INSERT INTO receipt_collection_items (collection_id, receipt_type, receipt_id)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE added_at = CURRENT_TIMESTAMP
+                """, (collection_id, r['type'], r['id']))
+                added += 1
+            except:
+                pass
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'added': added, 'message': f'Added {added} receipts to collection'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# -----------------------------------------------------------------------------
+# EXPORT API
+# -----------------------------------------------------------------------------
+
+@app.route("/api/library/export", methods=["POST"])
+def export_receipts():
+    """Export receipts in various formats (JSON, CSV)."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        format_type = data.get('format', 'json')  # json, csv
+        receipts = data.get('receipts', [])  # List of {type, id} or empty for all
+        include_ocr = data.get('include_ocr', True)
+        include_tags = data.get('include_tags', True)
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        export_data = []
+
+        # If specific receipts provided
+        if receipts:
+            for r in receipts:
+                if r['type'] == 'transaction':
+                    cursor.execute("SELECT * FROM transactions WHERE _index = %s", (r['id'],))
+                elif r['type'] == 'incoming':
+                    cursor.execute("SELECT * FROM incoming_receipts WHERE id = %s", (r['id'],))
+                row = cursor.fetchone()
+                if row:
+                    item = dict(row)
+                    item['receipt_type'] = r['type']
+                    export_data.append(item)
+        else:
+            # Export all with receipts
+            cursor.execute("""
+                SELECT *, 'transaction' as receipt_type FROM transactions
+                WHERE (receipt_file IS NOT NULL AND receipt_file != '')
+                   OR (receipt_url IS NOT NULL AND receipt_url != '')
+                   OR (r2_url IS NOT NULL AND r2_url != '')
+            """)
+            export_data.extend([dict(row) for row in cursor.fetchall()])
+
+        # Add tags if requested
+        if include_tags:
+            for item in export_data:
+                cursor.execute("""
+                    SELECT t.name FROM receipt_tags t
+                    JOIN receipt_tag_assignments a ON t.id = a.tag_id
+                    WHERE a.receipt_type = %s AND a.receipt_id = %s
+                """, (item['receipt_type'], item.get('_index') or item.get('id')))
+                item['tags'] = [row['name'] for row in cursor.fetchall()]
+
+        db.return_connection(conn)
+
+        if format_type == 'csv':
+            import csv
+            import io
+            output = io.StringIO()
+            if export_data:
+                writer = csv.DictWriter(output, fieldnames=export_data[0].keys())
+                writer.writeheader()
+                for item in export_data:
+                    # Convert complex types to strings
+                    for k, v in item.items():
+                        if isinstance(v, (list, dict)):
+                            item[k] = json.dumps(v)
+                    writer.writerow(item)
+            return Response(
+                output.getvalue(),
+                mimetype='text/csv',
+                headers={'Content-Disposition': 'attachment; filename=receipts_export.csv'}
+            )
+        else:
+            return jsonify({
+                'ok': True,
+                'format': 'json',
+                'count': len(export_data),
+                'receipts': export_data
+            })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# -----------------------------------------------------------------------------
+# RECEIPT DETAILS (ENHANCED WITH LINE ITEMS)
+# -----------------------------------------------------------------------------
+
+@app.route("/api/library/receipts/<receipt_type>/<int:receipt_id>/details", methods=["GET"])
+def get_receipt_full_details(receipt_type, receipt_id):
+    """
+    Get full receipt details including:
+    - Basic receipt data
+    - OCR data with line items
+    - Tags
+    - Annotations
+    - Attendees
+    - Collections it belongs to
+    - Favorite status
+    """
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    if receipt_type not in ('transaction', 'incoming', 'metadata'):
+        return jsonify({'ok': False, 'error': 'Invalid receipt type'}), 400
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Get base receipt data
+        if receipt_type == 'transaction':
+            cursor.execute("SELECT * FROM transactions WHERE _index = %s", (receipt_id,))
+        elif receipt_type == 'incoming':
+            cursor.execute("SELECT * FROM incoming_receipts WHERE id = %s", (receipt_id,))
+        else:
+            cursor.execute("SELECT * FROM receipt_metadata WHERE id = %s", (receipt_id,))
+
+        receipt = cursor.fetchone()
+        if not receipt:
+            return jsonify({'ok': False, 'error': 'Receipt not found'}), 404
+
+        receipt = dict(receipt)
+
+        # Parse line items from OCR
+        line_items = receipt.get('ocr_line_items')
+        if isinstance(line_items, str):
+            try:
+                receipt['line_items'] = json.loads(line_items)
+            except:
+                receipt['line_items'] = []
+        elif line_items:
+            receipt['line_items'] = line_items
+        else:
+            receipt['line_items'] = []
+
+        # Get tags
+        cursor.execute("""
+            SELECT t.* FROM receipt_tags t
+            JOIN receipt_tag_assignments a ON t.id = a.tag_id
+            WHERE a.receipt_type = %s AND a.receipt_id = %s
+        """, (receipt_type, receipt_id))
+        receipt['tags'] = [dict(row) for row in cursor.fetchall()]
+
+        # Get annotations
+        cursor.execute("""
+            SELECT * FROM receipt_annotations
+            WHERE receipt_type = %s AND receipt_id = %s
+            ORDER BY created_at DESC
+        """, (receipt_type, receipt_id))
+        receipt['annotations'] = [dict(row) for row in cursor.fetchall()]
+
+        # Get attendees
+        cursor.execute("""
+            SELECT * FROM receipt_attendees
+            WHERE receipt_type = %s AND receipt_id = %s
+        """, (receipt_type, receipt_id))
+        receipt['attendees'] = [dict(row) for row in cursor.fetchall()]
+
+        # Get collections
+        cursor.execute("""
+            SELECT c.id, c.name, c.collection_type, c.color
+            FROM receipt_collections c
+            JOIN receipt_collection_items i ON c.id = i.collection_id
+            WHERE i.receipt_type = %s AND i.receipt_id = %s
+        """, (receipt_type, receipt_id))
+        receipt['collections'] = [dict(row) for row in cursor.fetchall()]
+
+        # Get favorite status
+        cursor.execute("""
+            SELECT * FROM receipt_favorites
+            WHERE receipt_type = %s AND receipt_id = %s
+        """, (receipt_type, receipt_id))
+        fav = cursor.fetchone()
+        receipt['is_favorite'] = fav is not None
+        receipt['favorite_note'] = dict(fav).get('note') if fav else None
+
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'receipt': receipt})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# =============================================================================
 # INCOMING RECEIPTS SYSTEM
 # =============================================================================
 

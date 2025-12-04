@@ -874,6 +874,164 @@ class MySQLReceiptDatabase:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
 
+        # =====================================================================
+        # ENHANCED RECEIPT LIBRARY TABLES
+        # =====================================================================
+
+        # Create receipt_tags table for custom labeling
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_tags (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                color VARCHAR(7) DEFAULT '#00ff88',
+                icon VARCHAR(50),
+                description VARCHAR(255),
+                usage_count INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_tag_name (name),
+                INDEX idx_usage (usage_count DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_tag_assignments (many-to-many linking)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_tag_assignments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                receipt_type ENUM('transaction', 'incoming', 'metadata') NOT NULL,
+                receipt_id INT NOT NULL,
+                tag_id INT NOT NULL,
+                assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_assignment (receipt_type, receipt_id, tag_id),
+                INDEX idx_receipt (receipt_type, receipt_id),
+                INDEX idx_tag (tag_id),
+                FOREIGN KEY (tag_id) REFERENCES receipt_tags(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_favorites for starred/bookmarked receipts
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_favorites (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                receipt_type ENUM('transaction', 'incoming', 'metadata') NOT NULL,
+                receipt_id INT NOT NULL,
+                priority INT DEFAULT 0,
+                note VARCHAR(255),
+                favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_favorite (receipt_type, receipt_id),
+                INDEX idx_receipt (receipt_type, receipt_id),
+                INDEX idx_priority (priority DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_annotations for detailed notes per receipt
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_annotations (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                receipt_type ENUM('transaction', 'incoming', 'metadata') NOT NULL,
+                receipt_id INT NOT NULL,
+                annotation_type ENUM('note', 'attendee', 'project', 'client', 'purpose', 'custom') DEFAULT 'note',
+                content TEXT NOT NULL,
+                metadata JSON,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_receipt (receipt_type, receipt_id),
+                INDEX idx_type (annotation_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_attendees for meal/event receipts
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_attendees (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                receipt_type ENUM('transaction', 'incoming', 'metadata') NOT NULL,
+                receipt_id INT NOT NULL,
+                contact_id INT,
+                attendee_name VARCHAR(255) NOT NULL,
+                attendee_email VARCHAR(255),
+                attendee_company VARCHAR(255),
+                relationship VARCHAR(100),
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_receipt (receipt_type, receipt_id),
+                INDEX idx_contact (contact_id),
+                INDEX idx_name (attendee_name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_collections for grouping receipts
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_collections (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                description TEXT,
+                collection_type ENUM('project', 'trip', 'event', 'client', 'custom') DEFAULT 'custom',
+                color VARCHAR(7) DEFAULT '#00ff88',
+                icon VARCHAR(50),
+                start_date DATE,
+                end_date DATE,
+                budget DECIMAL(10,2),
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_type (collection_type),
+                INDEX idx_active (is_active),
+                INDEX idx_dates (start_date, end_date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_collection_items (many-to-many)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_collection_items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                collection_id INT NOT NULL,
+                receipt_type ENUM('transaction', 'incoming', 'metadata') NOT NULL,
+                receipt_id INT NOT NULL,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_item (collection_id, receipt_type, receipt_id),
+                INDEX idx_collection (collection_id),
+                INDEX idx_receipt (receipt_type, receipt_id),
+                FOREIGN KEY (collection_id) REFERENCES receipt_collections(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_duplicates for tracking potential duplicates
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_duplicates (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                primary_type ENUM('transaction', 'incoming', 'metadata') NOT NULL,
+                primary_id INT NOT NULL,
+                duplicate_type ENUM('transaction', 'incoming', 'metadata') NOT NULL,
+                duplicate_id INT NOT NULL,
+                similarity_score DECIMAL(5,4) NOT NULL,
+                detection_method VARCHAR(100),
+                status ENUM('pending', 'confirmed', 'dismissed') DEFAULT 'pending',
+                resolved_at DATETIME,
+                detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_primary (primary_type, primary_id),
+                INDEX idx_duplicate (duplicate_type, duplicate_id),
+                INDEX idx_status (status),
+                INDEX idx_similarity (similarity_score DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_audit_log for tracking changes
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_audit_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                receipt_type ENUM('transaction', 'incoming', 'metadata') NOT NULL,
+                receipt_id INT NOT NULL,
+                action VARCHAR(100) NOT NULL,
+                field_changed VARCHAR(100),
+                old_value TEXT,
+                new_value TEXT,
+                changed_by VARCHAR(100) DEFAULT 'system',
+                changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_receipt (receipt_type, receipt_id),
+                INDEX idx_action (action),
+                INDEX idx_timestamp (changed_at DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
     def _run_migrations(self):
         """Add any missing columns to existing tables"""
         if not self._pool:
