@@ -5,8 +5,8 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.04.v3"
-APP_BUILD_TIME = "2025-12-04T21:25:00Z"
+APP_VERSION = "2025.12.04.v4"
+APP_BUILD_TIME = "2025-12-04T21:35:00Z"
 import os
 import math
 import json
@@ -18272,8 +18272,9 @@ def rematch_missing_receipts():
         )
 
         # Get missing receipts from database
+        import pymysql
         conn = db.get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
 
         query = '''
             SELECT _index, chase_description, chase_amount, chase_date
