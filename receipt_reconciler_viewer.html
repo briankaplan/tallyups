@@ -246,6 +246,7 @@ button:focus .kbd-hint {
 html,body{
   height:100%;margin:0;background:var(--bg);color:var(--ink);
   font:13px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial;
+  padding-bottom: calc(60px + var(--safe-bottom));
 }
 
 /* Buttons */
@@ -1753,7 +1754,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
    MOBILE BOTTOM NAVIGATION
    ============================================ */
 .bottom-nav {
-  display: none;
+  display: flex;
   position: fixed;
   bottom: 0;
   left: 0;
