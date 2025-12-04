@@ -541,7 +541,7 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
 .viewer-controls{display:flex;gap:8px}
 
 .viewer-content{
-  flex:1;position:relative;overflow:hidden;
+  flex:1;position:relative;overflow:auto;
   background:repeating-conic-gradient(#0a0a0a 0% 25%,#0f0f0f 0% 50%) 50%/20px 20px;
 }
 .light .viewer-content{
@@ -549,14 +549,15 @@ tbody tr.refund-row.selected{background:rgba(6,182,212,.15);box-shadow:inset 3px
 }
 
 .panzoom-wrap{
-  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-  position:relative;
+  width:100%;min-height:100%;display:block;text-align:center;
+  position:relative;padding:20px;box-sizing:border-box;
 }
 .panzoom-wrap img{
-  width:100%;height:auto;object-fit:contain;
+  max-width:calc(100% - 40px);height:auto;
   border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);
   cursor:grab;
   transform-origin:center center;
+  display:inline-block;
 }
 .panzoom-wrap img:active{cursor:grabbing}
 
@@ -680,11 +681,11 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 .quick-viewer.active{display:flex}
 
 .quick-viewer-content{
-  max-width:1200px;width:95%;max-height:95vh;
+  max-width:1200px;width:95%;height:95vh;
   background:var(--panel);border-radius:20px;
   box-shadow:0 32px 64px rgba(0,0,0,.8);
   display:flex;flex-direction:column;
-  overflow:hidden;
+  overflow:visible;
 }
 .quick-viewer-header{
   padding:20px 24px;background:linear-gradient(135deg,#0e141a,#0a0f15);
@@ -693,17 +694,18 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 }
 .quick-viewer-title{font-size:18px;font-weight:700;color:var(--ink)}
 .quick-viewer-body{
-  flex:1;display:flex;gap:24px;padding:24px;overflow:auto;
+  flex:1;display:flex;gap:24px;padding:24px;overflow-y:auto;overflow-x:hidden;
+  min-height:0;
 }
 .quick-viewer-image{
-  flex:1;display:flex;align-items:center;justify-content:center;
+  flex:1;display:block;text-align:center;
   background:repeating-conic-gradient(#0a0a0a 0% 25%,#0f0f0f 0% 50%) 50%/20px 20px;
-  border-radius:12px;min-height:400px;position:relative;overflow:hidden;
-  cursor:grab;
+  border-radius:12px;min-height:0;position:relative;overflow-y:auto;overflow-x:hidden;
+  cursor:grab;padding:16px;box-sizing:border-box;
 }
 .quick-viewer-image:active{cursor:grabbing}
 .quick-viewer-image img{
-  width:100%;height:auto;object-fit:contain;
+  width:auto;max-width:100%;height:auto;display:block;margin:0 auto;
   border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);
   animation:fadeIn 0.2s ease;
   transform-origin:center center;
@@ -745,6 +747,43 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   word-break:break-word;
 }
 .data-value.large{font-size:24px}
+
+/* Comparison Panel Styles */
+.compare-section{
+  background:linear-gradient(135deg,rgba(59,130,246,0.1),rgba(139,92,246,0.1));
+  border:2px solid rgba(59,130,246,0.3);border-radius:12px;
+  padding:16px;margin-bottom:20px;
+}
+.compare-header{
+  font-size:13px;font-weight:700;color:#3b82f6;
+  text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.compare-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;
+}
+.compare-col{
+  background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;
+}
+.compare-col-header{
+  font-size:10px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;
+  padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.1);
+}
+.compare-field{
+  margin-bottom:10px;
+}
+.compare-label{
+  font-size:10px;color:var(--muted);text-transform:uppercase;
+  margin-bottom:2px;
+}
+.compare-value{
+  font-size:14px;font-weight:700;color:var(--ink);
+}
+.compare-value.amount{font-size:18px;color:#00ff88}
+.compare-value.match{color:#00ff88}
+.compare-value.mismatch{color:#ff6b6b}
+.compare-value.date{font-family:monospace;font-size:13px}
 
 /* Quick Viewer Interactive Fields */
 .quick-field-select{
@@ -3063,18 +3102,43 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
         </div>
       </div>
       <div class="quick-viewer-data" id="quick-data">
-        <div class="data-row">
-          <div class="data-label">Merchant</div>
-          <div class="data-value" id="quick-merchant">—</div>
+        <!-- COMPARISON SECTION -->
+        <div class="compare-section">
+          <div class="compare-header">COMPARE</div>
+          <div class="compare-grid">
+            <div class="compare-col">
+              <div class="compare-col-header">BANK</div>
+              <div class="compare-field">
+                <div class="compare-label">Merchant</div>
+                <div class="compare-value" id="compare-bank-merchant">—</div>
+              </div>
+              <div class="compare-field">
+                <div class="compare-label">Amount</div>
+                <div class="compare-value amount" id="compare-bank-amount">—</div>
+              </div>
+              <div class="compare-field">
+                <div class="compare-label">Date</div>
+                <div class="compare-value date" id="compare-bank-date">—</div>
+              </div>
+            </div>
+            <div class="compare-col">
+              <div class="compare-col-header">RECEIPT</div>
+              <div class="compare-field">
+                <div class="compare-label">Merchant</div>
+                <div class="compare-value" id="compare-receipt-merchant">—</div>
+              </div>
+              <div class="compare-field">
+                <div class="compare-label">Amount</div>
+                <div class="compare-value amount" id="compare-receipt-amount">—</div>
+              </div>
+              <div class="compare-field">
+                <div class="compare-label">Date</div>
+                <div class="compare-value date" id="compare-receipt-date">—</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="data-row">
-          <div class="data-label">Amount</div>
-          <div class="data-value large" id="quick-amount">—</div>
-        </div>
-        <div class="data-row">
-          <div class="data-label">Date</div>
-          <div class="data-value" id="quick-date">—</div>
-        </div>
+        <!-- ACTIONS -->
         <div class="data-row">
           <div class="data-label">Business Type</div>
           <select id="quick-business" class="quick-field-select" onchange="quickUpdateField('Business Type', this.value)">
@@ -3083,10 +3147,6 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
             <option value="Down Home">Down Home</option>
             <option value="Personal">Personal</option>
           </select>
-        </div>
-        <div class="data-row">
-          <div class="data-label">Category</div>
-          <div class="data-value" id="quick-category">—</div>
         </div>
         <div class="data-row">
           <div class="data-label">Status</div>
@@ -3098,17 +3158,17 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
           </select>
         </div>
         <div class="data-row">
-          <div class="data-label">Notes</div>
-          <textarea id="quick-notes" class="quick-field-textarea" placeholder="Add notes..."
-            onblur="quickUpdateField('Notes', this.value)"
-            onkeydown="handleTextareaKeys(event, 'Notes')"></textarea>
-        </div>
-        <div class="data-row">
           <div class="data-label">AI Note</div>
           <textarea id="quick-ai-note" class="quick-field-textarea" placeholder="AI-generated note..."
             onblur="quickUpdateField('AI Note', this.value)"
             onkeydown="handleTextareaKeys(event, 'AI Note')"></textarea>
         </div>
+        <!-- Hidden fields for compatibility -->
+        <div id="quick-merchant" style="display:none"></div>
+        <div id="quick-amount" style="display:none"></div>
+        <div id="quick-date" style="display:none"></div>
+        <div id="quick-category" style="display:none"></div>
+        <textarea id="quick-notes" style="display:none"></textarea>
       </div>
     </div>
   </div>
@@ -5353,7 +5413,7 @@ function updateQuickViewer() {
     badge.style.display = 'none';
   }
 
-  // Update data with match highlighting
+  // Update data with match highlighting (hidden fields for compatibility)
   updateQuickDataRow('quick-merchant', receipt['Chase Description'] || '—', isAIMatched);
 
   const amt = parseFloat(receipt['Chase Amount'] || 0);
@@ -5361,6 +5421,40 @@ function updateQuickViewer() {
   updateQuickDataRow('quick-amount', `${amtSign}$${Math.abs(amt).toFixed(2)}`, isAIMatched, true);
 
   updateQuickDataRow('quick-date', receipt['Chase Date'] || '—', isAIMatched);
+
+  // === COMPARISON PANEL UPDATE ===
+  // Format date simply (M/D)
+  function simpleDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr.substring(0, 10);
+    return `${d.getMonth()+1}/${d.getDate()}`;
+  }
+
+  // Bank side
+  document.getElementById('compare-bank-merchant').textContent = receipt['Chase Description'] || '—';
+  document.getElementById('compare-bank-amount').textContent = `$${Math.abs(amt).toFixed(2)}`;
+  document.getElementById('compare-bank-date').textContent = simpleDate(receipt['Chase Date']);
+
+  // Receipt side (from AI Note if available, or placeholder)
+  const aiNote = receipt['AI Note'] || '';
+  let rcptMerchant = '—';
+  let rcptAmount = '—';
+  let rcptDate = '—';
+
+  // Try to parse AI note for receipt info
+  if (aiNote) {
+    const merchantMatch = aiNote.match(/merchant[:\s]+([^,\n]+)/i);
+    const amountMatch = aiNote.match(/\$[\d,]+\.?\d*/);
+    const dateMatch = aiNote.match(/(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/);
+    if (merchantMatch) rcptMerchant = merchantMatch[1].trim();
+    if (amountMatch) rcptAmount = amountMatch[0];
+    if (dateMatch) rcptDate = dateMatch[1];
+  }
+
+  document.getElementById('compare-receipt-merchant').textContent = rcptMerchant;
+  document.getElementById('compare-receipt-amount').textContent = rcptAmount;
+  document.getElementById('compare-receipt-date').textContent = rcptDate;
 
   // Update Business Type dropdown
   const businessSelect = document.getElementById('quick-business');
