@@ -4167,6 +4167,38 @@ async function updateField(field, value) {
   }
 }
 
+// Mark receipt as verified (updates receipt_validation_status to 'verified')
+async function markReceiptVerified() {
+  if (!selectedRow) {
+    showToast('Select a transaction first', '⚠️');
+    return;
+  }
+
+  // Update both the validation status and review status
+  selectedRow.receipt_validation_status = 'verified';
+  selectedRow['Review Status'] = 'good';
+
+  try {
+    await fetch('/update_row', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        _index: selectedRow._index,
+        patch: {
+          receipt_validation_status: 'verified',
+          receipt_validation_note: 'Manually verified',
+          'Review Status': 'good'
+        }
+      })
+    });
+
+    applyFilters();
+    showToast('Receipt marked as VERIFIED', '✓✓');
+  } catch (e) {
+    showToast('Failed to verify: ' + e.message, '❌');
+  }
+}
+
 // NEW: Update a single row in-place without rebuilding table
 function updateRowInPlace(row) {
   const tbody = document.getElementById('tbody');
@@ -6889,6 +6921,9 @@ function setupEventListeners() {
     } else if (key === 'c') {
       e.preventDefault();
       updateField('Review Status', '');
+    } else if (key === 'v') {
+      e.preventDefault();
+      markReceiptVerified();
     } else if (key === 'm') {
       e.preventDefault();
       updateField('Business Type', 'Music City Rodeo');
