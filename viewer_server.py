@@ -5,8 +5,8 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.04.v1"
-APP_BUILD_TIME = "2025-12-04T08:30:00Z"
+APP_VERSION = "2025.12.04.v2"
+APP_BUILD_TIME = "2025-12-04T21:20:00Z"
 import os
 import math
 import json
