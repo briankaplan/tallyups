@@ -5422,74 +5422,50 @@ function updateQuickViewer() {
 
   updateQuickDataRow('quick-date', receipt['Chase Date'] || '—', isAIMatched);
 
-  // === COMPARISON PANEL UPDATE (Direct DOM manipulation) ===
-  try {
-    // BANK side - get merchant, amount, date from receipt data
-    // Try multiple field name variations (Title Case from server, snake_case from DB)
-    const bankMerchant = receipt['Chase Description'] || receipt['chase_description'] ||
-                         receipt['MI Merchant'] || receipt['mi_merchant'] ||
-                         receipt.merchant || receipt.description || '—';
-    const bankDate = receipt['Chase Date'] || receipt['chase_date'] || receipt.date || '—';
-    const bankAmountRaw = receipt['Chase Amount'] || receipt['chase_amount'] || receipt.amount || amt || 0;
-    const bankAmount = Math.abs(parseFloat(bankAmountRaw) || 0);
+  // === COMPARISON PANEL UPDATE ===
+  // BANK side - use exact same field names that work in the title
+  const bankMerchantText = receipt['Chase Description'] || '—';
+  const bankAmountNum = Math.abs(parseFloat(receipt['Chase Amount']) || 0);
+  const bankDateStr = receipt['Chase Date'] || '';
 
-    // Format date as M/D
-    let formattedDate = '—';
-    if (bankDate && bankDate !== '—') {
-      const d = new Date(bankDate);
-      if (!isNaN(d.getTime())) {
-        formattedDate = `${d.getMonth()+1}/${d.getDate()}`;
-      } else {
-        formattedDate = String(bankDate).substring(0, 10);
-      }
+  // Format date as M/D
+  let bankDateFormatted = '—';
+  if (bankDateStr) {
+    const d = new Date(bankDateStr);
+    if (!isNaN(d.getTime())) {
+      bankDateFormatted = (d.getMonth()+1) + '/' + d.getDate();
+    } else {
+      bankDateFormatted = bankDateStr.substring(0, 10);
     }
-
-    // Update BANK comparison fields
-    const bm = document.getElementById('compare-bank-merchant');
-    const ba = document.getElementById('compare-bank-amount');
-    const bd = document.getElementById('compare-bank-date');
-
-    if (bm) bm.textContent = bankMerchant;
-    if (ba) ba.textContent = `$${bankAmount.toFixed(2)}`;
-    if (bd) bd.textContent = formattedDate;
-
-    // RECEIPT side - try to extract from AI Note or vision verification data
-    const aiNote = receipt['AI Note'] || receipt['ai_note'] || '';
-    const visionMerchant = receipt['vision_merchant'] || '';
-    const visionAmount = receipt['vision_amount'] || '';
-    const visionDate = receipt['vision_date'] || '';
-
-    let rcptMerchant = visionMerchant || '—';
-    let rcptAmount = visionAmount ? `$${visionAmount}` : '—';
-    let rcptDate = visionDate || '—';
-
-    // If no vision data, try to parse from AI Note
-    if (aiNote && rcptMerchant === '—') {
-      // Get first line or text before amount
-      const lines = aiNote.split(/[\n,]/);
-      if (lines[0]) rcptMerchant = lines[0].trim().substring(0, 30);
-
-      // Extract $ amounts
-      const amtMatch = aiNote.match(/\$[\d,.]+/);
-      if (amtMatch) rcptAmount = amtMatch[0];
-
-      // Extract dates
-      const dtMatch = aiNote.match(/\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/);
-      if (dtMatch) rcptDate = dtMatch[0];
-    }
-
-    // Update RECEIPT comparison fields
-    const rm = document.getElementById('compare-receipt-merchant');
-    const ra = document.getElementById('compare-receipt-amount');
-    const rd = document.getElementById('compare-receipt-date');
-
-    if (rm) rm.textContent = rcptMerchant;
-    if (ra) ra.textContent = rcptAmount;
-    if (rd) rd.textContent = rcptDate;
-
-  } catch (e) {
-    console.error('Compare panel update error:', e);
   }
+
+  // Update BANK comparison panel
+  document.getElementById('compare-bank-merchant').textContent = bankMerchantText;
+  document.getElementById('compare-bank-amount').textContent = '$' + bankAmountNum.toFixed(2);
+  document.getElementById('compare-bank-date').textContent = bankDateFormatted;
+
+  // RECEIPT side - extract from AI Note if available
+  const aiNoteText = receipt['AI Note'] || '';
+  let rcptMerchant = '—';
+  let rcptAmount = '—';
+  let rcptDate = '—';
+
+  if (aiNoteText) {
+    // Parse merchant from first line
+    const lines = aiNoteText.split(/[\n,]/);
+    if (lines[0]) rcptMerchant = lines[0].trim().substring(0, 30) || '—';
+    // Parse amount
+    const amtMatch = aiNoteText.match(/\$[\d,.]+/);
+    if (amtMatch) rcptAmount = amtMatch[0];
+    // Parse date
+    const dtMatch = aiNoteText.match(/\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/);
+    if (dtMatch) rcptDate = dtMatch[0];
+  }
+
+  // Update RECEIPT comparison panel
+  document.getElementById('compare-receipt-merchant').textContent = rcptMerchant;
+  document.getElementById('compare-receipt-amount').textContent = rcptAmount;
+  document.getElementById('compare-receipt-date').textContent = rcptDate;
 
   // Update Business Type dropdown
   const businessSelect = document.getElementById('quick-business');
