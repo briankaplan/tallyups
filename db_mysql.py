@@ -889,6 +889,21 @@ class MySQLReceiptDatabase:
                     ("deleted_by_user", "ALTER TABLE transactions ADD COLUMN deleted_by_user BOOLEAN DEFAULT FALSE"),
                     ("receipt_url", "ALTER TABLE transactions ADD COLUMN receipt_url VARCHAR(1000)"),
                     ("r2_url", "ALTER TABLE transactions ADD COLUMN r2_url VARCHAR(1000)"),
+                    # OCR extraction columns
+                    ("ocr_merchant", "ALTER TABLE transactions ADD COLUMN ocr_merchant VARCHAR(255)"),
+                    ("ocr_amount", "ALTER TABLE transactions ADD COLUMN ocr_amount DECIMAL(10,2)"),
+                    ("ocr_date", "ALTER TABLE transactions ADD COLUMN ocr_date DATE"),
+                    ("ocr_subtotal", "ALTER TABLE transactions ADD COLUMN ocr_subtotal DECIMAL(10,2)"),
+                    ("ocr_tax", "ALTER TABLE transactions ADD COLUMN ocr_tax DECIMAL(10,2)"),
+                    ("ocr_tip", "ALTER TABLE transactions ADD COLUMN ocr_tip DECIMAL(10,2)"),
+                    ("ocr_receipt_number", "ALTER TABLE transactions ADD COLUMN ocr_receipt_number VARCHAR(100)"),
+                    ("ocr_payment_method", "ALTER TABLE transactions ADD COLUMN ocr_payment_method VARCHAR(100)"),
+                    ("ocr_line_items", "ALTER TABLE transactions ADD COLUMN ocr_line_items JSON"),
+                    ("ocr_confidence", "ALTER TABLE transactions ADD COLUMN ocr_confidence FLOAT"),
+                    ("ocr_method", "ALTER TABLE transactions ADD COLUMN ocr_method VARCHAR(50)"),
+                    ("ocr_extracted_at", "ALTER TABLE transactions ADD COLUMN ocr_extracted_at DATETIME"),
+                    ("ocr_verified", "ALTER TABLE transactions ADD COLUMN ocr_verified BOOLEAN DEFAULT FALSE"),
+                    ("ocr_verification_status", "ALTER TABLE transactions ADD COLUMN ocr_verification_status VARCHAR(50)"),
                 ]
 
                 # Get existing columns
@@ -973,6 +988,39 @@ class MySQLReceiptDatabase:
                                         print(f"  ⚠️  atlas_contacts migration for {col_name}: {e}")
                 except Exception as e:
                     print(f"  ⚠️  atlas_contacts migration check: {e}")
+
+                # Migrate incoming_receipts table - add OCR columns
+                try:
+                    cursor.execute("SHOW TABLES LIKE 'incoming_receipts'")
+                    if cursor.fetchone():
+                        cursor.execute("SHOW COLUMNS FROM incoming_receipts")
+                        incoming_cols = {row['Field'] for row in cursor.fetchall()}
+
+                        incoming_ocr_migrations = [
+                            ("ocr_merchant", "ALTER TABLE incoming_receipts ADD COLUMN ocr_merchant VARCHAR(255)"),
+                            ("ocr_amount", "ALTER TABLE incoming_receipts ADD COLUMN ocr_amount DECIMAL(10,2)"),
+                            ("ocr_date", "ALTER TABLE incoming_receipts ADD COLUMN ocr_date DATE"),
+                            ("ocr_subtotal", "ALTER TABLE incoming_receipts ADD COLUMN ocr_subtotal DECIMAL(10,2)"),
+                            ("ocr_tax", "ALTER TABLE incoming_receipts ADD COLUMN ocr_tax DECIMAL(10,2)"),
+                            ("ocr_tip", "ALTER TABLE incoming_receipts ADD COLUMN ocr_tip DECIMAL(10,2)"),
+                            ("ocr_receipt_number", "ALTER TABLE incoming_receipts ADD COLUMN ocr_receipt_number VARCHAR(100)"),
+                            ("ocr_payment_method", "ALTER TABLE incoming_receipts ADD COLUMN ocr_payment_method VARCHAR(100)"),
+                            ("ocr_line_items", "ALTER TABLE incoming_receipts ADD COLUMN ocr_line_items JSON"),
+                            ("ocr_confidence", "ALTER TABLE incoming_receipts ADD COLUMN ocr_confidence FLOAT"),
+                            ("ocr_method", "ALTER TABLE incoming_receipts ADD COLUMN ocr_method VARCHAR(50)"),
+                            ("ocr_extracted_at", "ALTER TABLE incoming_receipts ADD COLUMN ocr_extracted_at DATETIME"),
+                        ]
+
+                        for col_name, alter_sql in incoming_ocr_migrations:
+                            if col_name not in incoming_cols:
+                                try:
+                                    cursor.execute(alter_sql)
+                                    print(f"  ✅ Added incoming_receipts column: {col_name}")
+                                except Exception as e:
+                                    if "Duplicate column" not in str(e):
+                                        print(f"  ⚠️  incoming_receipts migration for {col_name}: {e}")
+                except Exception as e:
+                    print(f"  ⚠️  incoming_receipts migration check: {e}")
 
                 # Commit is handled by context manager
         except Exception as e:

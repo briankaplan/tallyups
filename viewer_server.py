@@ -2862,6 +2862,87 @@ def ocr_cache_stats():
     return jsonify(get_cache_stats())
 
 
+@app.route("/api/ocr/extract-for-transaction/<int:tx_index>", methods=["POST"])
+def ocr_extract_for_transaction(tx_index):
+    """
+    Extract OCR data for a specific transaction and store it.
+    Called from Quick Viewer to extract OCR for a receipt.
+
+    Auth: admin_key OR session login
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not OCR_SERVICE_AVAILABLE:
+        return jsonify({"error": "OCR service not available"}), 503
+
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database not available"}), 503
+
+    try:
+        # Get transaction
+        conn, db_type = get_db_connection()
+        cursor = db_execute(conn, db_type, 'SELECT receipt_file FROM transactions WHERE _index = ?', (tx_index,))
+        row = cursor.fetchone()
+        return_db_connection(conn)
+
+        if not row:
+            return jsonify({"error": f"Transaction {tx_index} not found"}), 404
+
+        receipt_file = row.get('receipt_file')
+        if not receipt_file:
+            return jsonify({"error": "No receipt attached to this transaction"}), 400
+
+        # Run OCR extraction
+        from ocr_integration import auto_ocr_on_receipt_match, get_ocr_data_for_transaction
+
+        result = auto_ocr_on_receipt_match(tx_index, receipt_file)
+
+        if result:
+            return jsonify({
+                "ok": True,
+                "ocr_data": get_ocr_data_for_transaction(tx_index),
+                "message": f"OCR extracted: {result.get('supplier_name')} ${result.get('total_amount')}"
+            })
+        else:
+            return jsonify({
+                "ok": False,
+                "error": "OCR extraction failed or low confidence"
+            }), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ocr/transaction/<int:tx_index>", methods=["GET"])
+def get_ocr_for_transaction(tx_index):
+    """
+    Get stored OCR data for a transaction.
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        from ocr_integration import get_ocr_data_for_transaction
+        data = get_ocr_data_for_transaction(tx_index)
+
+        if data:
+            return jsonify({"ok": True, "ocr_data": data})
+        else:
+            return jsonify({"ok": False, "message": "No OCR data available"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/ocr/pre-extract", methods=["POST"])
 def ocr_pre_extract():
     """
@@ -3100,13 +3181,32 @@ def mobile_upload():
                     ''')
                 # For MySQL, the table is created in db_mysql._init_schema()
 
-                # Insert the incoming receipt
+                # Insert the incoming receipt with OCR data
                 now_iso = datetime.now().isoformat()
+
+                # Prepare OCR fields
+                ocr_merchant = ocr_result.get('supplier_name') if ocr_result else None
+                ocr_amount = ocr_result.get('total_amount') if ocr_result else None
+                ocr_date_val = ocr_result.get('date') if ocr_result else None
+                ocr_subtotal = ocr_result.get('subtotal') if ocr_result else None
+                ocr_tax = ocr_result.get('tax_amount') if ocr_result else None
+                ocr_tip = ocr_result.get('tip_amount') if ocr_result else None
+                ocr_receipt_number = ocr_result.get('receipt_number') if ocr_result else None
+                ocr_payment_method = ocr_result.get('payment_method') if ocr_result else None
+                ocr_line_items = json.dumps(ocr_result.get('line_items', [])) if ocr_result else None
+                ocr_confidence = ocr_result.get('confidence') if ocr_result else None
+                ocr_method = ocr_result.get('ocr_method') if ocr_result else None
+                ocr_extracted_at = now_iso if ocr_result else None
+
                 cursor = db_execute(conn, db_type, '''
                     INSERT INTO incoming_receipts
                     (source, sender, subject, receipt_date, received_date, merchant, amount, category,
-                     business_type, receipt_file, status, notes, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                     business_type, receipt_file, status, notes, created_at,
+                     ocr_merchant, ocr_amount, ocr_date, ocr_subtotal, ocr_tax, ocr_tip,
+                     ocr_receipt_number, ocr_payment_method, ocr_line_items,
+                     ocr_confidence, ocr_method, ocr_extracted_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?,
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     source,
                     'Mobile Scanner',
@@ -3119,14 +3219,27 @@ def mobile_upload():
                     business,
                     f"incoming/{filename}",
                     notes,
-                    now_iso
+                    now_iso,
+                    # OCR fields
+                    ocr_merchant,
+                    ocr_amount,
+                    ocr_date_val,
+                    ocr_subtotal,
+                    ocr_tax,
+                    ocr_tip,
+                    ocr_receipt_number,
+                    ocr_payment_method,
+                    ocr_line_items,
+                    ocr_confidence,
+                    ocr_method,
+                    ocr_extracted_at
                 ))
 
                 receipt_id = cursor.lastrowid
                 conn.commit()
                 return_db_connection(conn)
 
-                print(f"📱 Mobile receipt uploaded: {merchant} ${amount_float:.2f} -> {filename}")
+                print(f"📱 Mobile receipt uploaded: {merchant} ${amount_float:.2f} -> {filename} (OCR: {ocr_method or 'none'})")
 
             except Exception as e:
                 print(f"⚠️ Database error saving mobile receipt: {e}")
@@ -3311,6 +3424,21 @@ def get_transactions():
 
                 # Map category
                 record['Chase Category'] = record.get('chase_category', '') or record.get('category', '')
+
+                # Map OCR fields for Quick Viewer validation
+                record['OCR Merchant'] = record.get('ocr_merchant', '')
+                record['OCR Amount'] = record.get('ocr_amount')
+                record['OCR Date'] = record.get('ocr_date', '')
+                record['OCR Subtotal'] = record.get('ocr_subtotal')
+                record['OCR Tax'] = record.get('ocr_tax')
+                record['OCR Tip'] = record.get('ocr_tip')
+                record['OCR Receipt Number'] = record.get('ocr_receipt_number', '')
+                record['OCR Payment Method'] = record.get('ocr_payment_method', '')
+                record['OCR Line Items'] = record.get('ocr_line_items')
+                record['OCR Confidence'] = record.get('ocr_confidence')
+                record['OCR Method'] = record.get('ocr_method', '')
+                record['OCR Verified'] = record.get('ocr_verified', False)
+                record['OCR Verification Status'] = record.get('ocr_verification_status', '')
 
                 # Filter out rejected receipts
                 receipt_file = record.get('Receipt File', '')
@@ -13978,11 +14106,30 @@ def attach_receipt_to_transaction():
         conn.commit()
         return_db_connection(conn)
 
+        # Auto-run OCR extraction on attached receipt (async-friendly)
+        ocr_result = None
+        if receipt_file and OCR_SERVICE_AVAILABLE:
+            try:
+                from ocr_integration import auto_ocr_on_receipt_match
+                # Get transaction _index from id
+                conn2, _ = get_db_connection()
+                cursor2 = db_execute(conn2, db_type, 'SELECT _index FROM transactions WHERE id = ?', (transaction_id,))
+                tx_row = cursor2.fetchone()
+                return_db_connection(conn2)
+
+                if tx_row:
+                    tx_index = tx_row.get('_index')
+                    print(f"🔍 Running OCR on attached receipt for transaction {tx_index}...")
+                    ocr_result = auto_ocr_on_receipt_match(tx_index, receipt_file)
+            except Exception as ocr_err:
+                print(f"⚠️ OCR extraction failed (non-blocking): {ocr_err}")
+
         print(f"✅ Receipt {receipt_id} attached to transaction {transaction_id}")
         return jsonify({
             'ok': True,
             'transaction_id': transaction_id,
-            'message': 'Receipt attached to existing transaction'
+            'message': 'Receipt attached to existing transaction',
+            'ocr_extracted': bool(ocr_result)
         })
 
     except Exception as e:
