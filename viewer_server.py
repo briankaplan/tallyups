@@ -10422,12 +10422,16 @@ def detach_receipt():
                 # Return success - nothing to detach but that's fine
                 return jsonify({'ok': True, 'message': f'No receipt attached to transaction #{idx}', 'already_empty': True})
 
-            # Clear receipt from transaction
+            # Clear receipt from transaction - including ALL OCR verification data
             db_execute(conn, db_type, '''
                 UPDATE transactions
                 SET receipt_file = '', receipt_url = '', review_status = '', r2_url = '',
                     ai_confidence = NULL, ai_receipt_merchant = '', ai_receipt_total = NULL, ai_receipt_date = NULL,
-                    receipt_validation_status = 'missing', receipt_validated = 0, receipt_validation_note = 'Receipt detached'
+                    receipt_validation_status = 'missing', receipt_validated = 0, receipt_validation_note = 'Receipt detached',
+                    ocr_merchant = NULL, ocr_amount = NULL, ocr_date = NULL, ocr_subtotal = NULL, ocr_tax = NULL, ocr_tip = NULL,
+                    ocr_receipt_number = NULL, ocr_payment_method = NULL, ocr_line_items = NULL,
+                    ocr_confidence = NULL, ocr_method = NULL, ocr_extracted_at = NULL,
+                    ocr_verified = 0, ocr_verification_status = NULL
                 WHERE _index = ?
             ''', (actual_index,))
 
