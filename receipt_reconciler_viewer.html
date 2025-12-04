@@ -2287,30 +2287,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
     <h1>🧾 Tallyups</h1>
     <span class="version">v2.0</span>
   </div>
-  <!-- Navigation Tabs -->
-  <div style="display:flex;gap:8px;margin-left:auto" class="nav-tabs">
-    <button id="nav-home" class="btn-ghost nav-tab active" onclick="switchPage('home')" style="border-radius:8px;font-weight:600">
-      🏠 Home
-    </button>
-    <button id="nav-incoming" class="btn-ghost nav-tab" onclick="switchPage('incoming')" style="border-radius:8px;font-weight:600;position:relative">
-      📬 Incoming
-      <span id="incoming-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--danger);color:white;border-radius:10px;padding:2px 6px;font-size:10px;font-weight:700"></span>
-    </button>
-    <button id="nav-scanner" class="btn-ghost nav-tab" onclick="window.location.href='/scanner'" style="border-radius:8px;font-weight:600">
-      📷 Scan
-    </button>
-    <button id="nav-reports" class="btn-ghost nav-tab" onclick="switchPage('reports')" style="border-radius:8px;font-weight:600">
-      📊 Reports
-    </button>
-    <button id="nav-stats" class="btn-ghost nav-tab" onclick="switchPage('stats')" style="border-radius:8px;font-weight:600">
-      📈 Stats
-    </button>
-    <button id="nav-library" class="btn-ghost nav-tab" onclick="window.location.href='/library'" style="border-radius:8px;font-weight:600">
-      📚 Library
-    </button>
-  </div>
-
-  <div class="controls">
+  <div class="controls" style="margin-left:auto">
     <button class="btn-ghost icon-btn" onclick="toggleHotkeyMenu()" title="Keyboard Shortcuts (?)">⌨️</button>
     <button class="btn-ghost icon-btn" onclick="toggleSettings()" title="Settings">⚙️</button>
     <button class="btn-ghost icon-btn" onclick="toggleTheme()" title="Toggle Theme">🎨</button>
