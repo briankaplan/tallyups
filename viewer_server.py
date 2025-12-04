@@ -13659,6 +13659,8 @@ def get_library_receipts():
     - order: sort order ('asc', 'desc')
     - limit: max results (default 500)
     - offset: pagination offset
+    - has_image: 'true' (default) to only show receipts with images, 'false' to show all
+    - include_incoming: 'true' (default) to include incoming receipts, 'false' for transactions only
     """
     # Auth: admin_key OR session login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
@@ -13681,6 +13683,8 @@ def get_library_receipts():
         sort_order = request.args.get('order', 'desc')
         limit = int(request.args.get('limit', 500))
         offset = int(request.args.get('offset', 0))
+        has_image = request.args.get('has_image', 'true').lower() != 'false'
+        include_incoming = request.args.get('include_incoming', 'true').lower() != 'false'
 
         conn, db_type = get_db_connection()
         all_receipts = []
@@ -13730,70 +13734,107 @@ def get_library_receipts():
             }
             all_receipts.append(receipt)
 
-        # 2. Get incoming receipts (accepted and pending)
-        try:
-            inc_query = '''
-                SELECT *
-                FROM incoming_receipts
-                WHERE status IN ('accepted', 'pending')
-            '''
-            cursor = db_execute(conn, db_type, inc_query, ())
-            inc_rows = cursor.fetchall()
+        # 2. Get incoming receipts (accepted and pending) - only if include_incoming is true
+        if include_incoming:
+            try:
+                # Only get incoming receipts that have actual receipt files
+                inc_query = '''
+                    SELECT *
+                    FROM incoming_receipts
+                    WHERE status IN ('accepted', 'pending')
+                    AND (
+                        (receipt_file IS NOT NULL AND receipt_file != '')
+                        OR (receipt_url IS NOT NULL AND receipt_url != '')
+                        OR (file_path IS NOT NULL AND file_path != '')
+                    )
+                '''
+                cursor = db_execute(conn, db_type, inc_query, ())
+                inc_rows = cursor.fetchall()
 
-            for row in inc_rows:
-                inc = dict(row)
-                receipt_source = inc.get('source') or 'gmail'
-                if receipt_source == 'mobile_scanner' or receipt_source == 'mobile_scanner_pwa':
-                    receipt_source = 'scanner'
+                for row in inc_rows:
+                    inc = dict(row)
+                    receipt_source = inc.get('source') or 'gmail'
+                    if receipt_source == 'mobile_scanner' or receipt_source == 'mobile_scanner_pwa':
+                        receipt_source = 'scanner'
 
-                # For incoming receipts, use received_date (email date) as the authoritative date
-                # receipt_date/transaction_date are OCR-extracted and may be wrong
-                # Parse the email date from RFC 2822 format to YYYY-MM-DD
-                raw_date = inc.get('received_date') or inc.get('receipt_date') or ''
-                receipt_date = parse_email_date(raw_date) or raw_date
+                    # Get the actual receipt file URL
+                    receipt_file = inc.get('receipt_file') or inc.get('receipt_url') or inc.get('file_path') or ''
 
-                # If linked to a transaction, update that transaction's date with correct email date
-                tx_id = inc.get('transaction_id') or inc.get('accepted_as_transaction_id')
-                if tx_id:
-                    # Find and update the linked transaction with the correct email date
-                    found_tx = False
-                    for r in all_receipts:
-                        if r['type'] == 'transaction':
-                            # Check various ways the transaction could be identified
-                            r_tx_id = r.get('transaction_id') or r.get('_index')
-                            if r_tx_id == tx_id or r.get('id') == f"tx_{tx_id}":
-                                r['date'] = str(receipt_date)  # Use email date
-                                r['incoming_id'] = inc.get('id')  # Link back to incoming
-                                found_tx = True
-                                break
-                    if found_tx:
-                        continue  # Skip adding duplicate - transaction is already in list
+                    # Skip if no actual file (extra safety check)
+                    if has_image and not receipt_file:
+                        continue
 
-                receipt = {
-                    'id': f"inc_{inc.get('id')}",
-                    'type': 'incoming',
-                    'incoming_id': inc.get('id'),
-                    'merchant': inc.get('merchant') or inc.get('sender') or 'Unknown',
-                    'amount': float(inc.get('amount') or 0),
-                    'date': str(receipt_date),
-                    'receipt_url': inc.get('receipt_url') or inc.get('receipt_file'),
-                    'thumbnail': inc.get('receipt_url') or inc.get('receipt_file'),
-                    'source': receipt_source,
-                    'business_type': 'Personal',
-                    'notes': inc.get('subject') or '',
-                    'ai_notes': inc.get('ai_notes') or '',
-                    'status': inc.get('status'),
-                    'confidence': inc.get('confidence_score') or 0,
-                    'sender': inc.get('sender') or '',
-                    'created_at': str(inc.get('created_at') or receipt_date or '')
-                }
-                all_receipts.append(receipt)
-        except Exception as e:
-            print(f"Note: Could not fetch incoming_receipts: {e}")
+                    # For incoming receipts, use received_date (email date) as the authoritative date
+                    raw_date = inc.get('received_date') or inc.get('receipt_date') or ''
+                    receipt_date = parse_email_date(raw_date) or raw_date
+
+                    # If linked to a transaction, update that transaction's date with correct email date
+                    tx_id = inc.get('transaction_id') or inc.get('accepted_as_transaction_id') or inc.get('matched_transaction_id')
+                    if tx_id:
+                        # Find and update the linked transaction with the correct email date
+                        found_tx = False
+                        for r in all_receipts:
+                            if r['type'] == 'transaction':
+                                r_tx_id = r.get('transaction_id') or r.get('_index')
+                                if r_tx_id == tx_id or r.get('id') == f"tx_{tx_id}":
+                                    r['date'] = str(receipt_date)
+                                    r['incoming_id'] = inc.get('id')
+                                    found_tx = True
+                                    break
+                        if found_tx:
+                            continue  # Skip duplicate
+
+                    # Extract merchant intelligently
+                    merchant = inc.get('merchant') or ''
+                    if not merchant or merchant == 'Unknown':
+                        # Try to get from sender
+                        sender = inc.get('sender') or ''
+                        if sender:
+                            # Clean up sender name (remove email parts)
+                            merchant = sender.split('<')[0].strip().strip('"')
+                        if not merchant:
+                            # Try subject line
+                            subject = inc.get('subject') or ''
+                            if 'receipt' in subject.lower():
+                                # Extract merchant from subject like "Your receipt from Merchant"
+                                import re
+                                match = re.search(r'(?:receipt|order|payment).*?(?:from|for)\s+([^#\d]+)', subject, re.I)
+                                if match:
+                                    merchant = match.group(1).strip()
+
+                    if not merchant:
+                        merchant = 'Unknown'
+
+                    receipt = {
+                        'id': f"inc_{inc.get('id')}",
+                        'type': 'incoming',
+                        'incoming_id': inc.get('id'),
+                        'merchant': merchant,
+                        'amount': float(inc.get('amount') or 0),
+                        'date': str(receipt_date),
+                        'receipt_url': receipt_file,
+                        'thumbnail': receipt_file,
+                        'source': receipt_source,
+                        'business_type': inc.get('business_type') or 'Personal',
+                        'notes': inc.get('subject') or '',
+                        'ai_notes': inc.get('ai_notes') or '',
+                        'status': inc.get('status'),
+                        'confidence': inc.get('confidence_score') or 0,
+                        'sender': inc.get('sender') or '',
+                        'created_at': str(inc.get('created_at') or receipt_date or '')
+                    }
+                    all_receipts.append(receipt)
+            except Exception as e:
+                print(f"Note: Could not fetch incoming_receipts: {e}")
 
         return_db_connection(conn)
 
         # Apply filters
+
+        # Filter to only receipts with images if has_image is true (default)
+        if has_image:
+            all_receipts = [r for r in all_receipts if r.get('receipt_url') or r.get('thumbnail')]
+
         if source != 'all':
             all_receipts = [r for r in all_receipts if r['source'] == source]
 
