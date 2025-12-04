@@ -1022,6 +1022,40 @@ class MySQLReceiptDatabase:
                 except Exception as e:
                     print(f"  ⚠️  incoming_receipts migration check: {e}")
 
+                # Add OCR columns to receipt_metadata table
+                try:
+                    cursor.execute("SHOW TABLES LIKE 'receipt_metadata'")
+                    if cursor.fetchone():
+                        cursor.execute("SHOW COLUMNS FROM receipt_metadata")
+                        meta_cols = {row['Field'] for row in cursor.fetchall()}
+
+                        receipt_metadata_ocr_migrations = [
+                            ("ocr_merchant", "ALTER TABLE receipt_metadata ADD COLUMN ocr_merchant VARCHAR(255)"),
+                            ("ocr_amount", "ALTER TABLE receipt_metadata ADD COLUMN ocr_amount DECIMAL(10,2)"),
+                            ("ocr_date", "ALTER TABLE receipt_metadata ADD COLUMN ocr_date DATE"),
+                            ("ocr_subtotal", "ALTER TABLE receipt_metadata ADD COLUMN ocr_subtotal DECIMAL(10,2)"),
+                            ("ocr_tax", "ALTER TABLE receipt_metadata ADD COLUMN ocr_tax DECIMAL(10,2)"),
+                            ("ocr_tip", "ALTER TABLE receipt_metadata ADD COLUMN ocr_tip DECIMAL(10,2)"),
+                            ("ocr_receipt_number", "ALTER TABLE receipt_metadata ADD COLUMN ocr_receipt_number VARCHAR(100)"),
+                            ("ocr_payment_method", "ALTER TABLE receipt_metadata ADD COLUMN ocr_payment_method VARCHAR(100)"),
+                            ("ocr_line_items", "ALTER TABLE receipt_metadata ADD COLUMN ocr_line_items JSON"),
+                            ("ocr_confidence", "ALTER TABLE receipt_metadata ADD COLUMN ocr_confidence FLOAT"),
+                            ("ocr_method", "ALTER TABLE receipt_metadata ADD COLUMN ocr_method VARCHAR(50)"),
+                            ("ocr_extracted_at", "ALTER TABLE receipt_metadata ADD COLUMN ocr_extracted_at DATETIME"),
+                            ("ocr_raw_response", "ALTER TABLE receipt_metadata ADD COLUMN ocr_raw_response JSON"),
+                        ]
+
+                        for col_name, alter_sql in receipt_metadata_ocr_migrations:
+                            if col_name not in meta_cols:
+                                try:
+                                    cursor.execute(alter_sql)
+                                    print(f"  ✅ Added receipt_metadata column: {col_name}")
+                                except Exception as e:
+                                    if "Duplicate column" not in str(e):
+                                        print(f"  ⚠️  receipt_metadata migration for {col_name}: {e}")
+                except Exception as e:
+                    print(f"  ⚠️  receipt_metadata migration check: {e}")
+
                 # Commit is handled by context manager
         except Exception as e:
             print(f"⚠️  Migrations error: {e}", flush=True)

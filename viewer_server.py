@@ -1397,7 +1397,7 @@ def load_receipt_meta():
 
 
 def save_receipt_meta():
-    """Save receipt metadata to MySQL receipt_metadata table."""
+    """Save receipt metadata to MySQL receipt_metadata table with full OCR data."""
     global receipt_meta_cache
     if not receipt_meta_cache or not db:
         return
@@ -1407,20 +1407,65 @@ def save_receipt_meta():
         cursor = conn.cursor()
 
         for filename, meta in receipt_meta_cache.items():
+            # Get OCR-specific fields if present
+            line_items = meta.get("line_items", [])
+            if isinstance(line_items, list):
+                line_items_json = json.dumps(line_items)
+            else:
+                line_items_json = line_items if line_items else "[]"
+
+            raw_response = meta.get("raw_response", meta.get("raw_json", ""))
+            if isinstance(raw_response, dict):
+                raw_response_json = json.dumps(raw_response)
+            else:
+                raw_response_json = raw_response if raw_response else "{}"
+
             cursor.execute("""
-                INSERT INTO receipt_metadata (filename, merchant, date, amount, raw_text)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO receipt_metadata (
+                    filename, merchant, date, amount, raw_text,
+                    ocr_merchant, ocr_amount, ocr_date, ocr_subtotal, ocr_tax, ocr_tip,
+                    ocr_receipt_number, ocr_payment_method, ocr_line_items,
+                    ocr_confidence, ocr_method, ocr_extracted_at, ocr_raw_response
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     merchant = VALUES(merchant),
                     date = VALUES(date),
                     amount = VALUES(amount),
-                    raw_text = VALUES(raw_text)
+                    raw_text = VALUES(raw_text),
+                    ocr_merchant = VALUES(ocr_merchant),
+                    ocr_amount = VALUES(ocr_amount),
+                    ocr_date = VALUES(ocr_date),
+                    ocr_subtotal = VALUES(ocr_subtotal),
+                    ocr_tax = VALUES(ocr_tax),
+                    ocr_tip = VALUES(ocr_tip),
+                    ocr_receipt_number = VALUES(ocr_receipt_number),
+                    ocr_payment_method = VALUES(ocr_payment_method),
+                    ocr_line_items = VALUES(ocr_line_items),
+                    ocr_confidence = VALUES(ocr_confidence),
+                    ocr_method = VALUES(ocr_method),
+                    ocr_extracted_at = COALESCE(ocr_extracted_at, VALUES(ocr_extracted_at)),
+                    ocr_raw_response = VALUES(ocr_raw_response)
             """, (
                 filename,
-                meta.get("merchant_name", ""),
-                meta.get("receipt_date", None),
+                meta.get("merchant_name", "") or meta.get("supplier_name", ""),
+                meta.get("receipt_date", None) or meta.get("date", None),
                 meta.get("total_amount", 0),
-                meta.get("raw_json", "")
+                meta.get("raw_json", ""),
+                # OCR-specific fields
+                meta.get("supplier_name", "") or meta.get("merchant_name", ""),
+                meta.get("total_amount"),
+                meta.get("date") or meta.get("receipt_date"),
+                meta.get("subtotal"),
+                meta.get("tax_amount"),
+                meta.get("tip_amount"),
+                meta.get("receipt_number"),
+                meta.get("payment_method"),
+                line_items_json,
+                meta.get("confidence"),
+                meta.get("ocr_method"),
+                meta.get("extracted_at") or datetime.now() if meta.get("confidence") else None,
+                raw_response_json
             ))
 
         conn.commit()
@@ -1437,7 +1482,7 @@ def encode_image_base64(path: Path) -> str:
 
 def extract_receipt_with_vision(path: Path) -> dict | None:
     """
-    Extract receipt fields using Donut (primary) with GPT-4.1 fallback.
+    Extract receipt fields using Gemini (primary), Donut (fallback), or GPT-4.1 (final fallback).
 
     Returns:
       - merchant_name
@@ -1445,10 +1490,60 @@ def extract_receipt_with_vision(path: Path) -> dict | None:
       - subtotal_amount
       - tip_amount
       - total_amount (final charged total, including handwritten tip if present)
+      - Full OCR fields (line_items, tax, receipt_number, etc.)
     """
     print(f"👁️  Vision extracting {path}", flush=True)
 
-    # Try Donut first (FREE, FAST, 97-98% accuracy)
+    # Try Gemini OCR first (FREE with your API keys, best accuracy)
+    try:
+        from receipt_ocr_service import get_ocr_service
+        ocr_service = get_ocr_service()
+
+        if ocr_service and ocr_service.gemini_ready:
+            print(f"   🔄 Using Gemini OCR...", flush=True)
+            gemini_result = ocr_service.extract(str(path))
+
+            if gemini_result and gemini_result.get("confidence", 0) >= 0.5:
+                merchant_name = gemini_result.get("supplier_name", "").strip()
+                merchant_norm = normalize_merchant_name(merchant_name)
+                receipt_date = gemini_result.get("date", "").strip() if gemini_result.get("date") else ""
+                subtotal = gemini_result.get("subtotal", 0.0) or 0.0
+                tip = gemini_result.get("tip_amount", 0.0) or 0.0
+                total = gemini_result.get("total_amount", 0.0) or 0.0
+                confidence = gemini_result.get("confidence", 0.0)
+
+                meta = {
+                    "filename": path.name,
+                    "merchant_name": merchant_name,
+                    "merchant_normalized": merchant_norm,
+                    "receipt_date": receipt_date,
+                    "subtotal_amount": subtotal,
+                    "tip_amount": tip,
+                    "total_amount": total,
+                    "raw_json": json.dumps(gemini_result, ensure_ascii=False, default=str),
+                    "ocr_source": gemini_result.get("ocr_method", "gemini"),
+                    "confidence_score": confidence,
+                    # Full OCR fields for receipt library
+                    "supplier_name": merchant_name,
+                    "date": receipt_date,
+                    "subtotal": subtotal,
+                    "tax_amount": gemini_result.get("tax_amount"),
+                    "receipt_number": gemini_result.get("receipt_number"),
+                    "payment_method": gemini_result.get("payment_method"),
+                    "line_items": gemini_result.get("line_items", []),
+                    "confidence": confidence,
+                    "ocr_method": gemini_result.get("ocr_method", "gemini"),
+                    "raw_response": gemini_result,
+                }
+
+                print(f"   ✅ Gemini success: {merchant_name} · ${total:.2f} · {receipt_date} (conf: {confidence:.0%})", flush=True)
+                return meta
+            else:
+                print(f"   ⚠️ Gemini low confidence: {gemini_result.get('confidence', 0):.0%}", flush=True)
+    except Exception as e:
+        print(f"   ⚠️ Gemini error: {e}", flush=True)
+
+    # Try Donut (FREE, FAST, local)
     try:
         from receipt_ocr_local import extract_receipt_fields_local
 
@@ -1486,6 +1581,13 @@ def extract_receipt_with_vision(path: Path) -> dict | None:
                 "validation_passed": donut_result.get("validation_passed", True),
                 "validation_errors": validation.get("errors", []),
                 "validation_warnings": validation.get("warnings", []),
+                # Full OCR fields
+                "supplier_name": merchant_name,
+                "date": receipt_date,
+                "subtotal": subtotal,
+                "tax_amount": donut_result.get("tax_amount"),
+                "confidence": confidence,
+                "ocr_method": "donut",
             }
 
             print(f"   ✅ Donut success: {merchant_name} · ${total:.2f} · {receipt_date} (conf: {confidence:.0%})", flush=True)
@@ -2938,6 +3040,193 @@ def get_ocr_for_transaction(tx_index):
             return jsonify({"ok": True, "ocr_data": data})
         else:
             return jsonify({"ok": False, "message": "No OCR data available"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ocr/receipt-library/<path:filename>", methods=["GET"])
+def get_ocr_for_receipt(filename):
+    """
+    Get OCR data for a receipt from the receipt library.
+
+    Returns full OCR data including:
+    - merchant/supplier_name
+    - amount/total_amount
+    - date
+    - subtotal, tax, tip
+    - receipt_number
+    - payment_method
+    - line_items (itemized breakdown)
+    - confidence score
+    - ocr_method used
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        # First check database for stored OCR data
+        if db:
+            conn = db.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM receipt_metadata WHERE filename = %s
+            """, (filename,))
+            row = cursor.fetchone()
+            db.return_connection(conn)
+
+            if row and row.get('ocr_extracted_at'):
+                # Parse line items JSON if present
+                line_items = row.get('ocr_line_items')
+                if isinstance(line_items, str):
+                    try:
+                        line_items = json.loads(line_items)
+                    except:
+                        line_items = []
+
+                return jsonify({
+                    "ok": True,
+                    "from_database": True,
+                    "ocr_data": {
+                        "filename": row.get('filename'),
+                        "supplier_name": row.get('ocr_merchant') or row.get('merchant'),
+                        "total_amount": float(row.get('ocr_amount') or row.get('amount') or 0),
+                        "date": str(row.get('ocr_date') or row.get('date') or ''),
+                        "subtotal": float(row.get('ocr_subtotal') or 0) if row.get('ocr_subtotal') else None,
+                        "tax_amount": float(row.get('ocr_tax') or 0) if row.get('ocr_tax') else None,
+                        "tip_amount": float(row.get('ocr_tip') or 0) if row.get('ocr_tip') else None,
+                        "receipt_number": row.get('ocr_receipt_number'),
+                        "payment_method": row.get('ocr_payment_method'),
+                        "line_items": line_items,
+                        "confidence": row.get('ocr_confidence'),
+                        "ocr_method": row.get('ocr_method'),
+                        "extracted_at": str(row.get('ocr_extracted_at') or ''),
+                    }
+                })
+
+        # Not in database, try to extract now
+        receipt_path = RECEIPT_DIR / filename
+        if not receipt_path.exists():
+            # Try without path components
+            receipt_path = RECEIPT_DIR / Path(filename).name
+            if not receipt_path.exists():
+                return jsonify({"ok": False, "error": "Receipt file not found"}), 404
+
+        # Extract and cache
+        meta = get_or_extract_receipt_meta(filename)
+        if meta:
+            return jsonify({
+                "ok": True,
+                "from_database": False,
+                "ocr_data": {
+                    "filename": filename,
+                    "supplier_name": meta.get('supplier_name') or meta.get('merchant_name'),
+                    "total_amount": meta.get('total_amount'),
+                    "date": meta.get('date') or meta.get('receipt_date'),
+                    "subtotal": meta.get('subtotal') or meta.get('subtotal_amount'),
+                    "tax_amount": meta.get('tax_amount'),
+                    "tip_amount": meta.get('tip_amount'),
+                    "receipt_number": meta.get('receipt_number'),
+                    "payment_method": meta.get('payment_method'),
+                    "line_items": meta.get('line_items', []),
+                    "confidence": meta.get('confidence') or meta.get('confidence_score'),
+                    "ocr_method": meta.get('ocr_method') or meta.get('ocr_source'),
+                }
+            })
+        else:
+            return jsonify({"ok": False, "error": "OCR extraction failed"}), 500
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ocr/receipt-library", methods=["GET"])
+def list_receipt_library_ocr():
+    """
+    List all receipts in the library with their OCR data.
+
+    Query params:
+        limit: Max results (default 100)
+        offset: Start offset for pagination
+        has_ocr: Filter by OCR status (true/false)
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'error': 'Authentication required'}), 401
+
+    limit = min(int(request.args.get('limit', 100)), 500)
+    offset = int(request.args.get('offset', 0))
+    has_ocr = request.args.get('has_ocr')
+
+    try:
+        if db:
+            conn = db.get_connection()
+            cursor = conn.cursor()
+
+            # Build query based on filter
+            if has_ocr == 'true':
+                cursor.execute("""
+                    SELECT filename, merchant, date, amount,
+                           ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_method, ocr_extracted_at
+                    FROM receipt_metadata
+                    WHERE ocr_extracted_at IS NOT NULL
+                    ORDER BY ocr_extracted_at DESC
+                    LIMIT %s OFFSET %s
+                """, (limit, offset))
+            elif has_ocr == 'false':
+                cursor.execute("""
+                    SELECT filename, merchant, date, amount,
+                           ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_method, ocr_extracted_at
+                    FROM receipt_metadata
+                    WHERE ocr_extracted_at IS NULL
+                    ORDER BY created_at DESC
+                    LIMIT %s OFFSET %s
+                """, (limit, offset))
+            else:
+                cursor.execute("""
+                    SELECT filename, merchant, date, amount,
+                           ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_method, ocr_extracted_at
+                    FROM receipt_metadata
+                    ORDER BY COALESCE(ocr_extracted_at, created_at) DESC
+                    LIMIT %s OFFSET %s
+                """, (limit, offset))
+
+            rows = cursor.fetchall()
+
+            # Get total count
+            cursor.execute("SELECT COUNT(*) as total FROM receipt_metadata")
+            total = cursor.fetchone().get('total', 0)
+
+            db.return_connection(conn)
+
+            receipts = []
+            for row in rows:
+                receipts.append({
+                    "filename": row.get('filename'),
+                    "merchant": row.get('ocr_merchant') or row.get('merchant'),
+                    "amount": float(row.get('ocr_amount') or row.get('amount') or 0),
+                    "date": str(row.get('ocr_date') or row.get('date') or ''),
+                    "ocr_confidence": row.get('ocr_confidence'),
+                    "ocr_method": row.get('ocr_method'),
+                    "has_ocr": row.get('ocr_extracted_at') is not None,
+                })
+
+            return jsonify({
+                "ok": True,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "receipts": receipts
+            })
+        else:
+            return jsonify({"ok": False, "error": "Database not available"}), 503
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
