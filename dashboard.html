@@ -8,33 +8,28 @@
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-  <title>Tallyups - Dashboard</title>
+  <title>Tallyups - Command Center</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --bg: #000000;
-      --bg-card: #111111;
-      --bg-elevated: #1a1a1a;
+      --bg-card: #0a0a0a;
+      --bg-elevated: #141414;
       --accent: #00ff88;
-      --accent-dim: rgba(0, 255, 136, 0.15);
-      --accent-glow: rgba(0, 255, 136, 0.3);
+      --accent-dim: rgba(0, 255, 136, 0.12);
+      --accent-glow: rgba(0, 255, 136, 0.25);
       --text: #ffffff;
-      --text-dim: #666666;
-      --text-secondary: #999999;
-      --border: #222222;
+      --text-dim: #555555;
+      --text-secondary: #888888;
+      --border: #1a1a1a;
       --success: #00ff88;
       --warning: #ffaa00;
-      --error: #ff4444;
-      --info: #4488ff;
+      --error: #ff4757;
+      --info: #4a9eff;
+      --purple: #a855f7;
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
       background: var(--bg);
@@ -42,363 +37,486 @@
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       padding-top: var(--safe-top);
-      padding-bottom: calc(80px + var(--safe-bottom));
+      padding-bottom: calc(70px + var(--safe-bottom));
     }
 
     /* Header */
     .header {
-      padding: 20px 20px 16px;
-      background: linear-gradient(180deg, rgba(0,255,136,0.08) 0%, transparent 100%);
+      padding: 16px 16px 12px;
+      background: linear-gradient(180deg, rgba(0,255,136,0.06) 0%, transparent 100%);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(20px);
     }
-
     .header-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
     }
-
     .logo {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
-
     .logo-icon {
-      width: 36px;
-      height: 36px;
+      width: 32px;
+      height: 32px;
       background: var(--accent);
-      border-radius: 10px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-
-    .logo-icon svg {
-      width: 20px;
-      height: 20px;
-      color: #000;
-    }
-
-    .logo-text {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-
-    .logo-text span {
-      color: var(--accent);
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
-
+    .logo-icon svg { width: 18px; height: 18px; color: #000; }
+    .logo-text { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+    .logo-text span { color: var(--accent); }
+    .header-actions { display: flex; gap: 8px; }
     .icon-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: all 0.2s;
+      text-decoration: none;
     }
+    .icon-btn svg { width: 18px; height: 18px; color: var(--text-secondary); }
 
-    .icon-btn:hover {
-      background: var(--bg-elevated);
-      border-color: var(--accent);
-    }
+    /* Main Content */
+    .content { padding: 0 12px; }
 
-    .icon-btn svg {
-      width: 20px;
-      height: 20px;
-      color: var(--text-secondary);
-    }
-
-    .greeting {
-      font-size: 14px;
-      color: var(--text-secondary);
-    }
-
-    /* Stats Grid */
-    .stats-grid {
+    /* Hero Stats */
+    .hero-stats {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      padding: 0 16px;
-      margin-bottom: 24px;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
     }
-
-    .stat-card {
+    .hero-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      transition: all 0.2s;
+      border-radius: 14px;
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
     }
-
-    .stat-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
+    .hero-card.primary {
+      grid-column: span 2;
+      background: linear-gradient(135deg, rgba(0,255,136,0.1) 0%, var(--bg-card) 60%);
+      border-color: rgba(0,255,136,0.2);
     }
-
-    .stat-card.highlight {
-      background: linear-gradient(135deg, rgba(0,255,136,0.1) 0%, var(--bg-card) 100%);
-      border-color: rgba(0,255,136,0.3);
+    .hero-card.alert {
+      background: linear-gradient(135deg, rgba(255,71,87,0.1) 0%, var(--bg-card) 60%);
+      border-color: rgba(255,71,87,0.2);
     }
-
-    .stat-label {
-      font-size: 12px;
+    .hero-label {
+      font-size: 11px;
       color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
-
-    .stat-value {
+    .hero-value {
       font-size: 28px;
       font-weight: 700;
-      color: var(--text);
       line-height: 1;
     }
-
-    .stat-value.accent {
-      color: var(--accent);
+    .hero-value.accent { color: var(--accent); }
+    .hero-value.error { color: var(--error); }
+    .hero-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .hero-card .progress-ring {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
     }
 
-    .stat-change {
-      font-size: 12px;
-      color: var(--success);
-      margin-top: 6px;
+    /* Progress Ring */
+    .progress-ring { width: 50px; height: 50px; }
+    .progress-ring circle {
+      fill: none;
+      stroke-width: 4;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+    .progress-ring .bg { stroke: var(--border); }
+    .progress-ring .fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 0.5s; }
+    .progress-ring .value {
+      font-size: 11px;
+      font-weight: 600;
+      fill: var(--text);
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    /* Section */
+    .section { margin-bottom: 20px; }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 0 2px;
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+    }
+    .section-title svg { width: 16px; height: 16px; color: var(--accent); }
+    .section-link {
+      font-size: 12px;
+      color: var(--accent);
+      text-decoration: none;
     }
 
-    .stat-change.warning {
-      color: var(--warning);
+    /* Alert Banner */
+    .alert-banner {
+      background: linear-gradient(90deg, rgba(255,71,87,0.15) 0%, rgba(255,170,0,0.1) 100%);
+      border: 1px solid rgba(255,71,87,0.3);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .alert-banner.hidden { display: none; }
+    .alert-icon {
+      width: 36px;
+      height: 36px;
+      background: rgba(255,71,87,0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .alert-icon svg { width: 18px; height: 18px; color: var(--error); }
+    .alert-content { flex: 1; }
+    .alert-title { font-size: 13px; font-weight: 600; color: var(--error); }
+    .alert-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .alert-action {
+      font-size: 11px;
+      color: var(--error);
+      font-weight: 500;
     }
 
-    /* Quick Actions */
-    .section {
-      padding: 0 16px;
-      margin-bottom: 24px;
+    /* Business Cards */
+    .business-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
     }
+    .business-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .business-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .business-name {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .business-amount {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .business-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+    .business-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .business-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.5s;
+    }
+    .business-bar-fill.warning { background: var(--warning); }
+    .business-bar-fill.error { background: var(--error); }
 
-    .section-header {
+    /* Spending Chart */
+    .chart-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .chart-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
     }
-
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
+    .chart-total {
+      font-size: 22px;
+      font-weight: 700;
     }
-
-    .section-link {
-      font-size: 14px;
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    .quick-actions {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-    }
-
-    .action-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      padding: 16px 8px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-decoration: none;
-    }
-
-    .action-btn:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
-    }
-
-    .action-btn.primary {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
-
-    .action-btn.primary .action-icon {
-      background: rgba(0,0,0,0.2);
-      color: #000;
-    }
-
-    .action-btn.primary .action-label {
-      color: #000;
-    }
-
-    .action-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: var(--bg-elevated);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .action-icon svg {
-      width: 22px;
-      height: 22px;
-      color: var(--accent);
-    }
-
-    .action-label {
-      font-size: 12px;
-      color: var(--text);
-      text-align: center;
-      font-weight: 500;
-    }
-
-    /* Service Status */
-    .status-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .status-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-    }
-
-    .status-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .status-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: var(--bg-elevated);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .status-icon svg {
-      width: 18px;
-      height: 18px;
+    .chart-label {
+      font-size: 11px;
       color: var(--text-secondary);
     }
-
-    .status-name {
-      font-size: 14px;
-      font-weight: 500;
+    .chart-bars {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      height: 80px;
+      gap: 6px;
     }
-
-    .status-badge {
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    .status-badge.ok {
-      background: rgba(0,255,136,0.15);
-      color: var(--success);
-    }
-
-    .status-badge.warning {
-      background: rgba(255,170,0,0.15);
-      color: var(--warning);
-    }
-
-    .status-badge.error {
-      background: rgba(255,68,68,0.15);
-      color: var(--error);
-    }
-
-    /* Recent Activity */
-    .activity-list {
+    .chart-bar-wrap {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      align-items: center;
+      gap: 4px;
+    }
+    .chart-bar {
+      width: 100%;
+      max-width: 30px;
+      background: var(--accent);
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+      transition: height 0.5s;
+    }
+    .chart-bar-label {
+      font-size: 9px;
+      color: var(--text-dim);
     }
 
-    .activity-item {
+    /* Action Items */
+    .action-list { display: flex; flex-direction: column; gap: 8px; }
+    .action-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
+      gap: 10px;
+      padding: 10px 12px;
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 10px;
       cursor: pointer;
       transition: all 0.2s;
     }
-
-    .activity-item:hover {
-      border-color: var(--accent);
-    }
-
-    .activity-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+    .action-item:hover { border-color: var(--accent); }
+    .action-item.urgent { border-color: rgba(255,71,87,0.3); background: rgba(255,71,87,0.05); }
+    .action-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
       background: var(--bg-elevated);
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
     }
-
-    .activity-icon svg {
-      width: 20px;
-      height: 20px;
-      color: var(--accent);
-    }
-
-    .activity-content {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .activity-title {
-      font-size: 14px;
+    .action-icon svg { width: 16px; height: 16px; color: var(--accent); }
+    .action-icon.warning svg { color: var(--warning); }
+    .action-icon.error svg { color: var(--error); }
+    .action-content { flex: 1; min-width: 0; }
+    .action-title {
+      font-size: 13px;
       font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-
-    .activity-meta {
-      font-size: 12px;
+    .action-meta {
+      font-size: 11px;
       color: var(--text-secondary);
+      display: flex;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .action-amount {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--error);
+    }
+
+    /* Verification Status */
+    .verify-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .verify-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+    }
+    .verify-card.success { border-color: rgba(0,255,136,0.3); }
+    .verify-card.warning { border-color: rgba(255,170,0,0.3); }
+    .verify-card.error { border-color: rgba(255,71,87,0.3); }
+    .verify-value {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .verify-value.success { color: var(--success); }
+    .verify-value.warning { color: var(--warning); }
+    .verify-value.error { color: var(--error); }
+    .verify-label {
+      font-size: 9px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
       margin-top: 2px;
     }
 
-    .activity-amount {
-      font-size: 14px;
+    /* Recent Receipts */
+    .receipt-scroll {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .receipt-scroll::-webkit-scrollbar { display: none; }
+    .receipt-card {
+      flex-shrink: 0;
+      width: 120px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .receipt-thumb {
+      height: 80px;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .receipt-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .receipt-verified {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 18px;
+      height: 18px;
+      background: var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .receipt-verified svg { width: 10px; height: 10px; color: #000; }
+    .receipt-info { padding: 8px; }
+    .receipt-merchant {
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .receipt-amount {
+      font-size: 13px;
       font-weight: 600;
       color: var(--accent);
+      margin-top: 2px;
     }
+
+    /* Top Merchants */
+    .merchant-list { display: flex; flex-direction: column; gap: 6px; }
+    .merchant-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .merchant-rank {
+      width: 22px;
+      height: 22px;
+      background: var(--bg-elevated);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .merchant-rank.top { background: var(--accent); color: #000; }
+    .merchant-info { flex: 1; min-width: 0; }
+    .merchant-name {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .merchant-meta {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .merchant-total {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Quick Actions */
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .quick-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 14px 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .quick-btn:hover { border-color: var(--accent); }
+    .quick-btn.primary { background: var(--accent); border-color: var(--accent); }
+    .quick-btn.primary svg { color: #000; }
+    .quick-btn.primary .quick-label { color: #000; }
+    .quick-btn svg { width: 22px; height: 22px; color: var(--accent); }
+    .quick-label { font-size: 11px; color: var(--text); font-weight: 500; }
 
     /* Bottom Navigation */
     .bottom-nav {
@@ -406,148 +524,91 @@
       bottom: 0;
       left: 0;
       right: 0;
-      background: rgba(17,17,17,0.95);
+      background: rgba(10,10,10,0.95);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
-      padding: 8px 16px;
-      padding-bottom: calc(8px + var(--safe-bottom));
+      padding: 6px 12px;
+      padding-bottom: calc(6px + var(--safe-bottom));
       display: flex;
       justify-content: space-around;
       z-index: 100;
     }
-
     .nav-item {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      padding: 8px 16px;
-      border-radius: 12px;
+      gap: 2px;
+      padding: 6px 12px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.2s;
       text-decoration: none;
+      position: relative;
     }
-
-    .nav-item:hover {
-      background: var(--bg-elevated);
-    }
-
-    .nav-item.active {
-      background: var(--accent-dim);
-    }
-
-    .nav-item.active svg {
-      color: var(--accent);
-    }
-
-    .nav-item.active .nav-label {
-      color: var(--accent);
-    }
-
-    .nav-item svg {
-      width: 24px;
-      height: 24px;
-      color: var(--text-secondary);
-    }
-
-    .nav-label {
-      font-size: 11px;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-
+    .nav-item.active { background: var(--accent-dim); }
+    .nav-item.active svg { color: var(--accent); }
+    .nav-item.active .nav-label { color: var(--accent); }
+    .nav-item svg { width: 22px; height: 22px; color: var(--text-secondary); }
+    .nav-label { font-size: 10px; color: var(--text-secondary); font-weight: 500; }
     .nav-badge {
       position: absolute;
-      top: 4px;
-      right: 8px;
-      min-width: 18px;
-      height: 18px;
-      background: var(--accent);
-      color: #000;
-      font-size: 10px;
+      top: 2px;
+      right: 6px;
+      min-width: 16px;
+      height: 16px;
+      background: var(--error);
+      color: #fff;
+      font-size: 9px;
       font-weight: 700;
-      border-radius: 9px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0 5px;
+      padding: 0 4px;
     }
 
-    .nav-item {
-      position: relative;
-    }
-
-    /* Loading State */
+    /* Loading */
     .loading {
       display: flex;
       justify-content: center;
-      padding: 40px;
+      padding: 30px;
     }
-
     .spinner {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border: 3px solid var(--border);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Skeleton Loading */
     .skeleton {
       background: linear-gradient(90deg, var(--bg-card) 0%, var(--bg-elevated) 50%, var(--bg-card) 100%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
-      border-radius: 8px;
+      border-radius: 6px;
     }
-
     @keyframes shimmer {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
 
-    /* Empty State */
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-    }
-
-    .empty-state svg {
-      width: 48px;
-      height: 48px;
-      color: var(--text-dim);
-      margin-bottom: 16px;
-    }
-
-    .empty-state p {
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
-
     /* Responsive */
     @media (min-width: 768px) {
-      .stats-grid {
-        grid-template-columns: repeat(4, 1fr);
-      }
-
-      .quick-actions {
-        grid-template-columns: repeat(6, 1fr);
-      }
+      .hero-stats { grid-template-columns: repeat(4, 1fr); }
+      .hero-card.primary { grid-column: span 1; }
+      .business-grid { grid-template-columns: repeat(4, 1fr); }
+      .quick-grid { grid-template-columns: repeat(6, 1fr); }
     }
   </style>
 </head>
 <body>
-  <!-- Header -->
   <header class="header">
     <div class="header-top">
       <div class="logo">
         <div class="logo-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             <path d="M9 12l2 2 4-4"/>
           </svg>
@@ -555,6 +616,11 @@
         <span class="logo-text">Tally<span>ups</span></span>
       </div>
       <div class="header-actions">
+        <a href="/library" class="icon-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+        </a>
         <a href="/settings" class="icon-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"/>
@@ -563,148 +629,192 @@
         </a>
       </div>
     </div>
-    <p class="greeting" id="greeting">Good morning! Here's your receipt overview.</p>
   </header>
 
-  <!-- Stats Grid -->
-  <div class="stats-grid" id="stats-grid">
-    <div class="stat-card highlight">
-      <div class="stat-label">Total Receipts</div>
-      <div class="stat-value accent" id="stat-total">-</div>
+  <div class="content">
+    <!-- Alert Banner -->
+    <div class="alert-banner hidden" id="alert-banner" onclick="window.location.href='/viewer'">
+      <div class="alert-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div class="alert-content">
+        <div class="alert-title" id="alert-title">Action Required</div>
+        <div class="alert-desc" id="alert-desc">Review needed</div>
+      </div>
+      <div class="alert-action">Review &rarr;</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Pending</div>
-      <div class="stat-value" id="stat-pending">-</div>
-      <div class="stat-change warning" id="pending-change"></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">This Month</div>
-      <div class="stat-value" id="stat-month">-</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Match Rate</div>
-      <div class="stat-value" id="stat-rate">-</div>
-    </div>
-  </div>
 
-  <!-- Quick Actions -->
-  <div class="section">
-    <div class="section-header">
-      <h2 class="section-title">Quick Actions</h2>
+    <!-- Hero Stats -->
+    <div class="hero-stats">
+      <div class="hero-card primary">
+        <div class="hero-label">Match Rate</div>
+        <div class="hero-value accent" id="stat-rate">-%</div>
+        <div class="hero-sub"><span id="stat-matched">-</span> of <span id="stat-total-tx">-</span> matched</div>
+        <svg class="progress-ring" viewBox="0 0 50 50">
+          <circle class="bg" cx="25" cy="25" r="20"/>
+          <circle class="fg" id="progress-fg" cx="25" cy="25" r="20" stroke-dasharray="125.66" stroke-dashoffset="125.66"/>
+          <text class="value" x="25" y="26" id="progress-text">0%</text>
+        </svg>
+      </div>
+      <div class="hero-card" id="missing-card">
+        <div class="hero-label">Missing</div>
+        <div class="hero-value error" id="stat-missing">-</div>
+        <div class="hero-sub">receipts needed</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-label">This Month</div>
+        <div class="hero-value" id="stat-month">$-</div>
+        <div class="hero-sub">total spending</div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-label">Pending</div>
+        <div class="hero-value" id="stat-pending">-</div>
+        <div class="hero-sub">inbox items</div>
+      </div>
     </div>
-    <div class="quick-actions">
-      <a href="/scanner" class="action-btn primary">
-        <div class="action-icon">
+
+    <!-- Verification Status -->
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Verification Status
+        </h2>
+        <a href="/library?verification=all" class="section-link">Details</a>
+      </div>
+      <div class="verify-grid">
+        <div class="verify-card success">
+          <div class="verify-value success" id="verify-verified">-</div>
+          <div class="verify-label">Verified</div>
+        </div>
+        <div class="verify-card">
+          <div class="verify-value" id="verify-unverified">-</div>
+          <div class="verify-label">Unverified</div>
+        </div>
+        <div class="verify-card warning">
+          <div class="verify-value warning" id="verify-review">-</div>
+          <div class="verify-label">Review</div>
+        </div>
+        <div class="verify-card error">
+          <div class="verify-value error" id="verify-mismatch">-</div>
+          <div class="verify-label">Mismatch</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Business Breakdown -->
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          By Business
+        </h2>
+        <a href="/reports" class="section-link">Full Report</a>
+      </div>
+      <div class="business-grid" id="business-grid">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Spending Trend -->
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-4-4-6 6"/></svg>
+          6-Month Trend
+        </h2>
+      </div>
+      <div class="chart-container">
+        <div class="chart-header">
+          <div>
+            <div class="chart-total" id="chart-total">$0</div>
+            <div class="chart-label">Total Spending</div>
+          </div>
+        </div>
+        <div class="chart-bars" id="chart-bars">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Needs Attention -->
+    <div class="section" id="attention-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Needs Attention
+        </h2>
+        <a href="/viewer?filter=missing" class="section-link">View All</a>
+      </div>
+      <div class="action-list" id="attention-list">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Recent Receipts -->
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Recent Receipts
+        </h2>
+        <a href="/library" class="section-link">View All</a>
+      </div>
+      <div class="receipt-scroll" id="receipt-scroll">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Top Merchants -->
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Top Merchants
+        </h2>
+      </div>
+      <div class="merchant-list" id="merchant-list">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">Quick Actions</h2>
+      </div>
+      <div class="quick-grid">
+        <a href="/scanner" class="quick-btn primary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
             <circle cx="12" cy="13" r="4"/>
           </svg>
-        </div>
-        <span class="action-label">Scan</span>
-      </a>
-      <a href="/incoming" class="action-btn">
-        <div class="action-icon">
+          <span class="quick-label">Scan</span>
+        </a>
+        <a href="/incoming" class="quick-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
             <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
           </svg>
-        </div>
-        <span class="action-label">Inbox</span>
-      </a>
-      <a href="/library" class="action-btn">
-        <div class="action-icon">
+          <span class="quick-label">Inbox</span>
+        </a>
+        <a href="/viewer" class="quick-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7"/>
-            <rect x="14" y="3" width="7" height="7"/>
-            <rect x="14" y="14" width="7" height="7"/>
-            <rect x="3" y="14" width="7" height="7"/>
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
           </svg>
-        </div>
-        <span class="action-label">Library</span>
-      </a>
-      <a href="/reports" class="action-btn">
-        <div class="action-icon">
+          <span class="quick-label">Reconcile</span>
+        </a>
+        <a href="/reports" class="quick-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
             <line x1="16" y1="13" x2="8" y2="13"/>
             <line x1="16" y1="17" x2="8" y2="17"/>
-            <polyline points="10 9 9 9 8 9"/>
           </svg>
-        </div>
-        <span class="action-label">Reports</span>
-      </a>
-    </div>
-  </div>
-
-  <!-- Service Status -->
-  <div class="section">
-    <div class="section-header">
-      <h2 class="section-title">Services</h2>
-    </div>
-    <div class="status-list" id="status-list">
-      <div class="status-item">
-        <div class="status-info">
-          <div class="status-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
-            </svg>
-          </div>
-          <span class="status-name">Gmail</span>
-        </div>
-        <span class="status-badge" id="gmail-status">...</span>
-      </div>
-      <div class="status-item">
-        <div class="status-info">
-          <div class="status-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-          </div>
-          <span class="status-name">Calendar</span>
-        </div>
-        <span class="status-badge" id="calendar-status">...</span>
-      </div>
-      <div class="status-item">
-        <div class="status-info">
-          <div class="status-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-              <line x1="12" y1="22.08" x2="12" y2="12"/>
-            </svg>
-          </div>
-          <span class="status-name">AI (Gemini)</span>
-        </div>
-        <span class="status-badge" id="ai-status">...</span>
-      </div>
-      <div class="status-item">
-        <div class="status-info">
-          <div class="status-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-            </svg>
-          </div>
-          <span class="status-name">Storage (R2)</span>
-        </div>
-        <span class="status-badge" id="storage-status">...</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Recent Activity -->
-  <div class="section">
-    <div class="section-header">
-      <h2 class="section-title">Recent Receipts</h2>
-      <a href="/library" class="section-link">View All</a>
-    </div>
-    <div class="activity-list" id="activity-list">
-      <div class="loading">
-        <div class="spinner"></div>
+          <span class="quick-label">Reports</span>
+        </a>
       </div>
     </div>
   </div>
@@ -713,24 +823,20 @@
   <nav class="bottom-nav">
     <a href="/" class="nav-item active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-        <polyline points="9 22 9 12 15 12 15 22"/>
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
       </svg>
       <span class="nav-label">Home</span>
     </a>
     <a href="/viewer" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M9 11l3 3L22 4"/>
-        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
       </svg>
       <span class="nav-label">Reconcile</span>
     </a>
     <a href="/library" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="7" height="7"/>
-        <rect x="14" y="3" width="7" height="7"/>
-        <rect x="14" y="14" width="7" height="7"/>
-        <rect x="3" y="14" width="7" height="7"/>
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
       </svg>
       <span class="nav-label">Library</span>
     </a>
@@ -749,174 +855,168 @@
       <span class="nav-label">Inbox</span>
       <span class="nav-badge" id="inbox-badge" style="display:none">0</span>
     </a>
-    <a href="/reports" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/>
-        <line x1="16" y1="17" x2="8" y2="17"/>
-      </svg>
-      <span class="nav-label">Reports</span>
-    </a>
-    <a href="/contacts" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-        <path d="M16 3.13a4 4 0 010 7.75"/>
-      </svg>
-      <span class="nav-label">Contacts</span>
-    </a>
   </nav>
 
   <script>
-    const ADMIN_KEY = 'tallyups-admin-2024';
+    const $ = id => document.getElementById(id);
+    const fmt = n => n.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+    const fmtMoney = n => '$' + n.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
 
-    // Set greeting based on time
-    function setGreeting() {
-      const hour = new Date().getHours();
-      let greeting = 'Good evening';
-      if (hour < 12) greeting = 'Good morning';
-      else if (hour < 17) greeting = 'Good afternoon';
-      document.getElementById('greeting').textContent = `${greeting}! Here's your receipt overview.`;
-    }
-
-    // Fetch dashboard stats
-    async function loadStats() {
+    async function loadDashboard() {
       try {
-        const response = await fetch(`/api/dashboard/stats?admin_key=${ADMIN_KEY}`);
-        if (response.ok) {
-          const data = await response.json();
-          document.getElementById('stat-total').textContent = data.total_receipts || 0;
-          document.getElementById('stat-pending').textContent = data.pending || 0;
-          document.getElementById('stat-month').textContent = `$${(data.month_total || 0).toLocaleString()}`;
-          document.getElementById('stat-rate').textContent = `${data.match_rate || 0}%`;
+        const response = await fetch('/api/dashboard/stats', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to load');
+        const d = await response.json();
+        if (!d.ok) throw new Error(d.error || 'API error');
 
-          if (data.pending > 0) {
-            document.getElementById('pending-change').innerHTML = `
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              ${data.pending} need review
-            `;
-            // Update inbox badge
-            const badge = document.getElementById('inbox-badge');
-            badge.textContent = data.pending;
-            badge.style.display = 'flex';
+        // Hero Stats
+        $('stat-rate').textContent = d.match_rate + '%';
+        $('stat-matched').textContent = fmt(d.total_receipts);
+        $('stat-total-tx').textContent = fmt(d.total_transactions);
+        $('stat-missing').textContent = fmt(d.missing_receipts);
+        $('stat-month').textContent = fmtMoney(d.month_total);
+        $('stat-pending').textContent = fmt(d.pending);
+
+        // Progress ring
+        const circumference = 2 * Math.PI * 20;
+        const offset = circumference - (d.match_rate / 100) * circumference;
+        $('progress-fg').style.strokeDashoffset = offset;
+        $('progress-text').textContent = d.match_rate + '%';
+
+        // Alert if missing/mismatches
+        if (d.missing_receipts > 10 || (d.verification && d.verification.mismatch > 0)) {
+          $('alert-banner').classList.remove('hidden');
+          if (d.verification && d.verification.mismatch > 0) {
+            $('alert-title').textContent = d.verification.mismatch + ' Mismatches Found';
+            $('alert-desc').textContent = 'Receipt verification detected issues';
+          } else {
+            $('alert-title').textContent = d.missing_receipts + ' Missing Receipts';
+            $('alert-desc').textContent = 'Large transactions need receipts';
           }
         }
-      } catch (e) {
-        console.error('Failed to load stats:', e);
-      }
-    }
 
-    // Fetch service status
-    async function loadStatus() {
-      try {
-        const response = await fetch(`/api/health`);
-        if (response.ok) {
-          const data = await response.json();
-
-          // Gmail - read from services.gmail.connected_count
-          const gmailEl = document.getElementById('gmail-status');
-          const gmailCount = data.services?.gmail?.connected_count || 0;
-          if (gmailCount > 0) {
-            gmailEl.textContent = `${gmailCount} accounts`;
-            gmailEl.className = 'status-badge ok';
-          } else {
-            gmailEl.textContent = 'Not connected';
-            gmailEl.className = 'status-badge warning';
-          }
-
-          // Calendar - read from services.calendar
-          const calEl = document.getElementById('calendar-status');
-          const calendarConnected = data.services?.calendar?.connected || data.calendar_connected;
-          if (calendarConnected) {
-            calEl.textContent = 'Connected';
-            calEl.className = 'status-badge ok';
-          } else {
-            calEl.textContent = 'Not connected';
-            calEl.className = 'status-badge warning';
-          }
-
-          // AI
-          const aiEl = document.getElementById('ai-status');
-          if (data.gemini_configured) {
-            aiEl.textContent = 'Connected';
-            aiEl.className = 'status-badge ok';
-          } else {
-            aiEl.textContent = 'Not configured';
-            aiEl.className = 'status-badge error';
-          }
-
-          // Storage
-          const storageEl = document.getElementById('storage-status');
-          if (data.r2_connected) {
-            storageEl.textContent = 'Connected';
-            storageEl.className = 'status-badge ok';
-          } else {
-            storageEl.textContent = 'Local only';
-            storageEl.className = 'status-badge warning';
-          }
+        // Inbox badge
+        if (d.pending > 0) {
+          $('inbox-badge').textContent = d.pending;
+          $('inbox-badge').style.display = 'flex';
         }
-      } catch (e) {
-        console.error('Failed to load status:', e);
-      }
-    }
 
-    // Fetch recent activity
-    async function loadActivity() {
-      const container = document.getElementById('activity-list');
-      try {
-        const response = await fetch(`/api/library/receipts?admin_key=${ADMIN_KEY}&limit=5`);
-        if (response.ok) {
-          const data = await response.json();
-          const receipts = data.receipts || [];
+        // Verification Stats
+        if (d.verification) {
+          $('verify-verified').textContent = fmt(d.verification.verified);
+          $('verify-unverified').textContent = fmt(d.verification.unverified);
+          $('verify-review').textContent = fmt(d.verification.needs_review);
+          $('verify-mismatch').textContent = fmt(d.verification.mismatch);
+        }
 
-          if (receipts.length === 0) {
-            container.innerHTML = `
-              <div class="empty-state">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                <p>No receipts yet. Scan your first receipt!</p>
+        // Business Breakdown
+        if (d.business_breakdown && d.business_breakdown.length > 0) {
+          const grid = $('business-grid');
+          grid.innerHTML = d.business_breakdown.slice(0, 4).map(b => {
+            const pct = b.receipt_pct;
+            const barClass = pct >= 80 ? '' : pct >= 50 ? 'warning' : 'error';
+            return `
+              <div class="business-card" onclick="window.location.href='/viewer?business=${encodeURIComponent(b.business)}'">
+                <div class="business-name">${b.business}</div>
+                <div class="business-amount">${fmtMoney(b.total)}</div>
+                <div class="business-meta">
+                  <span>${b.count} transactions</span>
+                  <span>${pct}% receipts</span>
+                </div>
+                <div class="business-bar">
+                  <div class="business-bar-fill ${barClass}" style="width: ${pct}%"></div>
+                </div>
               </div>
             `;
-            return;
-          }
+          }).join('');
+        } else {
+          $('business-grid').innerHTML = '<p style="color:var(--text-secondary);font-size:12px;padding:20px;text-align:center;">No business data yet</p>';
+        }
 
-          container.innerHTML = receipts.map(r => `
-            <div class="activity-item" onclick="window.location.href='/library?id=${r.index || r.id}'">
-              <div class="activity-icon">
+        // Monthly Trends Chart
+        if (d.monthly_trends && d.monthly_trends.length > 0) {
+          const maxTotal = Math.max(...d.monthly_trends.map(m => m.total));
+          const totalSpend = d.monthly_trends.reduce((sum, m) => sum + m.total, 0);
+          $('chart-total').textContent = fmtMoney(totalSpend);
+          $('chart-bars').innerHTML = d.monthly_trends.map(m => {
+            const height = maxTotal > 0 ? (m.total / maxTotal) * 70 : 4;
+            return `
+              <div class="chart-bar-wrap">
+                <div class="chart-bar" style="height: ${height}px"></div>
+                <div class="chart-bar-label">${m.label}</div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          $('chart-bars').innerHTML = '<p style="color:var(--text-secondary);font-size:12px;text-align:center;width:100%;">No data</p>';
+        }
+
+        // Needs Attention
+        if (d.needs_attention && d.needs_attention.length > 0) {
+          $('attention-list').innerHTML = d.needs_attention.slice(0, 5).map(item => `
+            <div class="action-item urgent" onclick="window.location.href='/viewer?index=${item.index}'">
+              <div class="action-icon error">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="11" x2="12" y2="17"/><line x1="12" y1="8" x2="12.01" y2="8"/>
                 </svg>
               </div>
-              <div class="activity-content">
-                <div class="activity-title">${r.merchant || 'Unknown'}</div>
-                <div class="activity-meta">${r.date || 'No date'}</div>
+              <div class="action-content">
+                <div class="action-title">${item.merchant}</div>
+                <div class="action-meta">
+                  <span>${item.date}</span>
+                  <span>${item.business}</span>
+                </div>
               </div>
-              <div class="activity-amount">$${(r.amount || 0).toFixed(2)}</div>
+              <div class="action-amount">${fmtMoney(item.amount)}</div>
             </div>
           `).join('');
+        } else {
+          $('attention-section').style.display = 'none';
         }
-      } catch (e) {
-        console.error('Failed to load activity:', e);
-        container.innerHTML = '<div class="empty-state"><p>Failed to load recent receipts</p></div>';
+
+        // Recent Receipts
+        if (d.recent_receipts && d.recent_receipts.length > 0) {
+          $('receipt-scroll').innerHTML = d.recent_receipts.map(r => `
+            <div class="receipt-card" onclick="window.location.href='/viewer?index=${r.index}'">
+              <div class="receipt-thumb">
+                ${r.receipt_url ? `<img src="${r.receipt_url}" alt="" onerror="this.remove()">` : ''}
+                ${r.verified ? '<div class="receipt-verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>' : ''}
+              </div>
+              <div class="receipt-info">
+                <div class="receipt-merchant">${r.merchant}</div>
+                <div class="receipt-amount">${fmtMoney(r.amount)}</div>
+              </div>
+            </div>
+          `).join('');
+        } else {
+          $('receipt-scroll').innerHTML = '<p style="color:var(--text-secondary);font-size:12px;padding:20px;">No receipts yet</p>';
+        }
+
+        // Top Merchants
+        if (d.top_merchants && d.top_merchants.length > 0) {
+          $('merchant-list').innerHTML = d.top_merchants.slice(0, 5).map((m, i) => `
+            <div class="merchant-item">
+              <div class="merchant-rank ${i === 0 ? 'top' : ''}">${i + 1}</div>
+              <div class="merchant-info">
+                <div class="merchant-name">${m.merchant}</div>
+                <div class="merchant-meta">${m.count} transactions | ${m.with_receipt}/${m.count} receipts</div>
+              </div>
+              <div class="merchant-total">${fmtMoney(m.total)}</div>
+            </div>
+          `).join('');
+        } else {
+          $('merchant-list').innerHTML = '<p style="color:var(--text-secondary);font-size:12px;padding:20px;text-align:center;">No data yet</p>';
+        }
+
+      } catch (error) {
+        console.error('Dashboard load error:', error);
       }
     }
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-      setGreeting();
-      loadStats();
-      loadStatus();
-      loadActivity();
-    });
+    document.addEventListener('DOMContentLoaded', loadDashboard);
+    // Refresh every 60 seconds
+    setInterval(loadDashboard, 60000);
   </script>
 </body>
 </html>

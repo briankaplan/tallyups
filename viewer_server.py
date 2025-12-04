@@ -2273,6 +2273,245 @@ def dashboard_stats():
 
         # Calculate match rate
         match_rate = round((total_matched / total_transactions * 100) if total_transactions > 0 else 0)
+        missing_receipts = total_transactions - total_matched
+
+        # ========== VERIFICATION STATS ==========
+        verification_stats = {'verified': 0, 'needs_review': 0, 'mismatch': 0, 'unverified': 0}
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT
+                    SUM(CASE WHEN ocr_verified = 1 OR ocr_verification_status = 'verified' THEN 1 ELSE 0 END) AS verified,
+                    SUM(CASE WHEN ocr_verification_status = 'needs_review' THEN 1 ELSE 0 END) AS needs_review,
+                    SUM(CASE WHEN ocr_verification_status = 'mismatch' THEN 1 ELSE 0 END) AS mismatch,
+                    SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' AND COALESCE(ocr_verified, 0) = 0 AND COALESCE(ocr_verification_status, '') = '' THEN 1 ELSE 0 END) AS unverified
+                FROM transactions
+            """)
+            row = cursor.fetchone()
+            if row:
+                verification_stats = {
+                    'verified': int(row['verified'] or 0),
+                    'needs_review': int(row['needs_review'] or 0),
+                    'mismatch': int(row['mismatch'] or 0),
+                    'unverified': int(row['unverified'] or 0)
+                }
+            cursor.close()
+        except Exception as ve:
+            print(f"Verification stats error: {ve}")
+
+        # ========== BUSINESS BREAKDOWN ==========
+        business_breakdown = []
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT
+                    COALESCE(business_type, 'Personal') AS business,
+                    COUNT(*) AS tx_count,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total_spent,
+                    SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS has_receipt
+                FROM transactions
+                WHERE CAST(chase_amount AS DECIMAL(10,2)) < 0
+                GROUP BY COALESCE(business_type, 'Personal')
+                ORDER BY total_spent DESC
+            """)
+            for row in cursor.fetchall():
+                business_breakdown.append({
+                    'business': row['business'],
+                    'count': int(row['tx_count']),
+                    'total': round(float(row['total_spent'] or 0), 2),
+                    'with_receipt': int(row['has_receipt'] or 0),
+                    'missing': int(row['tx_count']) - int(row['has_receipt'] or 0),
+                    'receipt_pct': round((int(row['has_receipt'] or 0) / int(row['tx_count']) * 100) if row['tx_count'] else 0)
+                })
+            cursor.close()
+        except Exception as be:
+            print(f"Business breakdown error: {be}")
+
+        # ========== MONTHLY SPENDING TRENDS (6 months) ==========
+        monthly_trends = []
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT
+                    DATE_FORMAT(chase_date, '%Y-%m') AS month,
+                    DATE_FORMAT(chase_date, '%b') AS month_name,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total,
+                    COUNT(*) AS tx_count,
+                    SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt
+                FROM transactions
+                WHERE chase_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
+                AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                GROUP BY DATE_FORMAT(chase_date, '%Y-%m'), DATE_FORMAT(chase_date, '%b')
+                ORDER BY month ASC
+            """)
+            for row in cursor.fetchall():
+                monthly_trends.append({
+                    'month': row['month'],
+                    'label': row['month_name'],
+                    'total': round(float(row['total'] or 0), 2),
+                    'count': int(row['tx_count']),
+                    'with_receipt': int(row['with_receipt'] or 0)
+                })
+            cursor.close()
+        except Exception as te:
+            print(f"Monthly trends error: {te}")
+
+        # ========== TOP MERCHANTS ==========
+        top_merchants = []
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT
+                    chase_description AS merchant,
+                    COUNT(*) AS tx_count,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total_spent,
+                    SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt
+                FROM transactions
+                WHERE CAST(chase_amount AS DECIMAL(10,2)) < 0
+                GROUP BY chase_description
+                ORDER BY total_spent DESC
+                LIMIT 10
+            """)
+            for row in cursor.fetchall():
+                top_merchants.append({
+                    'merchant': (row['merchant'] or 'Unknown')[:35],
+                    'count': int(row['tx_count']),
+                    'total': round(float(row['total_spent'] or 0), 2),
+                    'with_receipt': int(row['with_receipt'] or 0)
+                })
+            cursor.close()
+        except Exception as tme:
+            print(f"Top merchants error: {tme}")
+
+        # ========== NEEDS ATTENTION (Large missing receipts) ==========
+        needs_attention = []
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT
+                    _index,
+                    chase_description AS merchant,
+                    chase_date AS date,
+                    ABS(CAST(chase_amount AS DECIMAL(10,2))) AS amount,
+                    business_type
+                FROM transactions
+                WHERE (r2_url IS NULL OR r2_url = '')
+                AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                ORDER BY ABS(CAST(chase_amount AS DECIMAL(10,2))) DESC
+                LIMIT 10
+            """)
+            for row in cursor.fetchall():
+                needs_attention.append({
+                    'index': row['_index'],
+                    'merchant': (row['merchant'] or 'Unknown')[:30],
+                    'date': str(row['date']),
+                    'amount': round(float(row['amount'] or 0), 2),
+                    'business': row['business_type'] or 'Personal'
+                })
+            cursor.close()
+        except Exception as nae:
+            print(f"Needs attention error: {nae}")
+
+        # ========== MISMATCHES NEEDING REVIEW ==========
+        mismatches = []
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT
+                    _index,
+                    chase_description AS merchant,
+                    chase_date AS date,
+                    ABS(CAST(chase_amount AS DECIMAL(10,2))) AS amount,
+                    ocr_merchant,
+                    ocr_amount,
+                    business_type
+                FROM transactions
+                WHERE ocr_verification_status = 'mismatch'
+                ORDER BY chase_date DESC
+                LIMIT 10
+            """)
+            for row in cursor.fetchall():
+                mismatches.append({
+                    'index': row['_index'],
+                    'merchant': (row['merchant'] or 'Unknown')[:25],
+                    'date': str(row['date']),
+                    'amount': round(float(row['amount'] or 0), 2),
+                    'ocr_merchant': (row['ocr_merchant'] or '')[:25],
+                    'ocr_amount': round(float(row['ocr_amount'] or 0), 2) if row['ocr_amount'] else None,
+                    'business': row['business_type'] or 'Personal'
+                })
+            cursor.close()
+        except Exception as me:
+            print(f"Mismatches error: {me}")
+
+        # ========== RECENT RECEIPTS ==========
+        recent_receipts = []
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT
+                    _index,
+                    chase_description AS merchant,
+                    chase_date AS date,
+                    ABS(CAST(chase_amount AS DECIMAL(10,2))) AS amount,
+                    r2_url,
+                    business_type,
+                    ocr_verified
+                FROM transactions
+                WHERE r2_url IS NOT NULL AND r2_url != ''
+                ORDER BY chase_date DESC
+                LIMIT 8
+            """)
+            for row in cursor.fetchall():
+                recent_receipts.append({
+                    'index': row['_index'],
+                    'merchant': (row['merchant'] or 'Unknown')[:25],
+                    'date': str(row['date']),
+                    'amount': round(float(row['amount'] or 0), 2),
+                    'receipt_url': row['r2_url'],
+                    'business': row['business_type'] or 'Personal',
+                    'verified': bool(row['ocr_verified'])
+                })
+            cursor.close()
+        except Exception as rre:
+            print(f"Recent receipts error: {rre}")
+
+        # ========== CATEGORY SPENDING ==========
+        category_spending = {'business': 0, 'personal': 0}
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT
+                    CASE WHEN business_type IS NOT NULL AND business_type != '' THEN 'business' ELSE 'personal' END AS category,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total
+                FROM transactions
+                WHERE CAST(chase_amount AS DECIMAL(10,2)) < 0
+                GROUP BY CASE WHEN business_type IS NOT NULL AND business_type != '' THEN 'business' ELSE 'personal' END
+            """)
+            for row in cursor.fetchall():
+                category_spending[row['category']] = round(float(row['total'] or 0), 2)
+            cursor.close()
+        except Exception as cse:
+            print(f"Category spending error: {cse}")
+
+        # ========== WEEKLY ACTIVITY ==========
+        weekly_activity = []
+        try:
+            cursor = db_execute(conn, db_type, """
+                SELECT
+                    YEARWEEK(chase_date, 1) AS week,
+                    MIN(chase_date) AS week_start,
+                    COUNT(*) AS tx_count,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total,
+                    SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt
+                FROM transactions
+                WHERE chase_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 4 WEEK)
+                AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                GROUP BY YEARWEEK(chase_date, 1)
+                ORDER BY week DESC
+            """)
+            for row in cursor.fetchall():
+                weekly_activity.append({
+                    'week_start': str(row['week_start']),
+                    'count': int(row['tx_count']),
+                    'total': round(float(row['total'] or 0), 2),
+                    'with_receipt': int(row['with_receipt'] or 0)
+                })
+            cursor.close()
+        except Exception as wae:
+            print(f"Weekly activity error: {wae}")
 
         return jsonify({
             "total_receipts": int(total_matched),
@@ -2280,6 +2519,16 @@ def dashboard_stats():
             "month_total": round(month_total, 2),
             "match_rate": int(match_rate),
             "total_transactions": int(total_transactions),
+            "missing_receipts": int(missing_receipts),
+            "verification": verification_stats,
+            "business_breakdown": business_breakdown,
+            "monthly_trends": monthly_trends,
+            "top_merchants": top_merchants,
+            "needs_attention": needs_attention,
+            "mismatches": mismatches,
+            "recent_receipts": recent_receipts,
+            "category_spending": category_spending,
+            "weekly_activity": weekly_activity,
             "ok": True
         })
 
@@ -13685,6 +13934,9 @@ def get_library_receipts():
         offset = int(request.args.get('offset', 0))
         has_image = request.args.get('has_image', 'true').lower() != 'false'
         include_incoming = request.args.get('include_incoming', 'true').lower() != 'false'
+        # New status filters: 'all', 'matched', 'waiting', 'verified', 'needs_review', 'mismatch', 'unverified', 'has_ocr'
+        verification_filter = request.args.get('verification', 'all')
+        match_status = request.args.get('match_status', 'all')  # 'all', 'matched', 'waiting'
 
         conn, db_type = get_db_connection()
         all_receipts = []
@@ -13715,6 +13967,25 @@ def get_library_receipts():
             amount = tx.get('chase_amount') or tx.get('amount') or 0
             date_val = tx.get('chase_date') or tx.get('date') or ''
 
+            # Determine verification status based on OCR data
+            ocr_verified = tx.get('ocr_verified', False)
+            ocr_confidence = float(tx.get('ocr_confidence') or 0)
+            ocr_verification_status = tx.get('ocr_verification_status') or ''
+            has_ocr = bool(tx.get('ocr_merchant') or tx.get('ocr_amount'))
+
+            # Calculate match status: matched (has receipt linked to transaction)
+            # verification_status: verified (OCR confirmed), mismatch, needs_review, unverified
+            if ocr_verification_status:
+                verification_status = ocr_verification_status.lower()
+            elif ocr_verified:
+                verification_status = 'verified'
+            elif has_ocr and ocr_confidence >= 0.8:
+                verification_status = 'verified'
+            elif has_ocr:
+                verification_status = 'needs_review'
+            else:
+                verification_status = 'unverified'
+
             receipt = {
                 'id': f"tx_{tx.get('id') or tx.get('_index')}",
                 'type': 'transaction',
@@ -13730,7 +14001,15 @@ def get_library_receipts():
                 'notes': tx.get('notes') or '',
                 'ai_notes': tx.get('ai_notes') or '',
                 'status': 'matched',
-                'created_at': str(date_val)
+                'verification_status': verification_status,
+                'created_at': str(date_val),
+                # OCR data
+                'ocr_merchant': tx.get('ocr_merchant') or '',
+                'ocr_amount': float(tx.get('ocr_amount') or 0) if tx.get('ocr_amount') else None,
+                'ocr_date': str(tx.get('ocr_date') or ''),
+                'ocr_confidence': ocr_confidence,
+                'ocr_verified': ocr_verified,
+                'has_ocr': has_ocr
             }
             all_receipts.append(receipt)
 
@@ -13805,6 +14084,27 @@ def get_library_receipts():
                     if not merchant:
                         merchant = 'Unknown'
 
+                    # Determine verification status for incoming receipts
+                    inc_ocr_verified = inc.get('ocr_verified', False)
+                    inc_ocr_confidence = float(inc.get('ocr_confidence') or 0)
+                    inc_ocr_status = inc.get('ocr_verification_status') or ''
+                    inc_has_ocr = bool(inc.get('ocr_merchant') or inc.get('ocr_amount'))
+                    inc_status = inc.get('status') or 'pending'
+
+                    # Verification status for incoming receipts
+                    if inc_ocr_status:
+                        inc_verification = inc_ocr_status.lower()
+                    elif inc_ocr_verified:
+                        inc_verification = 'verified'
+                    elif inc_has_ocr and inc_ocr_confidence >= 0.8:
+                        inc_verification = 'verified'
+                    elif inc_has_ocr:
+                        inc_verification = 'needs_review'
+                    elif inc_status == 'pending':
+                        inc_verification = 'waiting'  # Waiting for transaction match
+                    else:
+                        inc_verification = 'unverified'
+
                     receipt = {
                         'id': f"inc_{inc.get('id')}",
                         'type': 'incoming',
@@ -13818,10 +14118,18 @@ def get_library_receipts():
                         'business_type': inc.get('business_type') or 'Personal',
                         'notes': inc.get('subject') or '',
                         'ai_notes': inc.get('ai_notes') or '',
-                        'status': inc.get('status'),
+                        'status': inc_status,
+                        'verification_status': inc_verification,
                         'confidence': inc.get('confidence_score') or 0,
                         'sender': inc.get('sender') or '',
-                        'created_at': str(inc.get('created_at') or receipt_date or '')
+                        'created_at': str(inc.get('created_at') or receipt_date or ''),
+                        # OCR data
+                        'ocr_merchant': inc.get('ocr_merchant') or '',
+                        'ocr_amount': float(inc.get('ocr_amount') or 0) if inc.get('ocr_amount') else None,
+                        'ocr_date': str(inc.get('ocr_date') or ''),
+                        'ocr_confidence': inc_ocr_confidence,
+                        'ocr_verified': inc_ocr_verified,
+                        'has_ocr': inc_has_ocr
                     }
                     all_receipts.append(receipt)
             except Exception as e:
@@ -13892,6 +14200,24 @@ def get_library_receipts():
                 all_receipts = [r for r in all_receipts if abs(r.get('amount', 0)) <= max_val]
             except: pass
 
+        # Filter by match status (matched to transaction vs waiting)
+        if match_status == 'matched':
+            all_receipts = [r for r in all_receipts if r.get('status') == 'matched' or r.get('type') == 'transaction']
+        elif match_status == 'waiting':
+            all_receipts = [r for r in all_receipts if r.get('status') == 'pending' or r.get('verification_status') == 'waiting']
+
+        # Filter by verification status
+        if verification_filter == 'verified':
+            all_receipts = [r for r in all_receipts if r.get('verification_status') == 'verified']
+        elif verification_filter == 'needs_review':
+            all_receipts = [r for r in all_receipts if r.get('verification_status') == 'needs_review']
+        elif verification_filter == 'mismatch':
+            all_receipts = [r for r in all_receipts if r.get('verification_status') == 'mismatch']
+        elif verification_filter == 'unverified':
+            all_receipts = [r for r in all_receipts if r.get('verification_status') == 'unverified']
+        elif verification_filter == 'has_ocr':
+            all_receipts = [r for r in all_receipts if r.get('has_ocr')]
+
         # Sort
         reverse = sort_order == 'desc'
         if sort_field == 'date':
@@ -13907,6 +14233,21 @@ def get_library_receipts():
             src = r.get('source', 'other')
             source_counts[src] = source_counts.get(src, 0) + 1
 
+        # Get counts by verification status
+        verification_counts = {'verified': 0, 'needs_review': 0, 'mismatch': 0, 'unverified': 0, 'waiting': 0, 'has_ocr': 0}
+        match_counts = {'matched': 0, 'waiting': 0}
+        for r in all_receipts:
+            vs = r.get('verification_status', 'unverified')
+            if vs in verification_counts:
+                verification_counts[vs] += 1
+            if r.get('has_ocr'):
+                verification_counts['has_ocr'] += 1
+            # Match status
+            if r.get('status') == 'matched' or r.get('type') == 'transaction':
+                match_counts['matched'] += 1
+            elif r.get('status') == 'pending' or r.get('verification_status') == 'waiting':
+                match_counts['waiting'] += 1
+
         total = len(all_receipts)
 
         # Apply pagination
@@ -13917,6 +14258,8 @@ def get_library_receipts():
             'receipts': all_receipts,
             'total': total,
             'source_counts': source_counts,
+            'verification_counts': verification_counts,
+            'match_counts': match_counts,
             'offset': offset,
             'limit': limit
         })

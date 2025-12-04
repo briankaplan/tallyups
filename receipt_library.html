@@ -185,6 +185,195 @@
       opacity: 0.7;
     }
 
+    /* Status Chips */
+    .status-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .status-chips::-webkit-scrollbar {
+      display: none;
+    }
+
+    .status-chip {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      border-radius: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .status-chip.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .status-chip.verified.active {
+      background: rgba(0, 255, 136, 0.15);
+      border-color: #00ff88;
+      color: #00ff88;
+    }
+
+    .status-chip.matched.active {
+      background: rgba(100, 200, 255, 0.15);
+      border-color: #64c8ff;
+      color: #64c8ff;
+    }
+
+    .status-chip.waiting.active {
+      background: rgba(255, 165, 2, 0.15);
+      border-color: #ffa502;
+      color: #ffa502;
+    }
+
+    .status-chip.needs-review.active {
+      background: rgba(255, 165, 2, 0.15);
+      border-color: #ffa502;
+      color: #ffa502;
+    }
+
+    .status-chip.mismatch.active {
+      background: rgba(255, 71, 87, 0.15);
+      border-color: #ff4757;
+      color: #ff4757;
+    }
+
+    .status-chip.has-ocr.active {
+      background: rgba(165, 94, 234, 0.15);
+      border-color: #a55eea;
+      color: #a55eea;
+    }
+
+    .status-chip .count {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
+    /* Verification Badge on receipt cards */
+    .verification-badge {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      z-index: 2;
+    }
+
+    .verification-badge.verified {
+      background: rgba(0, 255, 136, 0.9);
+      color: #000;
+    }
+
+    .verification-badge.mismatch {
+      background: rgba(255, 71, 87, 0.9);
+      color: #fff;
+    }
+
+    .verification-badge.needs-review {
+      background: rgba(255, 165, 2, 0.9);
+      color: #000;
+    }
+
+    .verification-badge.waiting {
+      background: rgba(255, 165, 2, 0.7);
+      color: #000;
+    }
+
+    /* OCR Confidence badge */
+    .ocr-badge {
+      position: absolute;
+      bottom: 6px;
+      left: 6px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 600;
+      background: rgba(165, 94, 234, 0.9);
+      color: #fff;
+      z-index: 2;
+    }
+
+    .ocr-badge.high {
+      background: rgba(0, 255, 136, 0.9);
+      color: #000;
+    }
+
+    .ocr-badge.medium {
+      background: rgba(255, 165, 2, 0.9);
+      color: #000;
+    }
+
+    .ocr-badge.low {
+      background: rgba(255, 71, 87, 0.9);
+      color: #fff;
+    }
+
+    /* Receipt OCR Info Line */
+    .receipt-ocr-info {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      opacity: 0.7;
+    }
+
+    /* List view status badges */
+    .list-status {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: capitalize;
+    }
+
+    .list-status.verified {
+      background: rgba(0, 255, 136, 0.15);
+      color: #00ff88;
+    }
+
+    .list-status.needs_review {
+      background: rgba(255, 165, 2, 0.15);
+      color: #ffa502;
+    }
+
+    .list-status.mismatch {
+      background: rgba(255, 71, 87, 0.15);
+      color: #ff4757;
+    }
+
+    .list-status.waiting {
+      background: rgba(70, 130, 180, 0.15);
+      color: #4682b4;
+    }
+
+    .list-ocr {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      background: rgba(128, 128, 128, 0.15);
+      color: var(--text-muted);
+    }
+
     /* Filter Row */
     .filter-row {
       display: flex;
@@ -1004,6 +1193,37 @@
       </button>
     </div>
 
+    <!-- Status Filter Chips -->
+    <div class="status-chips" id="status-chips">
+      <button class="status-chip active" data-status="all">
+        All Status
+      </button>
+      <button class="status-chip verified" data-status="verified">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        Verified <span class="count" id="count-verified"></span>
+      </button>
+      <button class="status-chip matched" data-status="matched">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Matched <span class="count" id="count-matched"></span>
+      </button>
+      <button class="status-chip waiting" data-status="waiting">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Waiting <span class="count" id="count-waiting"></span>
+      </button>
+      <button class="status-chip needs-review" data-status="needs_review">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Review <span class="count" id="count-needs-review"></span>
+      </button>
+      <button class="status-chip mismatch" data-status="mismatch">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Mismatch <span class="count" id="count-mismatch"></span>
+      </button>
+      <button class="status-chip has-ocr" data-status="has_ocr">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        OCR <span class="count" id="count-has-ocr"></span>
+      </button>
+    </div>
+
     <div class="filter-row">
       <button class="filter-btn" id="date-filter-btn" onclick="openDateFilter()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1318,6 +1538,8 @@
     let viewMode = 'grid';
     let currentSort = 'date_desc';
     let sourceCounts = {};
+    let verificationCounts = {};
+    let matchCounts = {};
 
     // Filters
     let filters = {
@@ -1326,7 +1548,9 @@
       dateFrom: null,
       dateTo: null,
       amountMin: null,
-      amountMax: null
+      amountMax: null,
+      verification: 'all',
+      matchStatus: 'all'
     };
 
     // DOM Elements
@@ -1342,6 +1566,7 @@
       loadReceipts();
       setupSearch();
       setupSourceChips();
+      setupStatusChips();
     });
 
     // Load receipts from API
@@ -1359,6 +1584,8 @@
         if (filters.dateTo) params.append('date_to', filters.dateTo);
         if (filters.amountMin) params.append('amount_min', filters.amountMin);
         if (filters.amountMax) params.append('amount_max', filters.amountMax);
+        if (filters.verification !== 'all') params.append('verification', filters.verification);
+        if (filters.matchStatus !== 'all') params.append('match_status', filters.matchStatus);
         params.append('sort', currentSort);
 
         const response = await fetch(`/api/library/receipts?${params.toString()}`, {
@@ -1382,8 +1609,11 @@
 
         receipts = data.receipts || [];
         sourceCounts = data.source_counts || {};
+        verificationCounts = data.verification_counts || {};
+        matchCounts = data.match_counts || {};
 
         updateSourceCounts();
+        updateStatusCounts();
         renderReceipts();
         updateStats();
         updateActiveFilters();
@@ -1406,6 +1636,63 @@
       $('count-pending').textContent = sourceCounts.pending || '';
     }
 
+    // Update status chip counts
+    function updateStatusCounts() {
+      $('count-verified').textContent = verificationCounts.verified || '';
+      $('count-matched').textContent = matchCounts.matched || '';
+      $('count-waiting').textContent = matchCounts.waiting || verificationCounts.waiting || '';
+      $('count-needs-review').textContent = verificationCounts.needs_review || '';
+      $('count-mismatch').textContent = verificationCounts.mismatch || '';
+      $('count-has-ocr').textContent = verificationCounts.has_ocr || '';
+    }
+
+    // Setup status chips
+    function setupStatusChips() {
+      document.querySelectorAll('.status-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.status-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          const status = chip.dataset.status;
+          // Handle special cases: matched/waiting are match_status filters, others are verification filters
+          if (status === 'matched' || status === 'waiting') {
+            filters.matchStatus = status;
+            filters.verification = 'all';
+          } else if (status === 'all') {
+            filters.matchStatus = 'all';
+            filters.verification = 'all';
+          } else {
+            filters.verification = status;
+            filters.matchStatus = 'all';
+          }
+          loadReceipts();
+        });
+      });
+    }
+
+    // Helper to get verification badge HTML
+    function getVerificationBadge(r) {
+      const vs = r.verification_status;
+      if (!vs || vs === 'unverified') return '';
+      const labels = {
+        'verified': 'Verified',
+        'mismatch': 'Mismatch',
+        'needs_review': 'Review',
+        'waiting': 'Waiting'
+      };
+      return `<span class="verification-badge ${vs}">${labels[vs] || vs}</span>`;
+    }
+
+    // Helper to get OCR confidence badge HTML
+    function getOcrBadge(r) {
+      if (!r.has_ocr) return '';
+      const conf = r.ocr_confidence || 0;
+      let level = 'low';
+      if (conf >= 0.8) level = 'high';
+      else if (conf >= 0.5) level = 'medium';
+      const pct = Math.round(conf * 100);
+      return `<span class="ocr-badge ${level}">${pct}%</span>`;
+    }
+
     // Render receipts
     function renderReceipts() {
       if (receipts.length === 0) {
@@ -1426,6 +1713,8 @@
                 <rect x="9" y="3" width="6" height="4" rx="1"/>
               </svg>`
             }
+            ${getVerificationBadge(r)}
+            ${getOcrBadge(r)}
             <span class="source-badge ${r.source}">${formatSource(r.source)}</span>
           </div>
           <div class="receipt-info">
@@ -1434,6 +1723,7 @@
               <span class="receipt-amount ${r.is_refund ? 'refund' : ''}">${formatAmount(r.amount, r.is_refund)}</span>
               <span class="receipt-date">${formatDate(r.date)}</span>
             </div>
+            ${r.ocr_merchant ? `<div class="receipt-ocr-info">OCR: ${escapeHtml(r.ocr_merchant)}${r.ocr_amount ? ` $${r.ocr_amount.toFixed(2)}` : ''}</div>` : ''}
           </div>
         </div>
       `).join('');
@@ -1455,6 +1745,8 @@
             <div class="list-meta">
               <span>${formatDate(r.date)}</span>
               <span>${formatSource(r.source)}</span>
+              ${r.verification_status && r.verification_status !== 'unverified' ? `<span class="list-status ${r.verification_status}">${r.verification_status}</span>` : ''}
+              ${r.has_ocr ? `<span class="list-ocr">${Math.round((r.ocr_confidence || 0) * 100)}%</span>` : ''}
             </div>
           </div>
           <div class="list-amount ${r.is_refund ? 'refund' : ''}">${formatAmount(r.amount, r.is_refund)}</div>
