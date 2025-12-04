@@ -5444,28 +5444,73 @@ function updateQuickViewer() {
   document.getElementById('compare-bank-amount').textContent = '$' + bankAmountNum.toFixed(2);
   document.getElementById('compare-bank-date').textContent = bankDateFormatted;
 
-  // RECEIPT side - extract from AI Note if available
-  const aiNoteText = receipt['AI Note'] || '';
+  // RECEIPT side - use OCR data (preferred) or fall back to AI Note parsing
+  const ocrMerchant = receipt['OCR Merchant'] || receipt['ocr_merchant'] || '';
+  const ocrAmount = receipt['OCR Amount'] || receipt['ocr_amount'];
+  const ocrDate = receipt['OCR Date'] || receipt['ocr_date'] || '';
+  const ocrConfidence = receipt['OCR Confidence'] || receipt['ocr_confidence'] || 0;
+  const hasOCR = ocrMerchant || ocrAmount || ocrDate;
+
   let rcptMerchant = '—';
   let rcptAmount = '—';
   let rcptDate = '—';
 
-  if (aiNoteText) {
-    // Parse merchant from first line
-    const lines = aiNoteText.split(/[\n,]/);
-    if (lines[0]) rcptMerchant = lines[0].trim().substring(0, 30) || '—';
-    // Parse amount
-    const amtMatch = aiNoteText.match(/\$[\d,.]+/);
-    if (amtMatch) rcptAmount = amtMatch[0];
-    // Parse date
-    const dtMatch = aiNoteText.match(/\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/);
-    if (dtMatch) rcptDate = dtMatch[0];
+  if (hasOCR) {
+    // Use OCR-extracted data (high quality)
+    rcptMerchant = ocrMerchant || '—';
+    rcptAmount = ocrAmount ? '$' + parseFloat(ocrAmount).toFixed(2) : '—';
+    if (ocrDate) {
+      const d = new Date(ocrDate);
+      rcptDate = !isNaN(d.getTime()) ? (d.getMonth()+1) + '/' + d.getDate() : ocrDate;
+    }
+  } else {
+    // Fall back to AI Note parsing
+    const aiNoteText = receipt['AI Note'] || '';
+    if (aiNoteText) {
+      const lines = aiNoteText.split(/[\n,]/);
+      if (lines[0]) rcptMerchant = lines[0].trim().substring(0, 30) || '—';
+      const amtMatch = aiNoteText.match(/\$[\d,.]+/);
+      if (amtMatch) rcptAmount = amtMatch[0];
+      const dtMatch = aiNoteText.match(/\d{1,2}\/\d{1,2}(?:\/\d{2,4})?/);
+      if (dtMatch) rcptDate = dtMatch[0];
+    }
   }
 
   // Update RECEIPT comparison panel
-  document.getElementById('compare-receipt-merchant').textContent = rcptMerchant;
-  document.getElementById('compare-receipt-amount').textContent = rcptAmount;
-  document.getElementById('compare-receipt-date').textContent = rcptDate;
+  const rcptMerchantEl = document.getElementById('compare-receipt-merchant');
+  const rcptAmountEl = document.getElementById('compare-receipt-amount');
+  const rcptDateEl = document.getElementById('compare-receipt-date');
+
+  rcptMerchantEl.textContent = rcptMerchant;
+  rcptAmountEl.textContent = rcptAmount;
+  rcptDateEl.textContent = rcptDate;
+
+  // Amount match/mismatch highlighting
+  if (rcptAmount !== '—' && bankAmountNum > 0) {
+    const rcptAmtNum = parseFloat(rcptAmount.replace(/[$,]/g, '')) || 0;
+    const amtDiff = Math.abs(rcptAmtNum - bankAmountNum);
+    if (amtDiff < 2) {
+      rcptAmountEl.classList.add('match');
+      rcptAmountEl.classList.remove('mismatch');
+    } else {
+      rcptAmountEl.classList.add('mismatch');
+      rcptAmountEl.classList.remove('match');
+    }
+  } else {
+    rcptAmountEl.classList.remove('match', 'mismatch');
+  }
+
+  // Show OCR source indicator if available
+  const compareHeader = document.querySelector('.compare-col:last-child .compare-col-header');
+  if (compareHeader) {
+    if (hasOCR && ocrConfidence > 0) {
+      compareHeader.innerHTML = `RECEIPT <span style="font-size:9px;color:#3b82f6;margin-left:4px">OCR ${Math.round(ocrConfidence*100)}%</span>`;
+    } else if (hasOCR) {
+      compareHeader.innerHTML = `RECEIPT <span style="font-size:9px;color:#3b82f6;margin-left:4px">OCR</span>`;
+    } else {
+      compareHeader.textContent = 'RECEIPT';
+    }
+  }
 
   // Update Business Type dropdown
   const businessSelect = document.getElementById('quick-business');
