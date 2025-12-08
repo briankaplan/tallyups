@@ -7114,14 +7114,16 @@ function applyFilters() {
       });
     }
     else if (filter === 'missing') {
-      // Missing = no receipt (file, url, or r2) AND not marked as "not needed"
+      // Missing = no receipt (file, url, or r2) OR status is 'needs_receipt'
       filtered = filtered.filter(r => {
         const receiptFile = (r['Receipt File'] || '').trim();
         const receiptUrl = (r.receipt_url || '').trim();
         const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-        const status = (r['Review Status'] || '').toLowerCase().trim();
+        const reviewStatus = (r['Review Status'] || '').toLowerCase().trim();
+        const validationStatus = (r.receipt_validation_status || '').toLowerCase().trim();
         const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
-        return !hasReceipt && status !== 'not needed';
+        // Show if: no receipt and not marked 'not needed', OR validation status is 'needs_receipt'
+        return (!hasReceipt && reviewStatus !== 'not needed') || validationStatus === 'needs_receipt';
       });
     }
     else if (filter === 'with-receipts') {
@@ -7152,7 +7154,8 @@ function applyFilters() {
     else if (filter === 'receipt-verified') {
       filtered = filtered.filter(r => {
         const status = (r.ocr_verification_status || r.receipt_validation_status || '').toLowerCase().trim();
-        return status === 'verified';
+        // Include both 'verified' and 'subscription' as verified receipts
+        return status === 'verified' || status === 'subscription';
       });
     }
     else if (filter === 'receipt-mismatch') {
@@ -7175,11 +7178,15 @@ function applyFilters() {
     if (bizType === 'Unassigned') {
       // Show transactions with NULL, empty, or missing Business Type
       filtered = filtered.filter(r => {
-        const bt = r['Business Type'];
+        const bt = r['Business Type'] || r.business_type || '';
         return !bt || bt === '' || bt === 'None' || bt === null;
       });
     } else {
-      filtered = filtered.filter(r => r['Business Type'] === bizType);
+      // Check both 'Business Type' (CSV) and 'business_type' (DB) field names
+      filtered = filtered.filter(r => {
+        const bt = r['Business Type'] || r.business_type || '';
+        return bt === bizType;
+      });
     }
   }
 
