@@ -46,8 +46,28 @@ def _lazy_import_imgkit():
 
 load_dotenv()
 
-# Import Gemini utility with automatic key fallback
-from gemini_utils import generate_content_with_fallback, analyze_email_content, get_model as get_gemini_model
+# Import OpenAI for email analysis (priority over Gemini due to rate limits)
+from openai import OpenAI
+OPENAI_CLIENT = None
+
+def get_openai_client():
+    """Get or create OpenAI client"""
+    global OPENAI_CLIENT
+    if OPENAI_CLIENT is None:
+        api_key = os.getenv('OPENAI_API_KEY')
+        if api_key:
+            OPENAI_CLIENT = OpenAI(api_key=api_key)
+    return OPENAI_CLIENT
+
+# Keep Gemini as fallback only
+try:
+    from gemini_utils import generate_content_with_fallback, analyze_email_content, get_model as get_gemini_model
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    generate_content_with_fallback = None
+    analyze_email_content = None
+    get_gemini_model = None
 
 # MySQL Connection Configuration (Railway)
 MYSQL_CONFIG = {
@@ -330,11 +350,16 @@ def extract_amount_from_text(text):
 
     return None
 
-def analyze_email_with_gemini(subject, from_email, body_text):
+def analyze_email_with_openai(subject, from_email, body_text):
     """
-    Use Gemini to extract structured data from email body
+    Use OpenAI GPT-4o-mini to extract structured data from email body (PRIORITY)
     Returns: (merchant, amount, description, is_subscription)
     """
+    client = get_openai_client()
+    if not client:
+        print("      ⚠️  OpenAI not configured, falling back to Gemini...")
+        return analyze_email_with_gemini_fallback(subject, from_email, body_text)
+
     try:
         prompt = f"""You are analyzing a receipt/payment confirmation email. Extract these fields:
 
@@ -365,10 +390,16 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
   "is_subscription": true
 }}"""
 
-        text = generate_content_with_fallback(prompt)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200,
+            temperature=0.1
+        )
+
+        text = response.choices[0].message.content.strip()
         if not text:
-            raise Exception("Gemini returned empty response")
-        text = text.strip()
+            raise Exception("OpenAI returned empty response")
 
         # Remove markdown code blocks if present
         if text.startswith('```'):
@@ -382,9 +413,9 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
         description = result.get('description')
         is_subscription = result.get('is_subscription', False)
 
-        # If Gemini didn't extract amount, try regex fallback
+        # If OpenAI didn't extract amount, try regex fallback
         if not amount:
-            print(f"      ⚠️  Gemini didn't extract amount, trying regex...")
+            print(f"      ⚠️  OpenAI didn't extract amount, trying regex...")
             amount = extract_amount_from_text(subject + " " + body_text)
             if amount:
                 print(f"      ✓ Regex extracted amount: ${amount}")
@@ -392,7 +423,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
         return (merchant, amount, description, is_subscription)
 
     except Exception as e:
-        print(f"      ⚠️  Gemini analysis failed: {e}")
+        print(f"      ⚠️  OpenAI analysis failed: {e}")
         print(f"      → Using regex fallback for amount extraction...")
 
         # Fallback: Try to extract amount with regex
@@ -405,6 +436,57 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
             print(f"      ✓ Regex extracted merchant: {merchant_fallback}")
 
         return (merchant_fallback, amount, None, False)
+
+
+def analyze_email_with_gemini_fallback(subject, from_email, body_text):
+    """
+    Fallback to Gemini if OpenAI is not available
+    Returns: (merchant, amount, description, is_subscription)
+    """
+    if not GEMINI_AVAILABLE or not generate_content_with_fallback:
+        print("      ⚠️  Gemini not available either, using regex only...")
+        amount = extract_amount_from_text(subject + " " + body_text)
+        merchant_fallback, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
+        return (merchant_fallback, amount, None, False)
+
+    try:
+        prompt = f"""You are analyzing a receipt/payment confirmation email. Extract these fields:
+
+1. MERCHANT NAME - Clean company name (e.g., "Anthropic", "Apple", "Midjourney")
+2. AMOUNT - The dollar amount charged. REQUIRED.
+3. DESCRIPTION - What was purchased
+4. IS_SUBSCRIPTION - Is this a recurring charge? (true/false)
+
+Email Subject: {subject}
+From: {from_email}
+Body: {body_text[:2500]}
+
+Respond with ONLY valid JSON:
+{{"merchant": "Name", "amount": 0.00, "description": "...", "is_subscription": false}}"""
+
+        text = generate_content_with_fallback(prompt)
+        if not text:
+            raise Exception("Gemini returned empty response")
+        text = text.strip()
+
+        if text.startswith('```'):
+            text = text.split('\n', 1)[1]
+            text = text.rsplit('```', 1)[0]
+
+        result = json.loads(text.strip())
+        return (result.get('merchant'), result.get('amount'), result.get('description'), result.get('is_subscription', False))
+
+    except Exception as e:
+        print(f"      ⚠️  Gemini fallback failed: {e}")
+        amount = extract_amount_from_text(subject + " " + body_text)
+        merchant_fallback, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
+        return (merchant_fallback, amount, None, False)
+
+
+# Keep old function name as alias for compatibility
+def analyze_email_with_gemini(subject, from_email, body_text):
+    """Alias - now uses OpenAI as priority"""
+    return analyze_email_with_openai(subject, from_email, body_text)
 
 
 def extract_merchant_and_amount(subject, from_email, body_snippet):

@@ -2284,8 +2284,12 @@ def dashboard_stats():
         })
 
     try:
-        # Total receipts with receipt_url (matched)
-        cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM transactions WHERE receipt_url IS NOT NULL AND receipt_url != ''")
+        # Total receipts with r2_url OR receipt_url (matched) - count both sources
+        cursor = db_execute(conn, db_type, """
+            SELECT COUNT(*) AS cnt FROM transactions
+            WHERE (receipt_url IS NOT NULL AND receipt_url != '')
+               OR (r2_url IS NOT NULL AND r2_url != '')
+        """)
         row = cursor.fetchone()
         total_matched = row['cnt'] if row else 0
         cursor.close()
@@ -2307,14 +2311,13 @@ def dashboard_stats():
             print(f"Pending count error (table may not exist): {pe}")
             pending = 0
 
-        # This month's spending - use chase_amount column from transactions table
+        # This month's spending - sum all expenses this month (negative amounts are expenses)
         month_total = 0.0
         try:
             cursor = db_execute(conn, db_type, """
                 SELECT COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total
                 FROM transactions
                 WHERE chase_date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
-                AND CAST(chase_amount AS DECIMAL(10,2)) < 0
             """)
             row = cursor.fetchone()
             month_total = float(row['total']) if row and row['total'] else 0.0
