@@ -218,23 +218,38 @@ MARKETING_PATTERNS = [
 PERSONAL_SERVICE_DOMAINS = [
     # AI/Creative Tools
     'anthropic.com', 'mail.anthropic.com', 'openai.com', 'midjourney.com', 'runway.ml', 'runwayml.com',
-    'ideogram.ai', 'beautiful.ai', 'figma.com', 'canva.com', 'suno.ai',
+    'ideogram.ai', 'beautiful.ai', 'figma.com', 'canva.com', 'suno.ai', 'pika.art',
     # Tech Services / Apple
     'apple.com', 'email.apple.com', 'icloud.com', 'google.com', 'microsoft.com', 'adobe.com',
-    'spotify.com', 'netflix.com', 'hulu.com', 'disney.com',
+    'spotify.com', 'netflix.com', 'hulu.com', 'disney.com', 'primevideo.com', 'max.com',
     # Business Tools
     'notion.so', 'slack.com', 'zoom.us', 'dropbox.com', 'taskade.com',
     'github.com', 'vercel.com', 'railway.app', 'netlify.com', 'heroku.com', 'render.com',
     # Cloud/Hosting
     'cloudflare.com', 'aws.amazon.com', 'digitalocean.com',
     # Payment Processors (when they send receipts) - VERY HIGH PRIORITY
-    'stripe.com', 'square.com', 'paypal.com',
+    'stripe.com', 'e.stripe.com', 'square.com', 'paypal.com', 'venmo.com',
     # AI/ML Platforms
     'huggingface.co', 'replicate.com', 'wandb.ai', 'cohere.ai',
     # Phone/Utilities
     'tdstelecom.com', 'kiafinance.com',  # Car payment confirmations
     # Event/Ticket receipts
-    'ticketspice.com', 'eventbrite.com',
+    'ticketspice.com', 'eventbrite.com', 'aegpresents.com',
+    # Rideshare / Delivery - CRITICAL
+    'uber.com', 'ubereats.com', 'lyft.com', 'doordash.com', 'grubhub.com',
+    'postmates.com', 'instacart.com', 'shipt.com',
+    # Retail - common receipt sources
+    'target.com', 'walmart.com', 'costco.com', 'amazon.com', 'bestbuy.com', 'homedepot.com',
+    'lowes.com', 'staples.com', 'officedepot.com', 'zappos.com',
+    # Food / Restaurant receipts
+    'mcdonalds.com', 'us.mcdonalds.com', 'starbucks.com', 'chipotle.com', 'chick-fil-a.com',
+    # Travel
+    'airbnb.com', 'booking.com', 'expedia.com', 'hotels.com', 'southwest.com', 'delta.com',
+    'united.com', 'aa.com', 'allegiantair.com',
+    # Gas/Auto
+    'shell.com', 'exxon.com', 'chevron.com', 'bp.com', 'circlek.com',
+    # Other services
+    'calendarbridge.com', 'paddle.com', 'woocommerce.com', 'shopify.com',
 ]
 
 # B2B/Vendor invoice patterns (EXCLUDE these)
@@ -266,27 +281,24 @@ COWORKER_PATTERNS = [
 
 # Spam/marketing sender domains to auto-reject
 SPAM_SENDER_DOMAINS = [
+    # Email marketing platforms
     'mailchimp.com', 'sendgrid.net', 'constantcontact.com', 'mailgun.org',
-    'marketing.', 'news.', 'updates.', 'info.', 'promo.',
-    'noreply.', 'no-reply.', 'donotreply.',
     'hubspot.com', 'mailerlite.com', 'klaviyo.com', 'brevo.com',
     'mixmax.com', 'intercom.io', 'drip.com', 'convertkit.com',
-    # Amazon promotional domains
-    'amazon.com',  # Will have subject filters to allow order confirmations
-    'advertising.amazon.com', 'email.amazon.com',
+    # Subdomain prefixes that indicate marketing (but NOT blocking amazon.com itself)
+    'marketing.', 'promo.',
+    'advertising.amazon.com',  # Only promotional Amazon subdomain, NOT order emails
     # Expensify (reports, not receipts)
     'expensify.com', 'expensifymail.com',
-    # Hotel/loyalty programs
-    'hilton.com', 'marriott.com', 'ihg.com', 'hyatt.com',
     # Political/news spam
     'conservativeinstitute', 'forbesbreak', 'dailywire',
     # School/community newsletters
     'wilsonk12tn.us', 'k12.com', 'schoolmessenger.com',
     # Dental/medical marketing
     'smilegeneration.com', 'smile.direct',
-    # Credit card marketing
+    # Credit card marketing (NOT statements/receipts)
     'synchronyfinancial.com', 'synchrony.com',
-    # General newsletters
+    # Newsletter platforms
     'substack.com', 'beehiiv.com', 'ghost.io',
 ]
 
@@ -2090,3 +2102,274 @@ def get_inbox_stats():
     result = cursor.fetchone()
     conn.close()
     return {'total': result['total'] or 0, 'pending': result['pending'] or 0, 'accepted': result['accepted'] or 0, 'rejected': result['rejected'] or 0, 'auto_rejected': result['auto_rejected'] or 0}
+
+
+def reprocess_pending_receipts(limit=50, skip_with_amount=True):
+    """
+    Reprocess pending receipts that are missing amounts or AI notes.
+    Re-fetches email from Gmail, extracts PDF attachments, runs Vision AI.
+
+    Args:
+        limit: Maximum number of receipts to process
+        skip_with_amount: If True, only process receipts with amount=0 or NULL
+
+    Returns:
+        Dict with processing statistics
+    """
+    import json
+    import base64
+    import tempfile
+    import os
+    from pathlib import Path
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    stats = {
+        'processed': 0,
+        'amounts_extracted': 0,
+        'notes_generated': 0,
+        'errors': 0,
+        'skipped': 0
+    }
+
+    # Get pending receipts that need reprocessing
+    if skip_with_amount:
+        cursor.execute('''
+            SELECT id, email_id, gmail_account, subject, from_email, merchant, amount, ai_notes
+            FROM incoming_receipts
+            WHERE status = 'pending'
+            AND (amount IS NULL OR amount = 0 OR ai_notes IS NULL OR ai_notes = '')
+            AND email_id IS NOT NULL AND email_id != ''
+            ORDER BY id DESC
+            LIMIT %s
+        ''', (limit,))
+    else:
+        cursor.execute('''
+            SELECT id, email_id, gmail_account, subject, from_email, merchant, amount, ai_notes
+            FROM incoming_receipts
+            WHERE status = 'pending'
+            AND email_id IS NOT NULL AND email_id != ''
+            ORDER BY id DESC
+            LIMIT %s
+        ''', (limit,))
+
+    receipts = cursor.fetchall()
+    print(f"\n📧 Reprocessing {len(receipts)} pending receipts...")
+
+    # Group by Gmail account for efficient token loading
+    by_account = {}
+    for r in receipts:
+        account = r['gmail_account']
+        if account not in by_account:
+            by_account[account] = []
+        by_account[account].append(r)
+
+    for account_email, account_receipts in by_account.items():
+        print(f"\n🔑 Processing {len(account_receipts)} receipts for {account_email}...")
+
+        # Get Gmail service for this account
+        service = None
+        try:
+            # Try to authenticate - use actual token file names
+            account_key = account_email.replace('@', '_').replace('.', '_')
+            token_paths = [
+                Path('gmail_tokens') / f'tokens_{account_key}.json',
+                Path('gmail_tokens') / f'{account_email.split("@")[0]}_token.json',
+                Path('calendar_tokens.json'),
+                Path('.') / 'calendar_token.json',
+            ]
+
+            for token_path in token_paths:
+                if token_path.exists():
+                    from google.oauth2.credentials import Credentials
+                    from googleapiclient.discovery import build
+
+                    try:
+                        creds = Credentials.from_authorized_user_file(str(token_path))
+                        service = build('gmail', 'v1', credentials=creds, cache_discovery=False)
+                        # Test the service
+                        service.users().getProfile(userId='me').execute()
+                        print(f"   ✓ Authenticated with {token_path}")
+                        break
+                    except Exception as e:
+                        continue
+        except Exception as e:
+            print(f"   ⚠️ Could not authenticate for {account_email}: {e}")
+            stats['skipped'] += len(account_receipts)
+            continue
+
+        if not service:
+            print(f"   ⚠️ No valid token for {account_email}")
+            stats['skipped'] += len(account_receipts)
+            continue
+
+        for receipt in account_receipts:
+            receipt_id = receipt['id']
+            email_id = receipt['email_id']
+            subject = receipt['subject']
+            from_email = receipt['from_email']
+            current_amount = receipt['amount']
+            current_notes = receipt['ai_notes']
+
+            print(f"\n   📨 #{receipt_id}: {subject[:50]}...")
+
+            try:
+                # Fetch full email
+                msg_data = service.users().messages().get(
+                    userId='me', id=email_id, format='full'
+                ).execute()
+
+                payload = msg_data.get('payload', {})
+
+                # Extract attachments
+                attachments = []
+                parts = payload.get('parts', [])
+                for part in parts:
+                    if part.get('filename') and part.get('body', {}).get('attachmentId'):
+                        attachments.append({
+                            'filename': part['filename'],
+                            'attachment_id': part['body']['attachmentId']
+                        })
+
+                # Variables for extracted data
+                new_amount = None
+                new_notes = None
+                new_merchant = None
+
+                # Try to extract from PDF attachments
+                for att in attachments:
+                    filename = att.get('filename', '').lower()
+                    if filename.endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+                        print(f"      📎 Processing: {att['filename']}")
+                        try:
+                            att_data = download_gmail_attachment(
+                                service, email_id, att['attachment_id'], att['filename']
+                            )
+                            if att_data:
+                                if filename.endswith('.pdf'):
+                                    # Convert PDF to JPG
+                                    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                                        jpg_path = convert_pdf_to_jpg(att_data, tmp.name)
+                                        if jpg_path and os.path.exists(jpg_path):
+                                            with open(jpg_path, 'rb') as f:
+                                                img_base64 = base64.b64encode(f.read()).decode('utf-8')
+                                            os.unlink(jpg_path)
+                                        else:
+                                            img_base64 = None
+                                else:
+                                    img_base64 = base64.b64encode(att_data).decode('utf-8')
+
+                                if img_base64:
+                                    v_merchant, v_amount, v_desc, v_sub, v_is_receipt, v_cat, v_notes = analyze_image_with_vision(
+                                        img_base64, subject_hint=subject, from_hint=from_email
+                                    )
+                                    if v_amount:
+                                        new_amount = v_amount
+                                        print(f"      💰 Amount extracted: ${v_amount}")
+                                    if v_merchant:
+                                        new_merchant = v_merchant
+                                    if v_notes:
+                                        new_notes = v_notes
+                                        print(f"      📝 Notes: {v_notes}")
+                                    if new_amount:
+                                        break  # Got what we need
+                        except Exception as e:
+                            print(f"      ⚠️ Attachment error: {e}")
+
+                # If no attachment or no amount from attachment, try HTML body
+                if not new_amount or not new_notes:
+                    def get_html_body(payload):
+                        if 'parts' in payload:
+                            for part in payload['parts']:
+                                if part.get('mimeType') == 'text/html':
+                                    data = part.get('body', {}).get('data', '')
+                                    if data:
+                                        return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                        return None
+
+                    html_body = get_html_body(payload)
+                    if html_body and len(html_body) > 200:
+                        # Extract amount from HTML using regex
+                        import re
+                        amount_patterns = [
+                            r'\$\s*([\d,]+\.?\d*)',
+                            r'Total[:\s]+\$?([\d,]+\.?\d*)',
+                            r'Amount[:\s]+\$?([\d,]+\.?\d*)',
+                            r'Charge[:\s]+\$?([\d,]+\.?\d*)',
+                        ]
+                        for pattern in amount_patterns:
+                            match = re.search(pattern, html_body, re.IGNORECASE)
+                            if match:
+                                try:
+                                    amount_str = match.group(1).replace(',', '')
+                                    new_amount = float(amount_str)
+                                    if new_amount > 0 and new_amount < 100000:  # Sanity check
+                                        print(f"      💰 Amount from HTML: ${new_amount}")
+                                        break
+                                except:
+                                    pass
+
+                        # Generate AI notes if missing
+                        if not new_notes and not current_notes:
+                            # Extract useful info from subject/email
+                            subject_lower = subject.lower()
+                            notes_parts = []
+
+                            # Identify service type from subject
+                            if 'apple' in from_email.lower():
+                                if 'app store' in subject_lower or 'apple.com' in subject_lower:
+                                    notes_parts.append('App Store purchase')
+                            if 'subscription' in subject_lower:
+                                notes_parts.append('Subscription payment')
+                            if 'renewal' in subject_lower:
+                                notes_parts.append('Subscription renewal')
+                            if 'upgrade' in subject_lower:
+                                notes_parts.append('Plan upgrade')
+
+                            if notes_parts:
+                                new_notes = '. '.join(notes_parts)
+
+                # Update database
+                updates = []
+                params = []
+                if new_amount and (not current_amount or float(current_amount) == 0):
+                    updates.append('amount = %s')
+                    params.append(new_amount)
+                    stats['amounts_extracted'] += 1
+                if new_notes and not current_notes:
+                    updates.append('ai_notes = %s')
+                    params.append(new_notes)
+                    stats['notes_generated'] += 1
+                if new_merchant and not receipt['merchant']:
+                    updates.append('merchant = %s')
+                    params.append(new_merchant)
+                if attachments:
+                    updates.append('attachments = %s')
+                    params.append(json.dumps(attachments))
+                    updates.append('has_attachment = %s')
+                    params.append(True)
+                    updates.append('attachment_count = %s')
+                    params.append(len(attachments))
+
+                if updates:
+                    params.append(receipt_id)
+                    cursor.execute(f'UPDATE incoming_receipts SET {", ".join(updates)} WHERE id = %s', params)
+                    print(f"      ✅ Updated #{receipt_id}")
+
+                stats['processed'] += 1
+
+            except Exception as e:
+                print(f"      ❌ Error: {e}")
+                stats['errors'] += 1
+
+    conn.commit()
+    conn.close()
+
+    print(f"\n{'='*50}")
+    print("📊 REPROCESS RESULTS")
+    print(f"{'='*50}")
+    for k, v in stats.items():
+        print(f"   {k}: {v}")
+
+    return stats

@@ -16755,6 +16755,24 @@ def cleanup_inbox():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/reprocess", methods=["POST"])
+@login_required
+def reprocess_inbox():
+    """Reprocess pending receipts to extract amounts from PDFs and generate AI notes."""
+    try:
+        from incoming_receipts_service import reprocess_pending_receipts, get_inbox_stats
+        print("📧 Running inbox reprocess...")
+        before_stats = get_inbox_stats()
+        limit = request.json.get('limit', 50) if request.json else 50
+        results = reprocess_pending_receipts(limit=limit)
+        after_stats = get_inbox_stats()
+        return jsonify({'ok': True, 'message': 'Inbox reprocess complete', 'results': results, 'before': before_stats, 'after': after_stats})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/bulk-reject", methods=["POST"])
 @api_key_required
 def bulk_reject_incoming_receipts():
