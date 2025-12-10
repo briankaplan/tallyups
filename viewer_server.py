@@ -2052,7 +2052,7 @@ def settings_page():
 
 @app.route("/incoming.html")
 @app.route("/incoming")
-@api_key_or_login_required
+@login_required
 def incoming():
     """Serve the Incoming Receipts page."""
     return send_from_directory(BASE_DIR, "incoming.html")
@@ -15987,7 +15987,7 @@ def attach_receipt_to_transaction():
 
 
 @app.route("/api/incoming/accept", methods=["POST"])
-@api_key_or_login_required
+@api_key_required
 def accept_incoming_receipt():
     """
     Accept an incoming receipt and create a transaction (or attach to existing)
@@ -16355,7 +16355,7 @@ def accept_incoming_receipt():
 
 
 @app.route("/api/incoming/reject", methods=["POST"])
-@api_key_or_login_required
+@api_key_required
 def reject_incoming_receipt():
     """
     Reject an incoming receipt and learn from the pattern
@@ -16468,7 +16468,7 @@ def reject_incoming_receipt():
 
 
 @app.route("/api/incoming/bulk-reject", methods=["POST"])
-@api_key_or_login_required
+@api_key_required
 def bulk_reject_incoming_receipts():
     """
     Bulk reject multiple incoming receipts at once.
@@ -16536,7 +16536,7 @@ def bulk_reject_incoming_receipts():
 
 
 @app.route("/api/incoming/unreject", methods=["POST"])
-@api_key_or_login_required
+@api_key_required
 def unreject_incoming_receipt():
     """
     Unreject a previously rejected incoming receipt - moves it back to pending
