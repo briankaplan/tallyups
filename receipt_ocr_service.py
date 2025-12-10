@@ -43,6 +43,23 @@ try:
 except ImportError:
     OLLAMA_AVAILABLE = False
 
+# OpenAI support (primary OCR provider - faster and more reliable)
+try:
+    from openai import OpenAI
+    _openai_client = None
+    def get_openai_client():
+        global _openai_client
+        if _openai_client is None:
+            api_key = os.getenv('OPENAI_API_KEY')
+            if api_key:
+                _openai_client = OpenAI(api_key=api_key)
+        return _openai_client
+    OPENAI_AVAILABLE = bool(os.getenv('OPENAI_API_KEY'))
+except ImportError:
+    OPENAI_AVAILABLE = False
+    def get_openai_client():
+        return None
+
 # Database connection for caching
 _db_connection = None
 
@@ -285,6 +302,7 @@ IMPORTANT:
         """Check which services are available"""
         self.gemini_ready = GEMINI_AVAILABLE
         self.ollama_ready = OLLAMA_AVAILABLE
+        self.openai_ready = OPENAI_AVAILABLE and get_openai_client() is not None
 
         if self.ollama_ready:
             try:
@@ -310,6 +328,41 @@ IMPORTANT:
         buffer = io.BytesIO()
         image.save(buffer, format='PNG')
         return base64.b64encode(buffer.getvalue()).decode()
+
+    def _extract_with_openai(self, image: Image.Image) -> Optional[Dict[str, Any]]:
+        """Extract using OpenAI Vision API (gpt-4o-mini) - primary provider"""
+        if not self.openai_ready:
+            return None
+
+        try:
+            client = get_openai_client()
+            if not client:
+                return None
+
+            # Convert image to base64
+            img_base64 = self._image_to_base64(image)
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": self.EXTRACTION_PROMPT},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}
+                    ]
+                }],
+                max_tokens=1000,
+                timeout=30  # 30 second timeout
+            )
+
+            result = response.choices[0].message.content
+            if result:
+                return self._parse_json_response(result, "openai")
+
+        except Exception as e:
+            print(f"⚠️  OpenAI extraction error: {e}")
+
+        return None
 
     def _extract_with_gemini(self, image: Image.Image) -> Optional[Dict[str, Any]]:
         """Extract using Gemini Vision API"""
@@ -553,13 +606,18 @@ IMPORTANT:
         """
         result = None
 
-        # Try extraction methods in order
+        # Try extraction methods in order: OpenAI (primary) > Gemini (fallback) > Ollama (local fallback)
         if self.prefer_local and self.ollama_ready:
             result = self._extract_with_ollama(image)
+            if not result and self.openai_ready:
+                result = self._extract_with_openai(image)
             if not result and self.gemini_ready:
                 result = self._extract_with_gemini(image)
         else:
-            if self.gemini_ready:
+            # OpenAI is now the primary provider (faster, more reliable)
+            if self.openai_ready:
+                result = self._extract_with_openai(image)
+            if not result and self.gemini_ready:
                 result = self._extract_with_gemini(image)
             if not result and self.ollama_ready:
                 result = self._extract_with_ollama(image)
