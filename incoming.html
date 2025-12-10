@@ -171,8 +171,32 @@ tr.hidden { display: none; }
 .confidence-low { background: rgba(255,78,106,.15); color: var(--bad); }
 
 .match-badge {
-  font-size: 11px; color: var(--warn); margin-top: 4px;
+  font-size: 11px; margin-top: 4px;
   display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.match-badge.needs-receipt {
+  background: rgba(255,216,94,.2);
+  color: var(--warn);
+  border: 1px solid var(--warn);
+}
+.match-badge.has-receipt {
+  background: rgba(47,255,162,.15);
+  color: var(--ok);
+  border: 1px solid var(--ok);
+}
+.match-badge.no-match {
+  background: rgba(255,255,255,.1);
+  color: var(--muted);
+}
+.ai-notes {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-style: italic;
+  opacity: 0.8;
 }
 
 .description {
@@ -377,6 +401,41 @@ tr.clickable:hover { background: rgba(59,130,246,.06); }
   color: #a78bfa;
 }
 .preview-attachment-icon { font-size: 16px; }
+
+/* Receipt Image Preview */
+.preview-image-section {
+  margin-bottom: 20px;
+}
+.preview-image-container {
+  background: var(--panel2);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  max-height: 400px;
+  overflow: hidden;
+}
+.preview-image-container img {
+  max-width: 100%;
+  max-height: 380px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.preview-image-container img:hover {
+  transform: scale(1.02);
+}
+.preview-image-placeholder {
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.preview-image-placeholder svg {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+  opacity: 0.3;
+}
 
 .preview-footer {
   padding: 16px 24px;
@@ -1494,6 +1553,10 @@ th.sortable.active {
         <div class="preview-section-title">AI Analysis</div>
         <div class="preview-section-content" id="preview-ai-notes"></div>
       </div>
+      <div class="preview-section" id="preview-match-section" style="display:none">
+        <div class="preview-section-title">Transaction Match</div>
+        <div class="preview-section-content" id="preview-match-status"></div>
+      </div>
       <div class="preview-section">
         <div class="preview-section-title">Email Body Preview</div>
         <div class="preview-section-content" id="preview-body">Loading...</div>
@@ -1501,6 +1564,12 @@ th.sortable.active {
       <div class="preview-section" id="preview-attachments-section" style="display:none">
         <div class="preview-section-title">Attachments</div>
         <div class="preview-attachments" id="preview-attachments"></div>
+      </div>
+      <div class="preview-section preview-image-section" id="preview-image-section" style="display:none">
+        <div class="preview-section-title">Receipt Image</div>
+        <div class="preview-image-container" id="preview-image-container">
+          <img id="preview-receipt-image" src="" alt="Receipt preview" onclick="openFullImage(this.src)">
+        </div>
       </div>
     </div>
     <div class="preview-footer">
@@ -2477,10 +2546,22 @@ function renderRow(receipt) {
   }
   const date = formatDate(receipt.received_date);
 
-  // Match badge
+  // Match badge - show status for transaction matching
   let matchBadge = '';
-  if (receipt.match_type === 'needs_receipt' && receipt.matched_transaction_id) {
-    matchBadge = `<div class="match-badge">📎 Attach to #${receipt.matched_transaction_id}</div>`;
+  if (receipt.matched_transaction_id) {
+    if (receipt.match_type === 'needs_receipt') {
+      matchBadge = `<div class="match-badge needs-receipt">RECEIPT NEEDED - TX #${receipt.matched_transaction_id}</div>`;
+    } else if (receipt.match_type === 'has_receipt') {
+      matchBadge = `<div class="match-badge has-receipt">Already has receipt - TX #${receipt.matched_transaction_id}</div>`;
+    }
+  } else if (receipt.match_type === 'no_match') {
+    matchBadge = `<div class="match-badge no-match">No matching transaction</div>`;
+  }
+
+  // AI notes from Vision analysis
+  let aiNotes = '';
+  if (receipt.ai_notes) {
+    aiNotes = `<div class="ai-notes">${escapeHtml(receipt.ai_notes)}</div>`;
   }
 
   // AI description
@@ -2522,6 +2603,7 @@ function renderRow(receipt) {
         <div class="snippet">${escapeHtml(receipt.body_snippet || '')}</div>
         ${description}
         ${matchBadge}
+        ${aiNotes}
         ${attachmentBadge}
       </td>
       <td style="font-weight:500">${escapeHtml(merchant)}</td>
@@ -2901,6 +2983,25 @@ function showPreview(receiptId) {
     aiSection.style.display = 'none';
   }
 
+  // Match Status Section
+  const matchSection = document.getElementById('preview-match-section');
+  const matchStatusEl = document.getElementById('preview-match-status');
+  if (matchSection && matchStatusEl) {
+    if (receipt.matched_transaction_id) {
+      matchSection.style.display = 'block';
+      if (receipt.match_type === 'needs_receipt') {
+        matchStatusEl.innerHTML = `<div class="match-badge needs-receipt" style="font-size:14px;padding:8px 12px;">RECEIPT NEEDED<br><small>Transaction #${receipt.matched_transaction_id}</small></div>`;
+      } else if (receipt.match_type === 'has_receipt') {
+        matchStatusEl.innerHTML = `<div class="match-badge has-receipt" style="font-size:14px;padding:8px 12px;">Already has receipt<br><small>Transaction #${receipt.matched_transaction_id}</small></div>`;
+      }
+    } else if (receipt.match_type === 'no_match') {
+      matchSection.style.display = 'block';
+      matchStatusEl.innerHTML = `<div class="match-badge no-match" style="font-size:14px;padding:8px 12px;">No matching transaction found</div>`;
+    } else {
+      matchSection.style.display = 'none';
+    }
+  }
+
   // Body snippet
   document.getElementById('preview-body').textContent = receipt.body_snippet || 'No preview available';
 
@@ -2921,6 +3022,18 @@ function showPreview(receiptId) {
     }).join('');
   } else {
     attachmentsSection.style.display = 'none';
+  }
+
+  // Receipt Image Preview
+  const imageSection = document.getElementById('preview-image-section');
+  const imageEl = document.getElementById('preview-receipt-image');
+  const previewUrl = receipt.preview_url || receipt.r2_url;
+  if (previewUrl) {
+    imageSection.style.display = 'block';
+    imageEl.src = previewUrl;
+    imageEl.onerror = () => { imageSection.style.display = 'none'; };
+  } else {
+    imageSection.style.display = 'none';
   }
 
   // Account badge
@@ -2974,6 +3087,10 @@ function getAttachmentIcon(filename) {
     case 'html': case 'htm': return '🌐';
     default: return '📎';
   }
+}
+
+function openFullImage(src) {
+  window.open(src, '_blank');
 }
 
 // Keyboard navigation
@@ -3127,17 +3244,47 @@ function showKeyboardHelp() {
 
 <!-- Bottom Navigation Bar -->
 <nav class="bottom-nav">
-  <a href="/viewer" class="bottom-nav-item">
-    <span class="nav-icon">📊</span>
-    <span class="nav-label">Dashboard</span>
+  <a href="/" class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span class="nav-label">Home</span>
   </a>
-  <a href="/library" class="bottom-nav-item">
-    <span class="nav-icon">📚</span>
+  <a href="/viewer" class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+    </svg>
+    <span class="nav-label">Reconcile</span>
+  </a>
+  <a href="/library" class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+      <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+    </svg>
     <span class="nav-label">Library</span>
   </a>
-  <a href="/incoming" class="bottom-nav-item active">
-    <span class="nav-icon">📥</span>
+  <a href="/scanner" class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    <span class="nav-label">Scan</span>
+  </a>
+  <a href="/incoming" class="nav-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+      <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+    </svg>
     <span class="nav-label">Inbox</span>
+  </a>
+  <a href="/reports" class="nav-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    <span class="nav-label">Reports</span>
   </a>
 </nav>
 
@@ -3148,7 +3295,7 @@ function showKeyboardHelp() {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 65px;
+  height: 60px;
   background: linear-gradient(180deg, #0a0f15 0%, #050709 100%);
   border-top: 1px solid var(--edge);
   display: flex;
@@ -3159,38 +3306,45 @@ function showKeyboardHelp() {
   box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
 }
 
-.bottom-nav-item {
+.nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 2px;
+  padding: 6px 12px;
+  border-radius: 8px;
   text-decoration: none;
-  color: var(--muted);
-  padding: 8px 20px;
-  border-radius: 12px;
+  color: var(--text-secondary, #8b9cb3);
   transition: all 0.2s ease;
-  min-width: 70px;
+  position: relative;
 }
 
-.bottom-nav-item:hover {
-  color: var(--ink);
+.nav-item:hover {
   background: rgba(255,255,255,0.05);
 }
 
-.bottom-nav-item.active {
-  color: var(--brand);
-  background: rgba(0,255,136,0.1);
+.nav-item.active {
+  background: var(--accent-dim, rgba(0,255,136,0.1));
 }
 
-.bottom-nav-item .nav-icon {
-  font-size: 22px;
-  margin-bottom: 2px;
+.nav-item.active svg {
+  color: var(--accent, #00ff88);
 }
 
-.bottom-nav-item .nav-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
+.nav-item.active .nav-label {
+  color: var(--accent, #00ff88);
+}
+
+.nav-item svg {
+  width: 22px;
+  height: 22px;
+  color: var(--text-secondary, #8b9cb3);
+}
+
+.nav-label {
+  font-size: 10px;
+  color: var(--text-secondary, #8b9cb3);
+  font-weight: 500;
 }
 
 /* Add padding to content so it doesn't get hidden behind bottom nav */
