@@ -18151,6 +18151,60 @@ def clean_incoming_false_positives():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/cleanup", methods=["POST"])
+@login_required
+def cleanup_inbox():
+    """
+    Comprehensive inbox cleanup and re-matching.
+
+    Applies stricter filters to existing pending items:
+    - Rejects items without valid amount
+    - Rejects items from spam domains
+    - Rejects generic subjects from untrusted domains
+    - Rejects items with confidence < 80%
+    - Re-runs matching on valid items using best-match scoring
+    """
+    try:
+        from incoming_receipts_service import cleanup_inbox_and_rematch, get_inbox_stats
+
+        print("🧹 Running inbox cleanup and re-matching...")
+
+        # Get stats before
+        before_stats = get_inbox_stats()
+
+        # Run cleanup
+        results = cleanup_inbox_and_rematch()
+
+        # Get stats after
+        after_stats = get_inbox_stats()
+
+        return jsonify({
+            'ok': True,
+            'message': 'Inbox cleanup complete',
+            'results': {
+                'evaluated': results['total'],
+                'rejected': {
+                    'no_amount': results['rejected_no_amount'],
+                    'spam_domain': results['rejected_spam_domain'],
+                    'generic_subject': results['rejected_generic_subject'],
+                    'low_confidence': results['rejected_low_confidence'],
+                    'total': (results['rejected_no_amount'] + results['rejected_spam_domain'] +
+                              results['rejected_generic_subject'] + results['rejected_low_confidence'])
+                },
+                'kept_valid': results['kept_valid'],
+                'matched': results['matched']
+            },
+            'before': before_stats,
+            'after': after_stats
+        })
+
+    except Exception as e:
+        print(f"❌ Error during inbox cleanup: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/whitelist", methods=["GET"])
 @login_required
 def get_merchant_whitelist():

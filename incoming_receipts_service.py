@@ -1690,3 +1690,184 @@ if __name__ == '__main__':
                 total_found += 1
 
     print(f"\n✅ Found {total_found} new receipts")
+
+
+# =============================================================================
+# INBOX CLEANUP & RE-MATCHING
+# =============================================================================
+
+def cleanup_inbox_and_rematch():
+    """
+    Clean up existing inbox by:
+    1. Re-evaluating items against stricter filters
+    2. Auto-rejecting items that don't pass
+    3. Re-running matching on valid items
+
+    Returns: dict with cleanup statistics
+    """
+    print("\n" + "="*60)
+    print("🧹 INBOX CLEANUP & RE-MATCHING")
+    print("="*60)
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Get all pending inbox items
+    cursor.execute('''
+        SELECT id, subject, from_email, from_domain, body_snippet,
+               has_attachment, amount, merchant, confidence_score, status
+        FROM incoming_receipts
+        WHERE status = 'pending'
+        ORDER BY created_at DESC
+    ''')
+
+    items = cursor.fetchall()
+    print(f"\n📥 Found {len(items)} pending inbox items to evaluate\n")
+
+    stats = {
+        'total': len(items),
+        'rejected_no_amount': 0,
+        'rejected_spam_domain': 0,
+        'rejected_generic_subject': 0,
+        'rejected_low_confidence': 0,
+        'rejected_no_receipt_content': 0,
+        'kept_valid': 0,
+        'matched': 0,
+        'match_improved': 0
+    }
+
+    for item in items:
+        item_id = item['id']
+        subject = item['subject'] or ''
+        from_email = item['from_email'] or ''
+        from_domain = item['from_domain'] or ''
+        body_snippet = item['body_snippet'] or ''
+        has_attachment = item['has_attachment']
+        amount = item['amount']
+        merchant = item['merchant']
+        old_confidence = item['confidence_score'] or 0
+
+        subject_lower = subject.lower()
+        rejection_reason = None
+
+        # === FILTER 1: No valid amount ===
+        if not amount or float(amount) <= 0:
+            rejection_reason = 'no_valid_amount'
+            stats['rejected_no_amount'] += 1
+
+        # === FILTER 2: Spam domain ===
+        if not rejection_reason:
+            for spam_domain in SPAM_SENDER_DOMAINS:
+                if spam_domain in from_domain.lower() or spam_domain in from_email.lower():
+                    rejection_reason = f'spam_domain:{spam_domain}'
+                    stats['rejected_spam_domain'] += 1
+                    break
+
+        # === FILTER 3: Generic subject from untrusted domain ===
+        if not rejection_reason:
+            generic_subjects = [
+                'account payment', 'payment', 'notification', 'update', 'message', 'alert',
+                'confirmation', 'your order', 'order update', 'shipping update',
+                'delivery', 'tracking', 'status update', 'thank you', 'thanks'
+            ]
+            is_trusted = any(svc in from_domain for svc in PERSONAL_SERVICE_DOMAINS)
+            if subject_lower in generic_subjects and not is_trusted:
+                rejection_reason = f'generic_subject_untrusted:{subject_lower}'
+                stats['rejected_generic_subject'] += 1
+
+        # === FILTER 4: Re-calculate confidence ===
+        if not rejection_reason:
+            new_confidence = calculate_receipt_confidence(subject, from_email, body_snippet, has_attachment)
+            if new_confidence < 80:
+                rejection_reason = f'low_confidence:{new_confidence}'
+                stats['rejected_low_confidence'] += 1
+
+        # === REJECT OR KEEP ===
+        if rejection_reason:
+            cursor.execute('''
+                UPDATE incoming_receipts
+                SET status = 'auto_rejected',
+                    rejection_reason = %s,
+                    reviewed_at = NOW()
+                WHERE id = %s
+            ''', (rejection_reason, item_id))
+            print(f"   ❌ Rejected #{item_id}: {rejection_reason[:50]}")
+        else:
+            stats['kept_valid'] += 1
+
+            # === RE-RUN MATCHING ===
+            if merchant and amount:
+                # Try to find a better match
+                match_id, has_receipt, needs_receipt = find_matching_transaction(
+                    merchant, float(amount), None
+                )
+
+                if match_id and needs_receipt:
+                    # Update with new match
+                    cursor.execute('''
+                        UPDATE incoming_receipts
+                        SET matched_transaction_id = %s,
+                            match_type = 'needs_receipt'
+                        WHERE id = %s
+                    ''', (match_id, item_id))
+                    stats['matched'] += 1
+                    print(f"   ✅ Kept #{item_id}: {merchant[:30]} ${amount} → Matched to TX #{match_id}")
+                else:
+                    print(f"   ✓ Kept #{item_id}: {merchant[:30]} ${amount} (no match found)")
+            else:
+                print(f"   ✓ Kept #{item_id}: Valid receipt (no merchant/amount for matching)")
+
+    conn.commit()
+    conn.close()
+
+    # === SUMMARY ===
+    print("\n" + "="*60)
+    print("📊 CLEANUP SUMMARY")
+    print("="*60)
+    print(f"   Total evaluated:        {stats['total']}")
+    print(f"   ❌ Rejected (no amount): {stats['rejected_no_amount']}")
+    print(f"   ❌ Rejected (spam):      {stats['rejected_spam_domain']}")
+    print(f"   ❌ Rejected (generic):   {stats['rejected_generic_subject']}")
+    print(f"   ❌ Rejected (low conf):  {stats['rejected_low_confidence']}")
+    total_rejected = (stats['rejected_no_amount'] + stats['rejected_spam_domain'] +
+                      stats['rejected_generic_subject'] + stats['rejected_low_confidence'])
+    print(f"   ─────────────────────────")
+    print(f"   Total rejected:         {total_rejected}")
+    print(f"   ✅ Kept valid:          {stats['kept_valid']}")
+    print(f"   📎 Matched to TX:       {stats['matched']}")
+    print("="*60 + "\n")
+
+    return stats
+
+
+def get_inbox_stats():
+    """Get current inbox statistics"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+            SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted,
+            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+            SUM(CASE WHEN status = 'auto_rejected' THEN 1 ELSE 0 END) as auto_rejected,
+            SUM(CASE WHEN status = 'auto_matched' THEN 1 ELSE 0 END) as auto_matched,
+            SUM(CASE WHEN matched_transaction_id IS NOT NULL THEN 1 ELSE 0 END) as with_match,
+            SUM(CASE WHEN amount IS NULL OR amount = 0 THEN 1 ELSE 0 END) as no_amount
+        FROM incoming_receipts
+    ''')
+
+    result = cursor.fetchone()
+    conn.close()
+
+    return {
+        'total': result['total'] or 0,
+        'pending': result['pending'] or 0,
+        'accepted': result['accepted'] or 0,
+        'rejected': result['rejected'] or 0,
+        'auto_rejected': result['auto_rejected'] or 0,
+        'auto_matched': result['auto_matched'] or 0,
+        'with_match': result['with_match'] or 0,
+        'no_amount': result['no_amount'] or 0
+    }
