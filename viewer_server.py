@@ -3940,8 +3940,10 @@ def get_transactions():
 
     if USE_DATABASE and db:
         try:
-            # Check if we should show submitted transactions
+            # Check query params
             show_submitted = request.args.get('show_submitted', 'false').lower() == 'true'
+            unreported_only = request.args.get('unreported', 'false').lower() == 'true'
+            limit = request.args.get('limit', type=int)
 
             # Use MySQL-specific or SQLite-specific code path
             if hasattr(db, 'use_mysql') and db.use_mysql:
@@ -3949,7 +3951,20 @@ def get_transactions():
                 conn = db.get_connection()
                 cursor = conn.cursor()  # Already uses DictCursor from get_connection()
 
-                if show_submitted:
+                # Build query based on filters
+                if unreported_only:
+                    # For mobile swipe - only unreported, non-rejected transactions
+                    query = '''
+                        SELECT * FROM transactions
+                        WHERE (report_id IS NULL OR report_id = '')
+                        AND (review_status IS NULL OR review_status != 'rejected')
+                        AND (already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')
+                        ORDER BY chase_date DESC, _index DESC
+                    '''
+                    if limit:
+                        query += f' LIMIT {int(limit)}'
+                    cursor.execute(query)
+                elif show_submitted:
                     cursor.execute('SELECT * FROM transactions ORDER BY chase_date DESC, _index DESC')
                 else:
                     cursor.execute('''
@@ -14369,6 +14384,221 @@ def serve_report_builder():
     return send_from_directory(BASE_DIR, "report_builder.html")
 
 
+@app.route("/mobile-swipe")
+@app.route("/mobile_swipe.html")
+@login_required
+def serve_mobile_swipe():
+    """Serve the Mobile Swipe Expense Processor - Tinder-style swiping for expenses."""
+    return send_from_directory(BASE_DIR, "mobile_swipe.html")
+
+
+# =============================================================================
+# MOBILE SWIPE APIs
+# =============================================================================
+
+@app.route("/api/reports", methods=["GET"])
+@login_required
+def api_reports_list():
+    """List all reports (for mobile swipe report selection)."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        reports = db.get_all_reports()
+        # Transform to simpler format for mobile
+        result = []
+        for r in reports:
+            result.append({
+                'id': r.get('report_id') or r.get('id'),
+                'name': r.get('report_name') or r.get('name') or 'Untitled',
+                'total': float(r.get('total_amount') or 0),
+                'count': r.get('expense_count') or 0,
+                'status': r.get('status') or 'draft',
+                'created_at': str(r.get('created_at') or '')
+            })
+        return jsonify({'ok': True, 'reports': result})
+    except Exception as e:
+        print(f"❌ API reports list error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/reports", methods=["POST"])
+@login_required
+def api_reports_create():
+    """Create a new report (for mobile swipe)."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        name = data.get('name', f"Report {datetime.now().strftime('%Y-%m-%d')}")
+        status = data.get('status', 'draft')
+        business_type = data.get('business_type', '')
+
+        # Generate report ID
+        import uuid
+        report_id = f"RPT-{uuid.uuid4().hex[:8].upper()}"
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO expense_reports (report_id, report_name, business_type, status, created_at)
+            VALUES (%s, %s, %s, %s, NOW())
+        ''', (report_id, name, business_type, status))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'id': report_id,
+            'name': name,
+            'status': status,
+            'total': 0,
+            'count': 0
+        })
+    except Exception as e:
+        print(f"❌ API report create error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/reports/<report_id>/add", methods=["POST"])
+@login_required
+def api_report_add_item(report_id):
+    """Add a transaction to a report."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        transaction_id = data.get('transaction_id')
+
+        if not transaction_id:
+            return jsonify({'ok': False, 'error': 'transaction_id required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Update the transaction to link it to this report
+        cursor.execute('''
+            UPDATE transactions
+            SET report_id = %s
+            WHERE _index = %s
+        ''', (report_id, transaction_id))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'added': transaction_id})
+    except Exception as e:
+        print(f"❌ API report add error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/reports/<report_id>/remove", methods=["POST"])
+@login_required
+def api_report_remove_item(report_id):
+    """Remove a transaction from a report."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        transaction_id = data.get('transaction_id')
+
+        if not transaction_id:
+            return jsonify({'ok': False, 'error': 'transaction_id required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Remove report_id from the transaction
+        cursor.execute('''
+            UPDATE transactions
+            SET report_id = NULL
+            WHERE _index = %s AND report_id = %s
+        ''', (transaction_id, report_id))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'removed': transaction_id})
+    except Exception as e:
+        print(f"❌ API report remove error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/reports/<report_id>/items", methods=["GET"])
+@login_required
+def api_report_items(report_id):
+    """Get all items in a report."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        expenses = db.get_report_expenses(report_id)
+
+        items = []
+        for exp in expenses:
+            items.append({
+                'id': exp.get('_index'),
+                'Index': exp.get('_index'),
+                'merchant': exp.get('mi_merchant') or exp.get('chase_description', ''),
+                'Merchant': exp.get('mi_merchant') or exp.get('chase_description', ''),
+                'amount': abs(float(exp.get('chase_amount') or 0)),
+                'Amount': abs(float(exp.get('chase_amount') or 0)),
+                'date': exp.get('chase_date', ''),
+                'Date': exp.get('chase_date', ''),
+                'category': exp.get('mi_category') or exp.get('category', ''),
+                'ai_category': exp.get('mi_category') or exp.get('category', ''),
+                'ai_note': exp.get('ai_note', ''),
+                'notes': exp.get('notes', ''),
+                'receipt_image_path': exp.get('r2_url') or exp.get('receipt_file', ''),
+                'receipt_url': exp.get('r2_url') or exp.get('receipt_file', ''),
+                'business_type': exp.get('business_type', '')
+            })
+
+        total = sum(i['amount'] for i in items)
+
+        return jsonify({
+            'ok': True,
+            'items': items,
+            'count': len(items),
+            'total': round(total, 2)
+        })
+    except Exception as e:
+        print(f"❌ API report items error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/transactions/<int:tx_id>/reject", methods=["POST"])
+@login_required
+def api_transaction_reject(tx_id):
+    """Mark a transaction as rejected/hidden."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Mark as rejected by setting review_status
+        cursor.execute('''
+            UPDATE transactions
+            SET review_status = 'rejected'
+            WHERE _index = %s
+        ''', (tx_id,))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'rejected': tx_id})
+    except Exception as e:
+        print(f"❌ API transaction reject error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 # =============================================================================
 # ENHANCED RECEIPT LIBRARY - TAGS, FAVORITES, ANNOTATIONS, COLLECTIONS
 # =============================================================================
@@ -16323,6 +16553,45 @@ def accept_incoming_receipt():
 
         print(f"✅ Accepted receipt {receipt_id} → transaction {transaction_id} ({action})")
 
+        # === AUTO AI CATEGORIZATION & NOTE GENERATION ===
+        ai_result = None
+        if action == 'created' and transaction_id:
+            try:
+                print(f"   🤖 Running AI auto-categorization...")
+                # Call internal function directly to categorize and generate note
+                cat_result = gemini_categorize_transaction(merchant, amount, trans_date, '')
+                note_result = gemini_generate_ai_note(
+                    merchant, amount, trans_date,
+                    cat_result.get('category', ''),
+                    cat_result.get('business_type', 'Down Home')
+                )
+
+                # Prepare updates
+                ai_updates = {}
+                if cat_result.get('category'):
+                    ai_updates['category'] = cat_result['category']
+                if cat_result.get('business_type'):
+                    ai_updates['Business Type'] = cat_result['business_type']
+                if note_result.get('note'):
+                    ai_updates['AI Note'] = note_result['note']
+
+                # Save to database and DataFrame
+                if ai_updates:
+                    update_row_by_index(transaction_id, ai_updates, source='ai_auto_on_accept')
+                    print(f"   ✓ AI categorized as: {cat_result.get('business_type', 'N/A')} / {cat_result.get('category', 'N/A')}")
+                    if note_result.get('note'):
+                        print(f"   ✓ AI note: {note_result['note'][:50]}...")
+
+                ai_result = {
+                    'category': cat_result.get('category'),
+                    'business_type': cat_result.get('business_type'),
+                    'note': note_result.get('note'),
+                    'confidence': cat_result.get('confidence', 0)
+                }
+            except Exception as ai_err:
+                print(f"   ⚠️ AI processing failed (non-fatal): {ai_err}")
+                ai_result = {'error': str(ai_err)}
+
         # === AUTO-SPLIT APPLE RECEIPTS ===
         # Check if this is an Apple receipt that needs splitting into personal/business
         apple_split_result = None
@@ -16344,7 +16613,8 @@ def accept_incoming_receipt():
             'receipt_id': receipt_id,
             'action': action,
             'receipt_files': receipt_files,
-            'apple_split': apple_split_result
+            'apple_split': apple_split_result,
+            'ai_processing': ai_result
         })
 
     except Exception as e:
@@ -17657,16 +17927,17 @@ def refetch_gmail_dates():
 def scan_incoming_receipts():
     """
     Trigger a manual scan of Gmail accounts for new receipts.
+    Uses the INTELLIGENT scanner with merchant whitelist for zero false positives.
     Also runs auto-match after scanning to attach receipts to transactions.
 
     Body (optional):
     {
         "accounts": ["kaplan.brian@gmail.com"],  // specific accounts, or leave empty for all
         "since_date": "2024-09-01",  // optional date filter
-        "auto_match": true  // automatically match receipts after scanning (default: true)
+        "auto_match": true,  // automatically match receipts after scanning (default: true)
+        "use_intelligent": true  // use intelligent whitelist scanner (default: true)
     }
     """
-    import sqlite3
     from datetime import datetime
 
     # Auth: admin_key OR login
@@ -17680,21 +17951,13 @@ def scan_incoming_receipts():
         if not USE_DATABASE or not db:
             return jsonify({
                 'ok': False,
-                'error': 'SQLite not available'
+                'error': 'Database not available'
             }), 500
 
         data = request.json or {}
         specific_accounts = data.get('accounts', [])
-        since_date = data.get('since_date', '2024-09-01')
-
-        # Import the scanning functions
-        try:
-            from incoming_receipts_service import scan_gmail_for_new_receipts, save_incoming_receipt
-        except ImportError as e:
-            return jsonify({
-                'ok': False,
-                'error': f'incoming_receipts_service.py not found: {e}'
-            }), 500
+        since_date = data.get('since_date')
+        use_intelligent = data.get('use_intelligent', True)
 
         # Default accounts
         all_accounts = [
@@ -17706,39 +17969,76 @@ def scan_incoming_receipts():
         # Use specific accounts if provided, otherwise all
         accounts_to_scan = specific_accounts if specific_accounts else all_accounts
 
-        print(f"🔍 Scanning {len(accounts_to_scan)} Gmail account(s) for new receipts...")
-
-        results = {
-            'scanned_accounts': [],
-            'total_found': 0,
-            'total_new': 0,
-            'errors': []
-        }
-
-        for account in accounts_to_scan:
+        # Use intelligent scanner (whitelist-based) by default
+        if use_intelligent:
             try:
-                print(f"\n📧 Scanning {account}...")
-                receipts = scan_gmail_for_new_receipts(account, since_date)
+                from incoming_receipts_service import run_intelligent_scan
+                print(f"🧠 Running INTELLIGENT scan (merchant whitelist)...")
 
-                new_count = 0
-                for receipt in receipts:
-                    receipt_id = save_incoming_receipt(receipt)
-                    if receipt_id:
-                        new_count += 1
+                scan_results = run_intelligent_scan(
+                    accounts=accounts_to_scan,
+                    since_date=since_date,
+                    save=True
+                )
 
-                results['scanned_accounts'].append({
-                    'account': account,
-                    'found': len(receipts),
-                    'new': new_count
-                })
+                results = {
+                    'scanner': 'intelligent_v2',
+                    'scanned_accounts': accounts_to_scan,
+                    'total_found': scan_results['total'],
+                    'total_new': scan_results['saved'],
+                    'errors': []
+                }
 
-                results['total_found'] += len(receipts)
-                results['total_new'] += new_count
+            except ImportError as e:
+                return jsonify({
+                    'ok': False,
+                    'error': f'Intelligent scanner not available: {e}'
+                }), 500
 
-            except Exception as scan_error:
-                error_msg = f"Error scanning {account}: {str(scan_error)}"
-                print(f"   ❌ {error_msg}")
-                results['errors'].append(error_msg)
+        else:
+            # Fall back to legacy scanner
+            try:
+                from incoming_receipts_service import scan_gmail_for_new_receipts, save_incoming_receipt
+            except ImportError as e:
+                return jsonify({
+                    'ok': False,
+                    'error': f'incoming_receipts_service.py not found: {e}'
+                }), 500
+
+            print(f"🔍 Running LEGACY scan (keyword-based)...")
+
+            results = {
+                'scanner': 'legacy',
+                'scanned_accounts': [],
+                'total_found': 0,
+                'total_new': 0,
+                'errors': []
+            }
+
+            for account in accounts_to_scan:
+                try:
+                    print(f"\n📧 Scanning {account}...")
+                    receipts = scan_gmail_for_new_receipts(account, since_date or '2024-09-01')
+
+                    new_count = 0
+                    for receipt in receipts:
+                        receipt_id = save_incoming_receipt(receipt)
+                        if receipt_id:
+                            new_count += 1
+
+                    results['scanned_accounts'].append({
+                        'account': account,
+                        'found': len(receipts),
+                        'new': new_count
+                    })
+
+                    results['total_found'] += len(receipts)
+                    results['total_new'] += new_count
+
+                except Exception as scan_error:
+                    error_msg = f"Error scanning {account}: {str(scan_error)}"
+                    print(f"   ❌ {error_msg}")
+                    results['errors'].append(error_msg)
 
         print(f"\n✅ Scan complete: {results['total_new']} new receipts added")
 
@@ -17771,6 +18071,254 @@ def scan_incoming_receipts():
 
     except Exception as e:
         print(f"❌ Error during scan: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/init-whitelist", methods=["POST"])
+@api_key_required
+def init_merchant_whitelist():
+    """
+    Initialize the merchant email domains whitelist table.
+    This creates the table and seeds it with known merchant domains.
+
+    Admin key required.
+    """
+    try:
+        from receipt_intelligence import (
+            init_merchant_email_domains_table,
+            seed_merchant_email_domains,
+            MERCHANT_EMAIL_MAPPING
+        )
+
+        print("🔧 Initializing merchant email domains whitelist...")
+
+        # Create table
+        init_merchant_email_domains_table()
+
+        # Seed with known merchants
+        count = seed_merchant_email_domains()
+
+        return jsonify({
+            'ok': True,
+            'message': f'Initialized whitelist with {count} domain mappings',
+            'total_merchants': len(MERCHANT_EMAIL_MAPPING),
+            'total_domains': count
+        })
+
+    except Exception as e:
+        print(f"❌ Error initializing whitelist: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/clean-false-positives", methods=["POST"])
+@api_key_required
+def clean_incoming_false_positives():
+    """
+    Clean existing false positives from incoming_receipts table.
+    Removes:
+    - All rejected receipts
+    - Low confidence receipts (< 70%)
+    - Receipts from blocked domains
+
+    Admin key required.
+    """
+    try:
+        from receipt_intelligence import clean_false_positives, BLOCKED_DOMAINS
+
+        print("🧹 Cleaning false positives from incoming_receipts...")
+
+        results = clean_false_positives()
+
+        return jsonify({
+            'ok': True,
+            'message': 'Cleaned false positives',
+            'deleted': {
+                'rejected': results['deleted_rejected'],
+                'low_confidence': results['deleted_low_confidence'],
+                'blocked_domains': results['deleted_blocked_domain'],
+                'total': results['deleted_rejected'] + results['deleted_low_confidence'] + results['deleted_blocked_domain']
+            },
+            'remaining_pending': results['remaining']
+        })
+
+    except Exception as e:
+        print(f"❌ Error cleaning false positives: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/whitelist", methods=["GET"])
+@login_required
+def get_merchant_whitelist():
+    """
+    Get the current merchant email domains whitelist.
+    Returns all known merchant domains and their configuration.
+    """
+    try:
+        from receipt_intelligence import MERCHANT_EMAIL_MAPPING, BLOCKED_DOMAINS
+
+        # Format for frontend
+        whitelist = []
+        for merchant_name, config in MERCHANT_EMAIL_MAPPING.items():
+            whitelist.append({
+                'merchant': merchant_name,
+                'domains': config['domains'],
+                'is_subscription': config.get('is_subscription', False),
+                'category': config.get('category', 'General'),
+                'amount_range': config.get('amount_range', [0.01, 50000.00])
+            })
+
+        return jsonify({
+            'ok': True,
+            'whitelist': whitelist,
+            'total_merchants': len(whitelist),
+            'total_domains': sum(len(m['domains']) for m in whitelist),
+            'blocked_domains': list(BLOCKED_DOMAINS)[:50]  # Sample of blocked
+        })
+
+    except Exception as e:
+        print(f"❌ Error getting whitelist: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/add-merchant-domain", methods=["POST"])
+@api_key_required
+def add_merchant_domain():
+    """
+    Add a new merchant domain to the whitelist.
+    Used when accepting a receipt from an unknown domain.
+
+    Body:
+    {
+        "domain": "newmerchant.com",
+        "merchant_name": "New Merchant",
+        "is_subscription": false,
+        "category": "Software & Subscriptions"
+    }
+    """
+    try:
+        from receipt_intelligence import add_learned_domain
+
+        data = request.json or {}
+        domain = data.get('domain', '').lower().strip()
+        merchant_name = data.get('merchant_name', '').strip()
+
+        if not domain or not merchant_name:
+            return jsonify({
+                'ok': False,
+                'error': 'domain and merchant_name are required'
+            }), 400
+
+        success = add_learned_domain(
+            domain=domain,
+            merchant_name=merchant_name,
+            is_subscription=data.get('is_subscription', False),
+            category=data.get('category', 'General')
+        )
+
+        if success:
+            return jsonify({
+                'ok': True,
+                'message': f'Added {domain} for {merchant_name}',
+                'domain': domain,
+                'merchant_name': merchant_name
+            })
+        else:
+            return jsonify({
+                'ok': False,
+                'error': 'Failed to add domain'
+            }), 500
+
+    except Exception as e:
+        print(f"❌ Error adding merchant domain: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/stats", methods=["GET"])
+@login_required
+def get_incoming_stats():
+    """
+    Get statistics about incoming receipts system.
+    Shows whitelist coverage, detection rates, etc.
+    """
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        stats = {}
+
+        # Get counts by status
+        cursor.execute("""
+            SELECT status, COUNT(*) as count
+            FROM incoming_receipts
+            GROUP BY status
+        """)
+        status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
+        stats['by_status'] = status_counts
+
+        # Get counts by confidence score ranges
+        cursor.execute("""
+            SELECT
+                CASE
+                    WHEN confidence_score >= 90 THEN 'high_90_100'
+                    WHEN confidence_score >= 70 THEN 'medium_70_89'
+                    WHEN confidence_score >= 50 THEN 'low_50_69'
+                    ELSE 'very_low_0_49'
+                END as confidence_range,
+                COUNT(*) as count
+            FROM incoming_receipts
+            WHERE status = 'pending'
+            GROUP BY confidence_range
+        """)
+        confidence_counts = {row['confidence_range']: row['count'] for row in cursor.fetchall()}
+        stats['pending_by_confidence'] = confidence_counts
+
+        # Get top domains
+        cursor.execute("""
+            SELECT from_domain, COUNT(*) as count
+            FROM incoming_receipts
+            WHERE status = 'pending'
+            GROUP BY from_domain
+            ORDER BY count DESC
+            LIMIT 20
+        """)
+        stats['top_pending_domains'] = [
+            {'domain': row['from_domain'], 'count': row['count']}
+            for row in cursor.fetchall()
+        ]
+
+        # Get subscription vs non-subscription
+        cursor.execute("""
+            SELECT is_subscription, COUNT(*) as count
+            FROM incoming_receipts
+            WHERE status = 'pending'
+            GROUP BY is_subscription
+        """)
+        sub_counts = cursor.fetchall()
+        stats['subscriptions'] = {
+            'subscription': next((r['count'] for r in sub_counts if r['is_subscription']), 0),
+            'one_time': next((r['count'] for r in sub_counts if not r['is_subscription']), 0)
+        }
+
+        return_db_connection(conn)
+
+        # Add whitelist info
+        from receipt_intelligence import MERCHANT_EMAIL_MAPPING, BLOCKED_DOMAINS
+        stats['whitelist'] = {
+            'total_merchants': len(MERCHANT_EMAIL_MAPPING),
+            'blocked_domains': len(BLOCKED_DOMAINS)
+        }
+
+        return jsonify({
+            'ok': True,
+            'stats': stats
+        })
+
+    except Exception as e:
+        print(f"❌ Error getting stats: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 

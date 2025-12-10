@@ -1096,6 +1096,100 @@
       font-weight: 600;
     }
 
+    /* Filter Chips */
+    .history-filters {
+      display: flex;
+      gap: 8px;
+      padding: 0 0 16px 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .history-filters::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .filter-chip:active {
+      transform: scale(0.95);
+    }
+
+    .filter-chip.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+    }
+
+    .filter-chip svg {
+      opacity: 0.7;
+    }
+
+    .filter-chip.active svg {
+      opacity: 1;
+    }
+
+    .filter-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .filter-dot.pending {
+      background: var(--warning);
+    }
+
+    .filter-dot.accepted {
+      background: var(--success);
+    }
+
+    /* Refresh Button */
+    .refresh-inbox-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px dashed var(--border);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .refresh-inbox-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .refresh-inbox-btn:active {
+      transform: scale(0.98);
+    }
+
+    .refresh-inbox-btn.loading svg {
+      animation: spin 1s linear infinite;
+    }
+
     .history-list {
       display: flex;
       flex-direction: column;
@@ -1173,6 +1267,79 @@
     .history-status.pending {
       background: rgba(255, 170, 0, 0.15);
       color: var(--warning);
+    }
+
+    .history-status.accepted,
+    .history-status.synced {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .history-status.rejected {
+      background: rgba(255, 68, 68, 0.15);
+      color: var(--error);
+    }
+
+    /* History Item Status Border */
+    .history-item.pending {
+      border-left: 3px solid var(--warning);
+    }
+
+    .history-item.accepted,
+    .history-item.synced {
+      border-left: 3px solid var(--accent);
+    }
+
+    .history-item.rejected {
+      border-left: 3px solid var(--error);
+      opacity: 0.7;
+    }
+
+    /* Source Icon */
+    .history-source {
+      display: flex;
+      align-items: center;
+      opacity: 0.6;
+    }
+
+    .history-source svg {
+      display: block;
+    }
+
+    /* Thumbnail Placeholder */
+    .history-thumb-placeholder {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    /* Confidence Badge */
+    .confidence-badge {
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .confidence-badge.high {
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--accent);
+    }
+
+    .confidence-badge.medium {
+      background: rgba(255, 170, 0, 0.15);
+      color: var(--warning);
+    }
+
+    .confidence-badge.low {
+      background: rgba(255, 68, 68, 0.15);
+      color: var(--error);
     }
 
     /* Receipt Detail Modal */
@@ -2383,7 +2550,7 @@
     <!-- History View -->
     <section class="history-view" id="history-view">
       <div class="history-header">
-        <h2>Recent</h2>
+        <h2>Inbox</h2>
         <div class="history-stats">
           <div class="stat">
             <div class="stat-value" id="stat-count">0</div>
@@ -2395,6 +2562,39 @@
           </div>
         </div>
       </div>
+      <!-- Filter Chips -->
+      <div class="history-filters" id="history-filters">
+        <button class="filter-chip active" data-filter="all" onclick="setHistoryFilter('all')">All</button>
+        <button class="filter-chip" data-filter="pending" onclick="setHistoryFilter('pending')">
+          <span class="filter-dot pending"></span>Pending
+        </button>
+        <button class="filter-chip" data-filter="accepted" onclick="setHistoryFilter('accepted')">
+          <span class="filter-dot accepted"></span>Accepted
+        </button>
+        <button class="filter-chip" data-filter="inbox" onclick="setHistoryFilter('inbox')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+            <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+          </svg>
+          Email
+        </button>
+        <button class="filter-chip" data-filter="local" onclick="setHistoryFilter('local')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Scanned
+        </button>
+      </div>
+      <!-- Refresh Button -->
+      <button class="refresh-inbox-btn" id="refresh-inbox-btn" onclick="refreshInbox()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"></path>
+        </svg>
+        <span>Refresh</span>
+      </button>
       <div class="history-list" id="history-list"></div>
     </section>
   </main>
@@ -2562,12 +2762,14 @@
     let selectedBusiness = '';
     let matchedTransaction = null;
     let history = [];
+    let inboxReceipts = [];  // Server-side inbox receipts
     let isOnline = navigator.onLine;
     let deferredPrompt = null;
     let db = null;
     let cameraStream = null;
     let flashEnabled = false;
     let currentDetailReceipt = null;
+    let historyFilter = 'all';  // 'all', 'local', 'inbox', 'pending'
 
     // Enhanced capture state
     let captureLocation = null;
@@ -2588,6 +2790,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
       await initDB();
       await loadHistory();
+      await loadInboxReceipts();  // Fetch from server inbox
       setupEventListeners();
       setupPWA();
       setupOfflineDetection();
@@ -2677,6 +2880,136 @@
           resolve();
         };
       });
+    }
+
+    // ========================================
+    // INBOX INTEGRATION
+    // ========================================
+    async function loadInboxReceipts() {
+      if (!isOnline) {
+        console.log('[Inbox] Offline - using cached data');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/incoming/receipts?status=all&limit=100`, {
+          credentials: 'include',
+          headers: {
+            'X-Admin-Key': ADMIN_KEY
+          }
+        });
+
+        if (!response.ok) {
+          console.log('[Inbox] Could not fetch receipts:', response.status);
+          return;
+        }
+
+        const data = await response.json();
+        if (data.ok && data.receipts) {
+          inboxReceipts = data.receipts.map(r => ({
+            id: r.id,
+            serverId: r.id,
+            merchant: r.merchant || 'Unknown',
+            amount: parseFloat(r.amount) || 0,
+            date: r.received_date || r.created_at,
+            timestamp: r.created_at || r.received_date,
+            category: r.category || 'Uncategorized',
+            business: r.business_type || 'Personal',
+            notes: r.description || r.subject || '',
+            thumbnail: r.receipt_url || r.thumbnail || '',
+            status: r.status,  // pending, accepted, rejected
+            synced: true,
+            source: r.source || 'email',
+            fromEmail: r.from_email,
+            subject: r.subject,
+            confidence: r.confidence_score
+          }));
+
+          console.log(`[Inbox] Loaded ${inboxReceipts.length} receipts from server`);
+        }
+      } catch (error) {
+        console.error('[Inbox] Error fetching receipts:', error);
+      }
+    }
+
+    async function pushToInbox(receiptData) {
+      /**
+       * Push a scanned receipt to the server inbox.
+       * This creates an entry in incoming_receipts table.
+       */
+      try {
+        const formData = new FormData();
+        formData.append('file', receiptData.blob, `receipt_${Date.now()}.jpg`);
+        formData.append('merchant', receiptData.merchant || '');
+        formData.append('amount', String(receiptData.amount || 0));
+        formData.append('date', receiptData.date || new Date().toISOString().split('T')[0]);
+        formData.append('category', receiptData.category || '');
+        formData.append('business', receiptData.business || 'Personal');
+        formData.append('notes', receiptData.notes || '');
+        formData.append('source', SOURCE_TAG);
+        formData.append('admin_key', ADMIN_KEY);
+
+        const response = await fetch(`${API_BASE}/mobile-upload`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (result.ok || result.id) {
+          console.log('[Inbox] Receipt pushed to inbox:', result.id);
+          return { success: true, id: result.id, data: result };
+        } else {
+          throw new Error(result.error || 'Upload failed');
+        }
+      } catch (error) {
+        console.error('[Inbox] Error pushing to inbox:', error);
+        return { success: false, error: error.message };
+      }
+    }
+
+    function getFilteredHistory() {
+      /**
+       * Get combined and filtered history from local + inbox.
+       */
+      let combined = [];
+
+      // Add local receipts
+      const localReceipts = history.map(r => ({
+        ...r,
+        sourceType: 'local',
+        displayStatus: r.synced ? 'synced' : 'pending'
+      }));
+
+      // Add inbox receipts (avoid duplicates by serverId)
+      const localServerIds = new Set(history.filter(r => r.serverId).map(r => r.serverId));
+      const inboxOnly = inboxReceipts
+        .filter(r => !localServerIds.has(r.serverId))
+        .map(r => ({
+          ...r,
+          sourceType: 'inbox',
+          displayStatus: r.status
+        }));
+
+      combined = [...localReceipts, ...inboxOnly];
+
+      // Sort by timestamp (newest first)
+      combined.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      // Apply filter
+      switch (historyFilter) {
+        case 'local':
+          return combined.filter(r => r.sourceType === 'local');
+        case 'inbox':
+          return combined.filter(r => r.sourceType === 'inbox');
+        case 'pending':
+          return combined.filter(r => r.status === 'pending' || r.displayStatus === 'pending');
+        case 'accepted':
+          return combined.filter(r => r.status === 'accepted' || r.displayStatus === 'synced');
+        default:
+          return combined;
+      }
     }
 
     // ========================================
@@ -3973,51 +4306,134 @@
     // ========================================
     // HISTORY
     // ========================================
+    function setHistoryFilter(filter) {
+      historyFilter = filter;
+
+      // Update filter chip UI
+      $$('.filter-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.filter === filter);
+      });
+
+      hapticFeedback('light');
+      renderHistory();
+    }
+
+    async function refreshInbox() {
+      const btn = $('refresh-inbox-btn');
+      btn.classList.add('loading');
+
+      try {
+        await loadInboxReceipts();
+        await loadHistory();
+        renderHistory();
+        showToast('Inbox refreshed', 'success');
+      } catch (error) {
+        showToast('Refresh failed', 'error');
+      } finally {
+        btn.classList.remove('loading');
+      }
+    }
+
     function renderHistory() {
-      const todayItems = history.filter(h => {
+      // Get combined & filtered history
+      const filteredItems = getFilteredHistory();
+
+      // Calculate today's stats from ALL items (not filtered)
+      const allItems = getFilteredHistory.call({ historyFilter: 'all' }) || [...history, ...inboxReceipts];
+      const todayItems = allItems.filter(h => {
         const d = new Date(h.timestamp);
         const today = new Date();
         return d.toDateString() === today.toDateString();
       });
 
-      const todayTotal = todayItems.reduce((sum, h) => sum + (h.amount || 0), 0);
+      const todayTotal = todayItems.reduce((sum, h) => sum + (parseFloat(h.amount) || 0), 0);
 
       $('stat-count').textContent = todayItems.length;
       $('stat-total').textContent = '$' + todayTotal.toFixed(0);
 
-      if (history.length === 0) {
+      if (filteredItems.length === 0) {
+        const emptyMessage = historyFilter === 'all'
+          ? 'No receipts yet'
+          : `No ${historyFilter} receipts`;
+        const emptySubtext = historyFilter === 'all'
+          ? 'Scan a receipt or check your email inbox'
+          : 'Try a different filter';
+
         $('history-list').innerHTML = `
           <div class="empty-state">
             <div class="empty-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
+                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+                <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
               </svg>
             </div>
-            <h3>No receipts yet</h3>
-            <p>Scanned receipts will appear here</p>
+            <h3>${emptyMessage}</h3>
+            <p>${emptySubtext}</p>
           </div>
         `;
         return;
       }
 
-      $('history-list').innerHTML = history.slice(0, 30).map((item, index) => `
-        <div class="history-item" onclick="openReceiptDetail(${index})">
-          <img class="history-thumb" src="${item.thumbnail}" alt="" loading="lazy">
-          <div class="history-content">
-            <div class="history-row">
-              <span class="history-merchant">${item.merchant}</span>
-              <span class="history-amount">$${parseFloat(item.amount).toFixed(2)}</span>
-            </div>
-            <div class="history-meta">
-              <span>${formatRelativeDate(item.timestamp)}</span>
-              ${item.business ? `<span>${item.business}</span>` : ''}
-              <span class="history-status ${item.synced ? '' : 'pending'}">${item.synced ? 'In Inbox' : 'Pending'}</span>
+      $('history-list').innerHTML = filteredItems.slice(0, 50).map((item, index) => {
+        // Determine status styling
+        const statusClass = item.status === 'accepted' ? 'accepted'
+          : item.status === 'rejected' ? 'rejected'
+          : item.status === 'pending' || !item.synced ? 'pending'
+          : 'synced';
+
+        const statusText = item.status === 'accepted' ? 'Accepted'
+          : item.status === 'rejected' ? 'Rejected'
+          : item.status === 'pending' ? 'Pending'
+          : !item.synced ? 'Uploading...'
+          : 'In Inbox';
+
+        // Source icon
+        const sourceIcon = item.sourceType === 'inbox' || item.source === 'email'
+          ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+               <polyline points="22,6 12,13 2,6"/>
+             </svg>`
+          : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+               <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+               <circle cx="12" cy="13" r="4"/>
+             </svg>`;
+
+        // Thumbnail or placeholder
+        const thumbSrc = item.thumbnail || item.receipt_url || '';
+        const thumbHtml = thumbSrc
+          ? `<img class="history-thumb" src="${thumbSrc}" alt="" loading="lazy" onerror="this.style.display='none'">`
+          : `<div class="history-thumb-placeholder">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24">
+                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                 <circle cx="8.5" cy="8.5" r="1.5"/>
+                 <polyline points="21 15 16 10 5 21"/>
+               </svg>
+             </div>`;
+
+        // Confidence badge for email receipts
+        const confidenceBadge = item.confidence
+          ? `<span class="confidence-badge ${item.confidence >= 90 ? 'high' : item.confidence >= 70 ? 'medium' : 'low'}">${item.confidence}%</span>`
+          : '';
+
+        return `
+          <div class="history-item ${statusClass}" onclick="openReceiptDetail(${index}, '${item.sourceType || 'local'}')">
+            ${thumbHtml}
+            <div class="history-content">
+              <div class="history-row">
+                <span class="history-merchant">${item.merchant || 'Unknown'}</span>
+                <span class="history-amount">${item.amount ? '$' + parseFloat(item.amount).toFixed(2) : '—'}</span>
+              </div>
+              <div class="history-meta">
+                <span class="history-source">${sourceIcon}</span>
+                <span>${formatRelativeDate(item.timestamp)}</span>
+                ${item.business ? `<span>${item.business}</span>` : ''}
+                <span class="history-status ${statusClass}">${statusText}</span>
+                ${confidenceBadge}
+              </div>
             </div>
           </div>
-          <span class="history-delete-hint">Tap to view</span>
-        </div>
-      `).join('');
+        `;
+      }).join('');
 
       updatePendingBadge();
     }
