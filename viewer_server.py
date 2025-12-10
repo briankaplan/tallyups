@@ -448,10 +448,14 @@ try:
                 'brian@musiccityrodeo.com'
             ]
 
+            # Only scan last 7 days for new receipts (not all history)
+            from datetime import timedelta
+            since_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+
             total_new = 0
             for account in accounts:
                 try:
-                    receipts = scan_gmail_for_new_receipts(account, '2024-09-01')
+                    receipts = scan_gmail_for_new_receipts(account, since_date)
                     for receipt in receipts:
                         if save_incoming_receipt(receipt):
                             total_new += 1

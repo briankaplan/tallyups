@@ -143,6 +143,16 @@ COWORKER_PATTERNS = [
     'netsuite', 'quickbooks', 'internal app', 'app update',  # Business apps
     'meeting', 'call scheduled', 'zoom meeting', 'calendar invite',  # Meetings
     'please review', 'fyi', 'heads up', 're:', 'fwd:',  # Internal comms
+    'hive', 'hive.com', 'keep using',  # Hive project management spam
+]
+
+# Spam/marketing sender domains to auto-reject
+SPAM_SENDER_DOMAINS = [
+    'mailchimp.com', 'sendgrid.net', 'constantcontact.com', 'mailgun.org',
+    'marketing.', 'news.', 'updates.', 'info.', 'promo.',
+    'noreply.', 'no-reply.', 'donotreply.',
+    'hubspot.com', 'mailerlite.com', 'klaviyo.com', 'brevo.com',
+    'mixmax.com', 'intercom.io', 'drip.com', 'convertkit.com'
 ]
 
 # Artist/contract patterns (EXCLUDE these)
@@ -236,6 +246,12 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
     domain = from_email.split('@')[-1] if '@' in from_email else ''
 
     # === STRONG NEGATIVE FILTERS (Auto-reject = 0) ===
+
+    # 0. Spam sender domains (mailchimp, sendgrid, etc.)
+    for spam_domain in SPAM_SENDER_DOMAINS:
+        if spam_domain in domain.lower() or spam_domain in from_email.lower():
+            print(f"      ✗ Rejected: Spam sender domain '{spam_domain}'")
+            return 0
 
     # 1. Forwards and replies
     if subject_lower.startswith('re:') or subject_lower.startswith('fwd:'):
