@@ -4770,7 +4770,7 @@ function renderTable() {
     // MI Enhanced fields
     const miMerchant = row['MI Merchant'] || row['Chase Description'] || '';
     const miCategory = row['MI Category'] || row['Chase Category'] || '';
-    const miDescription = row['MI Description'] || row['Notes'] || '';
+    const miDescription = row['MI Description'] || row['AI Note'] || row['Notes'] || '';
     const isSubscription = row['MI Is Subscription'] === 1;
 
     // Merchant cell with subscription badge
