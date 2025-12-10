@@ -2030,27 +2030,43 @@ def cleanup_inbox_and_rematch():
     cursor.execute('''SELECT id, subject, from_email, from_domain, body_snippet, has_attachment, amount, merchant, confidence_score FROM incoming_receipts WHERE status = 'pending' ORDER BY created_at DESC''')
     items = cursor.fetchall()
     print(f"\n📥 Found {len(items)} pending inbox items to evaluate\n")
-    stats = {'total': len(items), 'rejected_no_amount': 0, 'rejected_spam_domain': 0, 'rejected_generic_subject': 0, 'rejected_low_confidence': 0, 'kept_valid': 0, 'matched': 0}
+    stats = {'total': len(items), 'rejected_no_amount': 0, 'rejected_spam_domain': 0, 'rejected_newsletter': 0, 'rejected_low_confidence': 0, 'kept_valid': 0, 'matched': 0}
+
+    # Stripe-style receipt patterns (keep even without amount - amount is in PDF)
+    stripe_receipt_patterns = ['your receipt from', 'your refund from', 'payment received', 'order confirmation']
+    # Newsletter/marketing patterns to reject
+    newsletter_patterns = ['newsletter', 'weekly digest', 'learns from', 'connect your apps', 'automate your', 'introducing', 'announcing', 'new feature']
+
     for item in items:
         item_id, subject, from_email, from_domain = item['id'], item['subject'] or '', item['from_email'] or '', item['from_domain'] or ''
         body_snippet, has_attachment, amount, merchant = item['body_snippet'] or '', item['has_attachment'], item['amount'], item['merchant']
         subject_lower, rejection_reason = subject.lower(), None
-        if not amount or float(amount) <= 0:
+
+        # Check if this is a Stripe-style receipt (amount in PDF attachment)
+        is_stripe_receipt = any(p in subject_lower for p in stripe_receipt_patterns)
+
+        # Check if this is a newsletter/marketing email
+        is_newsletter = any(p in subject_lower for p in newsletter_patterns)
+        if not is_newsletter and 'updates@' in from_email.lower() and not is_stripe_receipt:
+            is_newsletter = True
+
+        # REJECT newsletters first (even with amount)
+        if is_newsletter:
+            rejection_reason, stats['rejected_newsletter'] = 'newsletter_content', stats['rejected_newsletter'] + 1
+        # Only reject no_amount if NOT a Stripe-style receipt
+        elif (not amount or float(amount) <= 0) and not is_stripe_receipt:
             rejection_reason, stats['rejected_no_amount'] = 'no_valid_amount', stats['rejected_no_amount'] + 1
+
         if not rejection_reason:
             for spam_domain in SPAM_SENDER_DOMAINS:
                 if spam_domain in from_domain.lower() or spam_domain in from_email.lower():
                     rejection_reason, stats['rejected_spam_domain'] = f'spam_domain:{spam_domain}', stats['rejected_spam_domain'] + 1
                     break
-        if not rejection_reason:
-            generic_subjects = ['payment', 'notification', 'update', 'message', 'alert', 'confirmation', 'thank you']
-            is_trusted = any(svc in from_domain for svc in PERSONAL_SERVICE_DOMAINS)
-            if subject_lower in generic_subjects and not is_trusted:
-                rejection_reason, stats['rejected_generic_subject'] = f'generic_subject:{subject_lower}', stats['rejected_generic_subject'] + 1
-        if not rejection_reason:
+        if not rejection_reason and not is_stripe_receipt:
             new_confidence = calculate_receipt_confidence(subject, from_email, body_snippet, has_attachment)
-            if new_confidence < 80:
+            if new_confidence < 70:  # Lower threshold - we want to keep more
                 rejection_reason, stats['rejected_low_confidence'] = f'low_confidence:{new_confidence}', stats['rejected_low_confidence'] + 1
+
         if rejection_reason:
             cursor.execute('UPDATE incoming_receipts SET status = %s, rejection_reason = %s, reviewed_at = NOW() WHERE id = %s', ('auto_rejected', rejection_reason, item_id))
             print(f"   ❌ Rejected #{item_id}: {rejection_reason[:50]}")

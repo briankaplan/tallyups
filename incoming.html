@@ -2451,9 +2451,12 @@ function renderMobileCard(receipt) {
   // Receipt image URL (from Gmail attachment or R2)
   const imageUrl = receipt.receipt_image_url || receipt.preview_url || receipt.r2_url;
 
-  // Gmail link for viewing the original email
+  // Gmail link for viewing the original email - use correct account index
   const emailId = receipt.email_id || '';
-  const gmailUrl = emailId ? `https://mail.google.com/mail/u/0/#inbox/${emailId}` : '';
+  const gmailAccount = receipt.gmail_account || '';
+  // Map gmail accounts to their index (adjust based on your Chrome profile order)
+  const accountIndex = gmailAccount.includes('downhome') ? 1 : gmailAccount.includes('musiccityrodeo') ? 2 : 0;
+  const gmailUrl = emailId ? `https://mail.google.com/mail/u/${accountIndex}/#all/${emailId}` : '';
 
   // If we have an image, show it; otherwise show a styled email preview card
   let imageHTML = '';
@@ -3412,9 +3415,12 @@ function showPreview(receiptId) {
   const imageEl = document.getElementById('preview-receipt-image');
   const previewUrl = receipt.receipt_image_url || receipt.preview_url || receipt.r2_url;
 
-  // Gmail link for viewing the original email
+  // Gmail link for viewing the original email - use correct account index
   const emailId = receipt.email_id || '';
-  const gmailUrl = emailId ? `https://mail.google.com/mail/u/0/#inbox/${emailId}` : '';
+  const gmailAccount = receipt.gmail_account || '';
+  // Map gmail accounts to their index (adjust based on your Chrome profile order)
+  const accountIndex = gmailAccount.includes('downhome') ? 1 : gmailAccount.includes('musiccityrodeo') ? 2 : 0;
+  const gmailUrl = emailId ? `https://mail.google.com/mail/u/${accountIndex}/#all/${emailId}` : '';
 
   if (previewUrl) {
     imageSection.style.display = 'block';
