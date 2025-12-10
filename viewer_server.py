@@ -3940,8 +3940,10 @@ def get_transactions():
 
     if USE_DATABASE and db:
         try:
-            # Check if we should show submitted transactions
+            # Check query params
             show_submitted = request.args.get('show_submitted', 'false').lower() == 'true'
+            unreported_only = request.args.get('unreported', 'false').lower() == 'true'
+            limit = request.args.get('limit', type=int)
 
             # Use MySQL-specific or SQLite-specific code path
             if hasattr(db, 'use_mysql') and db.use_mysql:
@@ -3949,7 +3951,20 @@ def get_transactions():
                 conn = db.get_connection()
                 cursor = conn.cursor()  # Already uses DictCursor from get_connection()
 
-                if show_submitted:
+                # Build query based on filters
+                if unreported_only:
+                    # For mobile swipe - only unreported, non-rejected transactions
+                    query = '''
+                        SELECT * FROM transactions
+                        WHERE (report_id IS NULL OR report_id = '')
+                        AND (review_status IS NULL OR review_status != 'rejected')
+                        AND (already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')
+                        ORDER BY chase_date DESC, _index DESC
+                    '''
+                    if limit:
+                        query += f' LIMIT {int(limit)}'
+                    cursor.execute(query)
+                elif show_submitted:
                     cursor.execute('SELECT * FROM transactions ORDER BY chase_date DESC, _index DESC')
                 else:
                     cursor.execute('''
@@ -14367,6 +14382,221 @@ def serve_library():
 def serve_report_builder():
     """Serve the Report Builder page - focused workflow for building expense reports."""
     return send_from_directory(BASE_DIR, "report_builder.html")
+
+
+@app.route("/mobile-swipe")
+@app.route("/mobile_swipe.html")
+@login_required
+def serve_mobile_swipe():
+    """Serve the Mobile Swipe Expense Processor - Tinder-style swiping for expenses."""
+    return send_from_directory(BASE_DIR, "mobile_swipe.html")
+
+
+# =============================================================================
+# MOBILE SWIPE APIs
+# =============================================================================
+
+@app.route("/api/reports", methods=["GET"])
+@login_required
+def api_reports_list():
+    """List all reports (for mobile swipe report selection)."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        reports = db.get_all_reports()
+        # Transform to simpler format for mobile
+        result = []
+        for r in reports:
+            result.append({
+                'id': r.get('report_id') or r.get('id'),
+                'name': r.get('report_name') or r.get('name') or 'Untitled',
+                'total': float(r.get('total_amount') or 0),
+                'count': r.get('expense_count') or 0,
+                'status': r.get('status') or 'draft',
+                'created_at': str(r.get('created_at') or '')
+            })
+        return jsonify({'ok': True, 'reports': result})
+    except Exception as e:
+        print(f"❌ API reports list error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/reports", methods=["POST"])
+@login_required
+def api_reports_create():
+    """Create a new report (for mobile swipe)."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        name = data.get('name', f"Report {datetime.now().strftime('%Y-%m-%d')}")
+        status = data.get('status', 'draft')
+        business_type = data.get('business_type', '')
+
+        # Generate report ID
+        import uuid
+        report_id = f"RPT-{uuid.uuid4().hex[:8].upper()}"
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO expense_reports (report_id, report_name, business_type, status, created_at)
+            VALUES (%s, %s, %s, %s, NOW())
+        ''', (report_id, name, business_type, status))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'id': report_id,
+            'name': name,
+            'status': status,
+            'total': 0,
+            'count': 0
+        })
+    except Exception as e:
+        print(f"❌ API report create error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/reports/<report_id>/add", methods=["POST"])
+@login_required
+def api_report_add_item(report_id):
+    """Add a transaction to a report."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        transaction_id = data.get('transaction_id')
+
+        if not transaction_id:
+            return jsonify({'ok': False, 'error': 'transaction_id required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Update the transaction to link it to this report
+        cursor.execute('''
+            UPDATE transactions
+            SET report_id = %s
+            WHERE _index = %s
+        ''', (report_id, transaction_id))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'added': transaction_id})
+    except Exception as e:
+        print(f"❌ API report add error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/reports/<report_id>/remove", methods=["POST"])
+@login_required
+def api_report_remove_item(report_id):
+    """Remove a transaction from a report."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        transaction_id = data.get('transaction_id')
+
+        if not transaction_id:
+            return jsonify({'ok': False, 'error': 'transaction_id required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Remove report_id from the transaction
+        cursor.execute('''
+            UPDATE transactions
+            SET report_id = NULL
+            WHERE _index = %s AND report_id = %s
+        ''', (transaction_id, report_id))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'removed': transaction_id})
+    except Exception as e:
+        print(f"❌ API report remove error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/reports/<report_id>/items", methods=["GET"])
+@login_required
+def api_report_items(report_id):
+    """Get all items in a report."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        expenses = db.get_report_expenses(report_id)
+
+        items = []
+        for exp in expenses:
+            items.append({
+                'id': exp.get('_index'),
+                'Index': exp.get('_index'),
+                'merchant': exp.get('mi_merchant') or exp.get('chase_description', ''),
+                'Merchant': exp.get('mi_merchant') or exp.get('chase_description', ''),
+                'amount': abs(float(exp.get('chase_amount') or 0)),
+                'Amount': abs(float(exp.get('chase_amount') or 0)),
+                'date': exp.get('chase_date', ''),
+                'Date': exp.get('chase_date', ''),
+                'category': exp.get('mi_category') or exp.get('category', ''),
+                'ai_category': exp.get('mi_category') or exp.get('category', ''),
+                'ai_note': exp.get('ai_note', ''),
+                'notes': exp.get('notes', ''),
+                'receipt_image_path': exp.get('r2_url') or exp.get('receipt_file', ''),
+                'receipt_url': exp.get('r2_url') or exp.get('receipt_file', ''),
+                'business_type': exp.get('business_type', '')
+            })
+
+        total = sum(i['amount'] for i in items)
+
+        return jsonify({
+            'ok': True,
+            'items': items,
+            'count': len(items),
+            'total': round(total, 2)
+        })
+    except Exception as e:
+        print(f"❌ API report items error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/transactions/<int:tx_id>/reject", methods=["POST"])
+@login_required
+def api_transaction_reject(tx_id):
+    """Mark a transaction as rejected/hidden."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Mark as rejected by setting review_status
+        cursor.execute('''
+            UPDATE transactions
+            SET review_status = 'rejected'
+            WHERE _index = %s
+        ''', (tx_id,))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'rejected': tx_id})
+    except Exception as e:
+        print(f"❌ API transaction reject error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 # =============================================================================

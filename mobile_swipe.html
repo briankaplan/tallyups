@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Swipe Expenses | TallyUps</title>
+  <link rel="stylesheet" href="/static/tallyups-design.css">
+  <style>
+    /* ============================================
+       MOBILE SWIPE EXPENSE PROCESSOR
+       Tinder-style card swiping for expenses
+       ============================================ */
+
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .swipe-app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      height: 100dvh;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+    }
+
+    /* ---------- Header ---------- */
+    .swipe-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md) var(--space-lg);
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .back-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-hover);
+      border: none;
+      border-radius: var(--radius-full);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .progress-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .progress-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .progress-bar {
+      width: 80px;
+      height: 4px;
+      background: var(--bg-hover);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--brand);
+      border-radius: var(--radius-full);
+      transition: width 0.3s ease;
+    }
+
+    .header-center {
+      text-align: center;
+    }
+
+    .report-name {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .report-total {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    .header-right {
+      display: flex;
+      gap: var(--space-sm);
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-hover);
+      border: none;
+      border-radius: var(--radius-full);
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-active);
+    }
+
+    .icon-btn.undo-btn {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .icon-btn.undo-btn.active {
+      opacity: 1;
+      pointer-events: auto;
+      color: var(--warning);
+    }
+
+    /* ---------- Card Stack Area ---------- */
+    .card-stack-area {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-lg);
+      overflow: hidden;
+    }
+
+    /* Swipe direction indicators */
+    .swipe-indicator {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .swipe-indicator.right {
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--success);
+    }
+
+    .swipe-indicator.left {
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .swipe-indicator.up {
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--info);
+    }
+
+    .swipe-indicator.down {
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--error);
+    }
+
+    .swipe-indicator.visible {
+      opacity: 1;
+    }
+
+    /* ---------- Expense Card ---------- */
+    .expense-card {
+      position: absolute;
+      width: calc(100% - 32px);
+      max-width: 380px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      cursor: grab;
+      touch-action: none;
+      will-change: transform;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .expense-card:active {
+      cursor: grabbing;
+    }
+
+    .expense-card.behind {
+      transform: scale(0.95) translateY(10px);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .expense-card.far-behind {
+      transform: scale(0.9) translateY(20px);
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    /* Card swipe states */
+    .expense-card.swiping-right {
+      box-shadow: var(--shadow-lg), 0 0 40px rgba(0, 255, 136, 0.3);
+    }
+
+    .expense-card.swiping-left {
+      box-shadow: var(--shadow-lg), 0 0 40px rgba(85, 85, 85, 0.3);
+    }
+
+    .expense-card.swiping-up {
+      box-shadow: var(--shadow-lg), 0 0 40px rgba(74, 158, 255, 0.3);
+    }
+
+    .expense-card.swiping-down {
+      box-shadow: var(--shadow-lg), 0 0 40px rgba(255, 78, 106, 0.3);
+    }
+
+    /* Action stamp overlays */
+    .action-stamp {
+      position: absolute;
+      top: 20px;
+      padding: 8px 16px;
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border: 3px solid;
+      border-radius: var(--radius-md);
+      transform: rotate(-15deg);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .action-stamp.add {
+      right: 20px;
+      color: var(--success);
+      border-color: var(--success);
+      background: var(--success-dim);
+    }
+
+    .action-stamp.skip {
+      left: 20px;
+      color: var(--text-muted);
+      border-color: var(--text-muted);
+      background: rgba(85, 85, 85, 0.2);
+      transform: rotate(15deg);
+    }
+
+    .action-stamp.edit {
+      left: 50%;
+      transform: translateX(-50%) rotate(0);
+      color: var(--info);
+      border-color: var(--info);
+      background: var(--info-dim);
+    }
+
+    .action-stamp.reject {
+      left: 50%;
+      bottom: 20px;
+      top: auto;
+      transform: translateX(-50%) rotate(0);
+      color: var(--error);
+      border-color: var(--error);
+      background: var(--error-dim);
+    }
+
+    .action-stamp.visible {
+      opacity: 1;
+    }
+
+    /* Receipt image area */
+    .card-receipt {
+      position: relative;
+      height: 200px;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .card-receipt img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .card-receipt .no-image {
+      color: var(--text-muted);
+      font-size: 48px;
+    }
+
+    .tap-to-zoom {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      padding: 4px 8px;
+      background: rgba(0,0,0,0.7);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Card content */
+    .card-content {
+      padding: var(--space-lg);
+    }
+
+    .merchant-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: var(--space-sm);
+    }
+
+    .merchant-name {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      margin-right: var(--space-md);
+    }
+
+    .expense-amount {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    .expense-date {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-md);
+    }
+
+    .expense-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .meta-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: var(--bg-hover);
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .meta-chip.category {
+      background: var(--brand-dim);
+      color: var(--brand);
+    }
+
+    .ai-note {
+      padding: var(--space-md);
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      border-left: 3px solid var(--info);
+    }
+
+    .ai-note-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--info);
+      margin-bottom: 4px;
+    }
+
+    .ai-note-text {
+      font-size: 14px;
+      color: var(--text);
+      font-style: italic;
+    }
+
+    /* ---------- Gesture Hints ---------- */
+    .gesture-hints {
+      display: flex;
+      justify-content: space-around;
+      padding: var(--space-md) var(--space-lg);
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .hint {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      opacity: 0.6;
+    }
+
+    .hint-icon {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-full);
+      font-size: 20px;
+      transition: var(--transition-fast);
+    }
+
+    .hint.add .hint-icon {
+      background: var(--success-dim);
+      color: var(--success);
+    }
+
+    .hint.skip .hint-icon {
+      background: rgba(85,85,85,0.2);
+      color: var(--text-muted);
+    }
+
+    .hint.edit .hint-icon {
+      background: var(--info-dim);
+      color: var(--info);
+    }
+
+    .hint.reject .hint-icon {
+      background: var(--error-dim);
+      color: var(--error);
+    }
+
+    .hint-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    .hint.active {
+      opacity: 1;
+    }
+
+    .hint.active .hint-icon {
+      transform: scale(1.1);
+    }
+
+    /* ---------- Empty State ---------- */
+    .empty-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-2xl);
+      text-align: center;
+    }
+
+    .empty-state.visible {
+      display: flex;
+    }
+
+    .empty-icon {
+      font-size: 64px;
+      margin-bottom: var(--space-lg);
+    }
+
+    .empty-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: var(--space-sm);
+    }
+
+    .empty-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xl);
+    }
+
+    /* ---------- Report Preview Modal ---------- */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition-normal);
+      z-index: 1000;
+    }
+
+    .modal-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-height: 85vh;
+      background: var(--bg-card);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-overlay.visible .modal-sheet {
+      transform: translateY(0);
+    }
+
+    .modal-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--border-light);
+      border-radius: var(--radius-full);
+      margin: var(--space-md) auto;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-lg) var(--space-md);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-hover);
+      border: none;
+      border-radius: var(--radius-full);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .modal-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-lg);
+    }
+
+    .report-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+
+    .summary-stat {
+      padding: var(--space-md);
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+
+    .summary-stat .value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    .summary-stat .label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .report-items {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .report-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      background: var(--bg-elevated);
+      border-radius: var(--radius-md);
+    }
+
+    .report-item-thumb {
+      width: 44px;
+      height: 44px;
+      background: var(--bg-hover);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .report-item-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .report-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .report-item-merchant {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .report-item-date {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .report-item-amount {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--brand);
+    }
+
+    .report-item .remove-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--error-dim);
+      border: none;
+      border-radius: var(--radius-full);
+      color: var(--error);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* ---------- Edit Modal ---------- */
+    .edit-modal .modal-content {
+      padding: var(--space-lg);
+    }
+
+    .edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    .form-input {
+      padding: var(--space-md);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--brand);
+    }
+
+    .form-textarea {
+      min-height: 100px;
+      resize: none;
+    }
+
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-sm);
+    }
+
+    .category-option {
+      padding: var(--space-md);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    .category-option.selected {
+      background: var(--brand-dim);
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: var(--space-md);
+      padding-top: var(--space-md);
+    }
+
+    .edit-actions .btn {
+      flex: 1;
+    }
+
+    /* ---------- Image Zoom Modal ---------- */
+    .zoom-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition-normal);
+      z-index: 1001;
+    }
+
+    .zoom-modal.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .zoom-modal img {
+      max-width: 95%;
+      max-height: 95%;
+      object-fit: contain;
+    }
+
+    .zoom-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-hover);
+      border: none;
+      border-radius: var(--radius-full);
+      color: var(--text);
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    /* ---------- Toast ---------- */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 500;
+    }
+
+    .toast.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.success {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .toast.error {
+      border-color: var(--error);
+      color: var(--error);
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      padding: var(--space-md) var(--space-lg);
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: var(--bg);
+    }
+
+    .btn-secondary {
+      background: var(--bg-hover);
+      color: var(--text);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+
+    /* ---------- Loading ---------- */
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition-fast);
+      z-index: 50;
+    }
+
+    .loading-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--brand);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ---------- Select Report Dropdown ---------- */
+    .report-selector {
+      padding: var(--space-lg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .report-select-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .report-options {
+      margin-top: var(--space-sm);
+      display: none;
+    }
+
+    .report-options.visible {
+      display: block;
+    }
+
+    .report-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md);
+      background: var(--bg-hover);
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-xs);
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+
+    .report-option:hover {
+      background: var(--bg-active);
+    }
+
+    .report-option.selected {
+      background: var(--brand-dim);
+      border: 1px solid var(--brand);
+    }
+
+    .report-option.new {
+      border: 1px dashed var(--border);
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="swipe-app">
+    <!-- Header -->
+    <header class="swipe-header">
+      <div class="header-left">
+        <button class="back-btn" onclick="goBack()">
+          <span>&#8592;</span>
+        </button>
+        <div class="progress-info">
+          <span class="progress-text"><span id="current-index">0</span> of <span id="total-count">0</span></span>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="report-name" id="report-name">No report selected</div>
+        <div class="report-total" id="report-total">$0.00</div>
+      </div>
+
+      <div class="header-right">
+        <button class="icon-btn undo-btn" id="undo-btn" onclick="undoLastAction()">
+          <span>&#8630;</span>
+        </button>
+        <button class="icon-btn" onclick="showReportModal()">
+          <span>&#128203;</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Card Stack Area -->
+    <main class="card-stack-area" id="card-stack">
+      <!-- Swipe direction indicators -->
+      <div class="swipe-indicator right" id="indicator-right">&#10003;</div>
+      <div class="swipe-indicator left" id="indicator-left">&#8594;</div>
+      <div class="swipe-indicator up" id="indicator-up">&#9998;</div>
+      <div class="swipe-indicator down" id="indicator-down">&#10007;</div>
+
+      <!-- Cards will be injected here -->
+
+      <!-- Empty state -->
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">&#127881;</div>
+        <h2 class="empty-title">All Done!</h2>
+        <p class="empty-desc">You've processed all expenses. Great work!</p>
+        <a href="/report_builder.html" class="btn btn-primary">View Reports</a>
+      </div>
+
+      <div class="loading-overlay" id="loading">
+        <div class="loading-spinner"></div>
+      </div>
+    </main>
+
+    <!-- Gesture Hints -->
+    <footer class="gesture-hints">
+      <div class="hint reject" id="hint-reject">
+        <div class="hint-icon">&#10007;</div>
+        <span class="hint-label">Reject</span>
+      </div>
+      <div class="hint skip" id="hint-skip">
+        <div class="hint-icon">&#8594;</div>
+        <span class="hint-label">Skip</span>
+      </div>
+      <div class="hint edit" id="hint-edit">
+        <div class="hint-icon">&#9998;</div>
+        <span class="hint-label">Edit</span>
+      </div>
+      <div class="hint add" id="hint-add">
+        <div class="hint-icon">&#10003;</div>
+        <span class="hint-label">Add</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Report Preview Modal -->
+  <div class="modal-overlay" id="report-modal" onclick="closeReportModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Current Report</h3>
+        <button class="modal-close" onclick="closeReportModal()">&#10005;</button>
+      </div>
+
+      <div class="report-selector">
+        <button class="report-select-btn" onclick="toggleReportOptions()">
+          <span id="selected-report-name">Select a report...</span>
+          <span>&#9662;</span>
+        </button>
+        <div class="report-options" id="report-options">
+          <!-- Options injected here -->
+        </div>
+      </div>
+
+      <div class="modal-content">
+        <div class="report-summary">
+          <div class="summary-stat">
+            <div class="value" id="report-item-count">0</div>
+            <div class="label">Items</div>
+          </div>
+          <div class="summary-stat">
+            <div class="value" id="report-total-amount">$0.00</div>
+            <div class="label">Total</div>
+          </div>
+        </div>
+
+        <div class="report-items" id="report-items">
+          <!-- Items injected here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay edit-modal" id="edit-modal" onclick="closeEditModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Expense</h3>
+        <button class="modal-close" onclick="closeEditModal()">&#10005;</button>
+      </div>
+      <div class="modal-content">
+        <form class="edit-form" id="edit-form" onsubmit="saveEdit(event)">
+          <input type="hidden" id="edit-expense-id">
+
+          <div class="form-group">
+            <label class="form-label">Merchant</label>
+            <input type="text" class="form-input" id="edit-merchant">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <div class="category-grid" id="category-grid">
+              <!-- Categories injected -->
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">AI Note</label>
+            <textarea class="form-input form-textarea" id="edit-note" placeholder="Add a note about this expense..."></textarea>
+          </div>
+
+          <div class="edit-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zoom Modal -->
+  <div class="zoom-modal" id="zoom-modal" onclick="closeZoomModal()">
+    <button class="zoom-close">&#10005;</button>
+    <img src="" alt="Receipt" id="zoom-image">
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span id="toast-message">Action completed</span>
+  </div>
+
+  <script>
+    // ============================================
+    // STATE MANAGEMENT
+    // ============================================
+    const state = {
+      expenses: [],
+      currentIndex: 0,
+      currentReport: null,
+      reports: [],
+      reportItems: [],
+      undoStack: [],
+      swipeThreshold: 80,
+      categories: [
+        'Food & Dining',
+        'Transportation',
+        'Entertainment',
+        'Office Supplies',
+        'Travel',
+        'Utilities',
+        'Equipment',
+        'Other'
+      ]
+    };
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    document.addEventListener('DOMContentLoaded', async () => {
+      showLoading(true);
+
+      try {
+        // Load expenses (unreported transactions)
+        await loadExpenses();
+
+        // Load available reports
+        await loadReports();
+
+        // Render first cards
+        renderCards();
+        updateProgress();
+
+      } catch (err) {
+        console.error('Init error:', err);
+        showToast('Failed to load expenses', 'error');
+      } finally {
+        showLoading(false);
+      }
+    });
+
+    async function loadExpenses() {
+      // Load transactions that haven't been reported yet
+      const response = await fetch('/api/transactions?unreported=true&limit=100');
+      const data = await response.json();
+      state.expenses = data.transactions || [];
+      console.log(`Loaded ${state.expenses.length} unreported expenses`);
+    }
+
+    async function loadReports() {
+      try {
+        const response = await fetch('/api/reports');
+        const data = await response.json();
+        state.reports = data.reports || [];
+
+        // Check if there's a draft report in localStorage
+        const savedReportId = localStorage.getItem('swipe-active-report');
+        if (savedReportId) {
+          const report = state.reports.find(r => r.id === savedReportId);
+          if (report) {
+            selectReport(report);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load reports:', err);
+      }
+    }
+
+    // ============================================
+    // CARD RENDERING
+    // ============================================
+    function renderCards() {
+      const container = document.getElementById('card-stack');
+
+      // Clear existing cards
+      container.querySelectorAll('.expense-card').forEach(c => c.remove());
+
+      // Check if empty
+      if (state.currentIndex >= state.expenses.length) {
+        document.getElementById('empty-state').classList.add('visible');
+        return;
+      }
+
+      document.getElementById('empty-state').classList.remove('visible');
+
+      // Render up to 3 cards (current + 2 behind)
+      for (let i = Math.min(state.currentIndex + 2, state.expenses.length - 1); i >= state.currentIndex; i--) {
+        const expense = state.expenses[i];
+        const card = createCard(expense, i);
+
+        if (i === state.currentIndex) {
+          setupSwipeHandlers(card, expense);
+        } else if (i === state.currentIndex + 1) {
+          card.classList.add('behind');
+        } else {
+          card.classList.add('far-behind');
+        }
+
+        container.appendChild(card);
+      }
+    }
+
+    function createCard(expense, index) {
+      const card = document.createElement('div');
+      card.className = 'expense-card';
+      card.dataset.index = index;
+      card.dataset.id = expense.id || expense.Index;
+
+      const receiptUrl = expense.receipt_image_path || expense.receipt_url || '';
+      const hasReceipt = receiptUrl && receiptUrl.length > 0;
+
+      card.innerHTML = `
+        <!-- Action stamps -->
+        <div class="action-stamp add">Add</div>
+        <div class="action-stamp skip">Skip</div>
+        <div class="action-stamp edit">Edit</div>
+        <div class="action-stamp reject">Reject</div>
+
+        <!-- Receipt image -->
+        <div class="card-receipt" onclick="showZoom('${hasReceipt ? receiptUrl : ''}')">
+          ${hasReceipt
+            ? `<img src="${receiptUrl}" alt="Receipt" onerror="this.parentElement.innerHTML='<span class=\\'no-image\\'>&#128247;</span>'">`
+            : '<span class="no-image">&#128247;</span>'
+          }
+          ${hasReceipt ? '<span class="tap-to-zoom">Tap to zoom</span>' : ''}
+        </div>
+
+        <!-- Content -->
+        <div class="card-content">
+          <div class="merchant-row">
+            <span class="merchant-name">${expense.merchant || expense.Merchant || 'Unknown'}</span>
+            <span class="expense-amount">$${formatAmount(expense.amount || expense.Amount)}</span>
+          </div>
+          <div class="expense-date">${formatDate(expense.date || expense.Date)}</div>
+          <div class="expense-meta">
+            ${expense.category || expense.ai_category
+              ? `<span class="meta-chip category">${expense.category || expense.ai_category}</span>`
+              : ''
+            }
+            ${expense.business_type
+              ? `<span class="meta-chip">${expense.business_type}</span>`
+              : ''
+            }
+          </div>
+          ${expense.ai_note || expense.notes
+            ? `<div class="ai-note">
+                <div class="ai-note-label">AI Note</div>
+                <div class="ai-note-text">${expense.ai_note || expense.notes}</div>
+              </div>`
+            : ''
+          }
+        </div>
+      `;
+
+      return card;
+    }
+
+    // ============================================
+    // SWIPE HANDLING
+    // ============================================
+    function setupSwipeHandlers(card, expense) {
+      let startX = 0, startY = 0;
+      let currentX = 0, currentY = 0;
+      let isDragging = false;
+
+      const onStart = (e) => {
+        // Ignore if clicking on receipt image for zoom
+        if (e.target.closest('.card-receipt')) return;
+
+        isDragging = true;
+        const point = e.touches ? e.touches[0] : e;
+        startX = point.clientX;
+        startY = point.clientY;
+        currentX = 0;
+        currentY = 0;
+        card.style.transition = 'none';
+      };
+
+      const onMove = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        const point = e.touches ? e.touches[0] : e;
+        currentX = point.clientX - startX;
+        currentY = point.clientY - startY;
+
+        // Calculate rotation based on horizontal movement
+        const rotation = currentX * 0.05;
+
+        // Apply transform
+        card.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${rotation}deg)`;
+
+        // Update visual feedback
+        updateSwipeFeedback(card, currentX, currentY);
+      };
+
+      const onEnd = () => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        card.style.transition = 'transform 0.3s ease, box-shadow 0.2s ease';
+
+        // Determine action based on direction and threshold
+        const absX = Math.abs(currentX);
+        const absY = Math.abs(currentY);
+
+        if (absX > state.swipeThreshold || absY > state.swipeThreshold) {
+          // Determine primary direction
+          if (absX > absY) {
+            if (currentX > 0) {
+              // Right = Add to report
+              executeSwipe(card, expense, 'right', 'add');
+            } else {
+              // Left = Skip
+              executeSwipe(card, expense, 'left', 'skip');
+            }
+          } else {
+            if (currentY < 0) {
+              // Up = Edit
+              executeSwipe(card, expense, 'up', 'edit');
+            } else {
+              // Down = Reject
+              executeSwipe(card, expense, 'down', 'reject');
+            }
+          }
+        } else {
+          // Reset position
+          card.style.transform = '';
+          resetSwipeFeedback(card);
+        }
+      };
+
+      // Touch events
+      card.addEventListener('touchstart', onStart, { passive: true });
+      card.addEventListener('touchmove', onMove, { passive: false });
+      card.addEventListener('touchend', onEnd);
+      card.addEventListener('touchcancel', onEnd);
+
+      // Mouse events (for desktop testing)
+      card.addEventListener('mousedown', onStart);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onEnd);
+    }
+
+    function updateSwipeFeedback(card, x, y) {
+      const threshold = state.swipeThreshold;
+      const absX = Math.abs(x);
+      const absY = Math.abs(y);
+
+      // Reset all
+      card.classList.remove('swiping-right', 'swiping-left', 'swiping-up', 'swiping-down');
+      card.querySelectorAll('.action-stamp').forEach(s => s.classList.remove('visible'));
+      document.querySelectorAll('.swipe-indicator').forEach(i => i.classList.remove('visible'));
+      document.querySelectorAll('.hint').forEach(h => h.classList.remove('active'));
+
+      // Determine dominant direction
+      if (absX > threshold * 0.5 || absY > threshold * 0.5) {
+        if (absX > absY) {
+          if (x > 0) {
+            card.classList.add('swiping-right');
+            card.querySelector('.action-stamp.add').classList.add('visible');
+            document.getElementById('indicator-right').classList.add('visible');
+            document.getElementById('hint-add').classList.add('active');
+          } else {
+            card.classList.add('swiping-left');
+            card.querySelector('.action-stamp.skip').classList.add('visible');
+            document.getElementById('indicator-left').classList.add('visible');
+            document.getElementById('hint-skip').classList.add('active');
+          }
+        } else {
+          if (y < 0) {
+            card.classList.add('swiping-up');
+            card.querySelector('.action-stamp.edit').classList.add('visible');
+            document.getElementById('indicator-up').classList.add('visible');
+            document.getElementById('hint-edit').classList.add('active');
+          } else {
+            card.classList.add('swiping-down');
+            card.querySelector('.action-stamp.reject').classList.add('visible');
+            document.getElementById('indicator-down').classList.add('visible');
+            document.getElementById('hint-reject').classList.add('active');
+          }
+        }
+      }
+    }
+
+    function resetSwipeFeedback(card) {
+      card.classList.remove('swiping-right', 'swiping-left', 'swiping-up', 'swiping-down');
+      card.querySelectorAll('.action-stamp').forEach(s => s.classList.remove('visible'));
+      document.querySelectorAll('.swipe-indicator').forEach(i => i.classList.remove('visible'));
+      document.querySelectorAll('.hint').forEach(h => h.classList.remove('active'));
+    }
+
+    function executeSwipe(card, expense, direction, action) {
+      // Animate card off screen
+      const offsets = {
+        right: { x: window.innerWidth, y: 0, rotate: 30 },
+        left: { x: -window.innerWidth, y: 0, rotate: -30 },
+        up: { x: 0, y: -window.innerHeight, rotate: 0 },
+        down: { x: 0, y: window.innerHeight, rotate: 0 }
+      };
+
+      const offset = offsets[direction];
+      card.style.transform = `translate(${offset.x}px, ${offset.y}px) rotate(${offset.rotate}deg)`;
+      card.style.opacity = '0';
+
+      // Handle action
+      setTimeout(() => {
+        handleAction(expense, action, direction);
+      }, 150);
+    }
+
+    // ============================================
+    // ACTIONS
+    // ============================================
+    async function handleAction(expense, action, direction) {
+      // Store for undo
+      state.undoStack.push({
+        expense,
+        index: state.currentIndex,
+        action,
+        reportItems: [...state.reportItems]
+      });
+      updateUndoButton();
+
+      switch (action) {
+        case 'add':
+          await addToReport(expense);
+          advanceToNext();
+          showToast('Added to report', 'success');
+          break;
+
+        case 'skip':
+          // Just move to end of queue
+          state.expenses.push(state.expenses.splice(state.currentIndex, 1)[0]);
+          renderCards();
+          updateProgress();
+          showToast('Skipped - will see again later');
+          break;
+
+        case 'edit':
+          openEditModal(expense);
+          // Don't advance - we'll re-render after edit
+          state.currentIndex--; // Compensate for the advance
+          advanceToNext();
+          break;
+
+        case 'reject':
+          await rejectExpense(expense);
+          advanceToNext();
+          showToast('Expense rejected', 'error');
+          break;
+      }
+    }
+
+    function advanceToNext() {
+      state.currentIndex++;
+      renderCards();
+      updateProgress();
+    }
+
+    async function addToReport(expense) {
+      if (!state.currentReport) {
+        // Prompt to select/create report
+        showReportModal();
+        return;
+      }
+
+      // Add to local state
+      state.reportItems.push(expense);
+      updateReportTotal();
+
+      // Add to server
+      try {
+        await fetch(`/api/reports/${state.currentReport.id}/add`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transaction_id: expense.id || expense.Index
+          })
+        });
+      } catch (err) {
+        console.error('Failed to add to report:', err);
+      }
+    }
+
+    async function rejectExpense(expense) {
+      try {
+        await fetch(`/api/transactions/${expense.id || expense.Index}/reject`, {
+          method: 'POST'
+        });
+      } catch (err) {
+        console.error('Failed to reject:', err);
+      }
+    }
+
+    // ============================================
+    // UNDO
+    // ============================================
+    function undoLastAction() {
+      if (state.undoStack.length === 0) return;
+
+      const lastAction = state.undoStack.pop();
+
+      // Restore state
+      state.currentIndex = lastAction.index;
+      state.reportItems = lastAction.reportItems;
+
+      // If it was an add, we need to restore the expense to the queue
+      if (lastAction.action === 'add') {
+        // Remove from server report
+        fetch(`/api/reports/${state.currentReport?.id}/remove`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transaction_id: lastAction.expense.id || lastAction.expense.Index
+          })
+        }).catch(console.error);
+      }
+
+      // Re-render
+      renderCards();
+      updateProgress();
+      updateReportTotal();
+      updateUndoButton();
+
+      showToast('Action undone');
+    }
+
+    function updateUndoButton() {
+      const btn = document.getElementById('undo-btn');
+      if (state.undoStack.length > 0) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+
+    // ============================================
+    // REPORT MODAL
+    // ============================================
+    function showReportModal() {
+      document.getElementById('report-modal').classList.add('visible');
+      renderReportOptions();
+      renderReportItems();
+    }
+
+    function closeReportModal(e) {
+      if (e && e.target !== e.currentTarget) return;
+      document.getElementById('report-modal').classList.remove('visible');
+    }
+
+    function toggleReportOptions() {
+      const opts = document.getElementById('report-options');
+      opts.classList.toggle('visible');
+    }
+
+    function renderReportOptions() {
+      const container = document.getElementById('report-options');
+      container.innerHTML = `
+        <div class="report-option new" onclick="createNewReport()">
+          + Create New Report
+        </div>
+        ${state.reports.map(r => `
+          <div class="report-option ${state.currentReport?.id === r.id ? 'selected' : ''}"
+               onclick="selectReport(${JSON.stringify(r).replace(/"/g, '&quot;')})">
+            <span>${r.name || 'Untitled Report'}</span>
+            <span>$${formatAmount(r.total || 0)}</span>
+          </div>
+        `).join('')}
+      `;
+    }
+
+    function selectReport(report) {
+      state.currentReport = report;
+      localStorage.setItem('swipe-active-report', report.id);
+
+      // Update header
+      document.getElementById('report-name').textContent = report.name || 'Untitled Report';
+      document.getElementById('selected-report-name').textContent = report.name || 'Untitled Report';
+
+      // Load report items
+      loadReportItems(report.id);
+
+      // Close options dropdown
+      document.getElementById('report-options').classList.remove('visible');
+
+      showToast(`Selected: ${report.name}`);
+    }
+
+    async function createNewReport() {
+      const name = prompt('Report name:', `Report ${new Date().toLocaleDateString()}`);
+      if (!name) return;
+
+      try {
+        const response = await fetch('/api/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, status: 'draft' })
+        });
+        const newReport = await response.json();
+
+        state.reports.unshift(newReport);
+        selectReport(newReport);
+        renderReportOptions();
+
+      } catch (err) {
+        console.error('Failed to create report:', err);
+        showToast('Failed to create report', 'error');
+      }
+    }
+
+    async function loadReportItems(reportId) {
+      try {
+        const response = await fetch(`/api/reports/${reportId}/items`);
+        const data = await response.json();
+        state.reportItems = data.items || [];
+        updateReportTotal();
+        renderReportItems();
+      } catch (err) {
+        console.error('Failed to load report items:', err);
+      }
+    }
+
+    function renderReportItems() {
+      const container = document.getElementById('report-items');
+
+      if (state.reportItems.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;">No items in report yet</p>';
+        return;
+      }
+
+      container.innerHTML = state.reportItems.map(item => `
+        <div class="report-item">
+          <div class="report-item-thumb">
+            ${item.receipt_image_path || item.receipt_url
+              ? `<img src="${item.receipt_image_path || item.receipt_url}" alt="">`
+              : '&#128247;'
+            }
+          </div>
+          <div class="report-item-info">
+            <div class="report-item-merchant">${item.merchant || item.Merchant}</div>
+            <div class="report-item-date">${formatDate(item.date || item.Date)}</div>
+          </div>
+          <div class="report-item-amount">$${formatAmount(item.amount || item.Amount)}</div>
+          <button class="remove-btn" onclick="removeFromReport('${item.id || item.Index}')">&#10005;</button>
+        </div>
+      `).join('');
+
+      // Update counts
+      document.getElementById('report-item-count').textContent = state.reportItems.length;
+      document.getElementById('report-total-amount').textContent = '$' + formatAmount(
+        state.reportItems.reduce((sum, i) => sum + parseFloat(i.amount || i.Amount || 0), 0)
+      );
+    }
+
+    async function removeFromReport(itemId) {
+      // Remove from local state
+      state.reportItems = state.reportItems.filter(i => (i.id || i.Index) !== itemId);
+
+      // Update UI
+      renderReportItems();
+      updateReportTotal();
+
+      // Remove from server
+      try {
+        await fetch(`/api/reports/${state.currentReport?.id}/remove`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transaction_id: itemId })
+        });
+      } catch (err) {
+        console.error('Failed to remove from report:', err);
+      }
+    }
+
+    function updateReportTotal() {
+      const total = state.reportItems.reduce((sum, i) =>
+        sum + parseFloat(i.amount || i.Amount || 0), 0
+      );
+      document.getElementById('report-total').textContent = '$' + formatAmount(total);
+    }
+
+    // ============================================
+    // EDIT MODAL
+    // ============================================
+    function openEditModal(expense) {
+      const modal = document.getElementById('edit-modal');
+      modal.classList.add('visible');
+
+      // Populate form
+      document.getElementById('edit-expense-id').value = expense.id || expense.Index;
+      document.getElementById('edit-merchant').value = expense.merchant || expense.Merchant || '';
+      document.getElementById('edit-note').value = expense.ai_note || expense.notes || '';
+
+      // Render categories
+      const categoryGrid = document.getElementById('category-grid');
+      categoryGrid.innerHTML = state.categories.map(cat => `
+        <div class="category-option ${(expense.category || expense.ai_category) === cat ? 'selected' : ''}"
+             onclick="selectCategory(this, '${cat}')">
+          ${cat}
+        </div>
+      `).join('');
+    }
+
+    function closeEditModal(e) {
+      if (e && e.target !== e.currentTarget) return;
+      document.getElementById('edit-modal').classList.remove('visible');
+    }
+
+    function selectCategory(el, category) {
+      document.querySelectorAll('.category-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    async function saveEdit(e) {
+      e.preventDefault();
+
+      const id = document.getElementById('edit-expense-id').value;
+      const merchant = document.getElementById('edit-merchant').value;
+      const note = document.getElementById('edit-note').value;
+      const selectedCat = document.querySelector('.category-option.selected');
+      const category = selectedCat ? selectedCat.textContent.trim() : '';
+
+      try {
+        await fetch(`/api/transactions/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            merchant,
+            ai_note: note,
+            ai_category: category
+          })
+        });
+
+        // Update local state
+        const expense = state.expenses.find(e => (e.id || e.Index) == id);
+        if (expense) {
+          expense.merchant = merchant;
+          expense.Merchant = merchant;
+          expense.ai_note = note;
+          expense.ai_category = category;
+        }
+
+        closeEditModal();
+        renderCards();
+        showToast('Changes saved', 'success');
+
+      } catch (err) {
+        console.error('Failed to save:', err);
+        showToast('Failed to save changes', 'error');
+      }
+    }
+
+    // ============================================
+    // IMAGE ZOOM
+    // ============================================
+    function showZoom(url) {
+      if (!url) return;
+      document.getElementById('zoom-image').src = url;
+      document.getElementById('zoom-modal').classList.add('visible');
+    }
+
+    function closeZoomModal() {
+      document.getElementById('zoom-modal').classList.remove('visible');
+    }
+
+    // ============================================
+    // UTILITIES
+    // ============================================
+    function updateProgress() {
+      const total = state.expenses.length;
+      const current = Math.min(state.currentIndex + 1, total);
+      const percent = total > 0 ? (state.currentIndex / total) * 100 : 0;
+
+      document.getElementById('current-index').textContent = current;
+      document.getElementById('total-count').textContent = total;
+      document.getElementById('progress-fill').style.width = `${percent}%`;
+    }
+
+    function formatAmount(amount) {
+      const num = parseFloat(amount) || 0;
+      return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    }
+
+    function showLoading(show) {
+      const el = document.getElementById('loading');
+      if (show) {
+        el.classList.add('visible');
+      } else {
+        el.classList.remove('visible');
+      }
+    }
+
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      const msgEl = document.getElementById('toast-message');
+
+      toast.className = 'toast visible ' + type;
+      msgEl.textContent = message;
+
+      setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 2500);
+    }
+
+    function goBack() {
+      window.history.back();
+    }
+
+    // Keyboard shortcuts (for desktop)
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const expense = state.expenses[state.currentIndex];
+      if (!expense) return;
+
+      const card = document.querySelector('.expense-card:not(.behind):not(.far-behind)');
+      if (!card) return;
+
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'a':
+          e.preventDefault();
+          executeSwipe(card, expense, 'right', 'add');
+          break;
+        case 'ArrowLeft':
+        case 's':
+          e.preventDefault();
+          executeSwipe(card, expense, 'left', 'skip');
+          break;
+        case 'ArrowUp':
+        case 'e':
+          e.preventDefault();
+          executeSwipe(card, expense, 'up', 'edit');
+          break;
+        case 'ArrowDown':
+        case 'r':
+          e.preventDefault();
+          executeSwipe(card, expense, 'down', 'reject');
+          break;
+        case 'z':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            undoLastAction();
+          }
+          break;
+      }
+    });
+
+    // Haptic feedback for mobile
+    function triggerHaptic() {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(10);
+      }
+    }
+  </script>
+</body>
+</html>

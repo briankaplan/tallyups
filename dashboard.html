@@ -1050,6 +1050,20 @@
         });
       }
 
+      // Priority 5: Swipe to build reports (mobile-friendly)
+      const unreported = d.total - (d.reported || 0);
+      if (unreported > 0) {
+        queue.push({
+          icon: 'swipe',
+          emoji: '👆',
+          title: 'Swipe Expenses',
+          desc: `${unreported} expense${unreported !== 1 ? 's' : ''} ready to add to reports`,
+          badge: unreported,
+          urgent: false,
+          link: '/mobile-swipe'
+        });
+      }
+
       // Render queue
       if (queue.length === 0) {
         $('action-queue').innerHTML = `
