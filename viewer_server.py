@@ -14095,13 +14095,13 @@ def get_library_receipts():
         if include_incoming:
             try:
                 # Only get incoming receipts that have actual receipt files
+                # Note: incoming_receipts table uses receipt_url and file_path, not receipt_file
                 inc_query = '''
                     SELECT *
                     FROM incoming_receipts
                     WHERE status IN ('accepted', 'pending')
                     AND (
-                        (receipt_file IS NOT NULL AND receipt_file != '')
-                        OR (receipt_url IS NOT NULL AND receipt_url != '')
+                        (receipt_url IS NOT NULL AND receipt_url != '')
                         OR (file_path IS NOT NULL AND file_path != '')
                     )
                 '''
