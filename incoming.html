@@ -46,7 +46,23 @@ header {
   background: rgba(0,255,136,.15); color: var(--brand);
 }
 
-/* Navigation - removed for clean standalone page */
+/* Header Navigation */
+.nav-buttons {
+  display: flex; gap: 8px; margin-left: auto;
+}
+.nav-btn {
+  padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 13px;
+  background: rgba(0,255,136,.1); color: var(--muted);
+  border: 1px solid transparent; transition: all .15s;
+  text-decoration: none;
+}
+.nav-btn:hover {
+  background: rgba(0,255,136,.2); color: var(--ink);
+}
+.nav-btn.active {
+  background: rgba(0,255,136,.2); color: var(--brand);
+  border-color: rgba(0,255,136,.3);
+}
 
 .controls { display: flex; align-items: center; gap: 10px; }
 
@@ -1109,6 +1125,13 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   <div class="brand">
     <h1>🧾 Tallyups</h1>
     <span class="version">v2.0</span>
+  </div>
+  <div class="nav-buttons">
+    <a href="/" class="nav-btn">Home</a>
+    <a href="/viewer" class="nav-btn">Reconcile</a>
+    <a href="/library" class="nav-btn">Library</a>
+    <a href="/incoming" class="nav-btn active">Inbox</a>
+    <a href="/reports" class="nav-btn">Reports</a>
   </div>
   <div class="controls">
     <button class="btn-ghost btn-sm" onclick="clearFiltered()">🗑️ Clear Rejected</button>
