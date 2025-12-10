@@ -219,6 +219,58 @@ except Exception as e:
     split_apple_receipt = None
     auto_split_transaction = None
 
+
+def is_apple_receipt(merchant: str) -> bool:
+    """Check if a merchant name indicates an Apple receipt that might need splitting."""
+    if not merchant:
+        return False
+    merchant_lower = merchant.lower()
+    apple_indicators = [
+        'apple.com/bill',
+        'apple.com bill',
+        'applecombill',
+        'itunes',
+        'app store',
+        'apple store',
+    ]
+    return any(ind in merchant_lower for ind in apple_indicators)
+
+
+def maybe_auto_split_apple_receipt(transaction_id: int, merchant: str, receipt_path: str = None):
+    """
+    Check if a transaction is an Apple receipt and auto-split if needed.
+    Called after any transaction is created/accepted.
+
+    Returns dict with split info if split was performed, None otherwise.
+    """
+    if not APPLE_SPLITTER_AVAILABLE:
+        return None
+
+    if not is_apple_receipt(merchant):
+        return None
+
+    if not receipt_path:
+        return None
+
+    try:
+        print(f"   🍎 Detected Apple receipt - analyzing for auto-split...")
+        result = auto_split_transaction(transaction_id, receipt_path)
+
+        if result and result.get('split_transactions'):
+            num_splits = len(result['split_transactions'])
+            print(f"   ✅ Auto-split into {num_splits} transactions")
+            return result
+        elif result and result.get('error'):
+            print(f"   ⚠️  Apple split skipped: {result['error']}")
+        else:
+            print(f"   ℹ️  No split needed (single item receipt)")
+
+        return result
+    except Exception as e:
+        print(f"   ⚠️  Apple auto-split error: {e}")
+        return None
+
+
 # === CONTACT MANAGEMENT SYSTEM ===
 try:
     from contact_management import (
@@ -16264,13 +16316,28 @@ def accept_incoming_receipt():
 
         print(f"✅ Accepted receipt {receipt_id} → transaction {transaction_id} ({action})")
 
+        # === AUTO-SPLIT APPLE RECEIPTS ===
+        # Check if this is an Apple receipt that needs splitting into personal/business
+        apple_split_result = None
+        if action == 'created' and receipt_files:
+            # Get the first receipt file for analysis
+            first_receipt = receipt_files[0] if receipt_files else None
+            if first_receipt:
+                # Convert to local path if needed
+                if first_receipt.startswith('receipts/'):
+                    receipt_path = str(RECEIPT_DIR / first_receipt.replace('receipts/', ''))
+                else:
+                    receipt_path = first_receipt
+                apple_split_result = maybe_auto_split_apple_receipt(transaction_id, merchant, receipt_path)
+
         return jsonify({
             'ok': True,
             'message': f'Receipt accepted and transaction {action}',
             'transaction_id': transaction_id,
             'receipt_id': receipt_id,
             'action': action,
-            'receipt_files': receipt_files
+            'receipt_files': receipt_files,
+            'apple_split': apple_split_result
         })
 
     except Exception as e:
