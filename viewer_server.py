@@ -2052,7 +2052,7 @@ def settings_page():
 
 @app.route("/incoming.html")
 @app.route("/incoming")
-@login_required
+@api_key_or_login_required
 def incoming():
     """Serve the Incoming Receipts page."""
     return send_from_directory(BASE_DIR, "incoming.html")
@@ -15987,7 +15987,7 @@ def attach_receipt_to_transaction():
 
 
 @app.route("/api/incoming/accept", methods=["POST"])
-@login_required
+@api_key_or_login_required
 def accept_incoming_receipt():
     """
     Accept an incoming receipt and create a transaction (or attach to existing)
@@ -16355,7 +16355,7 @@ def accept_incoming_receipt():
 
 
 @app.route("/api/incoming/reject", methods=["POST"])
-@login_required
+@api_key_or_login_required
 def reject_incoming_receipt():
     """
     Reject an incoming receipt and learn from the pattern
@@ -16467,8 +16467,76 @@ def reject_incoming_receipt():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/bulk-reject", methods=["POST"])
+@api_key_or_login_required
+def bulk_reject_incoming_receipts():
+    """
+    Bulk reject multiple incoming receipts at once.
+    Supports admin_key for API access.
+
+    Body:
+    {
+        "receipt_ids": [123, 456, 789],
+        "reason": "spam" (optional)
+    }
+    """
+    from datetime import datetime
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        data = request.json
+        receipt_ids = data.get('receipt_ids', [])
+        reason = data.get('reason', 'bulk_rejected')
+
+        if not receipt_ids or not isinstance(receipt_ids, list):
+            return jsonify({'ok': False, 'error': 'Missing or invalid receipt_ids array'}), 400
+
+        conn, db_type = get_db_connection()
+        rejected = 0
+        errors = []
+
+        for receipt_id in receipt_ids:
+            try:
+                # Update each receipt to rejected status
+                if db_type == 'mysql':
+                    db_execute(conn, db_type, '''
+                        UPDATE incoming_receipts
+                        SET status = 'rejected',
+                            rejection_reason = %s,
+                            reviewed_at = NOW()
+                        WHERE id = %s AND status = 'pending'
+                    ''', (reason, receipt_id))
+                else:
+                    db_execute(conn, db_type, '''
+                        UPDATE incoming_receipts
+                        SET status = 'rejected',
+                            rejection_reason = ?,
+                            reviewed_at = ?
+                        WHERE id = ? AND status = 'pending'
+                    ''', (reason, datetime.now().isoformat(), receipt_id))
+                rejected += 1
+            except Exception as e:
+                errors.append(f"ID {receipt_id}: {str(e)}")
+
+        conn.commit()
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'rejected': rejected,
+            'total_requested': len(receipt_ids),
+            'errors': errors if errors else None
+        })
+
+    except Exception as e:
+        print(f"Error bulk rejecting receipts: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/unreject", methods=["POST"])
-@login_required
+@api_key_or_login_required
 def unreject_incoming_receipt():
     """
     Unreject a previously rejected incoming receipt - moves it back to pending
