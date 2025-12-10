@@ -16323,6 +16323,45 @@ def accept_incoming_receipt():
 
         print(f"✅ Accepted receipt {receipt_id} → transaction {transaction_id} ({action})")
 
+        # === AUTO AI CATEGORIZATION & NOTE GENERATION ===
+        ai_result = None
+        if action == 'created' and transaction_id:
+            try:
+                print(f"   🤖 Running AI auto-categorization...")
+                # Call internal function directly to categorize and generate note
+                cat_result = gemini_categorize_transaction(merchant, amount, trans_date, '')
+                note_result = gemini_generate_ai_note(
+                    merchant, amount, trans_date,
+                    cat_result.get('category', ''),
+                    cat_result.get('business_type', 'Down Home')
+                )
+
+                # Prepare updates
+                ai_updates = {}
+                if cat_result.get('category'):
+                    ai_updates['category'] = cat_result['category']
+                if cat_result.get('business_type'):
+                    ai_updates['Business Type'] = cat_result['business_type']
+                if note_result.get('note'):
+                    ai_updates['AI Note'] = note_result['note']
+
+                # Save to database and DataFrame
+                if ai_updates:
+                    update_row_by_index(transaction_id, ai_updates, source='ai_auto_on_accept')
+                    print(f"   ✓ AI categorized as: {cat_result.get('business_type', 'N/A')} / {cat_result.get('category', 'N/A')}")
+                    if note_result.get('note'):
+                        print(f"   ✓ AI note: {note_result['note'][:50]}...")
+
+                ai_result = {
+                    'category': cat_result.get('category'),
+                    'business_type': cat_result.get('business_type'),
+                    'note': note_result.get('note'),
+                    'confidence': cat_result.get('confidence', 0)
+                }
+            except Exception as ai_err:
+                print(f"   ⚠️ AI processing failed (non-fatal): {ai_err}")
+                ai_result = {'error': str(ai_err)}
+
         # === AUTO-SPLIT APPLE RECEIPTS ===
         # Check if this is an Apple receipt that needs splitting into personal/business
         apple_split_result = None
@@ -16344,7 +16383,8 @@ def accept_incoming_receipt():
             'receipt_id': receipt_id,
             'action': action,
             'receipt_files': receipt_files,
-            'apple_split': apple_split_result
+            'apple_split': apple_split_result,
+            'ai_processing': ai_result
         })
 
     except Exception as e:
