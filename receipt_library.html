@@ -264,6 +264,46 @@
       opacity: 0.7;
     }
 
+    /* Quick Date Filter Buttons */
+    .quick-date-filters {
+      display: flex;
+      gap: 8px;
+      padding: 8px 0 12px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    .quick-date-filters::-webkit-scrollbar {
+      display: none;
+    }
+
+    .quick-date-btn {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .quick-date-btn:hover {
+      background: var(--card-hover);
+      color: var(--text);
+    }
+
+    .quick-date-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
     /* Verification Badge on receipt cards */
     .verification-badge {
       position: absolute;
@@ -1224,6 +1264,15 @@
       </button>
     </div>
 
+    <!-- Quick Date Filters -->
+    <div class="quick-date-filters">
+      <button class="quick-date-btn active" data-preset="all" onclick="quickDateFilter('all')">All Time</button>
+      <button class="quick-date-btn" data-preset="today" onclick="quickDateFilter('today')">Today</button>
+      <button class="quick-date-btn" data-preset="week" onclick="quickDateFilter('week')">This Week</button>
+      <button class="quick-date-btn" data-preset="month" onclick="quickDateFilter('month')">This Month</button>
+      <button class="quick-date-btn" data-preset="quarter" onclick="quickDateFilter('quarter')">90 Days</button>
+    </div>
+
     <div class="filter-row">
       <button class="filter-btn" id="date-filter-btn" onclick="openDateFilter()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1232,7 +1281,7 @@
           <line x1="8" y1="2" x2="8" y2="6"/>
           <line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
-        <span id="date-filter-text">Date</span>
+        <span id="date-filter-text">Custom</span>
       </button>
       <button class="filter-btn" id="amount-filter-btn" onclick="openAmountFilter()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1889,8 +1938,26 @@
         }
       } else {
         btn.classList.remove('active');
-        text.textContent = 'Date';
+        text.textContent = 'Custom';
       }
+    }
+
+    // Quick date filter (one-click buttons)
+    function quickDateFilter(preset) {
+      // Update button states
+      document.querySelectorAll('.quick-date-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === preset);
+      });
+
+      // Use the existing setDatePreset logic
+      setDatePreset(preset);
+
+      // Apply the filter immediately
+      filters.dateFrom = $('date-from').value || null;
+      filters.dateTo = $('date-to').value || null;
+
+      updateDateFilterButton();
+      loadReceipts();
     }
 
     // Amount filter

@@ -1116,6 +1116,194 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
 }
 
 /* Navigation removed - clean standalone page */
+
+/* Search & Date Filter Bar */
+.filters-bar {
+  padding: 12px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--edge);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box .search-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 36px 10px 36px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--panel2);
+  color: var(--ink);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-box input:focus {
+  border-color: var(--brand);
+}
+
+.search-box input::placeholder {
+  color: var(--muted);
+}
+
+.search-clear {
+  position: absolute;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-clear:hover {
+  background: rgba(255,78,106,0.2);
+  color: var(--bad);
+}
+
+.date-filter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.date-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.date-btn:hover {
+  border-color: var(--brand);
+  color: var(--ink);
+}
+
+.date-btn.active {
+  background: rgba(0,255,136,0.15);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.date-range input {
+  padding: 5px 8px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--panel2);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.date-range input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.date-range span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Sortable Table Headers */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+th.sortable:hover {
+  color: var(--brand);
+}
+
+th.sortable::after {
+  content: ' ↕';
+  opacity: 0.3;
+  font-size: 10px;
+}
+
+th.sortable.asc::after {
+  content: ' ↑';
+  opacity: 1;
+  color: var(--brand);
+}
+
+th.sortable.desc::after {
+  content: ' ↓';
+  opacity: 1;
+  color: var(--brand);
+}
+
+th.sortable.active {
+  color: var(--brand);
+}
+
+/* Mobile responsive for filters */
+@media (max-width: 768px) {
+  .filters-bar {
+    padding: 10px 12px;
+  }
+
+  .date-filter-row {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .date-filter-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .date-btn {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .date-range {
+    margin-left: 0;
+    flex-shrink: 0;
+  }
+
+  .date-range input {
+    width: 100px;
+    font-size: 11px;
+  }
+}
 </style>
 </head>
 <body>
@@ -1154,9 +1342,29 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   </div>
 </div>
 
-<!-- Filters -->
+<!-- Search & Filters -->
+<div class="filters-bar">
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Search merchants, emails, amounts..." oninput="handleSearch(this.value)">
+    <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
+  </div>
+  <div class="date-filter-row">
+    <button class="date-btn" onclick="setDateFilter('today')">Today</button>
+    <button class="date-btn" onclick="setDateFilter('week')">This Week</button>
+    <button class="date-btn" onclick="setDateFilter('month')">This Month</button>
+    <button class="date-btn active" onclick="setDateFilter('all')">All Time</button>
+    <div class="date-range">
+      <input type="date" id="date-from" onchange="applyDateRange()">
+      <span>to</span>
+      <input type="date" id="date-to" onchange="applyDateRange()">
+    </div>
+  </div>
+</div>
+
+<!-- Status Filters -->
 <div class="filters">
-  <div class="chip" onclick="filterStatus('pending')" data-filter="pending">
+  <div class="chip active" onclick="filterStatus('pending')" data-filter="pending">
     <span class="chip-icon">📥</span> Inbox
     <span class="chip-count" id="chip-pending">0</span>
   </div>
@@ -1343,6 +1551,196 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
 let allReceipts = [];
 let currentFilter = 'pending';  // Default to inbox
 let pendingAccept = null; // Store pending accept data for duplicate handling
+let currentSortField = 'date';
+let currentSortDir = 'desc';
+let searchQuery = '';
+let dateFilterFrom = null;
+let dateFilterTo = null;
+let currentDatePreset = 'all';
+
+// ============== SEARCH, SORT & DATE FILTER FUNCTIONS ==============
+
+// Get filtered and sorted receipts
+function getSortedReceipts() {
+  let receipts = [...allReceipts];
+
+  // Apply status filter
+  if (currentFilter !== 'all') {
+    receipts = receipts.filter(r => r.status === currentFilter);
+  }
+
+  // Apply search filter
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    receipts = receipts.filter(r => {
+      const subject = (r.subject || '').toLowerCase();
+      const merchant = (r.merchant || extractMerchantFromSubject(r.subject) || '').toLowerCase();
+      const from = (r.from_email || '').toLowerCase();
+      const amount = (r.amount || '').toString();
+      const desc = (r.description || r.body_snippet || '').toLowerCase();
+      return subject.includes(query) || merchant.includes(query) ||
+             from.includes(query) || amount.includes(query) || desc.includes(query);
+    });
+  }
+
+  // Apply date filter
+  if (dateFilterFrom || dateFilterTo) {
+    receipts = receipts.filter(r => {
+      const dateStr = r.receipt_date || r.received_date || '';
+      if (!dateStr) return false;
+      const receiptDate = new Date(dateStr);
+      receiptDate.setHours(0, 0, 0, 0);
+
+      if (dateFilterFrom) {
+        const from = new Date(dateFilterFrom);
+        from.setHours(0, 0, 0, 0);
+        if (receiptDate < from) return false;
+      }
+      if (dateFilterTo) {
+        const to = new Date(dateFilterTo);
+        to.setHours(23, 59, 59, 999);
+        if (receiptDate > to) return false;
+      }
+      return true;
+    });
+  }
+
+  // Apply sorting
+  receipts.sort((a, b) => {
+    let aVal, bVal;
+
+    switch (currentSortField) {
+      case 'subject':
+        aVal = (a.subject || '').toLowerCase();
+        bVal = (b.subject || '').toLowerCase();
+        break;
+      case 'merchant':
+        aVal = (a.merchant || extractMerchantFromSubject(a.subject) || '').toLowerCase();
+        bVal = (b.merchant || extractMerchantFromSubject(b.subject) || '').toLowerCase();
+        break;
+      case 'amount':
+        aVal = parseFloat(a.amount) || 0;
+        bVal = parseFloat(b.amount) || 0;
+        break;
+      case 'from':
+        aVal = (a.from_email || '').toLowerCase();
+        bVal = (b.from_email || '').toLowerCase();
+        break;
+      case 'date':
+        aVal = new Date(a.receipt_date || a.received_date || 0);
+        bVal = new Date(b.receipt_date || b.received_date || 0);
+        break;
+      case 'score':
+        aVal = a.confidence_score || 0;
+        bVal = b.confidence_score || 0;
+        break;
+      default:
+        aVal = a[currentSortField] || '';
+        bVal = b[currentSortField] || '';
+    }
+
+    if (aVal < bVal) return currentSortDir === 'asc' ? -1 : 1;
+    if (aVal > bVal) return currentSortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  return receipts;
+}
+
+// Sort by column
+function sortBy(field) {
+  if (currentSortField === field) {
+    // Toggle direction
+    currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSortField = field;
+    currentSortDir = field === 'date' ? 'desc' : 'asc'; // Default newest first for dates
+  }
+  renderTable();
+}
+
+// Handle search input
+function handleSearch(query) {
+  searchQuery = query;
+  const clearBtn = document.getElementById('search-clear');
+  if (clearBtn) {
+    clearBtn.style.display = query ? 'block' : 'none';
+  }
+  renderTable();
+}
+
+// Clear search
+function clearSearch() {
+  searchQuery = '';
+  const input = document.getElementById('search-input');
+  const clearBtn = document.getElementById('search-clear');
+  if (input) input.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  renderTable();
+}
+
+// Set date filter preset
+function setDateFilter(preset) {
+  currentDatePreset = preset;
+
+  // Update button states
+  document.querySelectorAll('.date-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`.date-btn[onclick*="${preset}"]`)?.classList.add('active');
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  switch (preset) {
+    case 'today':
+      dateFilterFrom = today.toISOString().split('T')[0];
+      dateFilterTo = today.toISOString().split('T')[0];
+      break;
+    case 'week':
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      dateFilterFrom = weekAgo.toISOString().split('T')[0];
+      dateFilterTo = today.toISOString().split('T')[0];
+      break;
+    case 'month':
+      const monthAgo = new Date(today);
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      dateFilterFrom = monthAgo.toISOString().split('T')[0];
+      dateFilterTo = today.toISOString().split('T')[0];
+      break;
+    case 'all':
+    default:
+      dateFilterFrom = null;
+      dateFilterTo = null;
+      break;
+  }
+
+  // Clear custom date inputs
+  const dateFromInput = document.getElementById('date-from');
+  const dateToInput = document.getElementById('date-to');
+  if (dateFromInput) dateFromInput.value = dateFilterFrom || '';
+  if (dateToInput) dateToInput.value = dateFilterTo || '';
+
+  renderTable();
+}
+
+// Apply custom date range
+function applyDateRange() {
+  const dateFromInput = document.getElementById('date-from');
+  const dateToInput = document.getElementById('date-to');
+
+  dateFilterFrom = dateFromInput?.value || null;
+  dateFilterTo = dateToInput?.value || null;
+
+  // Clear preset buttons when using custom range
+  if (dateFilterFrom || dateFilterTo) {
+    document.querySelectorAll('.date-btn').forEach(btn => btn.classList.remove('active'));
+    currentDatePreset = 'custom';
+  }
+
+  renderTable();
+}
+
+// ============== END SEARCH/SORT/DATE FILTER ==============
 
 // Load receipts on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -1402,21 +1800,22 @@ function renderTable() {
     return;
   }
 
+  const sortedReceipts = getSortedReceipts();
   const tableHTML = `
     <table>
       <thead>
         <tr>
-          <th style="width: 35%">Subject & Details</th>
-          <th style="width: 15%">Merchant</th>
-          <th style="width: 10%">Amount</th>
-          <th style="width: 12%">From</th>
-          <th style="width: 10%">Date</th>
-          <th style="width: 8%">Score</th>
+          <th style="width: 30%" class="sortable ${currentSortField === 'subject' ? currentSortDir : ''}" onclick="sortBy('subject')">Subject & Details</th>
+          <th style="width: 15%" class="sortable ${currentSortField === 'merchant' ? currentSortDir : ''}" onclick="sortBy('merchant')">Merchant</th>
+          <th style="width: 10%" class="sortable ${currentSortField === 'amount' ? currentSortDir : ''}" onclick="sortBy('amount')">Amount</th>
+          <th style="width: 12%" class="sortable ${currentSortField === 'from' ? currentSortDir : ''}" onclick="sortBy('from')">From</th>
+          <th style="width: 12%" class="sortable ${currentSortField === 'date' ? currentSortDir : ''} active" onclick="sortBy('date')">Date</th>
+          <th style="width: 8%" class="sortable ${currentSortField === 'score' ? currentSortDir : ''}" onclick="sortBy('score')">Score</th>
           <th style="width: 10%">Actions</th>
         </tr>
       </thead>
       <tbody>
-        ${allReceipts.map(r => renderRow(r)).join('')}
+        ${sortedReceipts.map(r => renderRow(r)).join('')}
       </tbody>
     </table>
   `;
@@ -1431,11 +1830,8 @@ function renderMobileCards() {
   const container = document.getElementById('mobile-inbox');
   if (!container) return;
 
-  // Filter receipts based on current filter
-  const filtered = allReceipts.filter(r => {
-    if (currentFilter === 'all') return true;
-    return r.status === currentFilter;
-  });
+  // Use getSortedReceipts() which already applies status, search, and date filters
+  const filtered = getSortedReceipts();
 
   if (filtered.length === 0) {
     let emptyTitle = 'No Receipts';
