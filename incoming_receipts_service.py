@@ -146,13 +146,48 @@ COWORKER_PATTERNS = [
     'hive', 'hive.com', 'keep using',  # Hive project management spam
 ]
 
-# Spam/marketing sender domains to auto-reject
+# Spam/marketing sender domains to auto-reject (expanded list)
 SPAM_SENDER_DOMAINS = [
+    # Email marketing platforms
     'mailchimp.com', 'sendgrid.net', 'constantcontact.com', 'mailgun.org',
-    'marketing.', 'news.', 'updates.', 'info.', 'promo.',
-    'noreply.', 'no-reply.', 'donotreply.',
     'hubspot.com', 'mailerlite.com', 'klaviyo.com', 'brevo.com',
-    'mixmax.com', 'intercom.io', 'drip.com', 'convertkit.com'
+    'mixmax.com', 'intercom.io', 'drip.com', 'convertkit.com',
+    'campaign-archive.com', 'list-manage.com', 'mcsv.net', 'mailjet.com',
+    'sendinblue.com', 'sparkpost.com', 'postmarkapp.com', 'amazonses.com',
+
+    # Generic subdomains
+    'marketing.', 'news.', 'updates.', 'info.', 'promo.',
+    'noreply.', 'no-reply.', 'donotreply.', 'notifications.',
+    'newsletter.', 'announcements.', 'alerts.', 'mailer.',
+
+    # Social/content platforms
+    'linkedin.com', 'facebook.com', 'facebookmail.com', 'twitter.com',
+    'instagram.com', 'tiktok.com', 'youtube.com', 'pinterest.com',
+    'substack.com', 'medium.com', 'ghost.io', 'beehiiv.com',
+    'buttondown.email', 'revue.email',
+
+    # Event/scheduling platforms
+    'calendly.com', 'eventbrite.com', 'meetup.com', 'luma.co',
+    'hopin.com', 'zoom.us', 'webex.com',  # Notifications, not receipts
+
+    # Forms/surveys
+    'typeform.com', 'surveymonkey.com', 'google.forms', 'airtable.com',
+
+    # CRM/Sales
+    'salesforce.com', 'pipedrive.com', 'freshsales.io', 'close.com',
+
+    # Project management notifications
+    'asana.com', 'monday.com', 'trello.com', 'basecamp.com',
+    'jira.atlassian.com', 'clickup.com',
+
+    # Document signing (not receipts)
+    'docusign.net', 'docusign.com', 'hellosign.com', 'pandadoc.com',
+
+    # GitHub notifications
+    'github.com', 'notifications.github.com',
+
+    # Shipping notifications (not receipts, just tracking)
+    'track.aftership.com', 'narvar.com', 'route.com'
 ]
 
 # Artist/contract patterns (EXCLUDE these)
@@ -261,8 +296,15 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
     if any(x in from_email for x in ['kaplan.brian@gmail.com', 'brian@downhome.com', 'brian@musiccityrodeo.com']):
         return 0
 
-    # 3. Generic vague subjects
-    if subject_lower in ['account payment', 'payment', 'notification', 'update', 'message', 'alert']:
+    # 3. Generic vague subjects - reject unless from trusted domain
+    generic_subjects = [
+        'account payment', 'payment', 'notification', 'update', 'message', 'alert',
+        'confirmation', 'your order', 'order update', 'shipping update',
+        'delivery', 'tracking', 'status update', 'thank you', 'thanks'
+    ]
+    is_trusted_domain = any(svc in domain for svc in PERSONAL_SERVICE_DOMAINS)
+    if subject_lower in generic_subjects and not is_trusted_domain:
+        print(f"      ✗ Rejected: Generic subject '{subject_lower}' from untrusted domain")
         return 0
 
     # 4. B2B Vendor invoices (net terms, statements, quotes)
@@ -567,6 +609,10 @@ def find_matching_transaction(merchant, amount, transaction_date):
     """
     Check if a similar transaction already exists in the database (MySQL)
     Returns: (transaction_id, has_receipt, needs_receipt)
+
+    Date windows:
+    - With transaction date: ±7 days
+    - Without transaction date: last 14 days (was 30, too broad)
     """
     if not merchant:
         return None, False, False
@@ -574,20 +620,23 @@ def find_matching_transaction(merchant, amount, transaction_date):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Search for similar transactions within 7 days
+    # Search for similar transactions within tight date window
     if transaction_date:
         try:
             date_obj = datetime.fromisoformat(transaction_date.split('T')[0])
             date_min = (date_obj - timedelta(days=7)).strftime('%Y-%m-%d')
             date_max = (date_obj + timedelta(days=7)).strftime('%Y-%m-%d')
         except:
-            date_min = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            # Fallback: last 14 days (reduced from 30)
+            date_min = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
             date_max = datetime.now().strftime('%Y-%m-%d')
     else:
-        date_min = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        # No date provided: last 14 days (reduced from 30)
+        date_min = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
         date_max = datetime.now().strftime('%Y-%m-%d')
 
     # Search by merchant name similarity (MySQL uses %s placeholders)
+    # Get multiple candidates and score them to find BEST match
     merchant_pattern = f'%{merchant}%'
 
     cursor.execute('''
@@ -596,26 +645,70 @@ def find_matching_transaction(merchant, amount, transaction_date):
         WHERE chase_description LIKE %s
           AND chase_date BETWEEN %s AND %s
         ORDER BY chase_date DESC
-        LIMIT 1
+        LIMIT 10
     ''', (merchant_pattern, date_min, date_max))
 
-    result = cursor.fetchone()
+    results = cursor.fetchall()
     conn.close()
 
-    if result:
-        # DictCursor returns dict, so access by key
+    if not results:
+        return None, False, False
+
+    # Score each candidate and find the best match
+    best_match = None
+    best_score = 0
+
+    merchant_lower = merchant.lower()
+
+    for result in results:
         trans_id = result['id']
+        trans_desc = result['chase_description'] or ''
         trans_amount = result['chase_amount']
         receipt_file = result.get('receipt_file', '')
         has_receipt = receipt_file and str(receipt_file).strip() != ''
 
-        # Check amount match (within 10%)
-        amount_match = False
-        if amount and trans_amount:
-            diff_pct = abs(amount - float(trans_amount)) / float(trans_amount) * 100
-            amount_match = diff_pct < 10
+        # Skip if already has receipt
+        if has_receipt:
+            continue
 
-        return trans_id, has_receipt, (not has_receipt and amount_match)
+        # Calculate match score
+        score = 0
+
+        # Merchant similarity (0-50 points)
+        desc_lower = trans_desc.lower()
+        if merchant_lower in desc_lower or desc_lower in merchant_lower:
+            score += 50  # Exact substring match
+        elif merchant_lower.split()[0] in desc_lower:
+            score += 30  # First word match
+        else:
+            # Fuzzy match using simple ratio
+            common = sum(1 for c in merchant_lower if c in desc_lower)
+            score += min(25, common * 3)
+
+        # Amount match (0-50 points)
+        if amount and trans_amount:
+            try:
+                diff_pct = abs(amount - float(trans_amount)) / float(trans_amount) * 100
+                if diff_pct < 1:
+                    score += 50  # Near exact
+                elif diff_pct < 5:
+                    score += 40  # Within 5%
+                elif diff_pct < 10:
+                    score += 20  # Within 10%
+                # Beyond 10% = no points
+            except:
+                pass
+
+        if score > best_score:
+            best_score = score
+            best_match = {
+                'id': trans_id,
+                'has_receipt': has_receipt,
+                'amount_match': amount and trans_amount and abs(amount - float(trans_amount)) / float(trans_amount) * 100 < 5
+            }
+
+    if best_match and best_score >= 50:  # Require minimum score of 50
+        return best_match['id'], best_match['has_receipt'], (not best_match['has_receipt'] and best_match['amount_match'])
 
     return None, False, False
 
@@ -883,13 +976,21 @@ def process_receipt_files(service, email_id, attachments, html_body=None, mercha
             local_files.append(output_path)
             print(f"      ✓ Saved attachment: {output_path}")
 
-    # If no attachments but has HTML body, screenshot it
+    # If no attachments but has HTML body, screenshot it (with validation)
     if not local_files and html_body:
-        print(f"      📸 Screenshotting HTML receipt...")
-        output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}.jpg")
-        result = screenshot_html_receipt(html_body, output_path)
-        if result:
-            local_files.append(result)
+        # Validate HTML contains receipt-like content before screenshotting
+        html_lower = html_body.lower()
+        receipt_indicators = ['$', 'total', 'subtotal', 'amount', 'paid', 'charged', 'invoice', 'receipt', 'order #', 'transaction']
+        has_receipt_content = sum(1 for ind in receipt_indicators if ind in html_lower) >= 2
+
+        if has_receipt_content:
+            print(f"      📸 Screenshotting HTML receipt...")
+            output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}.jpg")
+            result = screenshot_html_receipt(html_body, output_path)
+            if result:
+                local_files.append(result)
+        else:
+            print(f"      ⊘ Skipping HTML screenshot: No receipt content detected")
 
     # Upload to R2 for cloud storage
     try:
@@ -915,8 +1016,12 @@ def process_receipt_files(service, email_id, attachments, html_body=None, mercha
     return saved_files
 
 
-def is_likely_receipt(subject, from_email, body_snippet, has_attachment, min_confidence=60):
-    """Check if email is likely a receipt based on content"""
+def is_likely_receipt(subject, from_email, body_snippet, has_attachment, min_confidence=80):
+    """Check if email is likely a receipt based on content
+
+    Raised threshold from 60 to 80 to reduce false positives.
+    Only capture emails with strong receipt signals.
+    """
     confidence = calculate_receipt_confidence(subject, from_email, body_snippet, has_attachment)
     return confidence >= min_confidence, confidence
 
@@ -1141,6 +1246,12 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                     print(f"      Extracted: {merchant_ai or 'Unknown'} ${amount_ai or '?'}")
                     if description:
                         print(f"      Description: {description}")
+
+                # === AMOUNT VALIDATION ===
+                # Skip receipts without a valid amount - they're likely not real receipts
+                if not amount_ai or amount_ai <= 0:
+                    print(f"      ⊘ Skipping: No valid amount found (not a real receipt)")
+                    continue
 
                 # Check for matching transaction
                 match_id, has_receipt, needs_receipt = find_matching_transaction(
