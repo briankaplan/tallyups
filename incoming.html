@@ -900,6 +900,179 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   border: 1px solid rgba(59,130,246,0.3);
 }
 
+/* ============================================
+   RECEIPT THUMBNAIL IN CARDS
+   ============================================ */
+.inbox-card-thumb {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel2);
+  border: 2px solid var(--edge);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+.inbox-card-thumb:hover {
+  transform: scale(1.1);
+  border-color: var(--brand);
+  box-shadow: 0 6px 20px rgba(0,255,136,0.3);
+}
+.inbox-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.inbox-card-thumb-icon {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  background: var(--brand);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #000;
+}
+.inbox-card.has-thumb {
+  padding-right: 88px;
+}
+.inbox-card.has-thumb .inbox-card-header {
+  padding-right: 0;
+}
+
+/* ============================================
+   GRID VIEW MODE
+   ============================================ */
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--panel2);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+}
+.view-toggle-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.view-toggle-btn:hover {
+  background: rgba(0,255,136,0.1);
+  color: var(--ink);
+}
+.view-toggle-btn.active {
+  background: var(--brand);
+  color: #000;
+}
+
+/* Grid layout for cards */
+.mobile-inbox.grid-view {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+.mobile-inbox.grid-view .inbox-card {
+  height: auto;
+  min-height: 180px;
+}
+.mobile-inbox.grid-view .inbox-card-thumb {
+  width: 80px;
+  height: 80px;
+}
+.mobile-inbox.grid-view .inbox-card.has-thumb {
+  padding-right: 100px;
+}
+
+/* ============================================
+   SELECTED CARD STATE (keyboard navigation)
+   ============================================ */
+.inbox-card.selected {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  background: rgba(0,255,136,0.05);
+}
+.inbox-card.selected::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 20px;
+  box-shadow: 0 0 20px rgba(0,255,136,0.2);
+  pointer-events: none;
+}
+
+/* ============================================
+   KEYBOARD SHORTCUT HINTS
+   ============================================ */
+.shortcut-hint {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  z-index: 100;
+  display: none;
+  animation: fadeIn 0.2s ease;
+}
+.shortcut-hint.show { display: block; }
+.shortcut-hint kbd {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--panel2);
+  border: 1px solid var(--edge);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand);
+  margin: 0 4px;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Quick action toast for keyboard */
+.quick-action-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.9);
+  border: 2px solid var(--brand);
+  border-radius: 16px;
+  padding: 20px 32px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--brand);
+  z-index: 9999;
+  animation: popIn 0.2s ease;
+  pointer-events: none;
+}
+@keyframes popIn {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
 /* Empty state */
 .inbox-empty {
   text-align: center;
@@ -1508,6 +1681,27 @@ th.sortable.active {
   <div class="chip" onclick="filterStatus('all')" data-filter="all">
     <span class="chip-icon">📋</span> All
   </div>
+
+  <!-- View Toggle -->
+  <div class="view-toggle" style="margin-left:auto">
+    <button class="view-toggle-btn active" onclick="setViewMode('list')" title="List View">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+        <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+      </svg>
+    </button>
+    <button class="view-toggle-btn" onclick="setViewMode('grid')" title="Grid View">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Keyboard Help -->
+  <button class="btn-ghost btn-sm" onclick="showKeyboardHelp()" title="Keyboard Shortcuts" style="padding:8px 10px">
+    <kbd style="font-size:12px;background:var(--panel2);padding:2px 6px;border-radius:4px;border:1px solid var(--edge)">?</kbd>
+  </button>
 </div>
 
 <!-- Content -->
@@ -2050,6 +2244,16 @@ function renderMobileCard(receipt) {
   // Receipt date for accept function
   const receiptDate = receipt.receipt_date || receipt.received_date || '';
 
+  // Receipt thumbnail
+  const thumbUrl = receipt.preview_url || receipt.r2_url;
+  const hasThumb = !!thumbUrl;
+  const thumbHTML = hasThumb ? `
+    <div class="inbox-card-thumb" onclick="event.stopPropagation();openFullImage('${thumbUrl}')">
+      <img src="${thumbUrl}" alt="Receipt" loading="lazy" onerror="this.parentNode.style.display='none'">
+      <span class="inbox-card-thumb-icon">🧾</span>
+    </div>
+  ` : '';
+
   // Actions based on status
   let actionsHTML = '';
   if (receipt.status === 'pending') {
@@ -2124,7 +2328,8 @@ function renderMobileCard(receipt) {
   }
 
   return `
-    <div class="inbox-card ${receipt.status}" data-id="${receipt.id}" onclick="showPreview(${receipt.id})">
+    <div class="inbox-card ${receipt.status}${hasThumb ? ' has-thumb' : ''}" data-id="${receipt.id}" onclick="showPreview(${receipt.id})">
+      ${thumbHTML}
       <div class="inbox-card-header">
         <div class="inbox-card-date">${formattedDate}</div>
         <div class="inbox-card-score ${scoreClass}">${score}%</div>
@@ -3093,10 +3298,53 @@ function openFullImage(src) {
   window.open(src, '_blank');
 }
 
+// View mode toggle
+let currentViewMode = localStorage.getItem('inbox-view-mode') || 'list';
+
+function setViewMode(mode) {
+  currentViewMode = mode;
+  localStorage.setItem('inbox-view-mode', mode);
+
+  const container = document.getElementById('mobile-inbox');
+  const toggleBtns = document.querySelectorAll('.view-toggle-btn');
+
+  toggleBtns.forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`.view-toggle-btn[onclick*="${mode}"]`)?.classList.add('active');
+
+  if (mode === 'grid') {
+    container.classList.add('grid-view');
+  } else {
+    container.classList.remove('grid-view');
+  }
+}
+
+// Initialize view mode on load
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => setViewMode(currentViewMode), 100);
+});
+
 // Keyboard navigation
 let currentRowIndex = -1;
+let lastShortcutHint = null;
+
+function showQuickAction(text, icon = '⚡') {
+  const existing = document.querySelector('.quick-action-toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'quick-action-toast';
+  toast.innerHTML = `${icon} ${text}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 800);
+}
 
 document.addEventListener('keydown', (e) => {
+  // Skip if user is typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    if (e.key === 'Escape') e.target.blur();
+    return;
+  }
+
   // Handle preview modal shortcuts
   if (document.getElementById('preview-modal').classList.contains('active')) {
     if (e.key === 'Escape') {
@@ -3115,6 +3363,14 @@ document.addEventListener('keydown', (e) => {
         quickReject(currentPreviewReceipt.id);
       }
     }
+    // N/P for next/previous in preview
+    if (e.key === 'n' || e.key === 'N') {
+      e.preventDefault();
+      navigatePreview(1);
+    } else if (e.key === 'p' || e.key === 'P') {
+      e.preventDefault();
+      navigatePreview(-1);
+    }
     return;
   }
 
@@ -3124,22 +3380,57 @@ document.addEventListener('keydown', (e) => {
   // J/K for navigation (like vim)
   if (key === 'j' || e.key === 'ArrowDown') {
     e.preventDefault();
-    navigateRows(1);
+    navigateCards(1);
   } else if (key === 'k' || e.key === 'ArrowUp') {
     e.preventDefault();
-    navigateRows(-1);
+    navigateCards(-1);
+  }
+  // Home/End for first/last
+  else if (e.key === 'Home' || (key === 'g' && e.shiftKey)) {
+    e.preventDefault();
+    currentRowIndex = -1;
+    navigateCards(1);
+  } else if (e.key === 'End' || key === 'g') {
+    if (!e.shiftKey && key === 'g') {
+      e.preventDefault();
+      const visible = getVisibleReceipts();
+      currentRowIndex = visible.length - 2;
+      navigateCards(1);
+    }
   }
   // / for search focus
   else if (key === '/') {
     e.preventDefault();
-    const searchInput = document.querySelector('input[type="search"], input[placeholder*="Search"]');
-    if (searchInput) searchInput.focus();
+    document.getElementById('search-input')?.focus();
   }
-  // Enter to open preview on selected row
+  // Enter to open preview on selected card
   else if (key === 'enter' && currentRowIndex >= 0) {
+    e.preventDefault();
     const visibleReceipts = getVisibleReceipts();
     if (visibleReceipts[currentRowIndex]) {
       showPreview(visibleReceipts[currentRowIndex].id);
+    }
+  }
+  // A to accept selected (without shift)
+  else if (key === 'a' && !e.shiftKey && currentRowIndex >= 0) {
+    e.preventDefault();
+    const receipt = getVisibleReceipts()[currentRowIndex];
+    if (receipt && receipt.status === 'pending') {
+      showQuickAction('Accepting...', '✓');
+      const merchant = receipt.merchant || extractMerchantFromSubject(receipt.subject);
+      const amount = parseFloat(receipt.amount) || 0;
+      const isRefund = receipt.is_refund || (receipt.subject || '').toLowerCase().includes('refund');
+      const receiptDate = receipt.receipt_date || receipt.received_date || '';
+      quickAccept(receipt.id, merchant, amount, isRefund, receiptDate);
+    }
+  }
+  // X or D to reject selected
+  else if ((key === 'x' || key === 'd') && currentRowIndex >= 0) {
+    e.preventDefault();
+    const receipt = getVisibleReceipts()[currentRowIndex];
+    if (receipt && receipt.status === 'pending') {
+      showQuickAction('Rejecting...', '✕');
+      quickReject(receipt.id);
     }
   }
   // Shift+A to batch accept all visible
@@ -3147,10 +3438,38 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     batchAcceptVisible();
   }
+  // V to toggle view mode
+  else if (key === 'v') {
+    e.preventDefault();
+    setViewMode(currentViewMode === 'list' ? 'grid' : 'list');
+    showQuickAction(currentViewMode === 'grid' ? 'Grid View' : 'List View', '📋');
+  }
+  // 1-4 for quick filter
+  else if (key === '1') { filterStatus('pending'); showQuickAction('Inbox', '📥'); }
+  else if (key === '2') { filterStatus('accepted'); showQuickAction('Matched', '🔗'); }
+  else if (key === '3') { filterStatus('rejected'); showQuickAction('Dismissed', '✕'); }
+  else if (key === '4') { filterStatus('all'); showQuickAction('All', '📋'); }
+  // R to refresh
+  else if (key === 'r' && !e.shiftKey && currentRowIndex < 0) {
+    e.preventDefault();
+    loadReceipts();
+    showQuickAction('Refreshing...', '🔄');
+  }
+  // S to scan for new
+  else if (key === 's' && !e.shiftKey) {
+    e.preventDefault();
+    scanForNew();
+    showQuickAction('Scanning...', '📧');
+  }
   // ? for help
   else if (key === '?') {
     e.preventDefault();
     showKeyboardHelp();
+  }
+  // Escape to clear selection
+  else if (e.key === 'Escape') {
+    currentRowIndex = -1;
+    clearCardSelection();
   }
 });
 
@@ -3161,22 +3480,53 @@ function getVisibleReceipts() {
   });
 }
 
-function navigateRows(direction) {
+function navigateCards(direction) {
   const visibleReceipts = getVisibleReceipts();
   if (visibleReceipts.length === 0) return;
 
   currentRowIndex = Math.max(0, Math.min(visibleReceipts.length - 1, currentRowIndex + direction));
 
-  // Highlight current row
+  // Clear all selections
+  document.querySelectorAll('.inbox-card.selected').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('tbody tr').forEach(r => r.style.background = '');
+
+  // Highlight current card (mobile view)
+  const cards = document.querySelectorAll('.inbox-card:not(.compact)');
+  const cardArray = Array.from(cards);
+  if (cardArray[currentRowIndex]) {
+    cardArray[currentRowIndex].classList.add('selected');
+    cardArray[currentRowIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Also highlight table row (desktop view)
   const rows = document.querySelectorAll('tbody tr:not(.hidden)');
-  rows.forEach((row, i) => {
-    if (i === currentRowIndex) {
-      row.style.background = 'rgba(0,255,136,0.1)';
-      row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } else {
-      row.style.background = '';
-    }
-  });
+  if (rows[currentRowIndex]) {
+    rows[currentRowIndex].style.background = 'rgba(0,255,136,0.1)';
+  }
+}
+
+function clearCardSelection() {
+  document.querySelectorAll('.inbox-card.selected').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('tbody tr').forEach(r => r.style.background = '');
+}
+
+function navigatePreview(direction) {
+  if (!currentPreviewReceipt) return;
+
+  const visible = getVisibleReceipts();
+  const currentIndex = visible.findIndex(r => r.id === currentPreviewReceipt.id);
+  if (currentIndex === -1) return;
+
+  const newIndex = Math.max(0, Math.min(visible.length - 1, currentIndex + direction));
+  if (newIndex !== currentIndex && visible[newIndex]) {
+    showPreview(visible[newIndex].id);
+    currentRowIndex = newIndex;
+  }
+}
+
+// Legacy function name for compatibility
+function navigateRows(direction) {
+  navigateCards(direction);
 }
 
 async function batchAcceptVisible() {
@@ -3220,21 +3570,60 @@ async function batchAcceptVisible() {
 
 function showKeyboardHelp() {
   const helpHtml = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="this.remove()">
-      <div style="background:var(--panel);padding:24px;border-radius:12px;max-width:400px" onclick="event.stopPropagation()">
-        <h3 style="margin:0 0 16px 0">Keyboard Shortcuts</h3>
-        <div style="display:grid;gap:8px;font-size:13px">
-          <div><kbd>J</kbd> / <kbd>Down</kbd> - Next row</div>
-          <div><kbd>K</kbd> / <kbd>Up</kbd> - Previous row</div>
-          <div><kbd>Enter</kbd> - Preview selected</div>
-          <div><kbd>A</kbd> - Accept (in preview)</div>
-          <div><kbd>R</kbd> - Reject (in preview)</div>
-          <div><kbd>Shift+A</kbd> - Batch accept all pending</div>
-          <div><kbd>/</kbd> - Focus search</div>
-          <div><kbd>Esc</kbd> - Close modal</div>
-          <div><kbd>?</kbd> - Show this help</div>
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.9);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="this.remove()">
+      <div style="background:var(--panel);padding:28px;border-radius:16px;max-width:560px;width:100%;border:1px solid var(--edge);box-shadow:0 20px 60px rgba(0,0,0,0.5)" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <span style="font-size:24px">⌨️</span>
+          <h3 style="margin:0;font-size:18px;font-weight:700">Keyboard Shortcuts</h3>
         </div>
-        <button style="margin-top:16px;width:100%" class="btn-primary" onclick="this.parentNode.parentNode.remove()">Got it</button>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:600">Navigation</div>
+            <div style="display:grid;gap:6px;font-size:13px">
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">J</kbd><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">↓</kbd> Next</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">K</kbd><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">↑</kbd> Previous</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">Enter</kbd> Open preview</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">N</kbd><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">P</kbd> Next/Prev in preview</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">Esc</kbd> Close / Clear selection</div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:600">Actions</div>
+            <div style="display:grid;gap:6px;font-size:13px">
+              <div><kbd style="background:rgba(0,255,136,0.2);color:var(--ok);padding:3px 8px;border-radius:4px;border:1px solid var(--ok);font-family:monospace;margin-right:8px">A</kbd> Accept selected</div>
+              <div><kbd style="background:rgba(255,78,106,0.2);color:var(--bad);padding:3px 8px;border-radius:4px;border:1px solid var(--bad);font-family:monospace;margin-right:8px">X</kbd><kbd style="background:rgba(255,78,106,0.2);color:var(--bad);padding:3px 8px;border-radius:4px;border:1px solid var(--bad);font-family:monospace;margin-right:8px">D</kbd> Reject selected</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">Shift+A</kbd> Accept all pending</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">S</kbd> Scan for new</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">R</kbd> Refresh list</div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:600">Filters</div>
+            <div style="display:grid;gap:6px;font-size:13px">
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">1</kbd> Inbox (Pending)</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">2</kbd> Matched</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">3</kbd> Dismissed</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">4</kbd> All</div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:600">View</div>
+            <div style="display:grid;gap:6px;font-size:13px">
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">V</kbd> Toggle List/Grid</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">/</kbd> Focus search</div>
+              <div><kbd style="background:var(--panel2);padding:3px 8px;border-radius:4px;border:1px solid var(--edge);font-family:monospace;margin-right:8px">?</kbd> This help</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--edge);display:flex;gap:12px;justify-content:flex-end">
+          <span style="color:var(--muted);font-size:12px;margin-right:auto">Pro tip: Use <kbd style="background:var(--panel2);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:11px">J</kbd>/<kbd style="background:var(--panel2);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:11px">K</kbd> then <kbd style="background:var(--panel2);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:11px">A</kbd> to quickly process receipts</span>
+          <button class="btn-primary" onclick="this.closest('[onclick]').remove()" style="padding:10px 20px">Got it!</button>
+        </div>
       </div>
     </div>
   `;
