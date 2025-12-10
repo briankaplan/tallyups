@@ -2362,6 +2362,10 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
         <div class="stat-value" id="mcr-total">$0</div>
       </div>
       <div class="stat">
+        <div class="stat-label">EM.co</div>
+        <div class="stat-value" id="emco-total">$0</div>
+      </div>
+      <div class="stat">
         <div class="stat-label">Personal</div>
         <div class="stat-value" id="personal-total">$0</div>
       </div>
@@ -2406,6 +2410,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
             <option value="">Set Business...</option>
             <option value="Music City Rodeo">MCR</option>
             <option value="Down Home">Down Home</option>
+            <option value="EM.co">EM.co</option>
             <option value="Personal">Personal</option>
           </select>
           <select id="batch-status-select" class="input" style="width:130px;font-size:12px" onchange="batchSetStatus(this.value)">
@@ -2504,6 +2509,9 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
       </div>
       <div class="chip chip-with-badge" data-biz="Down Home">
         Down Home <span class="notification-badge" id="downhome-count">0</span>
+      </div>
+      <div class="chip chip-with-badge" data-biz="EM.co">
+        EM.co <span class="notification-badge" id="emco-count">0</span>
       </div>
       <div class="chip chip-with-badge" data-biz="Personal">
         Personal <span class="notification-badge" id="personal-count">0</span>
@@ -2906,6 +2914,10 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
             <span class="hotkey-key"><span class="kbd">D</span></span>
           </div>
           <div class="hotkey-item">
+            <span class="hotkey-desc">EM.co</span>
+            <span class="hotkey-key"><span class="kbd">E</span></span>
+          </div>
+          <div class="hotkey-item">
             <span class="hotkey-desc">Personal</span>
             <span class="hotkey-key"><span class="kbd">P</span></span>
           </div>
@@ -3250,6 +3262,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
             <option value="">Select Business Type</option>
             <option value="Music City Rodeo">Music City Rodeo</option>
             <option value="Down Home">Down Home</option>
+            <option value="EM.co">EM.co</option>
             <option value="Personal">Personal</option>
           </select>
         </div>
@@ -3399,6 +3412,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
             <option value="">—</option>
             <option value="Music City Rodeo">Music City Rodeo</option>
             <option value="Down Home">Down Home</option>
+            <option value="EM.co">EM.co</option>
             <option value="Personal">Personal</option>
           </select>
         </div>
@@ -3501,6 +3515,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
           <select id="mrf-company" class="input" style="width:100%" required>
             <option value="downhome">Down Home Media LLC</option>
             <option value="mcr">Music City Rodeo</option>
+            <option value="emco">EM.co</option>
           </select>
         </div>
 
@@ -5352,6 +5367,15 @@ function updateDashboard() {
       return sum + amt;
     }, 0);
 
+  const emcoTotal = dataToUse
+    .filter(r => r['Business Type'] === 'EM.co')
+    .reduce((sum, r) => {
+      const amt = getAmount(r);
+      const desc = getDesc(r);
+      if (isPaymentTxn(desc)) return sum;
+      return sum + amt;
+    }, 0);
+
   // Credit Card Payments - Description contains "PAYMENT THANK YOU" (negative amounts)
   const paymentsTotal = dataToUse
     .reduce((sum, r) => {
@@ -5362,6 +5386,7 @@ function updateDashboard() {
 
   document.getElementById('down-home-total').textContent = `$${downHomeTotal.toFixed(2)}`;
   document.getElementById('mcr-total').textContent = `$${mcrTotal.toFixed(2)}`;
+  document.getElementById('emco-total').textContent = `$${emcoTotal.toFixed(2)}`;
   document.getElementById('personal-total').textContent = `$${personalTotal.toFixed(2)}`;
   document.getElementById('payments-total').textContent = `+$${paymentsTotal.toFixed(2)}`;
 
@@ -5414,6 +5439,7 @@ function updateDashboard() {
     }).length,
     mcr: csvData.filter(r => r['Business Type'] === 'Music City Rodeo').length,
     downhome: csvData.filter(r => r['Business Type'] === 'Down Home').length,
+    emco: csvData.filter(r => r['Business Type'] === 'EM.co').length,
     personal: csvData.filter(r => r['Business Type'] === 'Personal').length,
     unassigned: csvData.filter(r => !r['Business Type'] || r['Business Type'] === 'Unassigned').length,
     alreadySubmitted: csvData.filter(r => {
@@ -5454,6 +5480,7 @@ function updateDashboard() {
   updateBadge('refunds-count', counts.refunds);
   updateBadge('mcr-count', counts.mcr);
   updateBadge('downhome-count', counts.downhome);
+  updateBadge('emco-count', counts.emco);
   updateBadge('personal-count', counts.personal);
   updateBadge('unassigned-count', counts.unassigned);
   updateBadge('already-submitted-count', counts.alreadySubmitted);
@@ -5993,6 +6020,10 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       quickUpdateField('Business Type', 'Down Home');
       break;
+    case 'e':
+      e.preventDefault();
+      quickUpdateField('Business Type', 'EM.co');
+      break;
     case 'p':
       e.preventDefault();
       quickUpdateField('Business Type', 'Personal');
@@ -6103,6 +6134,12 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       updateField('Business Type', 'Down Home');
       showToast('Business Type: Down Home', '🏠');
+      break;
+
+    case 'e':
+      e.preventDefault();
+      updateField('Business Type', 'EM.co');
+      showToast('Business Type: EM.co', '🚀');
       break;
 
     case 'p':
@@ -7987,7 +8024,7 @@ function renderStats(stats) {
       businessContainer.innerHTML = businessEntries.map(([name, data]) => {
         const pct = Math.round((data.total / maxBusiness) * 100);
         const submittedPct = data.submitted > 0 ? Math.round((data.submitted / data.total) * 100) : 0;
-        const color = name === 'Down Home' ? '#00ff88' : name === 'Music City Rodeo' ? '#ffd85e' : name === 'Personal' ? '#6eb5ff' : '#888';
+        const color = name === 'Down Home' ? '#00ff88' : name === 'Music City Rodeo' ? '#ffd85e' : name === 'EM.co' ? '#a855f7' : name === 'Personal' ? '#6eb5ff' : '#888';
         const unreported = data.total - (data.submitted || 0);
         const hasSubmitted = data.submitted > 0;
         return `
@@ -8441,6 +8478,7 @@ async function loadArchivedReports() {
           const businessColors = {
             'Music City Rodeo': 'linear-gradient(135deg, #f59e0b, #d97706)',
             'Down Home': 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+            'EM.co': 'linear-gradient(135deg, #a855f7, #9333ea)',
             'Personal': 'linear-gradient(135deg, #10b981, #059669)'
           };
           const businessGradient = businessColors[report.business_type] || 'linear-gradient(135deg, #6b7280, #4b5563)';
@@ -9282,6 +9320,7 @@ setTimeout(() => {
         <button class="filter-option active" data-filter="business" data-value="all">All</button>
         <button class="filter-option" data-filter="business" data-value="Music City Rodeo">MCR</button>
         <button class="filter-option" data-filter="business" data-value="Down Home">Down Home</button>
+        <button class="filter-option" data-filter="business" data-value="EM.co">EM.co</button>
         <button class="filter-option" data-filter="business" data-value="Personal">Personal</button>
       </div>
     </div>

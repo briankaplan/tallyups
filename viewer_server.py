@@ -9660,6 +9660,7 @@ EXPENSE_CATEGORIES = [
 BUSINESS_TYPES = [
     "Down Home",           # Music/Entertainment business
     "Music City Rodeo",    # Event business
+    "EM.co",               # EM.co business
     "Personal",            # Personal expenses
     "Compass RE",          # Real estate
     "1099 Contractor"      # Freelance work
