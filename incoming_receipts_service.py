@@ -84,6 +84,118 @@ def get_db_connection():
     """Get MySQL database connection"""
     return pymysql.connect(**MYSQL_CONFIG)
 
+# Cache for subscription merchants loaded from database
+_SUBSCRIPTION_MERCHANTS_CACHE = None
+_SUBSCRIPTION_MERCHANTS_CACHE_TIME = None
+
+def load_subscription_merchants():
+    """
+    Load known subscription merchants from database.
+    Sources:
+    1. merchants table (is_subscription=1)
+    2. transactions table (recurring charges - merchants appearing 3+ times)
+    Returns dict of normalized_name -> {avg_amount, frequency, category, source}
+    """
+    global _SUBSCRIPTION_MERCHANTS_CACHE, _SUBSCRIPTION_MERCHANTS_CACHE_TIME
+    from datetime import datetime
+
+    # Cache for 10 minutes
+    if _SUBSCRIPTION_MERCHANTS_CACHE is not None and _SUBSCRIPTION_MERCHANTS_CACHE_TIME:
+        age = (datetime.now() - _SUBSCRIPTION_MERCHANTS_CACHE_TIME).seconds
+        if age < 600:
+            return _SUBSCRIPTION_MERCHANTS_CACHE
+
+    merchants = {}
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Source 1: merchants table (explicit subscriptions)
+        cursor.execute('''
+            SELECT normalized_name, avg_amount, frequency, category
+            FROM merchants
+            WHERE is_subscription = 1
+        ''')
+        for row in cursor.fetchall():
+            name_lower = row['normalized_name'].lower()
+            merchants[name_lower] = {
+                'avg_amount': row['avg_amount'],
+                'frequency': row['frequency'],
+                'category': row['category'],
+                'source': 'merchants_table'
+            }
+
+        # Source 2: transactions table (recurring charges - merchants appearing 3+ times)
+        cursor.execute('''
+            SELECT chase_description, COUNT(*) as count, AVG(chase_amount) as avg_amount
+            FROM transactions
+            WHERE review_status = 'good'
+            GROUP BY chase_description
+            HAVING COUNT(*) >= 3
+        ''')
+        for row in cursor.fetchall():
+            # Extract base merchant name (remove location/store numbers)
+            desc = row['chase_description']
+            # Common patterns to extract base name
+            base_name = desc.lower()
+            # Skip if already in merchants
+            if base_name in merchants:
+                continue
+            # Add as recurring merchant
+            merchants[base_name] = {
+                'avg_amount': float(row['avg_amount']),
+                'frequency': 'recurring',
+                'category': 'recurring_charge',
+                'source': 'transactions_history',
+                'occurrence_count': row['count']
+            }
+
+        conn.close()
+        _SUBSCRIPTION_MERCHANTS_CACHE = merchants
+        _SUBSCRIPTION_MERCHANTS_CACHE_TIME = datetime.now()
+        print(f"      📊 Loaded {len(merchants)} subscription/recurring merchants from database")
+        return merchants
+    except Exception as e:
+        print(f"⚠️  Could not load subscription merchants: {e}")
+        return {}
+
+def is_known_subscription_merchant(merchant_name, from_email=None, subject=None):
+    """
+    Check if merchant/sender matches a known subscription from database.
+    Returns: (is_subscription, merchant_data_dict or None)
+    """
+    if not merchant_name and not from_email and not subject:
+        return False, None
+
+    merchants = load_subscription_merchants()
+    if not merchants:
+        return False, None
+
+    # Build search terms
+    search_terms = []
+    if merchant_name:
+        search_terms.append(merchant_name.lower())
+    if from_email:
+        # Extract domain or name from email
+        domain = from_email.split('@')[-1] if '@' in from_email else ''
+        if domain:
+            domain_base = domain.split('.')[0]
+            search_terms.append(domain_base.lower())
+    if subject:
+        # Look for company names in subject like "Your receipt from X"
+        import re
+        match = re.search(r'receipt from ([^#\n]+?)(?:\s*#|\s*$)', subject.lower())
+        if match:
+            search_terms.append(match.group(1).strip())
+
+    # Check each search term against known merchants
+    for term in search_terms:
+        for merchant_key, data in merchants.items():
+            if term in merchant_key or merchant_key in term:
+                return True, data
+
+    return False, None
+
 RECEIPTS_DIR = "receipts/incoming"
 GMAIL_TOKENS_DIR = "../Task/receipt-system/gmail_tokens"
 
@@ -102,21 +214,27 @@ MARKETING_PATTERNS = [
     'newsletter', 'follow us', 'join us'
 ]
 
-# Personal subscription & service receipts (INCLUDE these)
+# Personal subscription & service receipts (INCLUDE these) - HIGH CONFIDENCE
 PERSONAL_SERVICE_DOMAINS = [
     # AI/Creative Tools
-    'anthropic.com', 'openai.com', 'midjourney.com', 'runway.ml', 'runwayml.com',
-    'ideogram.ai', 'beautiful.ai', 'figma.com', 'canva.com',
-    # Tech Services
-    'apple.com', 'icloud.com', 'google.com', 'microsoft.com', 'adobe.com',
+    'anthropic.com', 'mail.anthropic.com', 'openai.com', 'midjourney.com', 'runway.ml', 'runwayml.com',
+    'ideogram.ai', 'beautiful.ai', 'figma.com', 'canva.com', 'suno.ai',
+    # Tech Services / Apple
+    'apple.com', 'email.apple.com', 'icloud.com', 'google.com', 'microsoft.com', 'adobe.com',
     'spotify.com', 'netflix.com', 'hulu.com', 'disney.com',
     # Business Tools
-    'hive.com', 'notion.so', 'slack.com', 'zoom.us', 'dropbox.com',
-    'github.com', 'vercel.com', 'railway.app', 'netlify.com', 'heroku.com',
+    'notion.so', 'slack.com', 'zoom.us', 'dropbox.com', 'taskade.com',
+    'github.com', 'vercel.com', 'railway.app', 'netlify.com', 'heroku.com', 'render.com',
     # Cloud/Hosting
     'cloudflare.com', 'aws.amazon.com', 'digitalocean.com',
-    # Payment Processors (when they send receipts)
-    'stripe.com', 'square.com', 'paypal.com'
+    # Payment Processors (when they send receipts) - VERY HIGH PRIORITY
+    'stripe.com', 'square.com', 'paypal.com',
+    # AI/ML Platforms
+    'huggingface.co', 'replicate.com', 'wandb.ai', 'cohere.ai',
+    # Phone/Utilities
+    'tdstelecom.com', 'kiafinance.com',  # Car payment confirmations
+    # Event/Ticket receipts
+    'ticketspice.com', 'eventbrite.com',
 ]
 
 # B2B/Vendor invoice patterns (EXCLUDE these)
@@ -152,7 +270,78 @@ SPAM_SENDER_DOMAINS = [
     'marketing.', 'news.', 'updates.', 'info.', 'promo.',
     'noreply.', 'no-reply.', 'donotreply.',
     'hubspot.com', 'mailerlite.com', 'klaviyo.com', 'brevo.com',
-    'mixmax.com', 'intercom.io', 'drip.com', 'convertkit.com'
+    'mixmax.com', 'intercom.io', 'drip.com', 'convertkit.com',
+    # Amazon promotional domains
+    'amazon.com',  # Will have subject filters to allow order confirmations
+    'advertising.amazon.com', 'email.amazon.com',
+    # Expensify (reports, not receipts)
+    'expensify.com', 'expensifymail.com',
+    # Hotel/loyalty programs
+    'hilton.com', 'marriott.com', 'ihg.com', 'hyatt.com',
+    # Political/news spam
+    'conservativeinstitute', 'forbesbreak', 'dailywire',
+    # School/community newsletters
+    'wilsonk12tn.us', 'k12.com', 'schoolmessenger.com',
+    # Dental/medical marketing
+    'smilegeneration.com', 'smile.direct',
+    # Credit card marketing
+    'synchronyfinancial.com', 'synchrony.com',
+    # General newsletters
+    'substack.com', 'beehiiv.com', 'ghost.io',
+]
+
+# Subject patterns that ALWAYS indicate spam (auto-reject regardless of sender)
+SPAM_SUBJECT_PATTERNS = [
+    # Amazon promotional garbage
+    'we found something you might like', "today's big deal", 'new deals just dropped',
+    'your deals are here', 'deals for you', 'recommended for you', 'based on your',
+    'you might also like', 'customers who bought', 'frequently bought together',
+    # Amazon shipping (not receipts)
+    'shipped:', 'arriving:', 'delivered:', 'out for delivery',
+    'your package', 'tracking number', 'shipment notification',
+    # Expensify internal
+    'expenses to review', 'expense report', 'please review',
+    # Political/news spam
+    'trump announces', 'americans could see', 'breaking:', 'alert:',
+    'you won\'t believe', 'shocking:', 'urgent:',
+    # Hotel/loyalty
+    'hilton honors', 'marriott bonvoy', 'points expiring', 'redeem your points',
+    # Black Friday / Sale spam
+    'black friday', 'cyber monday', 'flash sale', 'limited time only',
+    'last chance', 'ending soon', 'don\'t miss out', 'exclusive access',
+    # Internal business (not receipts)
+    'closing binder', 'hat order', 'tm nda', 'rdo consulting',
+    'please review $', 'wire transfer', 'ach payment',
+    # Generic marketing
+    'weekly digest', 'monthly newsletter', 'featured products',
+    'new arrivals', 'just in', 'back in stock',
+    # School/Community Updates
+    'community update', 'back to school', 'graduation date',
+    # Credit card marketing
+    'preapproved', 'pre-approved', 'you\'re preapproved', 'credit increase',
+    'congratulations!', 'you qualify',
+    # Dental/Medical marketing
+    'smile for', 'dental', 'check-up reminder',
+    # Lawn/service invoices (B2B) - NOT personal receipts
+    'invoice: auto-charge', 'auto-charge notice',
+    # Generic non-receipt patterns
+    'account payment',  # Generic vague subject
+]
+
+# Sender patterns that indicate spam (from_email or from_name matches)
+SPAM_SENDER_PATTERNS = [
+    'amazon.com',  # Amazon promotional - receipts come from auto-confirm@amazon.com with specific subjects
+    'dealer-pay', 'dealerpay',
+    'online order',  # Generic "online order" senders are usually spam
+    'marketing@', 'newsletter@', 'promo@', 'offers@', 'deals@',
+]
+
+# Exception patterns: if subject contains these AND sender is in spam list, ALLOW it
+RECEIPT_EXCEPTION_PATTERNS = [
+    'order confirmed', 'order confirmation', 'your order has been placed',
+    'your amazon.com order', 'digital order', 'your order of',
+    'payment received', 'payment confirmation', 'receipt for',
+    'invoice', 'billing statement',
 ]
 
 # Artist/contract patterns (EXCLUDE these)
@@ -199,6 +388,9 @@ def init_incoming_receipts_table():
             confidence_score INT,
 
             status VARCHAR(50) DEFAULT 'pending',
+            category VARCHAR(50) DEFAULT 'receipt',
+            ai_notes TEXT,
+            preview_url TEXT,
             reviewed_at DATETIME,
             accepted_as_transaction_id INT,
             rejection_reason TEXT,
@@ -207,6 +399,7 @@ def init_incoming_receipts_table():
             processed_at DATETIME,
 
             INDEX idx_incoming_status (status),
+            INDEX idx_incoming_category (category),
             INDEX idx_incoming_date (received_date),
             INDEX idx_incoming_account (gmail_account)
         )
@@ -247,11 +440,29 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
 
     # === STRONG NEGATIVE FILTERS (Auto-reject = 0) ===
 
-    # 0. Spam sender domains (mailchimp, sendgrid, etc.)
-    for spam_domain in SPAM_SENDER_DOMAINS:
-        if spam_domain in domain.lower() or spam_domain in from_email.lower():
-            print(f"      ✗ Rejected: Spam sender domain '{spam_domain}'")
-            return 0
+    # 0a. Check for receipt exception patterns first (allows Amazon order confirmations through)
+    has_receipt_exception = any(exc in subject_lower for exc in RECEIPT_EXCEPTION_PATTERNS)
+
+    # 0b. Spam subject patterns (auto-reject unless it's a receipt exception)
+    if not has_receipt_exception:
+        for spam_pattern in SPAM_SUBJECT_PATTERNS:
+            if spam_pattern in subject_lower:
+                print(f"      ✗ Rejected: Spam subject pattern '{spam_pattern}'")
+                return 0
+
+    # 0c. Spam sender patterns (more aggressive sender filtering)
+    if not has_receipt_exception:
+        for sender_pattern in SPAM_SENDER_PATTERNS:
+            if sender_pattern in from_lower:
+                print(f"      ✗ Rejected: Spam sender pattern '{sender_pattern}'")
+                return 0
+
+    # 0d. Spam sender domains (mailchimp, sendgrid, etc.) - except for receipt exceptions
+    if not has_receipt_exception:
+        for spam_domain in SPAM_SENDER_DOMAINS:
+            if spam_domain in domain.lower() or spam_domain in from_email.lower():
+                print(f"      ✗ Rejected: Spam sender domain '{spam_domain}'")
+                return 0
 
     # 1. Forwards and replies
     if subject_lower.startswith('re:') or subject_lower.startswith('fwd:'):
@@ -302,6 +513,16 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
 
     # === POSITIVE SIGNALS ===
 
+    # CHECK DATABASE: Known subscription merchants get HIGHEST priority
+    is_subscription, sub_data = is_known_subscription_merchant(
+        merchant_name=None,  # We don't have merchant name yet in raw email
+        from_email=from_email,
+        subject=subject
+    )
+    if is_subscription:
+        score += 40  # Huge boost for known subscriptions from our database
+        print(f"      ✓ KNOWN SUBSCRIPTION from database: {from_email}")
+
     # Personal service domains get HIGH priority
     if any(svc in domain for svc in PERSONAL_SERVICE_DOMAINS):
         score += 30  # Big boost for known services
@@ -319,7 +540,7 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
         score += 15
 
     # Has dollar amount in subject
-    if '$' in subject or 'usd' in subject_lower:
+    if (subject and '$' in subject) or 'usd' in subject_lower:
         score += 10
 
     # === NEGATIVE SIGNALS ===
@@ -366,10 +587,92 @@ def extract_amount_from_text(text):
 
     return None
 
+def analyze_image_with_vision(image_url_or_base64, subject_hint=None, from_hint=None):
+    """
+    Use OpenAI Vision to extract receipt data from an image (PDF screenshot, attachment, or HTML screenshot).
+    This is the MOST ACCURATE method - uses actual visual content.
+    Returns: (merchant, amount, description, is_subscription, is_receipt, category, ai_notes)
+    """
+    client = get_openai_client()
+    if not client:
+        print("      ⚠️  OpenAI not configured for Vision analysis")
+        return None, None, None, False, True, 'receipt', None
+
+    try:
+        # Build image content
+        if image_url_or_base64.startswith('http'):
+            image_content = {"type": "image_url", "image_url": {"url": image_url_or_base64}}
+        else:
+            # Base64 encoded image
+            image_content = {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_url_or_base64}"}}
+
+        hint_text = ""
+        if subject_hint:
+            hint_text += f"\nEmail subject: {subject_hint}"
+        if from_hint:
+            hint_text += f"\nFrom: {from_hint}"
+
+        prompt = f"""Analyze this image. Is it a RECEIPT or payment confirmation? Extract the following:
+
+1. IS_RECEIPT - true if this shows a receipt, invoice, order confirmation, or payment. false if it's marketing, newsletter, notification, or junk.
+2. CATEGORY - One of: "receipt", "subscription", "invoice", "marketing", "newsletter", "notification", "junk"
+3. MERCHANT - Clean company/store name (e.g., "Starbucks", "Anthropic", "Apple")
+4. AMOUNT - The total dollar amount charged (just the number, e.g., 25.99)
+5. DATE - Transaction date if visible (YYYY-MM-DD format)
+6. DESCRIPTION - Brief description of what was purchased
+7. IS_SUBSCRIPTION - Is this a recurring charge? (true/false)
+8. AI_NOTES - REQUIRED: A short 5-15 word summary explaining this expense's purpose (e.g., "Monthly AI API usage charges", "Coffee and breakfast at cafe", "Mobile app subscription renewal")
+{hint_text}
+
+IMPORTANT:
+- If this is NOT a receipt (marketing email, newsletter, notification), set is_receipt=false
+- For marketing/promotional content, set category="marketing" or "newsletter"
+- If amount is unclear, set amount=null and add note
+- Be EXACT with the amount - don't guess
+- AI_NOTES must ALWAYS have a value - summarize what this purchase/charge is for
+
+Respond with ONLY valid JSON:
+{{"is_receipt": true, "category": "receipt", "merchant": "Name", "amount": 25.99, "date": "2024-12-01", "description": "...", "is_subscription": false, "ai_notes": "Short summary of expense purpose"}}"""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    image_content
+                ]
+            }],
+            max_tokens=300,
+            temperature=0.1
+        )
+
+        text = response.choices[0].message.content.strip()
+        if text.startswith('```'):
+            text = text.split('\n', 1)[1]
+            text = text.rsplit('```', 1)[0]
+
+        result = json.loads(text.strip())
+
+        return (
+            result.get('merchant'),
+            result.get('amount'),
+            result.get('description'),
+            result.get('is_subscription', False),
+            result.get('is_receipt', True),
+            result.get('category', 'receipt'),
+            result.get('ai_notes')
+        )
+
+    except Exception as e:
+        print(f"      ⚠️  Vision analysis failed: {e}")
+        return None, None, None, False, True, 'receipt', f"Vision error: {str(e)[:50]}"
+
+
 def analyze_email_with_openai(subject, from_email, body_text):
     """
     Use OpenAI GPT-4o-mini to extract structured data from email body (PRIORITY)
-    Returns: (merchant, amount, description, is_subscription)
+    Returns: (merchant, amount, description, is_subscription, category, ai_notes)
     """
     client = get_openai_client()
     if not client:
@@ -380,36 +683,41 @@ def analyze_email_with_openai(subject, from_email, body_text):
         prompt = f"""You are analyzing a receipt/payment confirmation email. Extract these fields:
 
 1. MERCHANT NAME - Clean company name (e.g., "Anthropic", "Apple", "Midjourney")
-2. AMOUNT - The dollar amount charged. REQUIRED. Look for:
+2. AMOUNT - The dollar amount charged. Look for:
    - "$XX.XX" in subject or body
    - "Amount: XX.XX"
    - "Total: XX.XX"
    - "Charged: XX.XX"
-   - If you can't find it, estimate based on typical pricing for this service
+   - If not found, return null (DO NOT GUESS)
 3. DESCRIPTION - What was purchased (e.g., "Claude Pro monthly subscription", "iCloud+ 2TB storage")
 4. IS_SUBSCRIPTION - Is this a recurring monthly/yearly charge? (true/false)
+5. CATEGORY - One of: "receipt", "subscription", "invoice", "marketing", "newsletter", "notification", "junk"
+6. AI_NOTES - A short 5-15 word summary explaining this expense's purpose (e.g., "Monthly AI API usage charges", "Cloud storage subscription renewal")
 
 Email Subject: {subject}
 From: {from_email}
 Body: {body_text[:2500]}
 
-IMPORTANT: You MUST provide an amount. If not explicitly stated, use typical pricing:
-- AI tools (Claude, ChatGPT): $20-200/mo
-- Cloud storage: $1-10/mo
-- Creative tools: $10-50/mo
+IMPORTANT:
+- If this looks like marketing, newsletter, or notification (not an actual receipt), set category appropriately
+- DO NOT guess amounts - return null if not clearly stated
+- Be precise with merchant names
+- AI_NOTES must ALWAYS have a value - summarize what this purchase/charge is for
 
 Respond with ONLY valid JSON (no markdown, no code blocks):
 {{
   "merchant": "Company Name",
   "amount": 199.00,
   "description": "Specific product/service description",
-  "is_subscription": true
+  "is_subscription": true,
+  "category": "receipt",
+  "ai_notes": "Short summary of expense purpose"
 }}"""
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=200,
+            max_tokens=250,
             temperature=0.1
         )
 
@@ -428,6 +736,8 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
         amount = result.get('amount')
         description = result.get('description')
         is_subscription = result.get('is_subscription', False)
+        category = result.get('category', 'receipt')
+        ai_notes = result.get('ai_notes')
 
         # If OpenAI didn't extract amount, try regex fallback
         if not amount:
@@ -436,7 +746,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
             if amount:
                 print(f"      ✓ Regex extracted amount: ${amount}")
 
-        return (merchant, amount, description, is_subscription)
+        return (merchant, amount, description, is_subscription, category, ai_notes)
 
     except Exception as e:
         print(f"      ⚠️  OpenAI analysis failed: {e}")
@@ -451,34 +761,43 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
         if merchant_fallback:
             print(f"      ✓ Regex extracted merchant: {merchant_fallback}")
 
-        return (merchant_fallback, amount, None, False)
+        # Generate simple ai_notes from subject
+        ai_notes = f"Email from {from_email.split('@')[0]} - {subject[:50]}" if subject else None
+
+        return (merchant_fallback, amount, None, False, 'receipt', ai_notes)
 
 
 def analyze_email_with_gemini_fallback(subject, from_email, body_text):
     """
     Fallback to Gemini if OpenAI is not available
-    Returns: (merchant, amount, description, is_subscription)
+    Returns: (merchant, amount, description, is_subscription, category, ai_notes)
     """
     if not GEMINI_AVAILABLE or not generate_content_with_fallback:
         print("      ⚠️  Gemini not available either, using regex only...")
         amount = extract_amount_from_text(subject + " " + body_text)
         merchant_fallback, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
-        return (merchant_fallback, amount, None, False)
+        ai_notes = f"Email from {from_email.split('@')[0]} - {subject[:50]}" if subject else None
+        return (merchant_fallback, amount, None, False, 'receipt', ai_notes)
 
     try:
         prompt = f"""You are analyzing a receipt/payment confirmation email. Extract these fields:
 
 1. MERCHANT NAME - Clean company name (e.g., "Anthropic", "Apple", "Midjourney")
-2. AMOUNT - The dollar amount charged. REQUIRED.
+2. AMOUNT - The dollar amount charged. If not found, return null (DO NOT GUESS).
 3. DESCRIPTION - What was purchased
 4. IS_SUBSCRIPTION - Is this a recurring charge? (true/false)
+5. CATEGORY - One of: "receipt", "subscription", "invoice", "marketing", "newsletter", "notification", "junk"
+6. AI_NOTES - A short 5-15 word summary explaining this expense's purpose
 
 Email Subject: {subject}
 From: {from_email}
 Body: {body_text[:2500]}
 
+IMPORTANT: If this looks like marketing/newsletter/notification rather than an actual receipt, set category appropriately.
+AI_NOTES must ALWAYS have a value - summarize what this purchase/charge is for.
+
 Respond with ONLY valid JSON:
-{{"merchant": "Name", "amount": 0.00, "description": "...", "is_subscription": false}}"""
+{{"merchant": "Name", "amount": 0.00, "description": "...", "is_subscription": false, "category": "receipt", "ai_notes": "Short summary of expense"}}"""
 
         text = generate_content_with_fallback(prompt)
         if not text:
@@ -490,13 +809,14 @@ Respond with ONLY valid JSON:
             text = text.rsplit('```', 1)[0]
 
         result = json.loads(text.strip())
-        return (result.get('merchant'), result.get('amount'), result.get('description'), result.get('is_subscription', False))
+        return (result.get('merchant'), result.get('amount'), result.get('description'), result.get('is_subscription', False), result.get('category', 'receipt'), result.get('ai_notes'))
 
     except Exception as e:
         print(f"      ⚠️  Gemini fallback failed: {e}")
         amount = extract_amount_from_text(subject + " " + body_text)
         merchant_fallback, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
-        return (merchant_fallback, amount, None, False)
+        ai_notes = f"Email from {from_email.split('@')[0]} - {subject[:50]}" if subject else None
+        return (merchant_fallback, amount, None, False, 'receipt', ai_notes)
 
 
 # Keep old function name as alias for compatibility
@@ -1125,15 +1445,128 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                     print(f"   ⊘ Filtered out: {subject[:40]} (confidence: {confidence}%)")
                     continue
 
-                # Use Gemini to analyze full email
+                # Use AI to analyze full email
                 print(f"   ✓ Receipt candidate: {subject[:40]} ({confidence}% confidence)")
-                print(f"      🤖 Analyzing with Gemini...")
+                print(f"      🤖 Analyzing with AI...")
 
-                merchant_ai, amount_ai, description, is_subscription = analyze_email_with_gemini(
+                # Initialize variables for Vision AI enhancement
+                vision_merchant = None
+                vision_amount = None
+                vision_category = None
+                ai_notes = None
+                preview_url = None
+
+                # PRIORITY 1: Try Vision AI on attachments (PDF/image) - MOST ACCURATE
+                if has_attachment:
+                    for att in attachments:
+                        filename = att.get('filename', '').lower()
+                        if filename.endswith(('.pdf', '.jpg', '.jpeg', '.png', '.gif')):
+                            print(f"      📎 Analyzing attachment: {att['filename']}")
+                            try:
+                                # Download attachment
+                                att_data = download_gmail_attachment(
+                                    service, msg['id'], att['attachment_id'], att['filename']
+                                )
+                                if att_data:
+                                    # Convert to base64 for Vision API
+                                    if filename.endswith('.pdf'):
+                                        # Convert PDF to JPG first
+                                        import tempfile
+                                        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                                            jpg_path = convert_pdf_to_jpg(att_data, tmp.name)
+                                            if jpg_path:
+                                                with open(jpg_path, 'rb') as f:
+                                                    img_base64 = base64.b64encode(f.read()).decode('utf-8')
+                                                os.unlink(jpg_path)
+                                            else:
+                                                img_base64 = None
+                                    else:
+                                        img_base64 = base64.b64encode(att_data).decode('utf-8')
+
+                                    if img_base64:
+                                        v_merchant, v_amount, v_desc, v_sub, v_is_receipt, v_cat, v_notes = analyze_image_with_vision(
+                                            img_base64, subject_hint=subject, from_hint=from_email_clean
+                                        )
+                                        if v_merchant or v_amount:
+                                            vision_merchant = v_merchant
+                                            vision_amount = v_amount
+                                            vision_category = v_cat
+                                            ai_notes = v_notes
+                                            print(f"      👁️  Vision: {v_merchant} ${v_amount} ({v_cat})")
+                                            if v_notes:
+                                                print(f"      📝 Notes: {v_notes}")
+                                            break  # Use first successful attachment
+                            except Exception as e:
+                                print(f"      ⚠️  Attachment analysis failed: {e}")
+
+                # PRIORITY 2: Try Vision AI on HTML email screenshot
+                if not vision_merchant and not vision_amount:
+                    # Check if we have HTML content
+                    def get_html_body(payload):
+                        """Extract HTML body from email payload"""
+                        if 'parts' in payload:
+                            for part in payload['parts']:
+                                if part.get('mimeType') == 'text/html':
+                                    data = part.get('body', {}).get('data', '')
+                                    if data:
+                                        return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                        return None
+
+                    html_body = get_html_body(msg_data.get('payload', {}))
+                    if html_body and len(html_body) > 200:  # Substantial HTML content
+                        print(f"      📸 Taking HTML screenshot for Vision analysis...")
+                        try:
+                            import tempfile
+                            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                                screenshot_path = screenshot_html_receipt(html_body, tmp.name)
+                                if screenshot_path and os.path.exists(screenshot_path):
+                                    with open(screenshot_path, 'rb') as f:
+                                        img_base64 = base64.b64encode(f.read()).decode('utf-8')
+
+                                    v_merchant, v_amount, v_desc, v_sub, v_is_receipt, v_cat, v_notes = analyze_image_with_vision(
+                                        img_base64, subject_hint=subject, from_hint=from_email_clean
+                                    )
+                                    if v_merchant or v_amount:
+                                        vision_merchant = v_merchant
+                                        vision_amount = v_amount
+                                        vision_category = v_cat
+                                        ai_notes = v_notes
+                                        print(f"      👁️  Vision (HTML): {v_merchant} ${v_amount} ({v_cat})")
+                                        if v_notes:
+                                            print(f"      📝 Notes: {v_notes}")
+
+                                    # Clean up temp file
+                                    os.unlink(screenshot_path)
+                        except Exception as e:
+                            print(f"      ⚠️  HTML screenshot failed: {e}")
+
+                # PRIORITY 3: Fallback to text-based AI analysis
+                merchant_ai, amount_ai, description, is_subscription, category, email_ai_notes = analyze_email_with_gemini(
                     subject, from_email_clean, full_body or snippet
                 )
 
-                # Fallback to regex if Gemini fails
+                # Use Vision results if available (more accurate)
+                if vision_merchant:
+                    merchant_ai = vision_merchant
+                if vision_amount:
+                    amount_ai = vision_amount
+                if vision_category:
+                    category = vision_category
+                # Use email AI notes as fallback if Vision didn't provide notes
+                if not ai_notes and email_ai_notes:
+                    ai_notes = email_ai_notes
+
+                # CHECK DATABASE: Override is_subscription with database knowledge
+                db_is_subscription, db_sub_data = is_known_subscription_merchant(
+                    merchant_name=merchant_ai or vision_merchant,
+                    from_email=from_email_clean,
+                    subject=subject
+                )
+                if db_is_subscription:
+                    is_subscription = True
+                    print(f"      📊 KNOWN SUBSCRIPTION from database")
+
+                # Fallback to regex if AI fails
                 if not merchant_ai:
                     merchant_ai, amount_ai = extract_merchant_and_amount(subject, from_email_clean, snippet)
 
@@ -1141,6 +1574,8 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                     print(f"      Extracted: {merchant_ai or 'Unknown'} ${amount_ai or '?'}")
                     if description:
                         print(f"      Description: {description}")
+                    if category and category != 'receipt':
+                        print(f"      Category: {category}")
 
                 # Check for matching transaction
                 match_id, has_receipt, needs_receipt = find_matching_transaction(
@@ -1157,7 +1592,7 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                         match_type = 'needs_receipt'
                         print(f"      📎 Found matching transaction #{match_id} (needs receipt)")
 
-                # Store receipt data
+                # Store receipt data - include ALL items even marketing/junk (user can decide)
                 receipt_data = {
                     'email_id': msg['id'],
                     'gmail_account': account_email,
@@ -1174,6 +1609,8 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                     'amount': amount_ai,
                     'description': description,
                     'is_subscription': is_subscription,
+                    'category': category or 'receipt',  # Category for junk/marketing
+                    'ai_notes': ai_notes,  # Notes from Vision AI (e.g., "Amount unclear")
                     'matched_transaction_id': match_id,
                     'match_type': match_type
                 }
@@ -1196,14 +1633,14 @@ def save_incoming_receipt(receipt_data):
     cursor = conn.cursor()
 
     try:
-        # MySQL version - attachments column should exist from init
+        # MySQL version - includes category and ai_notes fields for Vision AI data
         cursor.execute('''
             INSERT INTO incoming_receipts (
                 email_id, gmail_account, subject, from_email, from_domain,
                 received_date, body_snippet, has_attachment, attachment_count,
                 confidence_score, merchant, amount, description, is_subscription,
-                matched_transaction_id, match_type, attachments, status
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                matched_transaction_id, match_type, attachments, category, ai_notes, status
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
         ''', (
             receipt_data['email_id'],
             receipt_data['gmail_account'],
@@ -1221,7 +1658,9 @@ def save_incoming_receipt(receipt_data):
             receipt_data.get('is_subscription', False),
             receipt_data.get('matched_transaction_id'),
             receipt_data.get('match_type', 'new'),
-            receipt_data.get('attachments', '[]')
+            receipt_data.get('attachments', '[]'),
+            receipt_data.get('category', 'receipt'),
+            receipt_data.get('ai_notes')  # Vision AI notes (e.g., "Amount unclear")
         ))
 
         conn.commit()

@@ -807,6 +807,94 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   margin-bottom: 12px;
 }
 
+/* Receipt Image Thumbnail in Card */
+.inbox-card-image {
+  margin-bottom: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel2);
+  border: 1px solid var(--edge);
+  max-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.inbox-card-image img {
+  max-width: 100%;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.inbox-card-image img:hover {
+  transform: scale(1.02);
+}
+.inbox-card-image-placeholder {
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.inbox-card-image-placeholder svg {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 8px;
+  opacity: 0.3;
+}
+/* Email Preview Card (when no receipt image) */
+.inbox-card-email-preview {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--panel2) 0%, var(--bg) 100%);
+  border: 1px solid var(--edge);
+  min-height: 80px;
+}
+.email-preview-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+.email-preview-subject {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+.email-preview-body {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.email-preview-link {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  background: rgba(0,255,136,0.1);
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.email-preview-link:hover {
+  background: rgba(0,255,136,0.2);
+  transform: translateY(-1px);
+}
+.inbox-card-image.no-image {
+  display: none;
+}
+/* Preview Gmail Fallback */
+.preview-gmail-fallback {
+  text-align: center;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--panel2) 0%, var(--bg) 100%);
+  border-radius: 12px;
+  border: 1px solid var(--edge);
+}
+
 /* Card Footer Actions */
 .inbox-card-actions {
   display: flex;
@@ -878,9 +966,21 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   font-size: 16px;
 }
 .inbox-card-match.found {
-  background: rgba(0,255,136,0.12);
-  color: var(--ok);
-  border: 1px solid rgba(0,255,136,0.25);
+  background: rgba(255,78,106,0.2);
+  color: #ff4e6a;
+  border: 2px solid rgba(255,78,106,0.5);
+  font-weight: 700;
+  animation: matchPulse 1.5s ease-in-out infinite;
+}
+@keyframes matchPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,78,106,0.4); }
+  50% { box-shadow: 0 0 15px 3px rgba(255,78,106,0.3); }
+}
+.inbox-card-match.found .match-details {
+  font-size: 11px;
+  opacity: 0.9;
+  margin-top: 4px;
+  display: block;
 }
 .inbox-card-match.none {
   background: rgba(255,216,94,0.1);
@@ -2265,13 +2365,18 @@ function renderMobileCard(receipt) {
     let primaryAction = '';
 
     if (hasMatch) {
-      // Found a matching expense - show "Attach" as primary action
+      // Found a matching expense - show "Attach" as primary action (RED HIGHLIGHT)
       const matchMerchant = bestMatch.merchant || 'Expense';
       const matchAmount = Math.abs(bestMatch.amount).toFixed(2);
+      const matchDate = bestMatch.date ? formatDateShort(bestMatch.date) : '';
+      const matchId = bestMatch.id || '';
       matchBadge = `
         <div class="inbox-card-match found">
-          <span class="match-icon">🔗</span>
-          <span>Matches: ${escapeHtml(matchMerchant)} $${matchAmount}</span>
+          <span class="match-icon">🔴</span>
+          <div>
+            <span style="font-size:14px">⚠️ MATCH FOUND!</span>
+            <span class="match-details">${escapeHtml(matchMerchant)} • $${matchAmount}${matchDate ? ' • ' + matchDate : ''}${matchId ? ' (ID:' + matchId + ')' : ''}</span>
+          </div>
         </div>
       `;
       primaryAction = `
@@ -2327,6 +2432,35 @@ function renderMobileCard(receipt) {
     `;
   }
 
+  // Receipt image URL (from Gmail attachment or R2)
+  const imageUrl = receipt.receipt_image_url || receipt.preview_url || receipt.r2_url;
+
+  // Gmail link for viewing the original email
+  const emailId = receipt.email_id || '';
+  const gmailUrl = emailId ? `https://mail.google.com/mail/u/0/#inbox/${emailId}` : '';
+
+  // If we have an image, show it; otherwise show a styled email preview card
+  let imageHTML = '';
+  if (imageUrl) {
+    imageHTML = `
+      <div class="inbox-card-image" onclick="event.stopPropagation();openFullImage('${imageUrl}')">
+        <img src="${imageUrl}" alt="Receipt" onerror="this.parentElement.classList.add('no-image')">
+      </div>
+    `;
+  } else {
+    // Show styled email preview with key data
+    const subjectPreview = (receipt.subject || '').substring(0, 60) + ((receipt.subject || '').length > 60 ? '...' : '');
+    const bodyPreview = (receipt.body_snippet || '').substring(0, 100) + ((receipt.body_snippet || '').length > 100 ? '...' : '');
+    imageHTML = `
+      <div class="inbox-card-email-preview">
+        <div class="email-preview-icon">📧</div>
+        <div class="email-preview-subject">${escapeHtml(subjectPreview)}</div>
+        ${bodyPreview ? `<div class="email-preview-body">${escapeHtml(bodyPreview)}</div>` : ''}
+        ${gmailUrl ? `<a href="${gmailUrl}" target="_blank" onclick="event.stopPropagation()" class="email-preview-link">View in Gmail</a>` : ''}
+      </div>
+    `;
+  }
+
   return `
     <div class="inbox-card ${receipt.status}${hasThumb ? ' has-thumb' : ''}" data-id="${receipt.id}" onclick="showPreview(${receipt.id})">
       ${thumbHTML}
@@ -2336,6 +2470,7 @@ function renderMobileCard(receipt) {
       </div>
       <div class="inbox-card-merchant">${escapeHtml(merchant)}</div>
       ${amountDisplay ? `<div class="inbox-card-amount ${amountClass}">${amountDisplay}</div>` : ''}
+      ${imageHTML}
       <div class="inbox-card-meta">
         <div class="inbox-card-sender">
           <span class="inbox-card-sender-icon">✉️</span>
@@ -2357,6 +2492,21 @@ function formatDateFull(dateStr) {
       month: 'long',
       day: 'numeric',
       year: 'numeric'
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+// Format date as short "M/D/YY"
+function formatDateShort(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: '2-digit'
     });
   } catch {
     return dateStr;
@@ -3229,14 +3379,42 @@ function showPreview(receiptId) {
     attachmentsSection.style.display = 'none';
   }
 
-  // Receipt Image Preview
+  // Receipt Image Preview (use receipt_image_url from Gmail attachment first)
   const imageSection = document.getElementById('preview-image-section');
   const imageEl = document.getElementById('preview-receipt-image');
-  const previewUrl = receipt.preview_url || receipt.r2_url;
+  const previewUrl = receipt.receipt_image_url || receipt.preview_url || receipt.r2_url;
+
+  // Gmail link for viewing the original email
+  const emailId = receipt.email_id || '';
+  const gmailUrl = emailId ? `https://mail.google.com/mail/u/0/#inbox/${emailId}` : '';
+
   if (previewUrl) {
     imageSection.style.display = 'block';
     imageEl.src = previewUrl;
-    imageEl.onerror = () => { imageSection.style.display = 'none'; };
+    imageEl.onerror = () => {
+      // If image fails, show Gmail link instead
+      if (gmailUrl) {
+        imageSection.innerHTML = `
+          <div class="preview-gmail-fallback">
+            <div style="font-size:32px;margin-bottom:8px;">📧</div>
+            <div style="color:var(--muted);margin-bottom:12px;">No receipt image available</div>
+            <a href="${gmailUrl}" target="_blank" class="btn-primary" style="text-decoration:none;padding:8px 16px;border-radius:6px;">View in Gmail</a>
+          </div>
+        `;
+      } else {
+        imageSection.style.display = 'none';
+      }
+    };
+  } else if (gmailUrl) {
+    // No image, but we have Gmail link
+    imageSection.style.display = 'block';
+    imageSection.innerHTML = `
+      <div class="preview-gmail-fallback">
+        <div style="font-size:32px;margin-bottom:8px;">📧</div>
+        <div style="color:var(--muted);margin-bottom:12px;">View the original email to see receipt</div>
+        <a href="${gmailUrl}" target="_blank" class="btn-primary" style="text-decoration:none;padding:8px 16px;border-radius:6px;">Open in Gmail</a>
+      </div>
+    `;
   } else {
     imageSection.style.display = 'none';
   }
