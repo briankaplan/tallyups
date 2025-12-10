@@ -1238,9 +1238,328 @@ def save_incoming_receipt(receipt_data):
     finally:
         conn.close()
 
+# =============================================================================
+# INTELLIGENT RECEIPT SCANNER (V2)
+# =============================================================================
+# Uses the Receipt Intelligence Engine for whitelist-driven detection
+# instead of keyword guessing
+
+from receipt_intelligence import (
+    ReceiptIntelligence,
+    ReceiptCandidate,
+    ReceiptConfidence,
+    BLOCKED_DOMAINS,
+    MERCHANT_EMAIL_MAPPING,
+    init_merchant_email_domains_table,
+    seed_merchant_email_domains,
+    add_learned_domain,
+)
+
+# Global intelligence engine
+_receipt_intelligence = None
+
+def get_receipt_intelligence():
+    """Get or create the Receipt Intelligence engine"""
+    global _receipt_intelligence
+    if _receipt_intelligence is None:
+        _receipt_intelligence = ReceiptIntelligence()
+    return _receipt_intelligence
+
+
+def scan_gmail_intelligent(account_email, since_date=None, max_results=100):
+    """
+    Intelligent Gmail scanner using merchant whitelist.
+
+    This is the NEW, world-class scanner that:
+    1. Only captures emails from KNOWN merchant domains
+    2. Uses amount validation against expected ranges
+    3. Falls back to high-confidence patterns for unknown domains
+    4. Never processes blocked/marketing domains
+
+    Args:
+        account_email: Gmail account to scan
+        since_date: Only get emails after this date (YYYY-MM-DD)
+        max_results: Maximum emails to process
+
+    Returns:
+        List of receipt data dicts ready to save
+    """
+    service = load_gmail_service(account_email)
+    if not service:
+        print(f"   ❌ Could not load Gmail service for {account_email}")
+        return []
+
+    engine = get_receipt_intelligence()
+
+    # Default to last 7 days if no date specified
+    if not since_date:
+        since_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+
+    print(f"\n🔍 INTELLIGENT SCAN: {account_email}")
+    print(f"   Using merchant whitelist ({len(MERCHANT_EMAIL_MAPPING)} merchants)")
+    print(f"   Scanning since: {since_date}")
+
+    # Build Gmail query for ALL potential receipts
+    # We'll filter with our intelligence engine, not Gmail's keyword matching
+    query_parts = [
+        f'after:{since_date}',
+        # Cast a wide net - filter with intelligence
+        '(receipt OR invoice OR payment OR confirmation OR order OR subscription OR charge)',
+        # Exclude obvious spam at Gmail level
+        '-from:marketing -from:newsletter',
+    ]
+    query = ' '.join(query_parts)
+
+    try:
+        # Search for emails
+        results = service.users().messages().list(
+            userId='me',
+            q=query,
+            maxResults=max_results
+        ).execute()
+
+        messages = results.get('messages', [])
+        print(f"   📥 Found {len(messages)} potential emails to analyze")
+
+        new_receipts = []
+        stats = {
+            'total': len(messages),
+            'captured': 0,
+            'blocked': 0,
+            'unknown_domain': 0,
+            'low_confidence': 0,
+            'already_exists': 0,
+        }
+
+        for msg in messages:
+            try:
+                # Get full message
+                msg_data = service.users().messages().get(
+                    userId='me',
+                    id=msg['id'],
+                    format='full'
+                ).execute()
+
+                # Extract metadata
+                headers = msg_data.get('payload', {}).get('headers', [])
+                subject = next((h['value'] for h in headers if h['name'].lower() == 'subject'), '')
+                from_email = next((h['value'] for h in headers if h['name'].lower() == 'from'), '')
+                date_str = next((h['value'] for h in headers if h['name'].lower() == 'date'), '')
+
+                # Clean from email
+                from_clean = re.findall(r'<(.+?)>', from_email)
+                from_email_clean = from_clean[0] if from_clean else from_email
+                domain = from_email_clean.split('@')[-1].lower() if '@' in from_email_clean else ''
+
+                # Get snippet
+                snippet = msg_data.get('snippet', '')
+
+                # Get full body for better extraction
+                full_body = _get_email_body(msg_data.get('payload', {}))
+
+                # Extract attachments
+                attachments = []
+                parts = msg_data.get('payload', {}).get('parts', [])
+                for part in parts:
+                    if part.get('filename') and part.get('body', {}).get('attachmentId'):
+                        attachments.append({
+                            'filename': part['filename'],
+                            'attachment_id': part['body']['attachmentId'],
+                            'mime_type': part.get('mimeType', ''),
+                            'size': part.get('body', {}).get('size', 0)
+                        })
+
+                has_attachment = len(attachments) > 0
+
+                # Build candidate for analysis
+                candidate = ReceiptCandidate(
+                    email_id=msg['id'],
+                    from_email=from_email_clean,
+                    from_domain=domain,
+                    subject=subject,
+                    body_snippet=snippet + ' ' + (full_body[:1000] if full_body else ''),
+                    received_date=datetime.now(),  # Will be parsed from date_str
+                    has_attachment=has_attachment,
+                    attachments=attachments
+                )
+
+                # Analyze with intelligence engine
+                result = engine.analyze_email(candidate)
+                should_capture, reason = engine.should_capture(result)
+
+                if not should_capture:
+                    # Track why we're skipping
+                    if result.confidence == ReceiptConfidence.NONE:
+                        if 'Blocked' in reason:
+                            stats['blocked'] += 1
+                            print(f"   🚫 BLOCKED: {domain[:30]} - {subject[:40]}")
+                        elif 'Unknown' in reason:
+                            stats['unknown_domain'] += 1
+                            # Only log unknown domains with receipt-like subjects
+                            if any(kw in subject.lower() for kw in ['receipt', 'invoice', 'payment', 'order']):
+                                print(f"   ❓ UNKNOWN: {domain[:30]} - {subject[:40]}")
+                        else:
+                            stats['low_confidence'] += 1
+                    continue
+
+                # Get merchant info
+                merchant_name = result.extracted_merchant_name or result.matched_merchant.merchant_name if result.matched_merchant else None
+                amount = float(result.extracted_amount) if result.extracted_amount else None
+                is_subscription = result.matched_merchant.is_subscription if result.matched_merchant else False
+                category = result.matched_merchant.category if result.matched_merchant else 'General'
+
+                # Check for matching transaction
+                match_id, has_receipt, needs_receipt = find_matching_transaction(
+                    merchant_name, amount, date_str
+                )
+
+                # Skip if transaction already has receipt
+                if match_id and has_receipt:
+                    stats['already_exists'] += 1
+                    print(f"   ⏭️  SKIP (has receipt): {merchant_name} - ${amount or '?'}")
+                    continue
+
+                match_type = 'new'
+                if match_id:
+                    match_type = 'needs_receipt' if needs_receipt else 'has_receipt'
+
+                # Build receipt data
+                receipt_data = {
+                    'email_id': msg['id'],
+                    'gmail_account': account_email,
+                    'subject': subject,
+                    'from_email': from_email_clean,
+                    'from_domain': domain,
+                    'received_date': date_str,
+                    'body_snippet': snippet,
+                    'has_attachment': has_attachment,
+                    'attachment_count': len(attachments),
+                    'attachments': json.dumps(attachments),
+                    'confidence_score': result.confidence_score,
+                    'merchant': merchant_name,
+                    'amount': amount,
+                    'description': f"[{category}] {subject[:100]}",
+                    'is_subscription': is_subscription,
+                    'matched_transaction_id': match_id,
+                    'match_type': match_type,
+                }
+
+                new_receipts.append(receipt_data)
+                stats['captured'] += 1
+
+                confidence_emoji = '🎯' if result.confidence_score >= 90 else '✅' if result.confidence_score >= 70 else '❓'
+                print(f"   {confidence_emoji} CAPTURE ({result.confidence_score}%): {merchant_name or domain} - ${amount or '?'} - {subject[:30]}")
+
+            except Exception as e:
+                print(f"   ⚠️  Error processing message: {e}")
+                continue
+
+        # Print summary
+        print(f"\n   📊 SCAN SUMMARY:")
+        print(f"      Total analyzed: {stats['total']}")
+        print(f"      Captured: {stats['captured']}")
+        print(f"      Blocked domains: {stats['blocked']}")
+        print(f"      Unknown domains: {stats['unknown_domain']}")
+        print(f"      Already has receipt: {stats['already_exists']}")
+
+        return new_receipts
+
+    except Exception as e:
+        print(f"   ❌ Error scanning Gmail: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+
+def _get_email_body(payload):
+    """Extract text body from email payload"""
+    body = ''
+    if 'parts' in payload:
+        for part in payload['parts']:
+            if part.get('mimeType') == 'text/plain':
+                data = part.get('body', {}).get('data', '')
+                if data:
+                    body = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                    break
+            elif part.get('mimeType') == 'text/html' and not body:
+                data = part.get('body', {}).get('data', '')
+                if data:
+                    body = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+    else:
+        data = payload.get('body', {}).get('data', '')
+        if data:
+            body = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+    return body
+
+
+def run_intelligent_scan(accounts=None, since_date=None, save=True):
+    """
+    Run intelligent scan across all Gmail accounts.
+
+    Args:
+        accounts: List of account emails, or None for all configured accounts
+        since_date: Date to scan from (YYYY-MM-DD), or None for last 7 days
+        save: Whether to save results to database
+
+    Returns:
+        Dict with scan results
+    """
+    if accounts is None:
+        accounts = [
+            'brian@downhome.com',
+            'kaplan.brian@gmail.com',
+            'brian@musiccityrodeo.com'
+        ]
+
+    print("\n" + "="*60)
+    print("🧠 INTELLIGENT RECEIPT SCANNER V2")
+    print("="*60)
+    print(f"Accounts: {', '.join(accounts)}")
+    print(f"Since: {since_date or 'last 7 days'}")
+    print("="*60)
+
+    all_receipts = []
+    saved_count = 0
+
+    for account in accounts:
+        receipts = scan_gmail_intelligent(account, since_date)
+
+        if save and receipts:
+            for receipt in receipts:
+                result = save_incoming_receipt(receipt)
+                if result:
+                    saved_count += 1
+
+        all_receipts.extend(receipts)
+
+    print("\n" + "="*60)
+    print(f"✅ SCAN COMPLETE")
+    print(f"   Total receipts found: {len(all_receipts)}")
+    print(f"   Saved to database: {saved_count}")
+    print("="*60 + "\n")
+
+    return {
+        'total': len(all_receipts),
+        'saved': saved_count,
+        'receipts': all_receipts
+    }
+
+
 if __name__ == '__main__':
-    # Initialize database
-    init_incoming_receipts_table()
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'intelligent':
+        # Run intelligent scan
+        since_date = sys.argv[2] if len(sys.argv) > 2 else None
+        run_intelligent_scan(since_date=since_date)
+    elif len(sys.argv) > 1 and sys.argv[1] == 'init-whitelist':
+        # Initialize the merchant whitelist
+        print("Initializing merchant email domains...")
+        init_merchant_email_domains_table()
+        seed_merchant_email_domains()
+    else:
+        # Initialize database
+        init_incoming_receipts_table()
 
     # Scan all Gmail accounts
     accounts = [
