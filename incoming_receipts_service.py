@@ -684,10 +684,50 @@ img {{ max-width: 100%; height: auto; }}
                 pass
 
 
-def process_receipt_files(service, email_id, attachments, html_body=None):
+def generate_receipt_filename(merchant: str, date: str, amount: float, unique_id: str = None, ext: str = ".jpg") -> str:
+    """
+    Generate standardized receipt filename: merchant_date_amount_id.ext
+    Example: anthropic_2024-11-15_20_00_abc123.jpg
+
+    The unique_id ensures we can always trace back to the source (email_id or tx_id)
+    """
+    # Clean merchant name - lowercase, replace spaces/special chars with underscore
+    merchant_clean = re.sub(r'[^a-z0-9]+', '_', merchant.lower().strip())
+    merchant_clean = merchant_clean.strip('_')[:30]  # Limit length
+
+    # Format amount - replace decimal with underscore
+    amount_str = f"{amount:.2f}".replace('.', '_')
+
+    # Ensure date is in correct format
+    date_clean = date or datetime.now().strftime("%Y-%m-%d")
+    if hasattr(date_clean, 'strftime'):
+        date_clean = date_clean.strftime('%Y-%m-%d')
+    elif 'T' in str(date_clean):
+        date_clean = str(date_clean).split('T')[0]
+
+    # Add unique ID suffix for traceability
+    if unique_id:
+        id_suffix = f"_{unique_id[:12]}"  # First 12 chars of ID
+    else:
+        id_suffix = ""
+
+    return f"{merchant_clean}_{date_clean}_{amount_str}{id_suffix}{ext}"
+
+
+def process_receipt_files(service, email_id, attachments, html_body=None, merchant=None, amount=None, receipt_date=None):
     """
     Download and convert receipt files from Gmail email.
     Saves locally and uploads to R2 for cloud storage.
+
+    Args:
+        service: Gmail API service
+        email_id: Gmail message ID
+        attachments: List of attachment info dicts
+        html_body: HTML content for screenshot if no attachments
+        merchant: Merchant name for standardized filename
+        amount: Amount for standardized filename
+        receipt_date: Date for standardized filename
+
     Returns: list of saved file paths (R2 URLs if available, otherwise local paths)
     """
     saved_files = []
@@ -696,8 +736,14 @@ def process_receipt_files(service, email_id, attachments, html_body=None):
     # Create receipts/incoming directory if doesn't exist
     os.makedirs(RECEIPTS_DIR, exist_ok=True)
 
-    # Generate base filename from email ID
-    base_filename = f"receipt_{email_id[:12]}"
+    # Generate base filename - use standardized naming if we have merchant info
+    if merchant and amount:
+        # Include email_id as unique identifier for traceability
+        base_filename = generate_receipt_filename(merchant, receipt_date, float(amount), unique_id=email_id, ext="").rstrip('.')
+        print(f"      📁 Using standardized filename: {base_filename}")
+    else:
+        # Fallback to email ID if no merchant info
+        base_filename = f"receipt_{email_id[:12]}"
 
     # Process attachments (PDFs)
     for i, attachment in enumerate(attachments):
@@ -717,20 +763,23 @@ def process_receipt_files(service, email_id, attachments, html_body=None):
         # Check if it's a PDF
         if filename.lower().endswith('.pdf'):
             # Try to convert PDF to JPG
-            output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}_att{i}.jpg")
+            suffix = f"_p{i}" if i > 0 else ""  # Add page suffix only for multiple attachments
+            output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}{suffix}.jpg")
             result = convert_pdf_to_jpg(file_data, output_path)
             if result:
                 local_files.append(result)
             else:
                 # Fallback: save PDF directly if conversion fails
-                pdf_output = os.path.join(RECEIPTS_DIR, f"{base_filename}_att{i}.pdf")
+                pdf_output = os.path.join(RECEIPTS_DIR, f"{base_filename}{suffix}.pdf")
                 with open(pdf_output, 'wb') as f:
                     f.write(file_data)
                 local_files.append(pdf_output)
                 print(f"      ✓ Saved PDF directly (conversion failed): {pdf_output}")
         else:
-            # Save other attachments as-is
-            output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}_att{i}_{filename}")
+            # Save other attachments (images, etc.) - preserve original extension
+            orig_ext = os.path.splitext(filename)[1].lower() or '.jpg'
+            suffix = f"_p{i}" if i > 0 else ""
+            output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}{suffix}{orig_ext}")
             with open(output_path, 'wb') as f:
                 f.write(file_data)
             local_files.append(output_path)
@@ -739,7 +788,7 @@ def process_receipt_files(service, email_id, attachments, html_body=None):
     # If no attachments but has HTML body, screenshot it
     if not local_files and html_body:
         print(f"      📸 Screenshotting HTML receipt...")
-        output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}_screenshot.jpg")
+        output_path = os.path.join(RECEIPTS_DIR, f"{base_filename}.jpg")
         result = screenshot_html_receipt(html_body, output_path)
         if result:
             local_files.append(result)

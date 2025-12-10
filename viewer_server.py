@@ -16087,7 +16087,10 @@ def accept_incoming_receipt():
 
                         # Download and process receipt files
                         print(f"   📎 Downloading receipt files from Gmail...")
-                        receipt_files = process_receipt_files(service, email_id, attachments, html_body)
+                        receipt_files = process_receipt_files(
+                            service, email_id, attachments, html_body,
+                            merchant=merchant, amount=amount, receipt_date=trans_date
+                        )
                         print(f"   ✓ Downloaded {len(receipt_files)} file(s)")
                     except Exception as e:
                         print(f"   ⚠️  Warning: Could not download receipt files: {e}")
