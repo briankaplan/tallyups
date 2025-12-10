@@ -3,7 +3,8 @@
 Incoming Receipts Service
 Monitors Gmail for new receipts and intelligently filters out marketing emails
 """
-import sqlite3
+import pymysql
+import pymysql.cursors
 import json
 import os
 import re
@@ -48,7 +49,21 @@ load_dotenv()
 # Import Gemini utility with automatic key fallback
 from gemini_utils import generate_content_with_fallback, analyze_email_content, get_model as get_gemini_model
 
-DB_PATH = "receipts.db"
+# MySQL Connection Configuration (Railway)
+MYSQL_CONFIG = {
+    'host': os.getenv('MYSQL_HOST', 'metro.proxy.rlwy.net'),
+    'port': int(os.getenv('MYSQL_PORT', 19800)),
+    'user': os.getenv('MYSQL_USER', 'root'),
+    'password': os.getenv('MYSQL_PASSWORD', 'xruqdfYXOPFlfkqAPaRCrPFqxMaXMuiL'),
+    'database': os.getenv('MYSQL_DATABASE', 'railway'),
+    'charset': 'utf8mb4',
+    'cursorclass': pymysql.cursors.DictCursor
+}
+
+def get_db_connection():
+    """Get MySQL database connection"""
+    return pymysql.connect(**MYSQL_CONFIG)
+
 RECEIPTS_DIR = "receipts/incoming"
 GMAIL_TOKENS_DIR = "../Task/receipt-system/gmail_tokens"
 
@@ -119,76 +134,70 @@ CONTRACT_PATTERNS = [
 ]
 
 def init_incoming_receipts_table():
-    """Initialize database table for incoming receipts"""
-    conn = sqlite3.connect(DB_PATH)
+    """Initialize database table for incoming receipts (MySQL)"""
+    conn = get_db_connection()
     cursor = conn.cursor()
 
+    # MySQL-compatible CREATE TABLE (uses INT AUTO_INCREMENT, VARCHAR instead of TEXT for keys)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS incoming_receipts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email_id TEXT UNIQUE NOT NULL,
-            gmail_account TEXT NOT NULL,
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email_id VARCHAR(255) UNIQUE NOT NULL,
+            gmail_account VARCHAR(255) NOT NULL,
             subject TEXT,
-            from_email TEXT,
-            from_domain TEXT,
-            received_date TEXT,
+            from_email VARCHAR(255),
+            from_domain VARCHAR(255),
+            received_date VARCHAR(100),
             body_snippet TEXT,
             has_attachment BOOLEAN,
-            attachment_count INTEGER DEFAULT 0,
-            attachments TEXT,  -- JSON array of attachment metadata from Gmail
-            receipt_files TEXT,  -- JSON array of downloaded file paths
+            attachment_count INT DEFAULT 0,
+            attachments TEXT,
+            receipt_files TEXT,
 
-            -- OCR extracted data
-            merchant TEXT,
-            amount REAL,
-            transaction_date TEXT,
-            ocr_confidence INTEGER,
+            merchant VARCHAR(255),
+            amount DECIMAL(10,2),
+            transaction_date VARCHAR(100),
+            ocr_confidence INT,
 
-            -- Gemini AI extracted data
             description TEXT,
-            is_subscription BOOLEAN DEFAULT 0,
-            matched_transaction_id INTEGER,
-            match_type TEXT DEFAULT 'new',  -- 'new', 'needs_receipt', 'has_receipt'
+            is_subscription BOOLEAN DEFAULT FALSE,
+            matched_transaction_id INT,
+            match_type VARCHAR(50) DEFAULT 'new',
 
-            -- Classification
-            is_receipt BOOLEAN DEFAULT 1,
-            is_marketing BOOLEAN DEFAULT 0,
-            confidence_score INTEGER,  -- 0-100
+            is_receipt BOOLEAN DEFAULT TRUE,
+            is_marketing BOOLEAN DEFAULT FALSE,
+            confidence_score INT,
 
-            -- Status
-            status TEXT DEFAULT 'pending',  -- 'pending', 'accepted', 'rejected', 'processed'
-            reviewed_at TEXT,
-            accepted_as_transaction_id INTEGER,
+            status VARCHAR(50) DEFAULT 'pending',
+            reviewed_at DATETIME,
+            accepted_as_transaction_id INT,
             rejection_reason TEXT,
 
-            -- Metadata
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            processed_at TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            processed_at DATETIME,
 
-            FOREIGN KEY (accepted_as_transaction_id) REFERENCES transactions(_index)
+            INDEX idx_incoming_status (status),
+            INDEX idx_incoming_date (received_date),
+            INDEX idx_incoming_account (gmail_account)
         )
     ''')
-
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_incoming_status ON incoming_receipts(status)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_incoming_date ON incoming_receipts(received_date)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_incoming_account ON incoming_receipts(gmail_account)')
 
     # Create rejection learning table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS incoming_rejection_patterns (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            pattern_type TEXT NOT NULL,  -- 'domain', 'subject', 'sender'
-            pattern_value TEXT NOT NULL,
-            rejection_count INTEGER DEFAULT 1,
-            last_rejected_at TEXT,
-            UNIQUE(pattern_type, pattern_value)
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            pattern_type VARCHAR(50) NOT NULL,
+            pattern_value VARCHAR(255) NOT NULL,
+            rejection_count INT DEFAULT 1,
+            last_rejected_at DATETIME,
+            UNIQUE KEY unique_pattern (pattern_type, pattern_value)
         )
     ''')
 
     conn.commit()
     conn.close()
 
-    print("✅ Incoming receipts table initialized")
+    print("✅ Incoming receipts table initialized (MySQL)")
 
 def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachment):
     """
@@ -458,13 +467,13 @@ def extract_merchant_and_amount(subject, from_email, body_snippet):
 
 def find_matching_transaction(merchant, amount, transaction_date):
     """
-    Check if a similar transaction already exists in the database
+    Check if a similar transaction already exists in the database (MySQL)
     Returns: (transaction_id, has_receipt, needs_receipt)
     """
     if not merchant:
         return None, False, False
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     # Search for similar transactions within 7 days
@@ -480,15 +489,15 @@ def find_matching_transaction(merchant, amount, transaction_date):
         date_min = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
         date_max = datetime.now().strftime('%Y-%m-%d')
 
-    # Search by merchant name similarity
+    # Search by merchant name similarity (MySQL uses %s placeholders)
     merchant_pattern = f'%{merchant}%'
 
     cursor.execute('''
-        SELECT _index, Chase_Description, Chase_Amount, Chase_Date, "Receipt File"
+        SELECT id, chase_description, chase_amount, chase_date, receipt_file
         FROM transactions
-        WHERE Chase_Description LIKE ?
-          AND Chase_Date BETWEEN ? AND ?
-        ORDER BY Chase_Date DESC
+        WHERE chase_description LIKE %s
+          AND chase_date BETWEEN %s AND %s
+        ORDER BY chase_date DESC
         LIMIT 1
     ''', (merchant_pattern, date_min, date_max))
 
@@ -496,8 +505,11 @@ def find_matching_transaction(merchant, amount, transaction_date):
     conn.close()
 
     if result:
-        trans_id, desc, trans_amount, trans_date, receipt_file = result
-        has_receipt = receipt_file and receipt_file.strip() != ''
+        # DictCursor returns dict, so access by key
+        trans_id = result['id']
+        trans_amount = result['chase_amount']
+        receipt_file = result.get('receipt_file', '')
+        has_receipt = receipt_file and str(receipt_file).strip() != ''
 
         # Check amount match (within 10%)
         amount_match = False
@@ -810,46 +822,55 @@ def load_gmail_service(account_email):
         return None
 
 def get_learned_rejection_patterns():
-    """Get patterns that user has consistently rejected"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    """Get patterns that user has consistently rejected (MySQL)"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    cursor.execute('''
-        SELECT pattern_type, pattern_value, rejection_count
-        FROM incoming_rejection_patterns
-        WHERE rejection_count >= 2
-    ''')
+        cursor.execute('''
+            SELECT pattern_type, pattern_value, rejection_count
+            FROM incoming_rejection_patterns
+            WHERE rejection_count >= 2
+        ''')
 
-    patterns = {}
-    for row in cursor.fetchall():
-        pattern_type, value, count = row
-        if pattern_type not in patterns:
-            patterns[pattern_type] = []
-        patterns[pattern_type].append(value)
+        patterns = {}
+        for row in cursor.fetchall():
+            # DictCursor returns dict
+            pattern_type = row['pattern_type']
+            value = row['pattern_value']
+            if pattern_type not in patterns:
+                patterns[pattern_type] = []
+            patterns[pattern_type].append(value)
 
-    conn.close()
-    return patterns
+        conn.close()
+        return patterns
+    except Exception as e:
+        print(f"⚠️  Could not get rejection patterns: {e}")
+        return {}
 
 def record_rejection_pattern(from_email, subject):
-    """Learn from rejection to improve future filtering"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    """Learn from rejection to improve future filtering (MySQL)"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    # Extract domain
-    domain = from_email.split('@')[-1] if '@' in from_email else None
+        # Extract domain
+        domain = from_email.split('@')[-1] if '@' in from_email else None
 
-    if domain:
-        cursor.execute('''
-            INSERT INTO incoming_rejection_patterns (pattern_type, pattern_value, rejection_count, last_rejected_at)
-            VALUES ('domain', ?, 1, ?)
-            ON CONFLICT(pattern_type, pattern_value)
-            DO UPDATE SET
-                rejection_count = rejection_count + 1,
-                last_rejected_at = ?
-        ''', (domain, datetime.now().isoformat(), datetime.now().isoformat()))
+        if domain:
+            # MySQL uses INSERT ... ON DUPLICATE KEY UPDATE instead of ON CONFLICT
+            cursor.execute('''
+                INSERT INTO incoming_rejection_patterns (pattern_type, pattern_value, rejection_count, last_rejected_at)
+                VALUES ('domain', %s, 1, %s)
+                ON DUPLICATE KEY UPDATE
+                    rejection_count = rejection_count + 1,
+                    last_rejected_at = %s
+            ''', (domain, datetime.now().isoformat(), datetime.now().isoformat()))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"⚠️  Could not record rejection pattern: {e}")
 
 def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
     """
@@ -1023,77 +1044,49 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
         return []
 
 def save_incoming_receipt(receipt_data):
-    """Save incoming receipt to database"""
-    conn = sqlite3.connect(DB_PATH)
+    """Save incoming receipt to database (MySQL)"""
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        # First check if table has attachments column (for backwards compatibility)
-        cursor.execute("PRAGMA table_info(incoming_receipts)")
-        columns = {row[1] for row in cursor.fetchall()}
-        has_attachments_col = 'attachments' in columns
-
-        if has_attachments_col:
-            cursor.execute('''
-                INSERT INTO incoming_receipts (
-                    email_id, gmail_account, subject, from_email, from_domain,
-                    received_date, body_snippet, has_attachment, attachment_count,
-                    confidence_score, merchant, amount, description, is_subscription,
-                    matched_transaction_id, match_type, attachments, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-            ''', (
-                receipt_data['email_id'],
-                receipt_data['gmail_account'],
-                receipt_data['subject'],
-                receipt_data['from_email'],
-                receipt_data['from_domain'],
-                receipt_data['received_date'],
-                receipt_data['body_snippet'],
-                receipt_data['has_attachment'],
-                receipt_data['attachment_count'],
-                receipt_data['confidence_score'],
-                receipt_data.get('merchant'),
-                receipt_data.get('amount'),
-                receipt_data.get('description'),
-                receipt_data.get('is_subscription', False),
-                receipt_data.get('matched_transaction_id'),
-                receipt_data.get('match_type', 'new'),
-                receipt_data.get('attachments', '[]')
-            ))
-        else:
-            cursor.execute('''
-                INSERT INTO incoming_receipts (
-                    email_id, gmail_account, subject, from_email, from_domain,
-                    received_date, body_snippet, has_attachment, attachment_count,
-                    confidence_score, merchant, amount, description, is_subscription,
-                    matched_transaction_id, match_type, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-            ''', (
-                receipt_data['email_id'],
-                receipt_data['gmail_account'],
-                receipt_data['subject'],
-                receipt_data['from_email'],
-                receipt_data['from_domain'],
-                receipt_data['received_date'],
-                receipt_data['body_snippet'],
-                receipt_data['has_attachment'],
-                receipt_data['attachment_count'],
-                receipt_data['confidence_score'],
-                receipt_data.get('merchant'),
-                receipt_data.get('amount'),
-                receipt_data.get('description'),
-                receipt_data.get('is_subscription', False),
-                receipt_data.get('matched_transaction_id'),
-                receipt_data.get('match_type', 'new')
-            ))
+        # MySQL version - attachments column should exist from init
+        cursor.execute('''
+            INSERT INTO incoming_receipts (
+                email_id, gmail_account, subject, from_email, from_domain,
+                received_date, body_snippet, has_attachment, attachment_count,
+                confidence_score, merchant, amount, description, is_subscription,
+                matched_transaction_id, match_type, attachments, status
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+        ''', (
+            receipt_data['email_id'],
+            receipt_data['gmail_account'],
+            receipt_data['subject'],
+            receipt_data['from_email'],
+            receipt_data['from_domain'],
+            receipt_data['received_date'],
+            receipt_data['body_snippet'],
+            receipt_data['has_attachment'],
+            receipt_data['attachment_count'],
+            receipt_data['confidence_score'],
+            receipt_data.get('merchant'),
+            receipt_data.get('amount'),
+            receipt_data.get('description'),
+            receipt_data.get('is_subscription', False),
+            receipt_data.get('matched_transaction_id'),
+            receipt_data.get('match_type', 'new'),
+            receipt_data.get('attachments', '[]')
+        ))
 
         conn.commit()
         receipt_id = cursor.lastrowid
         print(f"   💾 Saved incoming receipt: {receipt_data['subject'][:40]}")
         return receipt_id
 
-    except sqlite3.IntegrityError:
-        # Already exists
+    except pymysql.err.IntegrityError:
+        # Already exists (duplicate email_id)
+        return None
+    except Exception as e:
+        print(f"   ⚠️  Error saving receipt: {e}")
         return None
     finally:
         conn.close()
