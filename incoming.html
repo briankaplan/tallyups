@@ -596,6 +596,76 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
 .inbox-card.accepted::before { background: var(--ok); opacity: 0.5; }
 .inbox-card.rejected::before { background: var(--bad); opacity: 0.5; }
 
+/* Compact mode for rejected items - much cleaner list view */
+.inbox-card.rejected.compact {
+  padding: 10px 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.inbox-card.rejected.compact .inbox-card-header,
+.inbox-card.rejected.compact .inbox-card-amount,
+.inbox-card.rejected.compact .inbox-card-meta,
+.inbox-card.rejected.compact .inbox-card-desc,
+.inbox-card.rejected.compact .inbox-card-match {
+  display: none;
+}
+.inbox-card.rejected.compact .inbox-card-merchant {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+.inbox-card.rejected.compact .inbox-card-status {
+  display: none;
+}
+.inbox-card.rejected.compact .inbox-card-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  flex-shrink: 0;
+}
+.inbox-card.rejected.compact .inbox-card-btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  flex: none;
+}
+
+/* Rejected section header with clear all */
+.rejected-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--edge);
+}
+.rejected-header h3 {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.rejected-header .clear-all-btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  background: rgba(255,78,106,0.1);
+  color: var(--bad);
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+}
+.rejected-header .clear-all-btn:hover {
+  background: rgba(255,78,106,0.2);
+}
+
 /* Card Header */
 .inbox-card-header {
   display: flex;
@@ -1862,7 +1932,18 @@ function renderMobileCards() {
     return;
   }
 
-  container.innerHTML = filtered.map(r => renderMobileCard(r)).join('');
+  // Add header for rejected section
+  let headerHTML = '';
+  if (currentFilter === 'rejected' && filtered.length > 0) {
+    headerHTML = `
+      <div class="rejected-header">
+        <h3>Dismissed (${filtered.length})</h3>
+        <button class="clear-all-btn" onclick="clearRejected()">Clear All</button>
+      </div>
+    `;
+  }
+
+  container.innerHTML = headerHTML + filtered.map(r => renderMobileCard(r)).join('');
 }
 
 function renderMobileCard(receipt) {
@@ -1952,12 +2033,23 @@ function renderMobileCard(receipt) {
         ${primaryAction}
       </div>
     `;
+  } else if (receipt.status === 'rejected') {
+    // Compact rejected card with unreject button
+    return `
+      <div class="inbox-card rejected compact" data-id="${receipt.id}" onclick="showPreview(${receipt.id})">
+        <div class="inbox-card-merchant">${escapeHtml(merchant)}</div>
+        <div class="inbox-card-actions">
+          <button class="inbox-card-btn btn-ghost" onclick="event.stopPropagation();quickUnreject(${receipt.id})">
+            Restore
+          </button>
+        </div>
+      </div>
+    `;
   } else {
-    const statusIcon = receipt.status === 'accepted' ? '✓' : '✕';
-    const statusText = receipt.status === 'accepted' ? 'Matched' : 'Dismissed';
+    // Accepted/Matched - normal card
     actionsHTML = `
-      <div class="inbox-card-status ${receipt.status}">
-        ${statusIcon} ${statusText}
+      <div class="inbox-card-status accepted">
+        ✓ Matched
       </div>
     `;
   }
