@@ -895,6 +895,16 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   border: 1px solid var(--edge);
 }
 
+/* Business Type Selector Chips */
+.biz-type-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.biz-chip { padding: 6px 12px; border-radius: 16px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; background: rgba(255,255,255,0.06); color: var(--muted); }
+.biz-chip:hover { background: rgba(255,255,255,0.12); }
+.biz-chip.active { border-color: var(--brand); background: rgba(59,130,246,0.15); color: var(--brand); }
+.biz-chip[data-biz="Personal"].active { border-color: #6eb5ff; color: #6eb5ff; background: rgba(110,181,255,0.15); }
+.biz-chip[data-biz="Down Home"].active { border-color: #00ff88; color: #00ff88; background: rgba(0,255,136,0.15); }
+.biz-chip[data-biz="Music City Rodeo"].active { border-color: #ffd85e; color: #ffd85e; background: rgba(255,216,94,0.15); }
+.biz-chip[data-biz="EM.co"].active { border-color: #a855f7; color: #a855f7; background: rgba(168,85,247,0.15); }
+
 /* Card Footer Actions */
 .inbox-card-actions {
   display: flex;
@@ -2391,6 +2401,12 @@ function renderMobileCard(receipt) {
           <span class="match-icon">❓</span>
           <span>No matching expense</span>
         </div>
+        <div class="biz-type-chips" data-receipt="${receipt.id}">
+          <div class="biz-chip active" data-biz="Personal" onclick="event.stopPropagation();selectBizType(this)">Personal</div>
+          <div class="biz-chip" data-biz="Down Home" onclick="event.stopPropagation();selectBizType(this)">Down Home</div>
+          <div class="biz-chip" data-biz="Music City Rodeo" onclick="event.stopPropagation();selectBizType(this)">MCR</div>
+          <div class="biz-chip" data-biz="EM.co" onclick="event.stopPropagation();selectBizType(this)">EM.co</div>
+        </div>
       `;
       primaryAction = `
         <button class="inbox-card-btn accept create" onclick="event.stopPropagation();mobileAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}', this)">
@@ -2513,10 +2529,22 @@ function formatDateShort(dateStr) {
   }
 }
 
+function selectBizType(chip) {
+  const container = chip.closest('.biz-type-chips');
+  container.querySelectorAll('.biz-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+}
+
+function getSelectedBizType(card) {
+  const activeChip = card.querySelector('.biz-chip.active');
+  return activeChip ? activeChip.dataset.biz : 'Personal';
+}
+
 // Mobile accept with visual feedback and duplicate detection
 async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
   const card = btn.closest('.inbox-card');
   const actionsDiv = card.querySelector('.inbox-card-actions');
+  const businessType = getSelectedBizType(card);
 
   // Show loading state
   actionsDiv.innerHTML = `
@@ -2548,11 +2576,11 @@ async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
 
       // Store pending accept data
       pendingAccept = {
-        id, merchant, amount, isRefund, transDate, card, actionsDiv,
+        id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType,
         duplicateId: dup.id,
         callback: (forceAccept) => {
           if (forceAccept) {
-            doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv);
+            doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType);
           } else {
             renderMobileCards();
           }
@@ -2564,7 +2592,7 @@ async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
     }
 
     // No duplicates - proceed with accept
-    await doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv);
+    await doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType);
 
   } catch (e) {
     console.error('Accept error:', e);
@@ -2731,7 +2759,7 @@ async function attachToExpense(receiptId, transactionId, btn) {
 }
 
 // Perform the actual accept
-async function doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv) {
+async function doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType = 'Personal') {
   actionsDiv.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--brand)">
       <span class="spinner"></span> Processing...
@@ -2749,7 +2777,7 @@ async function doAccept(id, merchant, amount, isRefund, transDate, card, actions
         amount: amount || 0,
         is_refund: isRefund,
         date: transDate,
-        business_type: 'Personal'
+        business_type: businessType
       })
     });
 

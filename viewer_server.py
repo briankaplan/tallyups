@@ -9662,7 +9662,8 @@ BUSINESS_TYPES = [
     "Music City Rodeo",    # Event business
     "Personal",            # Personal expenses
     "Compass RE",          # Real estate
-    "1099 Contractor"      # Freelance work
+    "1099 Contractor",     # Freelance work
+    "EM.co"                # EM.co business
 ]
 
 
@@ -16734,6 +16735,23 @@ def reject_incoming_receipt():
 
     except Exception as e:
         print(f"❌ Error rejecting receipt: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/cleanup", methods=["POST"])
+@login_required
+def cleanup_inbox():
+    """Comprehensive inbox cleanup and re-matching."""
+    try:
+        from incoming_receipts_service import cleanup_inbox_and_rematch, get_inbox_stats
+        print("🧹 Running inbox cleanup...")
+        before_stats = get_inbox_stats()
+        results = cleanup_inbox_and_rematch()
+        after_stats = get_inbox_stats()
+        return jsonify({'ok': True, 'message': 'Inbox cleanup complete', 'results': results, 'before': before_stats, 'after': after_stats})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 

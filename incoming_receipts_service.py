@@ -2018,3 +2018,59 @@ if __name__ == '__main__':
                 total_found += 1
 
     print(f"\n✅ Found {total_found} new receipts")
+
+
+def cleanup_inbox_and_rematch():
+    """Clean up existing inbox by re-evaluating against stricter filters."""
+    print("\n" + "="*60)
+    print("🧹 INBOX CLEANUP & RE-MATCHING")
+    print("="*60)
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''SELECT id, subject, from_email, from_domain, body_snippet, has_attachment, amount, merchant, confidence_score FROM incoming_receipts WHERE status = 'pending' ORDER BY created_at DESC''')
+    items = cursor.fetchall()
+    print(f"\n📥 Found {len(items)} pending inbox items to evaluate\n")
+    stats = {'total': len(items), 'rejected_no_amount': 0, 'rejected_spam_domain': 0, 'rejected_generic_subject': 0, 'rejected_low_confidence': 0, 'kept_valid': 0, 'matched': 0}
+    for item in items:
+        item_id, subject, from_email, from_domain = item['id'], item['subject'] or '', item['from_email'] or '', item['from_domain'] or ''
+        body_snippet, has_attachment, amount, merchant = item['body_snippet'] or '', item['has_attachment'], item['amount'], item['merchant']
+        subject_lower, rejection_reason = subject.lower(), None
+        if not amount or float(amount) <= 0:
+            rejection_reason, stats['rejected_no_amount'] = 'no_valid_amount', stats['rejected_no_amount'] + 1
+        if not rejection_reason:
+            for spam_domain in SPAM_SENDER_DOMAINS:
+                if spam_domain in from_domain.lower() or spam_domain in from_email.lower():
+                    rejection_reason, stats['rejected_spam_domain'] = f'spam_domain:{spam_domain}', stats['rejected_spam_domain'] + 1
+                    break
+        if not rejection_reason:
+            generic_subjects = ['payment', 'notification', 'update', 'message', 'alert', 'confirmation', 'thank you']
+            is_trusted = any(svc in from_domain for svc in PERSONAL_SERVICE_DOMAINS)
+            if subject_lower in generic_subjects and not is_trusted:
+                rejection_reason, stats['rejected_generic_subject'] = f'generic_subject:{subject_lower}', stats['rejected_generic_subject'] + 1
+        if not rejection_reason:
+            new_confidence = calculate_receipt_confidence(subject, from_email, body_snippet, has_attachment)
+            if new_confidence < 80:
+                rejection_reason, stats['rejected_low_confidence'] = f'low_confidence:{new_confidence}', stats['rejected_low_confidence'] + 1
+        if rejection_reason:
+            cursor.execute('UPDATE incoming_receipts SET status = %s, rejection_reason = %s, reviewed_at = NOW() WHERE id = %s', ('auto_rejected', rejection_reason, item_id))
+            print(f"   ❌ Rejected #{item_id}: {rejection_reason[:50]}")
+        else:
+            stats['kept_valid'] += 1
+            if merchant and amount:
+                match_id, has_receipt, needs_receipt = find_matching_transaction(merchant, float(amount), None)
+                if match_id and needs_receipt:
+                    cursor.execute('UPDATE incoming_receipts SET matched_transaction_id = %s WHERE id = %s', (match_id, item_id))
+                    stats['matched'] += 1
+                    print(f"   ✅ Matched #{item_id} to TX #{match_id}")
+    conn.commit()
+    conn.close()
+    return stats
+
+def get_inbox_stats():
+    """Get inbox statistics."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) as total, SUM(CASE WHEN status = %s THEN 1 ELSE 0 END) as pending, SUM(CASE WHEN status = %s THEN 1 ELSE 0 END) as accepted, SUM(CASE WHEN status = %s THEN 1 ELSE 0 END) as rejected, SUM(CASE WHEN status = %s THEN 1 ELSE 0 END) as auto_rejected FROM incoming_receipts', ('pending', 'accepted', 'rejected', 'auto_rejected'))
+    result = cursor.fetchone()
+    conn.close()
+    return {'total': result['total'] or 0, 'pending': result['pending'] or 0, 'accepted': result['accepted'] or 0, 'rejected': result['rejected'] or 0, 'auto_rejected': result['auto_rejected'] or 0}
