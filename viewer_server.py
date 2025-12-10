@@ -15402,7 +15402,7 @@ def get_incoming_receipts():
             }), 500
 
         status = request.args.get('status', 'all')
-        limit = int(request.args.get('limit', 100))
+        limit = int(request.args.get('limit', 500))  # Increased to show all emails including rejected
 
         conn, db_type = get_db_connection()
 
