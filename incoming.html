@@ -46,22 +46,7 @@ header {
   background: rgba(0,255,136,.15); color: var(--brand);
 }
 
-/* Navigation */
-.nav-buttons {
-  display: flex; gap: 8px; margin-left: auto;
-}
-.nav-btn {
-  padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 13px;
-  background: rgba(0,255,136,.1); color: var(--muted);
-  border: 1px solid transparent; transition: all .15s;
-}
-.nav-btn:hover {
-  background: rgba(0,255,136,.2); color: var(--ink);
-}
-.nav-btn.active {
-  background: rgba(0,255,136,.2); color: var(--brand);
-  border-color: rgba(0,255,136,.3);
-}
+/* Navigation - removed for clean standalone page */
 
 .controls { display: flex; align-items: center; gap: 10px; }
 
@@ -1114,64 +1099,7 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Mobile Bottom Navigation */
-.bottom-nav {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: calc(60px + var(--safe-bottom));
-  background: rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid var(--edge);
-  justify-content: space-around;
-  align-items: flex-start;
-  padding-top: 8px;
-  z-index: 100;
-}
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  color: var(--muted);
-  text-decoration: none;
-  font-size: 10px;
-  font-weight: 500;
-  padding: 4px 16px;
-  transition: color 0.2s;
-}
-
-.nav-item.active {
-  color: var(--brand);
-}
-
-.nav-item svg {
-  width: 24px;
-  height: 24px;
-}
-
-@media (max-width: 768px) {
-  .bottom-nav {
-    display: flex;
-  }
-
-  body {
-    padding-bottom: calc(70px + var(--safe-bottom));
-  }
-
-  .toast {
-    bottom: calc(80px + var(--safe-bottom));
-  }
-
-  /* Hide desktop nav on mobile */
-  .nav-buttons {
-    display: none;
-  }
-}
+/* Navigation removed - clean standalone page */
 </style>
 </head>
 <body>
@@ -2689,64 +2617,6 @@ function showKeyboardHelp() {
 }
 </script>
 
-<!-- Mobile Bottom Navigation -->
-<nav class="bottom-nav">
-  <a href="/" class="nav-item">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-    Home
-  </a>
-  <a href="/viewer" class="nav-item">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 11l3 3L22 4"/>
-      <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-    </svg>
-    Reconcile
-  </a>
-  <a href="/library" class="nav-item">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="3" y="3" width="7" height="7"/>
-      <rect x="14" y="3" width="7" height="7"/>
-      <rect x="14" y="14" width="7" height="7"/>
-      <rect x="3" y="14" width="7" height="7"/>
-    </svg>
-    Library
-  </a>
-  <a href="/scanner" class="nav-item">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-      <circle cx="12" cy="13" r="4"/>
-    </svg>
-    Scan
-  </a>
-  <a href="/incoming" class="nav-item active">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
-      <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
-    </svg>
-    Inbox
-  </a>
-  <a href="/reports" class="nav-item">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="16" y1="13" x2="8" y2="13"/>
-      <line x1="16" y1="17" x2="8" y2="17"/>
-    </svg>
-    Reports
-  </a>
-  <a href="/contacts" class="nav-item">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-      <path d="M16 3.13a4 4 0 010 7.75"/>
-    </svg>
-    Contacts
-  </a>
-</nav>
 
 </body>
 </html>
