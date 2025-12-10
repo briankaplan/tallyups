@@ -2339,7 +2339,11 @@ async function quickUnreject(id) {
   try {
     const res = await fetch(`${API_BASE}/api/incoming/unreject`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Key': 'tallyups-admin-2024'
+      },
+      credentials: 'include',
       body: JSON.stringify({ receipt_id: id })
     });
     const data = await res.json();
@@ -3029,6 +3033,79 @@ function showKeyboardHelp() {
 }
 </script>
 
+<!-- Bottom Navigation Bar -->
+<nav class="bottom-nav">
+  <a href="/viewer" class="bottom-nav-item">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">Dashboard</span>
+  </a>
+  <a href="/library" class="bottom-nav-item">
+    <span class="nav-icon">📚</span>
+    <span class="nav-label">Library</span>
+  </a>
+  <a href="/incoming" class="bottom-nav-item active">
+    <span class="nav-icon">📥</span>
+    <span class="nav-label">Inbox</span>
+  </a>
+</nav>
+
+<style>
+/* Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 65px;
+  background: linear-gradient(180deg, #0a0f15 0%, #050709 100%);
+  border-top: 1px solid var(--edge);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 9999;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--muted);
+  padding: 8px 20px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  min-width: 70px;
+}
+
+.bottom-nav-item:hover {
+  color: var(--ink);
+  background: rgba(255,255,255,0.05);
+}
+
+.bottom-nav-item.active {
+  color: var(--brand);
+  background: rgba(0,255,136,0.1);
+}
+
+.bottom-nav-item .nav-icon {
+  font-size: 22px;
+  margin-bottom: 2px;
+}
+
+.bottom-nav-item .nav-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Add padding to content so it doesn't get hidden behind bottom nav */
+body {
+  padding-bottom: 80px;
+}
+</style>
 
 </body>
 </html>
