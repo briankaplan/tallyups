@@ -682,7 +682,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 .quick-viewer.active{display:flex}
 
 .quick-viewer-content{
-  max-width:1200px;width:95%;height:95vh;
+  max-width:1800px;width:98%;height:98vh;
   background:var(--panel);border-radius:20px;
   box-shadow:0 32px 64px rgba(0,0,0,.8);
   display:flex;flex-direction:column;
@@ -4770,7 +4770,7 @@ function renderTable() {
     // MI Enhanced fields
     const miMerchant = row['MI Merchant'] || row['Chase Description'] || '';
     const miCategory = row['MI Category'] || row['Chase Category'] || '';
-    const miDescription = row['MI Description'] || row['AI Note'] || row['Notes'] || '';
+    const miDescription = row['MI Description'] || row['AI Note'] || row.ai_note || row.mi_description || row['Notes'] || row.notes || '';
     const isSubscription = row['MI Is Subscription'] === 1;
 
     // Merchant cell with subscription badge
@@ -5417,8 +5417,8 @@ function updateDashboard() {
     personal: csvData.filter(r => r['Business Type'] === 'Personal').length,
     unassigned: csvData.filter(r => !r['Business Type'] || r['Business Type'] === 'Unassigned').length,
     alreadySubmitted: csvData.filter(r => {
-      const submitted = (r['Already Submitted'] || '').toLowerCase().trim();
-      return submitted === 'yes';
+      const submitted = (r['Already Submitted'] || r.already_submitted || '').toLowerCase().trim();
+      return submitted === 'yes' || submitted === '1' || submitted === 'true';
     }).length,
     // Receipt Validation Status counts (check both old and new OCR fields)
     receiptVerified: csvData.filter(r => {
@@ -7146,8 +7146,8 @@ function applyFilters() {
     else if (filter === 'already-submitted') {
       // ✅ Already Submitted = expenses marked as already submitted
       filtered = filtered.filter(r => {
-        const submitted = (r['Already Submitted'] || '').toLowerCase().trim();
-        return submitted === 'yes';
+        const submitted = (r['Already Submitted'] || r.already_submitted || '').toLowerCase().trim();
+        return submitted === 'yes' || submitted === '1' || submitted === 'true';
       });
     }
     // Receipt Validation Status filters (check both old and new OCR fields)
@@ -7292,6 +7292,10 @@ function setupEventListeners() {
         if (col === 'Chase Amount') {
           aVal = parseFloat(aVal) || 0;
           bVal = parseFloat(bVal) || 0;
+        } else if (col === 'Chase Date' || col === 'chase_date') {
+          // Parse dates properly for date sorting
+          aVal = new Date(aVal).getTime() || 0;
+          bVal = new Date(bVal).getTime() || 0;
         }
         return sortAsc ?
           (aVal > bVal ? 1 : -1) :
