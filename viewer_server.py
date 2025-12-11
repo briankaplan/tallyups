@@ -2070,6 +2070,12 @@ def privacy_policy():
     return render_template("privacy.html")
 
 
+@app.route("/terms")
+def terms_of_service():
+    """Serve the Terms of Service page (public, no auth required for Google verification)."""
+    return render_template("terms.html")
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
