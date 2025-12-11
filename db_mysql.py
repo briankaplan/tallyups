@@ -380,45 +380,46 @@ class ConnectionPool:
 _connection_pool: Optional[ConnectionPool] = None
 _pool_lock = threading.Lock()
 
-# MySQL connection from Railway environment variables
-# Railway provides either MYSQL_URL or individual MYSQL* variables
-def get_mysql_config() -> Optional[Dict[str, str]]:
-    """Get MySQL configuration from environment variables"""
+# Import centralized database configuration
+# This ensures all database configuration comes from one place
+try:
+    from db_config import get_db_config as get_mysql_config
+except ImportError:
+    # Fallback for standalone usage (e.g., tests)
+    def get_mysql_config() -> Optional[Dict[str, str]]:
+        """Get MySQL configuration from environment variables"""
+        mysql_url = os.environ.get('MYSQL_URL')
+        if mysql_url:
+            try:
+                parsed = urlparse(mysql_url)
+                return {
+                    'host': parsed.hostname,
+                    'port': parsed.port or 3306,
+                    'user': parsed.username,
+                    'password': parsed.password,
+                    'database': parsed.path.lstrip('/') if parsed.path else 'receipts',
+                    'charset': 'utf8mb4'
+                }
+            except Exception as e:
+                print(f"⚠️  Failed to parse MYSQL_URL: {e}", flush=True)
 
-    # Try MYSQL_URL first (Railway format: mysql://user:pass@host:port/database)
-    mysql_url = os.environ.get('MYSQL_URL')
-    if mysql_url:
-        try:
-            parsed = urlparse(mysql_url)
+        host = os.environ.get('MYSQLHOST')
+        user = os.environ.get('MYSQLUSER')
+        password = os.environ.get('MYSQLPASSWORD')
+        database = os.environ.get('MYSQLDATABASE', 'receipts')
+        port = int(os.environ.get('MYSQLPORT', '3306'))
+
+        if host and user and password:
             return {
-                'host': parsed.hostname,
-                'port': parsed.port or 3306,
-                'user': parsed.username,
-                'password': parsed.password,
-                'database': parsed.path.lstrip('/') if parsed.path else 'receipts',
+                'host': host,
+                'port': port,
+                'user': user,
+                'password': password,
+                'database': database,
                 'charset': 'utf8mb4'
             }
-        except Exception as e:
-            print(f"⚠️  Failed to parse MYSQL_URL: {e}", flush=True)
 
-    # Try individual variables (Railway also provides these)
-    host = os.environ.get('MYSQLHOST')
-    user = os.environ.get('MYSQLUSER')
-    password = os.environ.get('MYSQLPASSWORD')
-    database = os.environ.get('MYSQLDATABASE', 'receipts')
-    port = int(os.environ.get('MYSQLPORT', '3306'))
-
-    if host and user and password:
-        return {
-            'host': host,
-            'port': port,
-            'user': user,
-            'password': password,
-            'database': database,
-            'charset': 'utf8mb4'
-        }
-
-    return None
+        return None
 
 
 # Standalone connection function for external modules (e.g., relationship_intelligence.py)
@@ -504,12 +505,18 @@ class MySQLReceiptDatabase:
     MySQL database handler for ReceiptAI.
 
     Now uses connection pooling for better performance and reliability.
+    Supports read-only mode for development environments.
     """
 
     def __init__(self, config: Optional[Dict[str, str]] = None):
         self.config = config or get_mysql_config()
         self._pool: Optional[ConnectionPool] = None
         self.use_mysql = False
+
+        # Check for read-only mode (for development environment using production DB)
+        self.read_only = os.environ.get('DB_READ_ONLY', '').lower() in ('true', '1', 'yes')
+        if self.read_only:
+            print(f"🔒 Database running in READ-ONLY mode (DB_READ_ONLY=true)", flush=True)
 
         if not self.config:
             print(f"ℹ️  MySQL not configured (set MYSQL_URL or MYSQL* variables)", flush=True)
@@ -519,10 +526,12 @@ class MySQLReceiptDatabase:
         try:
             self._pool = get_connection_pool()
             self.use_mysql = True
-            print(f"✅ Connected to MySQL (pooled): {self.config['host']}:{self.config['port']}/{self.config['database']}", flush=True)
+            mode = " [READ-ONLY]" if self.read_only else ""
+            print(f"✅ Connected to MySQL (pooled): {self.config['host']}:{self.config['port']}/{self.config['database']}{mode}", flush=True)
 
-            # Initialize schema if needed
-            self._init_schema()
+            # Initialize schema if needed (skip in read-only mode)
+            if not self.read_only:
+                self._init_schema()
 
         except Exception as e:
             print(f"⚠️  MySQL connection failed: {e}", flush=True)
@@ -803,6 +812,20 @@ class MySQLReceiptDatabase:
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY unique_pattern (pattern_type, pattern_value),
                 INDEX idx_pattern_type (pattern_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Create receipt_hashes table for duplicate detection
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS receipt_hashes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                receipt_file VARCHAR(500) NOT NULL UNIQUE,
+                content_hash VARCHAR(64),
+                perceptual_hash VARCHAR(16),
+                file_size INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_content_hash (content_hash),
+                INDEX idx_perceptual_hash (perceptual_hash)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
 
@@ -1681,6 +1704,10 @@ class MySQLReceiptDatabase:
         if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
+        if self.read_only:
+            logger.warning(f"[READ-ONLY] Blocked update_transaction for index {index}")
+            return False
+
         # Map user-facing column names to database columns
         column_map = {
             'Chase Date': 'chase_date',
@@ -2080,6 +2107,10 @@ class MySQLReceiptDatabase:
         if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
+        if self.read_only:
+            logger.warning(f"[READ-ONLY] Blocked delete_report for {report_id}")
+            return False
+
         try:
             cursor = self.conn.cursor()
 
@@ -2156,6 +2187,10 @@ class MySQLReceiptDatabase:
     ) -> bool:
         """Insert or update a merchant in the knowledge base"""
         if not self.use_mysql or not self._pool:
+            return False
+
+        if self.read_only:
+            logger.warning(f"[READ-ONLY] Blocked upsert_merchant for {raw_description}")
             return False
 
         self.ensure_connection()
@@ -2282,6 +2317,10 @@ class MySQLReceiptDatabase:
     ) -> bool:
         """Insert or update a contact"""
         if not self.use_mysql or not self._pool:
+            return False
+
+        if self.read_only:
+            logger.warning(f"[READ-ONLY] Blocked upsert_contact for {name}")
             return False
 
         # Parse first/last name

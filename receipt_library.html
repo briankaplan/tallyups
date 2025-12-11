@@ -5,24 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#000000">
-  <title>Receipt Library - Tallyups</title>
+  <meta name="theme-color" content="#0a0a0f">
+  <title>Receipt Library - ReceiptAI</title>
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-  <link rel="manifest" href="/static/manifest.json">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/static/css/receipt_library.css">
   <style>
+    /* CSS is now in external file, but keep critical inline styles */
     :root {
-      --bg: #000;
-      --card-bg: #1a1a1a;
-      --card-hover: #252525;
-      --text: #fff;
-      --text-muted: #888;
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a24;
+      --bg-hover: #22222e;
       --accent: #00ff88;
-      --accent-dim: rgba(0, 255, 136, 0.15);
-      --border: #333;
+      --accent-dim: rgba(0, 255, 136, 0.12);
+      --accent-glow: rgba(0, 255, 136, 0.3);
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0b0;
+      --text-muted: #606070;
+      --border: #2a2a36;
+      --border-light: #3a3a46;
       --danger: #ff4757;
       --warning: #ffa502;
-      --safe-top: env(safe-area-inset-top, 20px);
-      --safe-bottom: env(safe-area-inset-bottom, 20px);
+      --success: #00ff88;
+      --info: #64c8ff;
+      --purple: #a55eea;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --sidebar-width: 260px;
+      --header-height: 64px;
+      --toolbar-height: 48px;
     }
 
     * {
@@ -34,73 +48,232 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg-primary);
+      color: var(--text-primary);
       min-height: 100vh;
       min-height: 100dvh;
       overflow-x: hidden;
+    }
+
+    body.dark-mode {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a24;
+    }
+
+    body.light-mode {
+      --bg-primary: #f5f5f7;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e8e8ec;
+      --bg-hover: #dcdce2;
+      --text-primary: #1a1a1a;
+      --text-secondary: #505060;
+      --text-muted: #808090;
+      --border: #d0d0d8;
+      --border-light: #e0e0e8;
+    }
+
+    /* Layout */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
       padding-top: var(--safe-top);
-      padding-bottom: calc(70px + var(--safe-bottom));
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: var(--safe-top);
+      left: 0;
+      bottom: 0;
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar.visible {
+      transform: translateX(0);
+    }
+
+    @media (min-width: 1024px) {
+      .sidebar {
+        transform: translateX(0);
+      }
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .sidebar-logo svg {
+      width: 32px;
+      height: 32px;
+      color: var(--accent);
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+
+    .nav-section {
+      margin-bottom: 24px;
+    }
+
+    .nav-section-title {
+      padding: 0 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .nav-item svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .nav-count {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--bg-tertiary);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .nav-count.warning {
+      background: rgba(255, 165, 2, 0.2);
+      color: var(--warning);
+    }
+
+    .business-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .business-dot.down-home { background: #00ff88; }
+    .business-dot.mcr { background: #64c8ff; }
+    .business-dot.personal { background: #a55eea; }
+    .business-dot.ceo { background: #ffa502; }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      margin-left: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (min-width: 1024px) {
+      .main-content {
+        margin-left: var(--sidebar-width);
+      }
     }
 
     /* Header */
     .header {
+      height: var(--header-height);
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
       position: sticky;
       top: 0;
-      z-index: 100;
-      background: rgba(0, 0, 0, 0.9);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
+      z-index: 50;
     }
 
-    .header-top {
+    .menu-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
+      justify-content: center;
+      border-radius: 8px;
     }
 
-    .header-title {
-      font-size: 24px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .menu-btn:hover {
+      background: var(--bg-hover);
     }
 
-    .header-title svg {
-      width: 28px;
-      height: 28px;
+    @media (min-width: 1024px) {
+      .menu-btn {
+        display: none;
+      }
     }
 
-    .receipt-count {
-      font-size: 13px;
-      color: var(--text-muted);
-      font-weight: 400;
-    }
-
-    /* Search Bar */
+    /* Search */
     .search-container {
+      flex: 1;
+      max-width: 600px;
       position: relative;
     }
 
     .search-input {
       width: 100%;
       height: 44px;
-      background: var(--card-bg);
+      background: var(--bg-tertiary);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 0 44px 0 44px;
-      font-size: 16px;
-      color: var(--text);
+      padding: 0 44px;
+      font-size: 15px;
+      color: var(--text-primary);
       outline: none;
-      transition: border-color 0.2s;
+      transition: all 0.2s;
     }
 
     .search-input:focus {
       border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
     }
 
     .search-input::placeholder {
@@ -116,7 +289,7 @@
       pointer-events: none;
     }
 
-    .clear-search {
+    .search-clear {
       position: absolute;
       right: 10px;
       top: 50%;
@@ -124,408 +297,228 @@
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background: var(--border);
+      background: var(--bg-hover);
       border: none;
-      color: var(--text);
+      color: var(--text-secondary);
       display: none;
       align-items: center;
       justify-content: center;
       cursor: pointer;
     }
 
-    .clear-search.visible {
+    .search-clear.visible {
       display: flex;
     }
 
-    /* Filter Section */
-    .filters-section {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
+    .search-shortcut {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--bg-hover);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: monospace;
     }
 
-    /* Source Chips */
-    .source-chips {
+    /* Header Actions */
+    .header-actions {
       display: flex;
+      align-items: center;
       gap: 8px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      padding-bottom: 12px;
-      margin-bottom: 12px;
     }
 
-    .source-chips::-webkit-scrollbar {
-      display: none;
-    }
-
-    .source-chip {
-      flex-shrink: 0;
-      padding: 8px 16px;
-      border-radius: 20px;
-      background: var(--card-bg);
+    .header-btn {
+      width: 40px;
+      height: 40px;
       border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 14px;
-      font-weight: 500;
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
       cursor: pointer;
-      transition: all 0.2s;
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      border-radius: 10px;
+      transition: all 0.2s;
     }
 
-    .source-chip.active {
-      background: var(--accent-dim);
+    .header-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .header-btn.primary {
+      background: var(--accent);
       border-color: var(--accent);
-      color: var(--accent);
+      color: #000;
     }
 
-    .source-chip .count {
-      font-size: 12px;
-      opacity: 0.7;
+    .header-btn.primary:hover {
+      background: #00cc6e;
     }
 
-    /* Status Chips */
-    .status-chips {
+    .view-toggle {
       display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      padding-bottom: 12px;
-      margin-bottom: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .status-chips::-webkit-scrollbar {
-      display: none;
-    }
-
-    .status-chip {
-      flex-shrink: 0;
-      padding: 6px 12px;
-      border-radius: 16px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
+      background: var(--bg-tertiary);
+      border-radius: 10px;
+      padding: 4px;
       gap: 4px;
     }
 
-    .status-chip.active {
-      background: var(--accent-dim);
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .status-chip.verified.active {
-      background: rgba(0, 255, 136, 0.15);
-      border-color: #00ff88;
-      color: #00ff88;
-    }
-
-    .status-chip.matched.active {
-      background: rgba(100, 200, 255, 0.15);
-      border-color: #64c8ff;
-      color: #64c8ff;
-    }
-
-    .status-chip.waiting.active {
-      background: rgba(255, 165, 2, 0.15);
-      border-color: #ffa502;
-      color: #ffa502;
-    }
-
-    .status-chip.needs-review.active {
-      background: rgba(255, 165, 2, 0.15);
-      border-color: #ffa502;
-      color: #ffa502;
-    }
-
-    .status-chip.mismatch.active {
-      background: rgba(255, 71, 87, 0.15);
-      border-color: #ff4757;
-      color: #ff4757;
-    }
-
-    .status-chip.has-ocr.active {
-      background: rgba(165, 94, 234, 0.15);
-      border-color: #a55eea;
-      color: #a55eea;
-    }
-
-    .status-chip .count {
-      font-size: 11px;
-      opacity: 0.7;
-    }
-
-    /* Quick Date Filter Buttons */
-    .quick-date-filters {
-      display: flex;
-      gap: 8px;
-      padding: 8px 0 12px 0;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 12px;
-    }
-
-    .quick-date-filters::-webkit-scrollbar {
-      display: none;
-    }
-
-    .quick-date-btn {
-      flex-shrink: 0;
-      padding: 8px 16px;
-      border-radius: 20px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
+    .view-btn {
+      width: 36px;
+      height: 32px;
+      border: none;
+      background: transparent;
       color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .quick-date-btn:hover {
-      background: var(--card-hover);
-      color: var(--text);
-    }
-
-    .quick-date-btn.active {
-      background: var(--accent-dim);
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    /* Verification Badge on receipt cards */
-    .verification-badge {
-      position: absolute;
-      top: 6px;
-      left: 6px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 9px;
-      font-weight: 600;
-      text-transform: uppercase;
-      z-index: 2;
-    }
-
-    .verification-badge.verified {
-      background: rgba(0, 255, 136, 0.9);
-      color: #000;
-    }
-
-    .verification-badge.mismatch {
-      background: rgba(255, 71, 87, 0.9);
-      color: #fff;
-    }
-
-    .verification-badge.needs-review {
-      background: rgba(255, 165, 2, 0.9);
-      color: #000;
-    }
-
-    .verification-badge.waiting {
-      background: rgba(255, 165, 2, 0.7);
-      color: #000;
-    }
-
-    /* OCR Confidence badge */
-    .ocr-badge {
-      position: absolute;
-      bottom: 6px;
-      left: 6px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 9px;
-      font-weight: 600;
-      background: rgba(165, 94, 234, 0.9);
-      color: #fff;
-      z-index: 2;
-    }
-
-    .ocr-badge.high {
-      background: rgba(0, 255, 136, 0.9);
-      color: #000;
-    }
-
-    .ocr-badge.medium {
-      background: rgba(255, 165, 2, 0.9);
-      color: #000;
-    }
-
-    .ocr-badge.low {
-      background: rgba(255, 71, 87, 0.9);
-      color: #fff;
-    }
-
-    /* Receipt OCR Info Line */
-    .receipt-ocr-info {
-      font-size: 10px;
-      color: var(--text-muted);
-      margin-top: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      opacity: 0.7;
-    }
-
-    /* List view status badges */
-    .list-status {
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 10px;
-      font-weight: 500;
-      text-transform: capitalize;
-    }
-
-    .list-status.verified {
-      background: rgba(0, 255, 136, 0.15);
-      color: #00ff88;
-    }
-
-    .list-status.needs_review {
-      background: rgba(255, 165, 2, 0.15);
-      color: #ffa502;
-    }
-
-    .list-status.mismatch {
-      background: rgba(255, 71, 87, 0.15);
-      color: #ff4757;
-    }
-
-    .list-status.waiting {
-      background: rgba(70, 130, 180, 0.15);
-      color: #4682b4;
-    }
-
-    .list-ocr {
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 10px;
-      background: rgba(128, 128, 128, 0.15);
-      color: var(--text-muted);
-    }
-
-    /* Filter Row */
-    .filter-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .filter-btn {
-      flex: 1;
-      height: 40px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text-muted);
-      font-size: 13px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      cursor: pointer;
+      border-radius: 6px;
       transition: all 0.2s;
     }
 
-    .filter-btn.active {
-      border-color: var(--accent);
-      color: var(--accent);
+    .view-btn.active {
+      background: var(--accent);
+      color: #000;
     }
 
-    .filter-btn svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    .sort-btn {
-      width: 40px;
-      flex-shrink: 0;
-    }
-
-    /* Active Filters */
-    .active-filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 0 16px 12px;
-    }
-
-    .filter-tag {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      background: var(--accent-dim);
-      border-radius: 8px;
-      font-size: 12px;
-      color: var(--accent);
-    }
-
-    .filter-tag button {
-      background: none;
-      border: none;
-      color: var(--accent);
-      cursor: pointer;
-      padding: 0;
-      display: flex;
-    }
-
-    /* Stats Bar */
-    .stats-bar {
-      padding: 8px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      color: var(--text-muted);
+    /* Toolbar */
+    .toolbar {
+      height: var(--toolbar-height);
+      background: var(--bg-secondary);
       border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .results-count {
+      font-size: 13px;
+      color: var(--text-secondary);
     }
 
     .total-amount {
-      color: var(--accent);
+      font-size: 14px;
       font-weight: 600;
+      color: var(--accent);
+    }
+
+    /* Filter Chips */
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 12px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: none;
+    }
+
+    .filter-chips::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .filter-chip:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .filter-chip.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .chip-count {
+      font-size: 11px;
+      opacity: 0.8;
     }
 
     /* Receipt Grid */
+    .receipts-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
     .receipt-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 12px;
-      padding: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .receipt-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .receipt-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      }
     }
 
     .receipt-card {
-      background: var(--card-bg);
-      border-radius: 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
       overflow: hidden;
       cursor: pointer;
-      transition: transform 0.2s, background 0.2s;
-      border: 1px solid var(--border);
+      transition: all 0.2s;
     }
 
-    .receipt-card:active {
-      transform: scale(0.98);
-      background: var(--card-hover);
+    .receipt-card:hover {
+      border-color: var(--border-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .receipt-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
     }
 
     .receipt-thumb {
-      width: 100%;
-      aspect-ratio: 1;
-      background: #0a0a0a;
+      position: relative;
+      aspect-ratio: 4/3;
+      background: var(--bg-tertiary);
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
       overflow: hidden;
     }
 
@@ -533,21 +526,28 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      background: #fff;  /* White background for transparent PNGs */
+      background: #fff;
     }
 
     .receipt-thumb.no-image {
-      background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+      background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
     }
 
-    .receipt-thumb .placeholder-icon {
+    .receipt-thumb .placeholder {
       color: var(--border);
     }
 
-    .source-badge {
+    .receipt-badges {
       position: absolute;
       top: 8px;
+      left: 8px;
       right: 8px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .badge {
       padding: 4px 8px;
       border-radius: 6px;
       font-size: 10px;
@@ -556,24 +556,53 @@
       letter-spacing: 0.5px;
     }
 
-    .source-badge.gmail { background: #ea4335; }
-    .source-badge.scanner { background: var(--accent); color: #000; }
-    .source-badge.manual { background: #4285f4; }
-    .source-badge.imessage { background: #34c759; }
-    .source-badge.ai { background: #9b59b6; }
-    .source-badge.pending { background: var(--warning); color: #000; }
+    .badge.source { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+    .badge.source.gmail { color: #ea4335; }
+    .badge.source.scanner { color: var(--accent); }
+    .badge.source.manual { color: var(--info); }
+
+    .badge.status { }
+    .badge.verified { background: rgba(0, 255, 136, 0.9); color: #000; }
+    .badge.mismatch { background: rgba(255, 71, 87, 0.9); color: #fff; }
+    .badge.needs-review { background: rgba(255, 165, 2, 0.9); color: #000; }
+
+    .receipt-checkbox {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .receipt-card:hover .receipt-checkbox {
+      opacity: 1;
+    }
+
+    .receipt-card.selected .receipt-checkbox {
+      opacity: 1;
+      background: var(--accent);
+      border-color: var(--accent);
+    }
 
     .receipt-info {
-      padding: 12px;
+      padding: 14px;
     }
 
     .receipt-merchant {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .receipt-meta {
@@ -583,7 +612,7 @@
     }
 
     .receipt-amount {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--accent);
     }
@@ -593,6 +622,15 @@
     }
 
     .receipt-date {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .receipt-business {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 12px;
       color: var(--text-muted);
     }
@@ -600,48 +638,46 @@
     /* List View */
     .receipt-list {
       display: none;
-      flex-direction: column;
     }
 
     .receipt-list.active {
-      display: flex;
+      display: block;
     }
 
     .receipt-grid.hidden {
       display: none;
     }
 
-    .receipt-list-item {
+    .list-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
+      gap: 16px;
+      padding: 14px 0;
       border-bottom: 1px solid var(--border);
       cursor: pointer;
       transition: background 0.2s;
     }
 
-    .receipt-list-item:active {
-      background: var(--card-bg);
+    .list-item:hover {
+      background: var(--bg-hover);
+      margin: 0 -20px;
+      padding: 14px 20px;
     }
 
     .list-thumb {
       width: 56px;
       height: 56px;
-      border-radius: 8px;
-      background: var(--card-bg);
-      flex-shrink: 0;
+      border-radius: 10px;
+      background: var(--bg-tertiary);
       overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-shrink: 0;
     }
 
     .list-thumb img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      background: #fff;  /* White background for transparent PNGs */
+      background: #fff;
     }
 
     .list-info {
@@ -652,17 +688,14 @@
     .list-merchant {
       font-size: 15px;
       font-weight: 600;
-      margin-bottom: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      margin-bottom: 4px;
     }
 
     .list-meta {
       font-size: 13px;
       color: var(--text-muted);
       display: flex;
-      gap: 8px;
+      gap: 12px;
     }
 
     .list-amount {
@@ -671,13 +704,96 @@
       color: var(--accent);
     }
 
-    /* Loading & Empty States */
+    /* Timeline View */
+    .timeline-view {
+      display: none;
+    }
+
+    .timeline-view.active {
+      display: block;
+    }
+
+    .timeline-group {
+      margin-bottom: 32px;
+    }
+
+    .timeline-date {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      padding-left: 24px;
+      position: relative;
+    }
+
+    .timeline-date::before {
+      content: '';
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    .timeline-items {
+      padding-left: 24px;
+      border-left: 2px solid var(--border);
+      margin-left: 11px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      text-align: center;
+    }
+
+    .empty-state svg {
+      width: 80px;
+      height: 80px;
+      color: var(--border);
+      margin-bottom: 24px;
+    }
+
+    .empty-state h3 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 14px;
+      max-width: 300px;
+    }
+
+    .empty-action {
+      margin-top: 24px;
+      padding: 12px 24px;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Loading */
     .loading-container {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 60px 20px;
+      padding: 80px 20px;
       gap: 16px;
     }
 
@@ -694,111 +810,103 @@
       to { transform: rotate(360deg); }
     }
 
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 60px 20px;
-      text-align: center;
-    }
-
-    .empty-state svg {
-      width: 80px;
-      height: 80px;
-      color: var(--border);
-      margin-bottom: 16px;
-    }
-
-    .empty-state h3 {
-      font-size: 18px;
-      margin-bottom: 8px;
-    }
-
-    .empty-state p {
-      color: var(--text-muted);
-      font-size: 14px;
-    }
-
-    /* Detail Modal */
+    /* Receipt Detail Modal */
     .detail-modal {
       position: fixed;
       inset: 0;
-      background: var(--bg);
+      background: var(--bg-primary);
       z-index: 200;
       transform: translateX(100%);
       transition: transform 0.3s ease;
-      overflow-y: auto;
-      padding-bottom: var(--safe-bottom);
+      display: flex;
+      flex-direction: column;
     }
 
     .detail-modal.visible {
       transform: translateX(0);
     }
 
+    @media (min-width: 1024px) {
+      .detail-modal {
+        left: auto;
+        width: 50%;
+        max-width: 700px;
+        border-left: 1px solid var(--border);
+        box-shadow: -20px 0 60px rgba(0, 0, 0, 0.5);
+      }
+    }
+
     .detail-header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: rgba(0, 0, 0, 0.9);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      padding: 12px 16px;
-      padding-top: calc(12px + var(--safe-top));
+      height: 60px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: 0 16px;
       border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
     }
 
     .back-btn {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       background: none;
       border: none;
       color: var(--accent);
-      font-size: 16px;
+      font-size: 15px;
       cursor: pointer;
       padding: 8px 0;
     }
 
     .detail-actions {
       display: flex;
-      gap: 12px;
+      gap: 8px;
     }
 
     .detail-actions button {
       width: 40px;
       height: 40px;
-      border-radius: 50%;
-      background: var(--card-bg);
+      border-radius: 10px;
+      background: var(--bg-tertiary);
       border: 1px solid var(--border);
-      color: var(--text);
+      color: var(--text-secondary);
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
     }
 
-    .detail-actions button.delete {
+    .detail-actions button:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .detail-actions button.danger:hover {
+      background: rgba(255, 71, 87, 0.2);
       color: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .detail-body {
+      flex: 1;
+      overflow-y: auto;
     }
 
     .detail-image {
-      width: 100%;
-      max-height: 50vh;
-      background: #0a0a0a;
+      background: var(--bg-tertiary);
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 300px;
+      max-height: 50vh;
+      overflow: hidden;
     }
 
     .detail-image img {
       max-width: 100%;
       max-height: 50vh;
       object-fit: contain;
-      background: #fff;  /* White background for transparent PNGs */
+      background: #fff;
     }
 
     .detail-image.no-image {
@@ -806,32 +914,32 @@
     }
 
     .detail-content {
-      padding: 20px 16px;
+      padding: 24px;
     }
 
     .detail-merchant {
-      font-size: 24px;
+      font-size: 28px;
       font-weight: 700;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
     }
 
-    .detail-source {
+    .detail-source-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
-      background: var(--card-bg);
-      border-radius: 6px;
-      font-size: 12px;
-      color: var(--text-muted);
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
       margin-bottom: 20px;
     }
 
     .detail-amount {
-      font-size: 36px;
+      font-size: 42px;
       font-weight: 700;
       color: var(--accent);
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .detail-amount.refund {
@@ -866,24 +974,65 @@
     }
 
     .detail-notes {
-      margin-top: 20px;
+      margin-top: 24px;
       padding: 16px;
-      background: var(--card-bg);
+      background: var(--bg-secondary);
       border-radius: 12px;
+      border: 1px solid var(--border);
     }
 
     .detail-notes h4 {
       font-size: 14px;
       color: var(--text-muted);
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .detail-notes p {
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.6;
+      color: var(--text-secondary);
     }
 
-    /* Filter Modals */
+    .detail-tags {
+      margin-top: 24px;
+    }
+
+    .detail-tags h4 {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .tags-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .tag.add-tag {
+      border-style: dashed;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .tag.add-tag:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    /* Filter Modal */
     .filter-modal {
       position: fixed;
       inset: 0;
@@ -903,15 +1052,16 @@
     }
 
     .filter-sheet {
-      background: var(--card-bg);
-      border-radius: 20px 20px 0 0;
+      background: var(--bg-secondary);
+      border-radius: 24px 24px 0 0;
       width: 100%;
       max-width: 500px;
-      max-height: 80vh;
-      padding: 20px;
-      padding-bottom: calc(20px + var(--safe-bottom));
+      max-height: 85vh;
+      padding: 24px;
+      padding-bottom: calc(24px + var(--safe-bottom));
       transform: translateY(100%);
       transition: transform 0.3s ease;
+      overflow-y: auto;
     }
 
     .filter-modal.visible .filter-sheet {
@@ -922,11 +1072,11 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .filter-sheet-header h3 {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 600;
     }
 
@@ -935,95 +1085,86 @@
       border: none;
       color: var(--accent);
       font-size: 16px;
+      font-weight: 500;
       cursor: pointer;
     }
 
-    .date-inputs {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+    .filter-section {
+      margin-bottom: 24px;
     }
 
-    .date-input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .date-input-group label {
+    .filter-section h4 {
       font-size: 13px;
       color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
     }
 
-    .date-input-group input {
-      height: 48px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0 14px;
-      font-size: 16px;
-      color: var(--text);
-      outline: none;
-    }
-
-    .date-input-group input:focus {
-      border-color: var(--accent);
-    }
-
-    .date-presets {
+    .filter-presets {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 16px;
     }
 
-    .date-preset {
-      padding: 8px 14px;
-      background: var(--bg);
+    .filter-preset {
+      padding: 10px 16px;
+      background: var(--bg-tertiary);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
+      border-radius: 10px;
+      color: var(--text-secondary);
       font-size: 14px;
       cursor: pointer;
       transition: all 0.2s;
     }
 
-    .date-preset:active {
+    .filter-preset:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .filter-preset.active {
       background: var(--accent-dim);
       border-color: var(--accent);
+      color: var(--accent);
     }
 
-    .amount-inputs {
+    .filter-inputs {
       display: flex;
       gap: 12px;
+      margin-top: 16px;
     }
 
-    .amount-input-group {
+    .filter-input-group {
       flex: 1;
     }
 
-    .amount-input-group label {
+    .filter-input-group label {
       display: block;
       font-size: 13px;
       color: var(--text-muted);
       margin-bottom: 6px;
     }
 
-    .amount-input-group input {
+    .filter-input-group input {
       width: 100%;
       height: 48px;
-      background: var(--bg);
+      background: var(--bg-tertiary);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 0 14px;
       font-size: 16px;
-      color: var(--text);
+      color: var(--text-primary);
       outline: none;
     }
 
-    .filter-apply-btn {
+    .filter-input-group input:focus {
+      border-color: var(--accent);
+    }
+
+    .filter-apply {
       width: 100%;
-      height: 50px;
+      height: 52px;
       background: var(--accent);
       border: none;
       border-radius: 12px;
@@ -1031,93 +1172,79 @@
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 20px;
+      margin-top: 24px;
     }
 
-    /* Sort Modal */
-    .sort-options {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .sort-option {
-      display: flex;
+    /* Upload Modal */
+    .upload-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 200;
+      display: none;
       align-items: center;
-      justify-content: space-between;
-      padding: 14px;
-      background: var(--bg);
-      border-radius: 10px;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .upload-modal.visible {
+      display: flex;
+    }
+
+    .upload-content {
+      background: var(--bg-secondary);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 500px;
+      padding: 32px;
+    }
+
+    .upload-dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 48px 24px;
+      text-align: center;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
 
-    .sort-option:active {
-      background: var(--card-hover);
-    }
-
-    .sort-option.active {
+    .upload-dropzone:hover,
+    .upload-dropzone.dragover {
+      border-color: var(--accent);
       background: var(--accent-dim);
     }
 
-    .sort-option.active .sort-label {
-      color: var(--accent);
-    }
-
-    .sort-label {
-      font-size: 15px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .sort-option svg {
-      width: 20px;
-      height: 20px;
-      color: var(--accent);
-      opacity: 0;
-    }
-
-    .sort-option.active svg {
-      opacity: 1;
-    }
-
-    /* View Toggle */
-    .view-toggle {
-      display: flex;
-      background: var(--card-bg);
-      border-radius: 8px;
-      padding: 3px;
-    }
-
-    .view-toggle button {
-      width: 36px;
-      height: 32px;
-      border: none;
-      background: transparent;
-      border-radius: 6px;
+    .upload-dropzone svg {
+      width: 64px;
+      height: 64px;
       color: var(--text-muted);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      margin-bottom: 16px;
     }
 
-    .view-toggle button.active {
-      background: var(--accent);
-      color: #000;
+    .upload-dropzone h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
     }
 
-    /* Bottom Nav */
+    .upload-dropzone p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .upload-formats {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Bottom Navigation (Mobile) */
     .bottom-nav {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
       height: calc(60px + var(--safe-bottom));
-      background: rgba(0, 0, 0, 0.95);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: var(--bg-secondary);
       border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-around;
@@ -1126,331 +1253,615 @@
       z-index: 100;
     }
 
-    .nav-item {
+    @media (min-width: 1024px) {
+      .bottom-nav {
+        display: none;
+      }
+
+      .main-content {
+        padding-bottom: 0;
+      }
+    }
+
+    .nav-link {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 2px;
+      gap: 4px;
       color: var(--text-muted);
       text-decoration: none;
       font-size: 10px;
-      padding: 4px 16px;
+      font-weight: 500;
+      padding: 4px 12px;
       transition: color 0.2s;
     }
 
-    .nav-item.active {
+    .nav-link.active {
       color: var(--accent);
     }
 
-    .nav-item svg {
+    .nav-link svg {
       width: 24px;
       height: 24px;
     }
 
-    /* Infinite scroll loading */
-    .load-more {
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      bottom: calc(80px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 300;
       display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    @media (min-width: 1024px) {
+      .toast-container {
+        bottom: 24px;
+        right: 24px;
+        left: auto;
+        transform: none;
+      }
+    }
+
+    .toast {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .toast.success {
+      border-color: var(--success);
+    }
+
+    .toast.error {
+      border-color: var(--danger);
+    }
+
+    /* Keyboard Shortcuts Modal */
+    .shortcuts-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 250;
+      display: none;
+      align-items: center;
       justify-content: center;
       padding: 20px;
     }
+
+    .shortcuts-modal.visible {
+      display: flex;
+    }
+
+    .shortcuts-content {
+      background: var(--bg-secondary);
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .shortcuts-content h2 {
+      font-size: 24px;
+      margin-bottom: 24px;
+    }
+
+    .shortcuts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+    }
+
+    .shortcut-group h3 {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .shortcut {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      font-size: 14px;
+    }
+
+    .shortcut kbd {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    /* Utilities */
+    .hidden {
+      display: none !important;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
   </style>
 </head>
-<body>
-  <!-- Header -->
-  <div class="header">
-    <div class="header-top">
-      <div class="header-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-          <rect x="9" y="3" width="6" height="4" rx="1"/>
-          <path d="M9 12h6M9 16h6"/>
-        </svg>
-        Receipt Library
-        <span class="receipt-count" id="receipt-count"></span>
+<body class="dark-mode">
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H6v-2h6v2zm4-4H6v-2h10v2zm0-4H6V7h10v2z"/>
+          </svg>
+          Receipt Library
+        </div>
       </div>
-      <div class="view-toggle">
-        <button id="grid-view-btn" class="active" onclick="setView('grid')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <rect x="3" y="3" width="7" height="7" rx="1"/>
-            <rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/>
-            <rect x="14" y="14" width="7" height="7" rx="1"/>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">Library</div>
+          <a href="#" class="nav-item active" data-filter="all">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <line x1="9" y1="9" x2="15" y2="9"></line>
+              <line x1="9" y1="13" x2="15" y2="13"></line>
+            </svg>
+            <span>All Receipts</span>
+            <span class="nav-count" id="count-all">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="favorites">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <span>Favorites</span>
+            <span class="nav-count" id="count-favorites">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="recent">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Recent</span>
+            <span class="nav-count" id="count-recent">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="needs_review">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>Needs Review</span>
+            <span class="nav-count warning" id="count-review">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="duplicates">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+              <rect x="4" y="4" width="12" height="12" rx="2"></rect>
+            </svg>
+            <span>Duplicates</span>
+            <span class="nav-count" id="count-duplicates">0</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Business</div>
+          <a href="#" class="nav-item" data-filter="business:down_home">
+            <span class="business-dot down-home"></span>
+            <span>Down Home</span>
+            <span class="nav-count" id="count-down-home">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="business:mcr">
+            <span class="business-dot mcr"></span>
+            <span>Music City Rodeo</span>
+            <span class="nav-count" id="count-mcr">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="business:personal">
+            <span class="business-dot personal"></span>
+            <span>Personal</span>
+            <span class="nav-count" id="count-personal">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="business:ceo">
+            <span class="business-dot ceo"></span>
+            <span>CEO</span>
+            <span class="nav-count" id="count-ceo">0</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Status</div>
+          <a href="#" class="nav-item" data-filter="status:verified">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Verified</span>
+            <span class="nav-count" id="count-verified">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="status:matched">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <span>Matched</span>
+            <span class="nav-count" id="count-matched">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="status:processing">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Processing</span>
+            <span class="nav-count" id="count-processing">0</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">Source</div>
+          <a href="#" class="nav-item" data-filter="source:gmail">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+            </svg>
+            <span>Gmail</span>
+            <span class="nav-count" id="count-gmail">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="source:scanner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+            </svg>
+            <span>Scanner</span>
+            <span class="nav-count" id="count-scanner">0</span>
+          </a>
+          <a href="#" class="nav-item" data-filter="source:upload">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span>Uploads</span>
+            <span class="nav-count" id="count-upload">0</span>
+          </a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="header">
+        <button class="menu-btn" id="menu-btn" aria-label="Menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
-        <button id="list-view-btn" onclick="setView('list')">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="8" y1="6" x2="21" y2="6"/>
-            <line x1="8" y1="12" x2="21" y2="12"/>
-            <line x1="8" y1="18" x2="21" y2="18"/>
-            <circle cx="4" cy="6" r="1" fill="currentColor"/>
-            <circle cx="4" cy="12" r="1" fill="currentColor"/>
-            <circle cx="4" cy="18" r="1" fill="currentColor"/>
+
+        <div class="search-container">
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
           </svg>
+          <input type="text" class="search-input" id="search-input" placeholder="Search receipts... (try 'coffee >$10 last-month')" autocomplete="off">
+          <button class="search-clear" id="search-clear">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          <span class="search-shortcut" id="search-shortcut">/</span>
+        </div>
+
+        <div class="header-actions">
+          <div class="view-toggle">
+            <button class="view-btn active" data-view="grid" title="Grid view">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+              </svg>
+            </button>
+            <button class="view-btn" data-view="list" title="List view">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <circle cx="4" cy="6" r="1" fill="currentColor"></circle>
+                <circle cx="4" cy="12" r="1" fill="currentColor"></circle>
+                <circle cx="4" cy="18" r="1" fill="currentColor"></circle>
+              </svg>
+            </button>
+            <button class="view-btn" data-view="timeline" title="Timeline view">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="2" x2="12" y2="22"></line>
+                <circle cx="12" cy="6" r="2"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+                <circle cx="12" cy="18" r="2"></circle>
+              </svg>
+            </button>
+          </div>
+
+          <button class="header-btn" id="filter-btn" title="Filters">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+          </button>
+
+          <button class="header-btn" id="sort-btn" title="Sort">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M6 12h12M9 18h6"></path>
+            </svg>
+          </button>
+
+          <button class="header-btn primary" id="upload-btn" title="Upload receipts">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </button>
+
+          <button class="header-btn" id="theme-btn" title="Toggle theme">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <span class="results-count" id="results-count">Loading...</span>
+        </div>
+        <div class="toolbar-right">
+          <span class="total-amount" id="total-amount"></span>
+        </div>
+      </div>
+
+      <!-- Filter Chips -->
+      <div class="filter-chips" id="filter-chips">
+        <button class="filter-chip active" data-filter="all">All</button>
+        <button class="filter-chip" data-preset="today">Today</button>
+        <button class="filter-chip" data-preset="week">This Week</button>
+        <button class="filter-chip" data-preset="month">This Month</button>
+        <button class="filter-chip" data-status="verified">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Verified
+        </button>
+        <button class="filter-chip" data-status="needs_review">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          Needs Review
+        </button>
+        <button class="filter-chip" data-status="mismatch">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          Mismatched
         </button>
       </div>
-    </div>
 
-    <div class="search-container">
-      <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="8"/>
-        <path d="m21 21-4.3-4.3"/>
-      </svg>
-      <input type="text" class="search-input" id="search-input" placeholder="Search merchants, amounts...">
-      <button class="clear-search" id="clear-search" onclick="clearSearch()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
-  </div>
+      <!-- Receipts Container -->
+      <div class="receipts-container" id="receipts-container">
+        <!-- Loading State -->
+        <div class="loading-container" id="loading">
+          <div class="loading-spinner"></div>
+          <span>Loading receipts...</span>
+        </div>
 
-  <!-- Filters -->
-  <div class="filters-section">
-    <div class="source-chips" id="source-chips">
-      <button class="source-chip active" data-source="all">
-        All <span class="count" id="count-all"></span>
-      </button>
-      <button class="source-chip" data-source="gmail">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>
-        Gmail <span class="count" id="count-gmail"></span>
-      </button>
-      <button class="source-chip" data-source="scanner">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
-        Scanner <span class="count" id="count-scanner"></span>
-      </button>
-      <button class="source-chip" data-source="manual">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-        Manual <span class="count" id="count-manual"></span>
-      </button>
-      <button class="source-chip" data-source="imessage">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 5.813 2 10.5c0 2.616 1.396 4.948 3.571 6.526-.209 1.962-.712 3.756-1.398 5.224.627-.096 1.256-.234 1.88-.418 1.68-.496 3.276-1.274 4.506-2.332.466.032.94.05 1.441.05 5.523 0 10-3.813 10-8.5S17.523 2 12 2z"/></svg>
-        iMessage <span class="count" id="count-imessage"></span>
-      </button>
-      <button class="source-chip" data-source="pending">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Pending <span class="count" id="count-pending"></span>
-      </button>
-    </div>
+        <!-- Receipt Grid -->
+        <div class="receipt-grid" id="receipt-grid"></div>
 
-    <!-- Status Filter Chips -->
-    <div class="status-chips" id="status-chips">
-      <button class="status-chip active" data-status="all">
-        All Status
-      </button>
-      <button class="status-chip verified" data-status="verified">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-        Verified <span class="count" id="count-verified"></span>
-      </button>
-      <button class="status-chip matched" data-status="matched">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-        Matched <span class="count" id="count-matched"></span>
-      </button>
-      <button class="status-chip waiting" data-status="waiting">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Waiting <span class="count" id="count-waiting"></span>
-      </button>
-      <button class="status-chip needs-review" data-status="needs_review">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Review <span class="count" id="count-needs-review"></span>
-      </button>
-      <button class="status-chip mismatch" data-status="mismatch">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        Mismatch <span class="count" id="count-mismatch"></span>
-      </button>
-      <button class="status-chip has-ocr" data-status="has_ocr">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        OCR <span class="count" id="count-has-ocr"></span>
-      </button>
-    </div>
+        <!-- Receipt List -->
+        <div class="receipt-list" id="receipt-list"></div>
 
-    <!-- Quick Date Filters -->
-    <div class="quick-date-filters">
-      <button class="quick-date-btn active" data-preset="all" onclick="quickDateFilter('all')">All Time</button>
-      <button class="quick-date-btn" data-preset="today" onclick="quickDateFilter('today')">Today</button>
-      <button class="quick-date-btn" data-preset="week" onclick="quickDateFilter('week')">This Week</button>
-      <button class="quick-date-btn" data-preset="month" onclick="quickDateFilter('month')">This Month</button>
-      <button class="quick-date-btn" data-preset="quarter" onclick="quickDateFilter('quarter')">90 Days</button>
-    </div>
+        <!-- Timeline View -->
+        <div class="timeline-view" id="timeline-view"></div>
 
-    <div class="filter-row">
-      <button class="filter-btn" id="date-filter-btn" onclick="openDateFilter()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-        <span id="date-filter-text">Custom</span>
-      </button>
-      <button class="filter-btn" id="amount-filter-btn" onclick="openAmountFilter()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="1" x2="12" y2="23"/>
-          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
-        <span id="amount-filter-text">Amount</span>
-      </button>
-      <button class="filter-btn sort-btn" onclick="openSortModal()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 6h18M6 12h12M9 18h6"/>
-        </svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- Active Filters Tags -->
-  <div class="active-filters" id="active-filters"></div>
-
-  <!-- Stats Bar -->
-  <div class="stats-bar">
-    <span id="results-text">Loading receipts...</span>
-    <span class="total-amount" id="total-amount"></span>
-  </div>
-
-  <!-- Receipt Grid -->
-  <div class="receipt-grid" id="receipt-grid"></div>
-
-  <!-- Receipt List -->
-  <div class="receipt-list" id="receipt-list"></div>
-
-  <!-- Loading -->
-  <div class="loading-container" id="loading">
-    <div class="loading-spinner"></div>
-    <span>Loading receipts...</span>
-  </div>
-
-  <!-- Empty State -->
-  <div class="empty-state" id="empty-state" style="display: none;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-      <rect x="9" y="3" width="6" height="4" rx="1"/>
-      <path d="M9 14l2 2 4-4"/>
-    </svg>
-    <h3 id="empty-title">No receipts found</h3>
-    <p id="empty-message">Try adjusting your filters or search</p>
+        <!-- Empty State -->
+        <div class="empty-state hidden" id="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
+            <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+            <path d="M9 14l2 2 4-4"></path>
+          </svg>
+          <h3 id="empty-title">No receipts found</h3>
+          <p id="empty-message">Try adjusting your filters or upload some receipts</p>
+          <button class="empty-action" id="empty-upload-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Upload Receipts
+          </button>
+        </div>
+      </div>
+    </main>
   </div>
 
   <!-- Detail Modal -->
   <div class="detail-modal" id="detail-modal">
     <div class="detail-header">
-      <button class="back-btn" onclick="closeDetail()">
+      <button class="back-btn" id="detail-close">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m15 18-6-6 6-6"/>
+          <path d="m15 18-6-6 6-6"></path>
         </svg>
         Library
       </button>
       <div class="detail-actions">
-        <button onclick="shareReceipt()">
+        <button id="detail-favorite" title="Favorite">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-            <polyline points="16 6 12 2 8 6"/>
-            <line x1="12" y1="2" x2="12" y2="15"/>
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
           </svg>
         </button>
-        <button onclick="openInNewTab()">
+        <button id="detail-download" title="Download">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-            <polyline points="15 3 21 3 21 9"/>
-            <line x1="10" y1="14" x2="21" y2="3"/>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
+        <button id="detail-share" title="Share">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+            <polyline points="16 6 12 2 8 6"></polyline>
+            <line x1="12" y1="2" x2="12" y2="15"></line>
+          </svg>
+        </button>
+        <button id="detail-delete" class="danger" title="Delete">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
         </button>
       </div>
     </div>
 
-    <div class="detail-image" id="detail-image">
-      <img id="detail-img" src="" alt="Receipt">
-    </div>
-
-    <div class="detail-content">
-      <div class="detail-merchant" id="detail-merchant"></div>
-      <div class="detail-source" id="detail-source"></div>
-      <div class="detail-amount" id="detail-amount"></div>
-
-      <div class="detail-fields">
-        <div class="detail-field">
-          <span class="field-label">Date</span>
-          <span class="field-value" id="detail-date"></span>
-        </div>
-        <div class="detail-field">
-          <span class="field-label">Card</span>
-          <span class="field-value" id="detail-card"></span>
-        </div>
-        <div class="detail-field" id="transaction-field" style="display: none;">
-          <span class="field-label">Transaction ID</span>
-          <span class="field-value" id="detail-transaction"></span>
-        </div>
-        <div class="detail-field" id="category-field" style="display: none;">
-          <span class="field-label">Category</span>
-          <span class="field-value" id="detail-category"></span>
-        </div>
+    <div class="detail-body">
+      <div class="detail-image" id="detail-image">
+        <img id="detail-img" src="" alt="Receipt">
       </div>
 
-      <div class="detail-notes" id="detail-notes" style="display: none;">
-        <h4>AI Notes</h4>
-        <p id="detail-notes-text"></p>
+      <div class="detail-content">
+        <h1 class="detail-merchant" id="detail-merchant"></h1>
+        <div class="detail-source-badge" id="detail-source"></div>
+        <div class="detail-amount" id="detail-amount"></div>
+
+        <div class="detail-fields" id="detail-fields">
+          <div class="detail-field">
+            <span class="field-label">Date</span>
+            <span class="field-value" id="detail-date"></span>
+          </div>
+          <div class="detail-field">
+            <span class="field-label">Business</span>
+            <span class="field-value" id="detail-business"></span>
+          </div>
+          <div class="detail-field">
+            <span class="field-label">Status</span>
+            <span class="field-value" id="detail-status"></span>
+          </div>
+          <div class="detail-field" id="field-card" style="display: none;">
+            <span class="field-label">Card</span>
+            <span class="field-value" id="detail-card"></span>
+          </div>
+          <div class="detail-field" id="field-category" style="display: none;">
+            <span class="field-label">Category</span>
+            <span class="field-value" id="detail-category"></span>
+          </div>
+        </div>
+
+        <div class="detail-notes" id="detail-notes" style="display: none;">
+          <h4>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            AI Notes
+          </h4>
+          <p id="detail-notes-text"></p>
+        </div>
+
+        <div class="detail-tags" id="detail-tags-section">
+          <h4>Tags</h4>
+          <div class="tags-list" id="detail-tags">
+            <span class="tag add-tag">+ Add tag</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Date Filter Modal -->
-  <div class="filter-modal" id="date-modal">
+  <!-- Filter Modal -->
+  <div class="filter-modal" id="filter-modal">
     <div class="filter-sheet">
       <div class="filter-sheet-header">
-        <h3>Filter by Date</h3>
-        <button onclick="closeDateFilter()">Done</button>
+        <h3>Filters</h3>
+        <button id="filter-modal-close">Done</button>
       </div>
 
-      <div class="date-presets">
-        <button class="date-preset" onclick="setDatePreset('today')">Today</button>
-        <button class="date-preset" onclick="setDatePreset('week')">This Week</button>
-        <button class="date-preset" onclick="setDatePreset('month')">This Month</button>
-        <button class="date-preset" onclick="setDatePreset('quarter')">Last 90 Days</button>
-        <button class="date-preset" onclick="setDatePreset('year')">This Year</button>
-        <button class="date-preset" onclick="setDatePreset('all')">All Time</button>
-      </div>
-
-      <div class="date-inputs" style="margin-top: 20px;">
-        <div class="date-input-group">
-          <label>From</label>
-          <input type="date" id="date-from">
+      <div class="filter-section">
+        <h4>Date Range</h4>
+        <div class="filter-presets">
+          <button class="filter-preset" data-preset="today">Today</button>
+          <button class="filter-preset" data-preset="week">This Week</button>
+          <button class="filter-preset" data-preset="month">This Month</button>
+          <button class="filter-preset" data-preset="quarter">90 Days</button>
+          <button class="filter-preset" data-preset="year">This Year</button>
+          <button class="filter-preset" data-preset="all">All Time</button>
         </div>
-        <div class="date-input-group">
-          <label>To</label>
-          <input type="date" id="date-to">
-        </div>
-      </div>
-
-      <button class="filter-apply-btn" onclick="applyDateFilter()">Apply Filter</button>
-    </div>
-  </div>
-
-  <!-- Amount Filter Modal -->
-  <div class="filter-modal" id="amount-modal">
-    <div class="filter-sheet">
-      <div class="filter-sheet-header">
-        <h3>Filter by Amount</h3>
-        <button onclick="closeAmountFilter()">Done</button>
-      </div>
-
-      <div class="date-presets">
-        <button class="date-preset" onclick="setAmountPreset(0, 25)">Under $25</button>
-        <button class="date-preset" onclick="setAmountPreset(25, 100)">$25 - $100</button>
-        <button class="date-preset" onclick="setAmountPreset(100, 500)">$100 - $500</button>
-        <button class="date-preset" onclick="setAmountPreset(500, null)">$500+</button>
-      </div>
-
-      <div class="amount-inputs" style="margin-top: 20px;">
-        <div class="amount-input-group">
-          <label>Min Amount</label>
-          <input type="number" id="amount-min" placeholder="$0" step="0.01">
-        </div>
-        <div class="amount-input-group">
-          <label>Max Amount</label>
-          <input type="number" id="amount-max" placeholder="Any" step="0.01">
+        <div class="filter-inputs">
+          <div class="filter-input-group">
+            <label>From</label>
+            <input type="date" id="filter-date-from">
+          </div>
+          <div class="filter-input-group">
+            <label>To</label>
+            <input type="date" id="filter-date-to">
+          </div>
         </div>
       </div>
 
-      <button class="filter-apply-btn" onclick="applyAmountFilter()">Apply Filter</button>
+      <div class="filter-section">
+        <h4>Amount Range</h4>
+        <div class="filter-presets">
+          <button class="filter-preset" data-amount="0-25">Under $25</button>
+          <button class="filter-preset" data-amount="25-100">$25 - $100</button>
+          <button class="filter-preset" data-amount="100-500">$100 - $500</button>
+          <button class="filter-preset" data-amount="500+">$500+</button>
+        </div>
+        <div class="filter-inputs">
+          <div class="filter-input-group">
+            <label>Min</label>
+            <input type="number" id="filter-amount-min" placeholder="$0" step="0.01">
+          </div>
+          <div class="filter-input-group">
+            <label>Max</label>
+            <input type="number" id="filter-amount-max" placeholder="Any" step="0.01">
+          </div>
+        </div>
+      </div>
+
+      <button class="filter-apply" id="filter-apply">Apply Filters</button>
     </div>
   </div>
 
@@ -1458,780 +1869,112 @@
   <div class="filter-modal" id="sort-modal">
     <div class="filter-sheet">
       <div class="filter-sheet-header">
-        <h3>Sort Receipts</h3>
-        <button onclick="closeSortModal()">Done</button>
+        <h3>Sort By</h3>
+        <button id="sort-modal-close">Done</button>
       </div>
 
-      <div class="sort-options">
-        <div class="sort-option active" data-sort="date_desc" onclick="setSort('date_desc')">
-          <span class="sort-label">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            Newest First
-          </span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      <div class="filter-presets" style="flex-direction: column;">
+        <button class="filter-preset active" data-sort="date_desc">Newest First</button>
+        <button class="filter-preset" data-sort="date_asc">Oldest First</button>
+        <button class="filter-preset" data-sort="amount_desc">Highest Amount</button>
+        <button class="filter-preset" data-sort="amount_asc">Lowest Amount</button>
+        <button class="filter-preset" data-sort="merchant_asc">Merchant A-Z</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Modal -->
+  <div class="upload-modal" id="upload-modal">
+    <div class="upload-content">
+      <div class="upload-dropzone" id="upload-dropzone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <h3>Drop receipts here</h3>
+        <p>or click to browse</p>
+        <p class="upload-formats">JPG, PNG, PDF, HEIC supported</p>
+        <input type="file" id="file-input" multiple accept="image/*,.pdf,.heic" style="display: none;">
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div class="shortcuts-modal" id="shortcuts-modal">
+    <div class="shortcuts-content">
+      <h2>Keyboard Shortcuts</h2>
+      <div class="shortcuts-grid">
+        <div class="shortcut-group">
+          <h3>Navigation</h3>
+          <div class="shortcut"><span><kbd>J</kbd> / <kbd>K</kbd></span> <span>Next / Prev</span></div>
+          <div class="shortcut"><span><kbd>Enter</kbd></span> <span>Open receipt</span></div>
+          <div class="shortcut"><span><kbd>Esc</kbd></span> <span>Close / Back</span></div>
         </div>
-        <div class="sort-option" data-sort="date_asc" onclick="setSort('date_asc')">
-          <span class="sort-label">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            Oldest First
-          </span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        <div class="shortcut-group">
+          <h3>Actions</h3>
+          <div class="shortcut"><span><kbd>/</kbd></span> <span>Search</span></div>
+          <div class="shortcut"><span><kbd>F</kbd></span> <span>Favorite</span></div>
+          <div class="shortcut"><span><kbd>D</kbd></span> <span>Download</span></div>
         </div>
-        <div class="sort-option" data-sort="amount_desc" onclick="setSort('amount_desc')">
-          <span class="sort-label">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="1" x2="12" y2="23"/>
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-            </svg>
-            Highest Amount
-          </span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        <div class="shortcut-group">
+          <h3>Views</h3>
+          <div class="shortcut"><span><kbd>1</kbd></span> <span>Grid view</span></div>
+          <div class="shortcut"><span><kbd>2</kbd></span> <span>List view</span></div>
+          <div class="shortcut"><span><kbd>3</kbd></span> <span>Timeline</span></div>
         </div>
-        <div class="sort-option" data-sort="amount_asc" onclick="setSort('amount_asc')">
-          <span class="sort-label">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="1" x2="12" y2="23"/>
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-            </svg>
-            Lowest Amount
-          </span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <div class="sort-option" data-sort="merchant_asc" onclick="setSort('merchant_asc')">
-          <span class="sort-label">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 6h18M3 12h18M3 18h18"/>
-            </svg>
-            Merchant A-Z
-          </span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        <div class="shortcut-group">
+          <h3>Help</h3>
+          <div class="shortcut"><span><kbd>?</kbd></span> <span>Show shortcuts</span></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Bottom Navigation -->
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Bottom Navigation (Mobile) -->
   <nav class="bottom-nav">
-    <a href="/" class="nav-item">
+    <a href="/" class="nav-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-        <polyline points="9 22 9 12 15 12 15 22"/>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
       </svg>
       <span>Home</span>
     </a>
-    <a href="/viewer" class="nav-item">
+    <a href="/viewer" class="nav-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M9 11l3 3L22 4"/>
-        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        <path d="M9 11l3 3L22 4"></path>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
       </svg>
       <span>Reconcile</span>
     </a>
-    <a href="/library" class="nav-item active">
+    <a href="/library" class="nav-link active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="7" height="7"/>
-        <rect x="14" y="3" width="7" height="7"/>
-        <rect x="14" y="14" width="7" height="7"/>
-        <rect x="3" y="14" width="7" height="7"/>
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
       </svg>
       <span>Library</span>
     </a>
-    <a href="/scanner" class="nav-item">
+    <a href="/scanner" class="nav-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-        <circle cx="12" cy="13" r="4"/>
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+        <circle cx="12" cy="13" r="4"></circle>
       </svg>
       <span>Scan</span>
     </a>
-    <a href="/incoming" class="nav-item">
+    <a href="/incoming" class="nav-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
-        <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
       </svg>
       <span>Inbox</span>
     </a>
-    <a href="/reports" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/>
-        <line x1="16" y1="17" x2="8" y2="17"/>
-      </svg>
-      <span>Reports</span>
-    </a>
-    <a href="/contacts" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-        <path d="M16 3.13a4 4 0 010 7.75"/>
-      </svg>
-      <span>Contacts</span>
-    </a>
   </nav>
 
-  <script>
-    // State
-    let receipts = [];
-    let filteredReceipts = [];
-    let currentReceipt = null;
-    let viewMode = 'grid';
-    let currentSort = 'date_desc';
-    let sourceCounts = {};
-    let verificationCounts = {};
-    let matchCounts = {};
-
-    // Filters
-    let filters = {
-      source: 'all',
-      search: '',
-      dateFrom: null,
-      dateTo: null,
-      amountMin: null,
-      amountMax: null,
-      verification: 'all',
-      matchStatus: 'all'
-    };
-
-    // DOM Elements
-    const $ = id => document.getElementById(id);
-    const grid = $('receipt-grid');
-    const list = $('receipt-list');
-    const loading = $('loading');
-    const emptyState = $('empty-state');
-    const searchInput = $('search-input');
-
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-      loadReceipts();
-      setupSearch();
-      setupSourceChips();
-      setupStatusChips();
-    });
-
-    // Load receipts from API
-    async function loadReceipts() {
-      loading.style.display = 'flex';
-      grid.innerHTML = '';
-      list.innerHTML = '';
-      emptyState.style.display = 'none';
-
-      try {
-        const params = new URLSearchParams();
-        if (filters.source !== 'all') params.append('source', filters.source);
-        if (filters.search) params.append('search', filters.search);
-        if (filters.dateFrom) params.append('date_from', filters.dateFrom);
-        if (filters.dateTo) params.append('date_to', filters.dateTo);
-        if (filters.amountMin) params.append('amount_min', filters.amountMin);
-        if (filters.amountMax) params.append('amount_max', filters.amountMax);
-        if (filters.verification !== 'all') params.append('verification', filters.verification);
-        if (filters.matchStatus !== 'all') params.append('match_status', filters.matchStatus);
-        params.append('sort', currentSort);
-
-        const response = await fetch(`/api/library/receipts?${params.toString()}`, {
-          credentials: 'include'
-        });
-
-        // Handle auth errors
-        if (response.status === 401) {
-          console.error('Authentication required - redirecting to login');
-          window.location.href = '/login?next=/library';
-          return;
-        }
-
-        const data = await response.json();
-
-        if (!data.ok && data.error) {
-          console.error('API error:', data.error);
-          showEmpty('Error loading receipts', data.error);
-          return;
-        }
-
-        receipts = data.receipts || [];
-        sourceCounts = data.source_counts || {};
-        verificationCounts = data.verification_counts || {};
-        matchCounts = data.match_counts || {};
-
-        updateSourceCounts();
-        updateStatusCounts();
-        renderReceipts();
-        updateStats();
-        updateActiveFilters();
-      } catch (error) {
-        console.error('Failed to load receipts:', error);
-        showEmpty('Error loading receipts', 'Please try again later');
-      } finally {
-        loading.style.display = 'none';
-      }
-    }
-
-    // Update source chip counts
-    function updateSourceCounts() {
-      const total = Object.values(sourceCounts).reduce((a, b) => a + b, 0);
-      $('count-all').textContent = total || '';
-      $('count-gmail').textContent = sourceCounts.gmail || '';
-      $('count-scanner').textContent = sourceCounts.scanner || '';
-      $('count-manual').textContent = sourceCounts.manual || '';
-      $('count-imessage').textContent = sourceCounts.imessage || '';
-      $('count-pending').textContent = sourceCounts.pending || '';
-    }
-
-    // Update status chip counts
-    function updateStatusCounts() {
-      $('count-verified').textContent = verificationCounts.verified || '';
-      $('count-matched').textContent = matchCounts.matched || '';
-      $('count-waiting').textContent = matchCounts.waiting || verificationCounts.waiting || '';
-      $('count-needs-review').textContent = verificationCounts.needs_review || '';
-      $('count-mismatch').textContent = verificationCounts.mismatch || '';
-      $('count-has-ocr').textContent = verificationCounts.has_ocr || '';
-    }
-
-    // Setup status chips
-    function setupStatusChips() {
-      document.querySelectorAll('.status-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          document.querySelectorAll('.status-chip').forEach(c => c.classList.remove('active'));
-          chip.classList.add('active');
-          const status = chip.dataset.status;
-          // Handle special cases: matched/waiting are match_status filters, others are verification filters
-          if (status === 'matched' || status === 'waiting') {
-            filters.matchStatus = status;
-            filters.verification = 'all';
-          } else if (status === 'all') {
-            filters.matchStatus = 'all';
-            filters.verification = 'all';
-          } else {
-            filters.verification = status;
-            filters.matchStatus = 'all';
-          }
-          loadReceipts();
-        });
-      });
-    }
-
-    // Helper to get verification badge HTML
-    function getVerificationBadge(r) {
-      const vs = r.verification_status;
-      if (!vs || vs === 'unverified') return '';
-      const labels = {
-        'verified': 'Verified',
-        'mismatch': 'Mismatch',
-        'needs_review': 'Review',
-        'waiting': 'Waiting'
-      };
-      return `<span class="verification-badge ${vs}">${labels[vs] || vs}</span>`;
-    }
-
-    // Helper to get OCR confidence badge HTML
-    function getOcrBadge(r) {
-      if (!r.has_ocr) return '';
-      const conf = r.ocr_confidence || 0;
-      let level = 'low';
-      if (conf >= 0.8) level = 'high';
-      else if (conf >= 0.5) level = 'medium';
-      const pct = Math.round(conf * 100);
-      return `<span class="ocr-badge ${level}">${pct}%</span>`;
-    }
-
-    // Render receipts
-    function renderReceipts() {
-      if (receipts.length === 0) {
-        showEmpty('No receipts found', 'Try adjusting your filters or search');
-        return;
-      }
-
-      emptyState.style.display = 'none';
-
-      // Grid view
-      grid.innerHTML = receipts.map((r, i) => `
-        <div class="receipt-card" onclick="openDetail(${i})">
-          <div class="receipt-thumb ${r.receipt_url ? '' : 'no-image'}">
-            ${r.receipt_url ?
-              `<img src="${r.receipt_url}" alt="Receipt" loading="lazy" onerror="this.parentElement.classList.add('no-image'); this.remove();">` :
-              `<svg class="placeholder-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-                <rect x="9" y="3" width="6" height="4" rx="1"/>
-              </svg>`
-            }
-            ${getVerificationBadge(r)}
-            ${getOcrBadge(r)}
-            <span class="source-badge ${r.source}">${formatSource(r.source)}</span>
-          </div>
-          <div class="receipt-info">
-            <div class="receipt-merchant">${escapeHtml(r.merchant)}</div>
-            <div class="receipt-meta">
-              <span class="receipt-amount ${r.is_refund ? 'refund' : ''}">${formatAmount(r.amount, r.is_refund)}</span>
-              <span class="receipt-date">${formatDate(r.date)}</span>
-            </div>
-            ${r.ocr_merchant ? `<div class="receipt-ocr-info">OCR: ${escapeHtml(r.ocr_merchant)}${r.ocr_amount ? ` $${r.ocr_amount.toFixed(2)}` : ''}</div>` : ''}
-          </div>
-        </div>
-      `).join('');
-
-      // List view
-      list.innerHTML = receipts.map((r, i) => `
-        <div class="receipt-list-item" onclick="openDetail(${i})">
-          <div class="list-thumb ${r.receipt_url ? '' : 'no-image'}">
-            ${r.receipt_url ?
-              `<img src="${r.receipt_url}" alt="Receipt" loading="lazy" onerror="this.remove();">` :
-              `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5">
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-                <rect x="9" y="3" width="6" height="4" rx="1"/>
-              </svg>`
-            }
-          </div>
-          <div class="list-info">
-            <div class="list-merchant">${escapeHtml(r.merchant)}</div>
-            <div class="list-meta">
-              <span>${formatDate(r.date)}</span>
-              <span>${formatSource(r.source)}</span>
-              ${r.verification_status && r.verification_status !== 'unverified' ? `<span class="list-status ${r.verification_status}">${r.verification_status}</span>` : ''}
-              ${r.has_ocr ? `<span class="list-ocr">${Math.round((r.ocr_confidence || 0) * 100)}%</span>` : ''}
-            </div>
-          </div>
-          <div class="list-amount ${r.is_refund ? 'refund' : ''}">${formatAmount(r.amount, r.is_refund)}</div>
-        </div>
-      `).join('');
-    }
-
-    // Update stats bar
-    function updateStats() {
-      const count = receipts.length;
-      $('receipt-count').textContent = `(${count})`;
-      $('results-text').textContent = `${count} receipt${count !== 1 ? 's' : ''}`;
-
-      const total = receipts.reduce((sum, r) => {
-        const amt = parseFloat(r.amount) || 0;
-        return sum + (r.is_refund ? -amt : amt);
-      }, 0);
-      $('total-amount').textContent = formatAmount(total);
-    }
-
-    // Show empty state
-    function showEmpty(title, message) {
-      emptyState.style.display = 'flex';
-      $('empty-title').textContent = title;
-      $('empty-message').textContent = message;
-      grid.innerHTML = '';
-      list.innerHTML = '';
-    }
-
-    // Search
-    function setupSearch() {
-      let timeout;
-      searchInput.addEventListener('input', (e) => {
-        const val = e.target.value;
-        $('clear-search').classList.toggle('visible', val.length > 0);
-
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          filters.search = val;
-          loadReceipts();
-        }, 300);
-      });
-    }
-
-    function clearSearch() {
-      searchInput.value = '';
-      $('clear-search').classList.remove('visible');
-      filters.search = '';
-      loadReceipts();
-    }
-
-    // Source chips
-    function setupSourceChips() {
-      document.querySelectorAll('.source-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          document.querySelectorAll('.source-chip').forEach(c => c.classList.remove('active'));
-          chip.classList.add('active');
-          filters.source = chip.dataset.source;
-          loadReceipts();
-        });
-      });
-    }
-
-    // View toggle
-    function setView(mode) {
-      viewMode = mode;
-      $('grid-view-btn').classList.toggle('active', mode === 'grid');
-      $('list-view-btn').classList.toggle('active', mode === 'list');
-      grid.classList.toggle('hidden', mode === 'list');
-      list.classList.toggle('active', mode === 'list');
-    }
-
-    // Date filter
-    function openDateFilter() {
-      $('date-modal').classList.add('visible');
-    }
-
-    function closeDateFilter() {
-      $('date-modal').classList.remove('visible');
-    }
-
-    function setDatePreset(preset) {
-      const today = new Date();
-      let from = null;
-      let to = formatDateInput(today);
-
-      switch (preset) {
-        case 'today':
-          from = to;
-          break;
-        case 'week':
-          const weekAgo = new Date(today);
-          weekAgo.setDate(weekAgo.getDate() - 7);
-          from = formatDateInput(weekAgo);
-          break;
-        case 'month':
-          const monthAgo = new Date(today);
-          monthAgo.setMonth(monthAgo.getMonth() - 1);
-          from = formatDateInput(monthAgo);
-          break;
-        case 'quarter':
-          const quarterAgo = new Date(today);
-          quarterAgo.setDate(quarterAgo.getDate() - 90);
-          from = formatDateInput(quarterAgo);
-          break;
-        case 'year':
-          from = `${today.getFullYear()}-01-01`;
-          break;
-        case 'all':
-          from = null;
-          to = null;
-          break;
-      }
-
-      $('date-from').value = from || '';
-      $('date-to').value = to || '';
-    }
-
-    function applyDateFilter() {
-      filters.dateFrom = $('date-from').value || null;
-      filters.dateTo = $('date-to').value || null;
-
-      updateDateFilterButton();
-      closeDateFilter();
-      loadReceipts();
-    }
-
-    function updateDateFilterButton() {
-      const btn = $('date-filter-btn');
-      const text = $('date-filter-text');
-
-      if (filters.dateFrom || filters.dateTo) {
-        btn.classList.add('active');
-        if (filters.dateFrom && filters.dateTo) {
-          text.textContent = `${formatDateShort(filters.dateFrom)} - ${formatDateShort(filters.dateTo)}`;
-        } else if (filters.dateFrom) {
-          text.textContent = `From ${formatDateShort(filters.dateFrom)}`;
-        } else {
-          text.textContent = `Until ${formatDateShort(filters.dateTo)}`;
-        }
-      } else {
-        btn.classList.remove('active');
-        text.textContent = 'Custom';
-      }
-    }
-
-    // Quick date filter (one-click buttons)
-    function quickDateFilter(preset) {
-      // Update button states
-      document.querySelectorAll('.quick-date-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.preset === preset);
-      });
-
-      // Use the existing setDatePreset logic
-      setDatePreset(preset);
-
-      // Apply the filter immediately
-      filters.dateFrom = $('date-from').value || null;
-      filters.dateTo = $('date-to').value || null;
-
-      updateDateFilterButton();
-      loadReceipts();
-    }
-
-    // Amount filter
-    function openAmountFilter() {
-      $('amount-modal').classList.add('visible');
-    }
-
-    function closeAmountFilter() {
-      $('amount-modal').classList.remove('visible');
-    }
-
-    function setAmountPreset(min, max) {
-      $('amount-min').value = min || '';
-      $('amount-max').value = max || '';
-    }
-
-    function applyAmountFilter() {
-      filters.amountMin = $('amount-min').value || null;
-      filters.amountMax = $('amount-max').value || null;
-
-      updateAmountFilterButton();
-      closeAmountFilter();
-      loadReceipts();
-    }
-
-    function updateAmountFilterButton() {
-      const btn = $('amount-filter-btn');
-      const text = $('amount-filter-text');
-
-      if (filters.amountMin || filters.amountMax) {
-        btn.classList.add('active');
-        if (filters.amountMin && filters.amountMax) {
-          text.textContent = `$${filters.amountMin} - $${filters.amountMax}`;
-        } else if (filters.amountMin) {
-          text.textContent = `$${filters.amountMin}+`;
-        } else {
-          text.textContent = `Up to $${filters.amountMax}`;
-        }
-      } else {
-        btn.classList.remove('active');
-        text.textContent = 'Amount';
-      }
-    }
-
-    // Sort
-    function openSortModal() {
-      $('sort-modal').classList.add('visible');
-    }
-
-    function closeSortModal() {
-      $('sort-modal').classList.remove('visible');
-    }
-
-    function setSort(sort) {
-      currentSort = sort;
-      document.querySelectorAll('.sort-option').forEach(opt => {
-        opt.classList.toggle('active', opt.dataset.sort === sort);
-      });
-      closeSortModal();
-      loadReceipts();
-    }
-
-    // Active filters
-    function updateActiveFilters() {
-      const container = $('active-filters');
-      const tags = [];
-
-      if (filters.dateFrom || filters.dateTo) {
-        let label = '';
-        if (filters.dateFrom && filters.dateTo) {
-          label = `${formatDateShort(filters.dateFrom)} - ${formatDateShort(filters.dateTo)}`;
-        } else if (filters.dateFrom) {
-          label = `From ${formatDateShort(filters.dateFrom)}`;
-        } else {
-          label = `Until ${formatDateShort(filters.dateTo)}`;
-        }
-        tags.push(`<div class="filter-tag">${label}<button onclick="clearDateFilter()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`);
-      }
-
-      if (filters.amountMin || filters.amountMax) {
-        let label = '';
-        if (filters.amountMin && filters.amountMax) {
-          label = `$${filters.amountMin} - $${filters.amountMax}`;
-        } else if (filters.amountMin) {
-          label = `$${filters.amountMin}+`;
-        } else {
-          label = `Up to $${filters.amountMax}`;
-        }
-        tags.push(`<div class="filter-tag">${label}<button onclick="clearAmountFilter()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`);
-      }
-
-      container.innerHTML = tags.join('');
-    }
-
-    function clearDateFilter() {
-      filters.dateFrom = null;
-      filters.dateTo = null;
-      $('date-from').value = '';
-      $('date-to').value = '';
-      updateDateFilterButton();
-      loadReceipts();
-    }
-
-    function clearAmountFilter() {
-      filters.amountMin = null;
-      filters.amountMax = null;
-      $('amount-min').value = '';
-      $('amount-max').value = '';
-      updateAmountFilterButton();
-      loadReceipts();
-    }
-
-    // Detail modal
-    function openDetail(index) {
-      currentReceipt = receipts[index];
-
-      $('detail-merchant').textContent = currentReceipt.merchant;
-      $('detail-source').innerHTML = `
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
-        ${formatSource(currentReceipt.source)} Receipt
-      `;
-
-      const amt = parseFloat(currentReceipt.amount) || 0;
-      $('detail-amount').textContent = formatAmount(amt, currentReceipt.is_refund);
-      $('detail-amount').classList.toggle('refund', currentReceipt.is_refund);
-
-      $('detail-date').textContent = formatFullDate(currentReceipt.date);
-      $('detail-card').textContent = currentReceipt.card || 'Not specified';
-
-      // Transaction ID
-      if (currentReceipt.transaction_id) {
-        $('transaction-field').style.display = 'flex';
-        $('detail-transaction').textContent = currentReceipt.transaction_id;
-      } else {
-        $('transaction-field').style.display = 'none';
-      }
-
-      // Category
-      if (currentReceipt.category) {
-        $('category-field').style.display = 'flex';
-        $('detail-category').textContent = currentReceipt.category;
-      } else {
-        $('category-field').style.display = 'none';
-      }
-
-      // AI Notes
-      if (currentReceipt.ai_notes) {
-        $('detail-notes').style.display = 'block';
-        $('detail-notes-text').textContent = currentReceipt.ai_notes;
-      } else {
-        $('detail-notes').style.display = 'none';
-      }
-
-      // Image
-      const imageContainer = $('detail-image');
-      const img = $('detail-img');
-      if (currentReceipt.receipt_url) {
-        imageContainer.classList.remove('no-image');
-        img.src = currentReceipt.receipt_url;
-        img.style.display = 'block';
-      } else {
-        imageContainer.classList.add('no-image');
-        img.style.display = 'none';
-        imageContainer.innerHTML = `
-          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5">
-            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-            <rect x="9" y="3" width="6" height="4" rx="1"/>
-            <path d="M9 12h6M9 16h6"/>
-          </svg>
-        `;
-      }
-
-      $('detail-modal').classList.add('visible');
-    }
-
-    function closeDetail() {
-      $('detail-modal').classList.remove('visible');
-      currentReceipt = null;
-    }
-
-    function shareReceipt() {
-      if (!currentReceipt) return;
-
-      if (navigator.share) {
-        navigator.share({
-          title: `Receipt - ${currentReceipt.merchant}`,
-          text: `${currentReceipt.merchant}: ${formatAmount(currentReceipt.amount)} on ${formatDate(currentReceipt.date)}`,
-          url: currentReceipt.receipt_url || window.location.href
-        }).catch(() => {});
-      }
-    }
-
-    function openInNewTab() {
-      if (currentReceipt && currentReceipt.receipt_url) {
-        window.open(currentReceipt.receipt_url, '_blank');
-      }
-    }
-
-    // Utility functions
-    function formatAmount(amount, isRefund) {
-      const num = parseFloat(amount) || 0;
-      const formatted = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-      }).format(Math.abs(num));
-
-      return isRefund ? `+${formatted}` : formatted;
-    }
-
-    function formatDate(dateStr) {
-      if (!dateStr) return 'No date';
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-
-    function formatFullDate(dateStr) {
-      if (!dateStr) return 'No date';
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    }
-
-    function formatDateShort(dateStr) {
-      if (!dateStr) return '';
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-
-    function formatDateInput(date) {
-      return date.toISOString().split('T')[0];
-    }
-
-    function formatSource(source) {
-      const sources = {
-        gmail: 'Gmail',
-        scanner: 'Scan',
-        manual: 'Manual',
-        imessage: 'iMessage',
-        ai: 'AI',
-        pending: 'Pending'
-      };
-      return sources[source] || source || 'Unknown';
-    }
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/[&<>"']/g, char => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      }[char]));
-    }
-
-    // Close modals on backdrop click
-    document.querySelectorAll('.filter-modal').forEach(modal => {
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          modal.classList.remove('visible');
-        }
-      });
-    });
-
-    // Handle back button
-    window.addEventListener('popstate', () => {
-      if ($('detail-modal').classList.contains('visible')) {
-        closeDetail();
-      }
-    });
-  </script>
+  <script src="/static/js/receipt_library.js"></script>
 </body>
 </html>

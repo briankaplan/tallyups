@@ -203,6 +203,17 @@ except Exception as e:
     generate_smart_note = None
     generate_notes_for_transactions = None
 
+# === SMART NOTES SERVICE (Advanced AI-powered notes with Calendar + Contacts) ===
+try:
+    from services.smart_notes_service import get_smart_notes_service, SmartNotesService
+    SMART_NOTES_SERVICE_AVAILABLE = True
+    print(f"✅ Smart notes service loaded (Claude-powered)")
+except Exception as e:
+    print(f"⚠️ Smart notes service not available: {e}")
+    SMART_NOTES_SERVICE_AVAILABLE = False
+    get_smart_notes_service = None
+    SmartNotesService = None
+
 # === APPLE RECEIPT SPLITTER ===
 try:
     from apple_receipt_splitter import (
@@ -833,8 +844,13 @@ def handle_exception(error):
     }), 500
 
 
-df: pd.DataFrame | None = None          # global dataframe
-receipt_meta_cache: dict[str, dict] = {}  # filename -> meta dict
+# Thread-safe caching (replaces global df)
+from cache_manager import get_df_cache, get_receipt_meta_cache, DataFrameCache
+
+# Legacy globals for backward compatibility during transition
+# These will be updated by the cache manager
+df: pd.DataFrame | None = None          # global dataframe (legacy - use get_df_cache())
+receipt_meta_cache: dict[str, dict] = {}  # filename -> meta dict (legacy - use get_receipt_meta_cache())
 
 
 # =============================================================================
@@ -992,7 +1008,7 @@ def parse_email_date(date_str: str) -> str:
         # Try standard email date parsing first
         parsed = email.utils.parsedate_to_datetime(date_str)
         return parsed.strftime('%Y-%m-%d')
-    except:
+    except Exception:
         pass
 
     # Build month_map to support 2-4 character prefixes
@@ -1080,7 +1096,7 @@ def parse_email_date(date_str: str) -> str:
                             year -= 1
 
                 return f"{year:04d}-{month:02d}-{day:02d}"
-    except:
+    except Exception:
         pass
 
     # Try pandas as final fallback
@@ -1088,7 +1104,7 @@ def parse_email_date(date_str: str) -> str:
         d = pd.to_datetime(date_str, errors="coerce")
         if not pd.isna(d):
             return d.strftime('%Y-%m-%d')
-    except:
+    except Exception:
         pass
 
     return ''
@@ -1209,48 +1225,62 @@ def normalize_merchant_name(s: str | None) -> str:
 
 # Cache configuration
 DF_CACHE_TTL_SECONDS = 300  # 5 minutes TTL for DataFrame cache
-_df_cache_timestamp = None  # When the cache was last loaded
 import time as _time_module  # For cache timestamp
 
+# Thread-safe DataFrame cache instance
+_df_cache_instance = get_df_cache()
+
+
+def _load_from_database() -> pd.DataFrame:
+    """Internal loader function for thread-safe cache."""
+    if not db:
+        raise RuntimeError("MySQL database not available")
+
+    start_time = _time_module.time()
+    new_df = db.get_all_transactions()
+
+    # Ensure _index is integer for proper comparisons
+    if '_index' in new_df.columns:
+        new_df['_index'] = pd.to_numeric(new_df['_index'], errors='coerce').fillna(0).astype(int)
+
+    load_time = _time_module.time() - start_time
+    print(f"✅ Loaded {len(new_df)} transactions from MySQL in {load_time:.2f}s (cached for {DF_CACHE_TTL_SECONDS}s)")
+    return new_df
+
+
 def load_data(force_refresh=False):
-    """Load all transactions from MySQL database with optional caching.
+    """Load all transactions from MySQL database with thread-safe caching.
 
     Args:
         force_refresh: If True, bypass cache and reload from database
+
+    Returns:
+        pandas DataFrame with all transactions
     """
-    global df, _df_cache_timestamp
+    global df  # Update legacy global for backward compatibility
 
     if not db:
         raise RuntimeError("MySQL database not available")
 
-    # Check if cache is still valid
-    current_time = _time_module.time()
-    if not force_refresh and df is not None and _df_cache_timestamp:
-        cache_age = current_time - _df_cache_timestamp
-        if cache_age < DF_CACHE_TTL_SECONDS:
-            # Cache is still valid, return existing df
-            return df
+    if force_refresh:
+        _df_cache_instance.invalidate()
 
     try:
-        start_time = _time_module.time()
-        df = db.get_all_transactions()
-        # Ensure _index is integer for proper comparisons
-        if '_index' in df.columns:
-            df['_index'] = pd.to_numeric(df['_index'], errors='coerce').fillna(0).astype(int)
+        # Thread-safe load with automatic cache management
+        cached_df = _df_cache_instance.get_dataframe(loader=_load_from_database)
 
-        load_time = _time_module.time() - start_time
-        _df_cache_timestamp = current_time
-        print(f"✅ Loaded {len(df)} transactions from MySQL in {load_time:.2f}s (cached for {DF_CACHE_TTL_SECONDS}s)")
-        return df
+        # Update legacy global (for backward compatibility with code not yet migrated)
+        df = cached_df
+
+        return cached_df
     except Exception as e:
         print(f"❌ MySQL load failed: {e}")
         raise
 
 
 def invalidate_cache():
-    """Force cache invalidation on next request."""
-    global _df_cache_timestamp
-    _df_cache_timestamp = None
+    """Force cache invalidation on next request (thread-safe)."""
+    _df_cache_instance.invalidate()
 
 
 # Legacy alias for backward compatibility
@@ -1273,30 +1303,35 @@ def save_csv():
 
 
 def ensure_df(force_refresh=False):
-    """Lazy loader used by all routes. Respects cache TTL.
+    """Lazy loader used by all routes. Thread-safe with cache TTL.
 
     Args:
         force_refresh: If True, bypass cache and reload from database
+
+    Returns:
+        pandas DataFrame (thread-safe copy)
     """
     global df
-    if df is None or force_refresh:
-        load_data(force_refresh=force_refresh)
-    return df
+    # Use thread-safe cache
+    cached_df = _df_cache_instance.get_dataframe(loader=_load_from_database)
+
+    if force_refresh or cached_df is None:
+        load_data(force_refresh=True)
+        cached_df = _df_cache_instance.get_dataframe()
+
+    # Update legacy global for backward compatibility
+    df = cached_df
+    return cached_df
 
 
 # =============================================================================
-# ROW HELPERS
+# ROW HELPERS (Thread-safe)
 # =============================================================================
 
 def get_row_by_index(idx: int) -> dict | None:
-    """Return a row dict by _index from the global df."""
-    global df
-    ensure_df()
-    mask = df["_index"] == idx
-    if not mask.any():
-        return None
-    row_series = df.loc[mask].iloc[0]
-    return row_series.to_dict()
+    """Return a row dict by _index (thread-safe)."""
+    # Use thread-safe cache method
+    return _df_cache_instance.get_row('_index', idx)
 
 
 def update_row_by_index(idx: int, patch: dict, source: str = "viewer_ui") -> bool:
@@ -2058,6 +2093,13 @@ def incoming():
     return send_from_directory(BASE_DIR, "incoming.html")
 
 
+@app.route("/review")
+@login_required
+def review_interface():
+    """Serve the optimized Transaction Review interface."""
+    return send_from_directory(BASE_DIR, "review.html")
+
+
 # =============================================================================
 # MOBILE SCANNER PWA ROUTES
 # =============================================================================
@@ -2605,7 +2647,7 @@ def dashboard_stats():
     finally:
         try:
             return_db_connection(conn)
-        except:
+        except Exception:
             pass
 
 
@@ -2744,7 +2786,7 @@ def get_nearby_places():
                         'address': addr.get('road', ''),
                         'city': addr.get('city') or addr.get('town') or addr.get('village', '')
                     })
-        except:
+        except Exception:
             pass
 
     return jsonify({
@@ -3393,7 +3435,7 @@ def get_ocr_for_receipt(filename):
                 if isinstance(line_items, str):
                     try:
                         line_items = json.loads(line_items)
-                    except:
+                    except (json.JSONDecodeError, ValueError):
                         line_items = []
 
                 return jsonify({
@@ -3688,6 +3730,16 @@ def mobile_upload():
     if not is_valid:
         return jsonify({"error": f"Invalid file: {error_msg}"}), 400
 
+    # Security: Validate file size (max 50MB for receipt images/PDFs)
+    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+    file.seek(0, 2)  # Seek to end
+    file_size = file.tell()
+    file.seek(0)  # Reset to beginning
+    if file_size > MAX_FILE_SIZE:
+        return jsonify({"error": f"File too large. Maximum size is 50MB, got {file_size / (1024*1024):.1f}MB"}), 400
+    if file_size == 0:
+        return jsonify({"error": "File is empty"}), 400
+
     try:
         # Get form data (may be overridden by OCR if auto_ocr=true)
         merchant = request.form.get('merchant', '')
@@ -3698,6 +3750,41 @@ def mobile_upload():
         notes = request.form.get('notes', '')
         source = request.form.get('source', 'mobile_scanner')
         auto_ocr = request.form.get('auto_ocr', 'true').lower() == 'true'
+
+        # Input validation and sanitization
+        MAX_FIELD_LENGTH = 500
+        MAX_NOTES_LENGTH = 2000
+        ALLOWED_SOURCES = {'mobile_scanner', 'pwa', 'web', 'api', 'email', 'manual'}
+
+        # Sanitize string fields - strip whitespace and limit length
+        merchant = str(merchant).strip()[:MAX_FIELD_LENGTH] if merchant else ''
+        date_str = str(date_str).strip()[:50] if date_str else ''
+        category = str(category).strip()[:MAX_FIELD_LENGTH] if category else ''
+        business = str(business).strip()[:MAX_FIELD_LENGTH] if business else ''
+        notes = str(notes).strip()[:MAX_NOTES_LENGTH] if notes else ''
+
+        # Validate source against allowed list
+        source = str(source).strip().lower()
+        if source not in ALLOWED_SOURCES:
+            source = 'mobile_scanner'
+
+        # Validate date format if provided
+        if date_str:
+            # Accept common date formats: YYYY-MM-DD, MM/DD/YYYY, etc.
+            import re as re_module
+            date_patterns = [
+                r'^\d{4}-\d{2}-\d{2}$',  # YYYY-MM-DD
+                r'^\d{1,2}/\d{1,2}/\d{4}$',  # M/D/YYYY
+                r'^\d{1,2}-\d{1,2}-\d{4}$',  # M-D-YYYY
+            ]
+            if not any(re_module.match(p, date_str) for p in date_patterns):
+                # Try to parse and normalize
+                try:
+                    from dateutil import parser as date_parser
+                    parsed = date_parser.parse(date_str)
+                    date_str = parsed.strftime('%Y-%m-%d')
+                except (ValueError, TypeError):
+                    date_str = ''  # Will use current date as default
 
         # Save receipt file to incoming folder first
         incoming_dir = RECEIPT_DIR / "incoming"
@@ -3737,7 +3824,7 @@ def mobile_upload():
         # Parse amount
         try:
             amount_float = float(str(amount).replace('$', '').replace(',', '')) if amount else 0.0
-        except:
+        except (ValueError, TypeError):
             amount_float = 0.0
 
         # Rename file with extracted merchant name
@@ -3753,30 +3840,7 @@ def mobile_upload():
         if USE_DATABASE and db:
             try:
                 conn, db_type = get_db_connection()
-
-                # Check if incoming_receipts table exists, create if not (only for SQLite)
-                if db_type == 'sqlite':
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS incoming_receipts (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            source TEXT,
-                            sender TEXT,
-                            subject TEXT,
-                            receipt_date TEXT,
-                            merchant TEXT,
-                            amount REAL,
-                            category TEXT,
-                            business_type TEXT,
-                            receipt_file TEXT,
-                            status TEXT DEFAULT 'pending',
-                            notes TEXT,
-                            created_at TEXT,
-                            processed_at TEXT,
-                            matched_transaction_id INTEGER
-                        )
-                    ''')
-                # For MySQL, the table is created in db_mysql._init_schema()
+                # Note: incoming_receipts table is created in db_mysql._init_schema()
 
                 # Insert the incoming receipt with OCR data
                 now_iso = datetime.now().isoformat()
@@ -3986,29 +4050,6 @@ def get_transactions():
                 return_db_connection(conn)  # Close the NEW connection we got
 
                 db_type = "MySQL"
-            else:
-                # SQLite path
-                conn = sqlite3.connect(str(db.db_path))
-                conn.row_factory = sqlite3.Row
-
-                cursor = conn.cursor()
-                if show_submitted:
-                    cursor.execute('SELECT * FROM transactions ORDER BY chase_date DESC, _index DESC')
-                else:
-                    cursor.execute('''
-                        SELECT * FROM transactions
-                        WHERE (already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')
-                        ORDER BY chase_date DESC, _index DESC
-                    ''')
-                rows = cursor.fetchall()
-
-                # Get rejected receipts
-                cursor.execute('SELECT receipt_path FROM rejected_receipts')
-                rejected_paths = {r[0] for r in cursor.fetchall()}
-
-                return_db_connection(conn)
-
-                db_type = "SQLite"
 
             # Convert to list of dicts with proper column names for viewer
             records = []
@@ -4245,7 +4286,7 @@ def validate_existing_receipt(row, receipt_file):
                     date_score = 0.1
                 else:
                     date_score = 0  # More than 3 months is probably wrong
-            except:
+            except (ValueError, TypeError):
                 date_score = 0.3  # Missing/bad date - don't penalize too much
         else:
             date_score = 0.3  # Missing date - don't penalize
@@ -6352,7 +6393,7 @@ def atlas_contact_detail(contact_id):
                 LIMIT 50
             """, (contact_id,))
             interactions = cursor.fetchall()
-        except:
+        except Exception:
             pass  # Table might not exist
 
         cursor.close()
@@ -6579,7 +6620,7 @@ def atlas_contact_update(contact_id):
         # Ensure connection is returned on error
         try:
             return_db_connection(conn, discard=True)
-        except:
+        except Exception:
             pass
         return jsonify({'error': str(e)}), 500
 
@@ -7307,8 +7348,7 @@ def atlas_contacts_upcoming_events():
                 WHERE birthday IS NOT NULL
             """)
             rows = cursor.fetchall()
-            if db_type == 'sqlite':
-                rows = [dict(zip([d[0] for d in cursor.description], row)) for row in rows]
+            # MySQL DictCursor returns dicts directly
 
             for contact in rows:
                 bday = contact.get('birthday')
@@ -7346,8 +7386,7 @@ def atlas_contacts_upcoming_events():
                 WHERE anniversary IS NOT NULL
             """)
             rows = cursor.fetchall()
-            if db_type == 'sqlite':
-                rows = [dict(zip([d[0] for d in cursor.description], row)) for row in rows]
+            # MySQL DictCursor returns dicts directly
 
             for contact in rows:
                 anni = contact.get('anniversary')
@@ -7931,7 +7970,7 @@ def atlas_contact_create():
         # Ensure connection is returned on error
         try:
             return_db_connection(conn, discard=True)
-        except:
+        except Exception:
             pass
         return jsonify({'error': str(e)}), 500
 
@@ -11647,14 +11686,14 @@ def reports_export_downhome(report_id):
                     formatted_date = parsed_date.strftime("%m/%d/%Y")
                 else:
                     formatted_date = ""
-            except:
+            except (ValueError, TypeError):
                 formatted_date = chase_date
 
             # Get amount (absolute value, formatted as currency)
             amount = exp.get("chase_amount", 0)
             try:
                 amount = abs(float(amount or 0))
-            except:
+            except (ValueError, TypeError):
                 amount = 0
 
             # Get category - use MI Category if available, else Chase Category, else Category
@@ -12471,7 +12510,7 @@ def gmail_status():
             try:
                 token_data = json.loads(env_token)
                 token_source = 'env'
-            except:
+            except (json.JSONDecodeError, ValueError):
                 pass
 
         # If not in env, try to find token in any of the directories
@@ -12484,7 +12523,7 @@ def gmail_status():
                             token_data = json.load(f)
                             token_source = str(candidate)
                             break
-                    except:
+                    except (json.JSONDecodeError, OSError):
                         pass
 
         status = {
@@ -12505,7 +12544,7 @@ def gmail_status():
                     expiry = datetime.fromisoformat(token_data['expiry'].replace('Z', '+00:00'))
                     status['expiry'] = token_data['expiry']
                     status['expired'] = expiry < datetime.now(expiry.tzinfo)
-                except:
+                except (ValueError, TypeError):
                     pass
 
         statuses.append(status)
@@ -12672,7 +12711,7 @@ def get_gmail_credentials_with_autorefresh(account_email: str):
                         token_data = json.load(f)
                         token_source = str(candidate)
                         break
-                except:
+                except (json.JSONDecodeError, OSError):
                     pass
 
     if not token_data:
@@ -12851,7 +12890,7 @@ def gmail_authorize(account_email):
                 created = datetime.fromisoformat(_oauth_states[s]['created_at'])
                 if created < cutoff:
                     del _oauth_states[s]
-            except:
+            except (ValueError, KeyError, TypeError):
                 del _oauth_states[s]
 
         # Build authorization URL
@@ -13485,109 +13524,76 @@ def process_mi_batch():
 # SMART SEARCH WITH LEARNING
 # =============================================================================
 
-def init_receipt_sources_table():
-    """Initialize receipt_sources table for tracking where receipts are found"""
-    import sqlite3
-
-    # Only run for SQLite databases (MySQL handles its own schema)
-    if not USE_DATABASE or not db:
-        return
-
-    # Skip if using MySQL - it initializes its own schema
-    if not hasattr(db, 'db_path'):
-        return
-
-    conn = sqlite3.connect(db.db_path)
-    cursor = conn.cursor()
-
-    # Create table to track which source (gmail account, imessage, local) has receipts for each merchant
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS receipt_sources (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            merchant_normalized TEXT NOT NULL,
-            source_type TEXT NOT NULL,  -- 'gmail', 'imessage', 'local'
-            source_detail TEXT,  -- email address if gmail, 'imessage' if imessage, null if local
-            success_count INTEGER DEFAULT 1,
-            last_found_date TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(merchant_normalized, source_type, source_detail)
-        )
-    ''')
-
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_receipt_sources_merchant ON receipt_sources(merchant_normalized)')
-
-    conn.commit()
-    return_db_connection(conn)
-
-    print("✅ Receipt sources tracking table initialized")
-
-# Initialize on startup
-init_receipt_sources_table()
+# Receipt source tracking functions (MySQL implementation)
 
 def record_receipt_source(merchant, source_type, source_detail=None):
-    """Record that a receipt was found from a specific source"""
-    import sqlite3
+    """Record that a receipt was found from a specific source (MySQL)"""
     from datetime import datetime
 
     if not USE_DATABASE or not db:
         return
 
-    # Skip if using MySQL
-    if not hasattr(db, 'db_path'):
-        return
+    try:
+        from merchant_intelligence import normalize_merchant
+        merchant_norm = normalize_merchant(merchant)
 
-    # Normalize merchant name
-    from merchant_intelligence import normalize_merchant
-    merchant_norm = normalize_merchant(merchant)
+        conn = db.get_connection()
+        cursor = conn.cursor()
 
-    conn = sqlite3.connect(db.db_path)
-    cursor = conn.cursor()
+        # Insert or update success count using ON DUPLICATE KEY UPDATE
+        cursor.execute('''
+            INSERT INTO receipt_sources (merchant_normalized, source_type, source_detail, success_count, last_found_date)
+            VALUES (%s, %s, %s, 1, %s)
+            ON DUPLICATE KEY UPDATE
+                success_count = success_count + 1,
+                last_found_date = %s
+        ''', (merchant_norm, source_type, source_detail, datetime.now().isoformat(), datetime.now().isoformat()))
 
-    # Insert or update success count
-    cursor.execute('''
-        INSERT INTO receipt_sources (merchant_normalized, source_type, source_detail, success_count, last_found_date)
-        VALUES (?, ?, ?, 1, ?)
-        ON CONFLICT(merchant_normalized, source_type, source_detail)
-        DO UPDATE SET
-            success_count = success_count + 1,
-            last_found_date = ?
-    ''', (merchant_norm, source_type, source_detail, datetime.now().isoformat(), datetime.now().isoformat()))
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
 
-    conn.commit()
-    return_db_connection(conn)
-
-    print(f"   📊 Recorded: {merchant_norm} → {source_type} ({source_detail or 'N/A'})")
+        print(f"   📊 Recorded: {merchant_norm} → {source_type} ({source_detail or 'N/A'})")
+    except Exception as e:
+        print(f"⚠️ Failed to record receipt source: {e}")
 
 def get_best_sources_for_merchant(merchant):
-    """Get likely sources for a merchant based on history"""
-    import sqlite3
-
+    """Get likely sources for a merchant based on history (MySQL)"""
     if not USE_DATABASE or not db:
         return []
 
-    # Skip if using MySQL
-    if not hasattr(db, 'db_path'):
+    try:
+        from merchant_intelligence import normalize_merchant
+        merchant_norm = normalize_merchant(merchant)
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Get sources ordered by success count
+        cursor.execute('''
+            SELECT source_type, source_detail, success_count, last_found_date
+            FROM receipt_sources
+            WHERE merchant_normalized = %s
+            ORDER BY success_count DESC, last_found_date DESC
+        ''', (merchant_norm,))
+
+        results = cursor.fetchall()
+        cursor.close()
+        return_db_connection(conn)
+
+        # Convert to list of dicts
+        return [
+            {
+                'source_type': row['source_type'] if isinstance(row, dict) else row[0],
+                'source_detail': row['source_detail'] if isinstance(row, dict) else row[1],
+                'success_count': row['success_count'] if isinstance(row, dict) else row[2],
+                'last_found_date': row['last_found_date'] if isinstance(row, dict) else row[3]
+            }
+            for row in results
+        ]
+    except Exception as e:
+        print(f"⚠️ Failed to get best sources: {e}")
         return []
-
-    from merchant_intelligence import normalize_merchant
-    merchant_norm = normalize_merchant(merchant)
-
-    conn = sqlite3.connect(db.db_path)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    # Get sources ordered by success count
-    cursor.execute('''
-        SELECT source_type, source_detail, success_count, last_found_date
-        FROM receipt_sources
-        WHERE merchant_normalized = ?
-        ORDER BY success_count DESC, last_found_date DESC
-    ''', (merchant_norm,))
-
-    results = cursor.fetchall()
-    return_db_connection(conn)
-
-    return [dict(row) for row in results]
 
 @app.route('/smart_search_receipt', methods=['POST'])
 def smart_search_receipt():
@@ -14290,13 +14296,15 @@ def get_library_receipts():
             try:
                 min_val = float(amount_min)
                 all_receipts = [r for r in all_receipts if abs(r.get('amount', 0)) >= min_val]
-            except: pass
+            except (ValueError, TypeError):
+                pass
 
         if amount_max:
             try:
                 max_val = float(amount_max)
                 all_receipts = [r for r in all_receipts if abs(r.get('amount', 0)) <= max_val]
-            except: pass
+            except (ValueError, TypeError):
+                pass
 
         # Filter by match status (matched to transaction vs waiting)
         if match_status == 'matched':
@@ -15414,7 +15422,7 @@ def bulk_tag_receipts():
                     ON DUPLICATE KEY UPDATE assigned_at = CURRENT_TIMESTAMP
                 """, (r['type'], r['id'], tag_id))
                 added += 1
-            except:
+            except Exception:
                 pass
 
         # Update usage count
@@ -15456,7 +15464,7 @@ def bulk_add_to_collection():
                     ON DUPLICATE KEY UPDATE added_at = CURRENT_TIMESTAMP
                 """, (collection_id, r['type'], r['id']))
                 added += 1
-            except:
+            except Exception:
                 pass
 
         conn.commit()
@@ -15605,7 +15613,7 @@ def get_receipt_full_details(receipt_type, receipt_id):
         if isinstance(line_items, str):
             try:
                 receipt['line_items'] = json.loads(line_items)
-            except:
+            except (json.JSONDecodeError, ValueError):
                 receipt['line_items'] = []
         elif line_items:
             receipt['line_items'] = line_items
@@ -17579,13 +17587,8 @@ def fix_incoming_receipt_dates():
             '''
 
         cursor.execute(query)
-        raw_rows = cursor.fetchall()
-
-        # Convert to dicts for SQLite compatibility
-        if db_type == 'sqlite':
-            rows = [dict(r) for r in raw_rows]
-        else:
-            rows = raw_rows
+        rows = cursor.fetchall()
+        # MySQL DictCursor returns dicts directly
 
         if not rows:
             cursor.close()
@@ -17618,19 +17621,12 @@ def fix_incoming_receipt_dates():
             }
 
             if not dry_run and correct_date:
-                # Update the transaction date - use ? for SQLite, %s for MySQL
-                if db_type == 'mysql':
-                    cursor.execute('''
-                        UPDATE transactions
-                        SET chase_date = %s
-                        WHERE _index = %s
-                    ''', (correct_date, row['txn_id']))
-                else:
-                    cursor.execute('''
-                        UPDATE transactions
-                        SET chase_date = ?
-                        WHERE _index = ?
-                    ''', (correct_date, row['txn_id']))
+                # Update the transaction date (MySQL only)
+                cursor.execute('''
+                    UPDATE transactions
+                    SET chase_date = %s
+                    WHERE _index = %s
+                ''', (correct_date, row['txn_id']))
                 fixed_count += 1
                 result['fixed'] = True
             else:
@@ -17713,12 +17709,8 @@ def diagnose_incoming_dates():
         '''
 
         cursor.execute(query)
-        raw_rows = cursor.fetchall()
-
-        if db_type == 'sqlite':
-            rows = [dict(r) for r in raw_rows]
-        else:
-            rows = raw_rows
+        rows = cursor.fetchall()
+        # MySQL DictCursor returns dicts directly
 
         cursor.close()
         return_db_connection(conn)
@@ -17860,13 +17852,8 @@ def refetch_gmail_dates():
             '''
             cursor.execute(query, (limit,))
 
-        raw_rows = cursor.fetchall()
-
-        # Convert to dicts for SQLite compatibility
-        if db_type == 'sqlite':
-            rows = [dict(r) for r in raw_rows]
-        else:
-            rows = list(raw_rows)
+        rows = list(cursor.fetchall())
+        # MySQL DictCursor returns dicts directly
 
         if not rows:
             cursor.close()
@@ -18588,31 +18575,6 @@ def sync_receipt_urls():
                 'total_transactions': total_count,
                 'errors': errors[:5] if errors else []
             })
-        else:
-            # SQLite update
-            conn = sqlite3.connect(str(db.db_path))
-            cursor = conn.cursor()
-
-            updated = 0
-            for mapping in url_mappings:
-                try:
-                    cursor.execute("""
-                        UPDATE transactions
-                        SET receipt_url = ?
-                        WHERE _index = ?
-                    """, (mapping['receipt_url'], mapping['_index']))
-                    updated += 1
-                except Exception as e:
-                    print(f"⚠️  Failed to update _index {mapping['_index']}: {e}")
-
-            conn.commit()
-            return_db_connection(conn)
-
-            return jsonify({
-                'ok': True,
-                'message': f'Updated {updated} receipt URLs',
-                'updated': updated
-            })
 
     except Exception as e:
         print(f"❌ Error syncing receipt URLs: {e}")
@@ -18960,7 +18922,7 @@ def auto_match_stats():
                 FROM incoming_receipts
             ''')
             receipt_stats = cursor.fetchone()
-        except:
+        except Exception:
             receipt_stats = {'total': 0, 'pending': 0, 'auto_matched': 0, 'accepted': 0, 'rejected': 0, 'needs_review': 0}
 
         return_db_connection(conn)
@@ -19618,14 +19580,14 @@ def generate_missing_receipt_form():
                 formatted_date = dt_obj.strftime('%m/%d/%Y')
             else:
                 formatted_date = datetime.now().strftime('%m/%d/%Y')
-        except:
+        except (ValueError, TypeError):
             formatted_date = str(trans_date) if trans_date else datetime.now().strftime('%m/%d/%Y')
 
         # Format amount
         try:
             amount_val = abs(float(trans_amount))
             formatted_amount = f"{amount_val:.2f}"
-        except:
+        except (ValueError, TypeError):
             formatted_amount = str(trans_amount)
 
         # Company details
@@ -20484,7 +20446,7 @@ def api_atlas_calculate_relationship_scores():
                 if isinstance(last_interaction, str):
                     try:
                         last_interaction = datetime.fromisoformat(last_interaction.replace('Z', '+00:00'))
-                    except:
+                    except (ValueError, TypeError):
                         last_interaction = None
 
                 if last_interaction:
@@ -20631,7 +20593,7 @@ def api_atlas_sync_email_interactions():
                             try:
                                 import email.utils
                                 parsed_date = email.utils.parsedate_to_datetime(date_str)
-                            except:
+                            except (ValueError, TypeError):
                                 parsed_date = datetime.utcnow()
 
                             # Check if interaction already exists
@@ -21008,7 +20970,7 @@ def api_atlas_frequency_stats():
                     if isinstance(last_touch, str):
                         last_touch = datetime.fromisoformat(last_touch.replace('Z', '+00:00'))
                     days_since = (datetime.now() - last_touch.replace(tzinfo=None)).days
-                except:
+                except (ValueError, TypeError, AttributeError):
                     pass
 
             contacts.append({
@@ -21982,6 +21944,1641 @@ def trigger_sync_if_needed():
 
 
 # =============================================================================
+# SMART NOTES API (Claude-powered contextual notes)
+# =============================================================================
+
+@app.route("/api/notes/generate", methods=["POST"])
+def api_smart_notes_generate():
+    """
+    Generate an intelligent, contextual note for a transaction using Claude.
+    Combines transaction data, receipt OCR, calendar events, and contacts.
+
+    POST body:
+    {
+        "_index": int,  # Transaction index (optional if providing details directly)
+        "merchant": str,
+        "amount": float,
+        "date": str,  # YYYY-MM-DD format
+        "category": str,
+        "business_type": str,
+        "receipt_path": str,  # Optional path to receipt image
+        "additional_context": str  # Optional user-provided context
+    }
+
+    Returns:
+    {
+        "ok": true,
+        "note": str,
+        "attendees": [{"name": str, "relationship": str, "company": str}],
+        "attendee_count": int,
+        "calendar_event": {"title": str, "start": str, "attendees": [str]} | null,
+        "business_purpose": str,
+        "tax_category": str,
+        "confidence": float,
+        "data_sources": [str],
+        "needs_review": bool
+    }
+    """
+    import asyncio
+
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not SMART_NOTES_SERVICE_AVAILABLE:
+        return jsonify({'ok': False, 'error': 'Smart notes service not available'}), 503
+
+    data = request.get_json(force=True) or {}
+
+    # Get transaction data either from _index or direct params
+    if "_index" in data:
+        ensure_df()
+        idx = int(data["_index"])
+        mask = df["_index"] == idx
+        if not mask.any():
+            return jsonify({"ok": False, "error": f"_index {idx} not found"}), 404
+        row = df[mask].iloc[0].to_dict()
+        merchant = row.get("Chase Description") or row.get("merchant") or ""
+        amount = parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0)
+        date_str = row.get("Chase Date") or row.get("transaction_date") or ""
+        category = row.get("Chase Category") or row.get("category") or ""
+        business_type = row.get("Business Type") or ""
+        receipt_path = row.get("Receipt Path") or row.get("receipt_path") or ""
+    else:
+        merchant = data.get("merchant", "")
+        amount = float(data.get("amount", 0))
+        date_str = data.get("date", "")
+        category = data.get("category", "")
+        business_type = data.get("business_type", "")
+        receipt_path = data.get("receipt_path", "")
+        idx = None
+
+    additional_context = data.get("additional_context", "")
+
+    if not merchant:
+        return jsonify({"ok": False, "error": "No merchant provided"}), 400
+
+    try:
+        # Get the smart notes service
+        service = get_smart_notes_service()
+
+        # Run async generation
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(
+                service.generate_note(
+                    merchant=merchant,
+                    amount=amount,
+                    date=date_str,
+                    category=category,
+                    business_type=business_type,
+                    receipt_path=receipt_path,
+                    additional_context=additional_context
+                )
+            )
+        finally:
+            loop.close()
+
+        # If _index provided, save the note
+        if idx is not None and result.note:
+            update_row_by_index(idx, {"AI Note": result.note}, source="smart_notes_generate")
+
+        # Convert result to JSON-serializable format
+        response = {
+            "ok": True,
+            "note": result.note,
+            "attendees": [
+                {
+                    "name": a.name,
+                    "relationship": a.relationship or "",
+                    "company": a.company or ""
+                } for a in result.attendees
+            ],
+            "attendee_count": result.attendee_count,
+            "calendar_event": None,
+            "business_purpose": result.business_purpose,
+            "tax_category": result.tax_category,
+            "confidence": result.confidence,
+            "data_sources": result.data_sources,
+            "needs_review": result.needs_review,
+            "_index": idx
+        }
+
+        if result.calendar_event:
+            response["calendar_event"] = {
+                "title": result.calendar_event.title,
+                "start": result.calendar_event.start.isoformat() if result.calendar_event.start else None,
+                "end": result.calendar_event.end.isoformat() if result.calendar_event.end else None,
+                "attendees": result.calendar_event.attendees
+            }
+
+        return jsonify(response)
+
+    except Exception as e:
+        logger.error(f"Smart notes generation error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/notes/batch", methods=["POST"])
+def api_smart_notes_batch():
+    """
+    Generate intelligent notes for multiple transactions in batch.
+
+    POST body:
+    {
+        "indexes": [int, ...],  # List of _index values
+        "limit": 50,  # Max transactions (default 50)
+        "skip_existing": true  # Skip transactions that already have AI notes
+    }
+
+    Returns:
+    {
+        "ok": true,
+        "processed": int,
+        "results": [
+            {
+                "_index": int,
+                "merchant": str,
+                "note": str,
+                "confidence": float,
+                "success": bool,
+                "error": str | null
+            }
+        ]
+    }
+    """
+    import asyncio
+
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not SMART_NOTES_SERVICE_AVAILABLE:
+        return jsonify({'ok': False, 'error': 'Smart notes service not available'}), 503
+
+    data = request.get_json(force=True) or {}
+    indexes = data.get("indexes", [])
+    limit = min(int(data.get("limit", 50)), 200)
+    skip_existing = data.get("skip_existing", True)
+
+    ensure_df()
+
+    # Build list of transactions to process
+    transactions = []
+
+    if indexes:
+        for idx in indexes[:limit]:
+            mask = df["_index"] == idx
+            if mask.any():
+                row = df[mask].iloc[0].to_dict()
+                if skip_existing and row.get("AI Note"):
+                    continue
+                transactions.append({
+                    "_index": idx,
+                    "merchant": row.get("Chase Description") or row.get("merchant") or "",
+                    "amount": parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0),
+                    "date": row.get("Chase Date") or row.get("transaction_date") or "",
+                    "category": row.get("Chase Category") or row.get("category") or "",
+                    "business_type": row.get("Business Type") or "",
+                    "receipt_path": row.get("Receipt Path") or ""
+                })
+    else:
+        # Process transactions without AI notes
+        for _, row in df.head(limit * 2).iterrows():
+            if skip_existing and row.get("AI Note"):
+                continue
+            if len(transactions) >= limit:
+                break
+            transactions.append({
+                "_index": row.get("_index"),
+                "merchant": row.get("Chase Description") or row.get("merchant") or "",
+                "amount": parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0),
+                "date": row.get("Chase Date") or row.get("transaction_date") or "",
+                "category": row.get("Chase Category") or row.get("category") or "",
+                "business_type": row.get("Business Type") or "",
+                "receipt_path": row.get("Receipt Path") or ""
+            })
+
+    if not transactions:
+        return jsonify({"ok": True, "processed": 0, "results": []})
+
+    try:
+        service = get_smart_notes_service()
+
+        # Run async batch generation
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            results = loop.run_until_complete(
+                service.generate_batch(transactions)
+            )
+        finally:
+            loop.close()
+
+        # Process results
+        output = []
+        for tx, result in zip(transactions, results):
+            idx = tx["_index"]
+            if result.note:
+                # Save to database
+                update_row_by_index(idx, {"AI Note": result.note}, source="smart_notes_batch")
+                output.append({
+                    "_index": idx,
+                    "merchant": tx["merchant"],
+                    "note": result.note,
+                    "confidence": result.confidence,
+                    "success": True,
+                    "error": None
+                })
+            else:
+                output.append({
+                    "_index": idx,
+                    "merchant": tx["merchant"],
+                    "note": "",
+                    "confidence": 0,
+                    "success": False,
+                    "error": "Failed to generate note"
+                })
+
+        return jsonify({
+            "ok": True,
+            "processed": len(output),
+            "results": output
+        })
+
+    except Exception as e:
+        logger.error(f"Smart notes batch error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/notes/<int:tx_id>", methods=["PUT"])
+def api_smart_notes_update(tx_id: int):
+    """
+    Update/edit a transaction note. The system learns from user corrections
+    to improve future note generation.
+
+    PUT body:
+    {
+        "note": str,  # The edited note
+        "feedback": str  # Optional feedback about what was wrong
+    }
+
+    Returns:
+    {
+        "ok": true,
+        "note": str,
+        "learned": bool  # Whether the system recorded the learning
+    }
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+    new_note = data.get("note", "").strip()
+    feedback = data.get("feedback", "")
+
+    if not new_note:
+        return jsonify({"ok": False, "error": "No note provided"}), 400
+
+    ensure_df()
+    mask = df["_index"] == tx_id
+    if not mask.any():
+        return jsonify({"ok": False, "error": f"Transaction {tx_id} not found"}), 404
+
+    row = df[mask].iloc[0].to_dict()
+    original_note = row.get("AI Note", "")
+    merchant = row.get("Chase Description") or row.get("merchant") or ""
+
+    # Update the note
+    update_row_by_index(tx_id, {"AI Note": new_note}, source="smart_notes_edit")
+
+    # If service available, record the learning
+    learned = False
+    if SMART_NOTES_SERVICE_AVAILABLE and original_note and original_note != new_note:
+        try:
+            service = get_smart_notes_service()
+            service.learn_from_edit(
+                merchant=merchant,
+                original_note=original_note,
+                edited_note=new_note,
+                context={
+                    "amount": parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0),
+                    "date": row.get("Chase Date") or row.get("transaction_date") or "",
+                    "category": row.get("Chase Category") or row.get("category") or "",
+                    "feedback": feedback
+                }
+            )
+            learned = True
+        except Exception as e:
+            logger.warning(f"Failed to record note learning: {e}")
+
+    return jsonify({
+        "ok": True,
+        "note": new_note,
+        "learned": learned
+    })
+
+
+@app.route("/api/notes/regenerate", methods=["POST"])
+def api_smart_notes_regenerate():
+    """
+    Regenerate a note with updated context or different parameters.
+
+    POST body:
+    {
+        "_index": int,
+        "additional_context": str,  # Additional context to include
+        "force_calendar_refresh": bool,  # Force refresh of calendar data
+        "style": str  # "detailed" | "concise" | "audit"
+    }
+
+    Returns: Same as /api/notes/generate
+    """
+    import asyncio
+
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    if not SMART_NOTES_SERVICE_AVAILABLE:
+        return jsonify({'ok': False, 'error': 'Smart notes service not available'}), 503
+
+    data = request.get_json(force=True) or {}
+
+    if "_index" not in data:
+        return jsonify({"ok": False, "error": "Missing _index"}), 400
+
+    ensure_df()
+    idx = int(data["_index"])
+    mask = df["_index"] == idx
+    if not mask.any():
+        return jsonify({"ok": False, "error": f"_index {idx} not found"}), 404
+
+    row = df[mask].iloc[0].to_dict()
+    merchant = row.get("Chase Description") or row.get("merchant") or ""
+    amount = parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0)
+    date_str = row.get("Chase Date") or row.get("transaction_date") or ""
+    category = row.get("Chase Category") or row.get("category") or ""
+    business_type = row.get("Business Type") or ""
+    receipt_path = row.get("Receipt Path") or ""
+
+    additional_context = data.get("additional_context", "")
+    force_refresh = data.get("force_calendar_refresh", False)
+    style = data.get("style", "detailed")
+
+    try:
+        service = get_smart_notes_service()
+
+        # Clear cache if force refresh requested
+        if force_refresh:
+            service.context_cache.clear()
+
+        # Run async regeneration
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(
+                service.regenerate_note(
+                    merchant=merchant,
+                    amount=amount,
+                    date=date_str,
+                    additional_context=additional_context,
+                    style=style,
+                    category=category,
+                    business_type=business_type,
+                    receipt_path=receipt_path
+                )
+            )
+        finally:
+            loop.close()
+
+        # Save the regenerated note
+        if result.note:
+            update_row_by_index(idx, {"AI Note": result.note}, source="smart_notes_regenerate")
+
+        # Convert result to JSON
+        response = {
+            "ok": True,
+            "note": result.note,
+            "attendees": [
+                {
+                    "name": a.name,
+                    "relationship": a.relationship or "",
+                    "company": a.company or ""
+                } for a in result.attendees
+            ],
+            "attendee_count": result.attendee_count,
+            "calendar_event": None,
+            "business_purpose": result.business_purpose,
+            "tax_category": result.tax_category,
+            "confidence": result.confidence,
+            "data_sources": result.data_sources,
+            "needs_review": result.needs_review,
+            "_index": idx
+        }
+
+        if result.calendar_event:
+            response["calendar_event"] = {
+                "title": result.calendar_event.title,
+                "start": result.calendar_event.start.isoformat() if result.calendar_event.start else None,
+                "end": result.calendar_event.end.isoformat() if result.calendar_event.end else None,
+                "attendees": result.calendar_event.attendees
+            }
+
+        return jsonify(response)
+
+    except Exception as e:
+        logger.error(f"Smart notes regeneration error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/notes/status", methods=["GET"])
+def api_smart_notes_status():
+    """
+    Get the status of the smart notes service.
+
+    Returns:
+    {
+        "ok": true,
+        "available": bool,
+        "cache_stats": {
+            "calendar_entries": int,
+            "contacts_entries": int
+        },
+        "learning_stats": {
+            "total_corrections": int
+        }
+    }
+    """
+    if not SMART_NOTES_SERVICE_AVAILABLE:
+        return jsonify({
+            "ok": True,
+            "available": False,
+            "reason": "Smart notes service not loaded"
+        })
+
+    try:
+        service = get_smart_notes_service()
+
+        cache_stats = {
+            "calendar_entries": len(service.context_cache._calendar_cache),
+            "contacts_entries": len(service.context_cache._contacts_cache)
+        }
+
+        learning_stats = {
+            "total_corrections": len(service.learning.corrections)
+        }
+
+        return jsonify({
+            "ok": True,
+            "available": True,
+            "cache_stats": cache_stats,
+            "learning_stats": learning_stats
+        })
+
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "available": False,
+            "error": str(e)
+        })
+
+
+# =============================================================================
+# BULK OPERATIONS API (Transaction Review Interface)
+# =============================================================================
+
+@app.route("/api/bulk/update", methods=["POST"])
+def api_bulk_update():
+    """
+    Bulk update multiple transactions at once.
+    Optimized for high-speed batch operations.
+
+    POST body:
+    {
+        "indexes": [int, ...],       # Transaction indexes to update
+        "updates": {                  # Fields to update
+            "Business Type": "Down Home",
+            "Review Status": "good",
+            ...
+        }
+    }
+
+    Returns:
+    {
+        "ok": true,
+        "updated": int,
+        "errors": int
+    }
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+    indexes = data.get("indexes", [])
+    updates = data.get("updates", {})
+
+    if not indexes:
+        return jsonify({"ok": False, "error": "No indexes provided"}), 400
+    if not updates:
+        return jsonify({"ok": False, "error": "No updates provided"}), 400
+
+    ensure_df()
+
+    updated = 0
+    errors = 0
+
+    for idx in indexes:
+        try:
+            mask = df["_index"] == idx
+            if not mask.any():
+                errors += 1
+                continue
+
+            update_row_by_index(idx, updates, source="bulk_update")
+            updated += 1
+
+        except Exception as e:
+            logger.error(f"Bulk update error for {idx}: {e}")
+            errors += 1
+
+    return jsonify({
+        "ok": True,
+        "updated": updated,
+        "errors": errors
+    })
+
+
+@app.route("/api/bulk/business-type", methods=["POST"])
+def api_bulk_business_type():
+    """
+    Bulk set business type for multiple transactions.
+
+    POST body:
+    {
+        "indexes": [int, ...],
+        "business_type": "Down Home" | "Music City Rodeo" | "Personal" | "EM.co"
+    }
+    """
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+    indexes = data.get("indexes", [])
+    business_type = data.get("business_type", "")
+
+    if not indexes:
+        return jsonify({"ok": False, "error": "No indexes provided"}), 400
+
+    ensure_df()
+
+    updated = 0
+    for idx in indexes:
+        try:
+            mask = df["_index"] == idx
+            if mask.any():
+                update_row_by_index(idx, {"Business Type": business_type}, source="bulk_business_type")
+                updated += 1
+        except Exception as e:
+            logger.error(f"Bulk business type error for {idx}: {e}")
+
+    return jsonify({
+        "ok": True,
+        "updated": updated,
+        "business_type": business_type
+    })
+
+
+@app.route("/api/bulk/review-status", methods=["POST"])
+def api_bulk_review_status():
+    """
+    Bulk set review status for multiple transactions.
+
+    POST body:
+    {
+        "indexes": [int, ...],
+        "status": "good" | "bad" | "not needed" | ""
+    }
+    """
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+    indexes = data.get("indexes", [])
+    status = data.get("status", "")
+
+    if not indexes:
+        return jsonify({"ok": False, "error": "No indexes provided"}), 400
+
+    ensure_df()
+
+    updated = 0
+    for idx in indexes:
+        try:
+            mask = df["_index"] == idx
+            if mask.any():
+                update_row_by_index(idx, {"Review Status": status}, source="bulk_review_status")
+                updated += 1
+        except Exception as e:
+            logger.error(f"Bulk review status error for {idx}: {e}")
+
+    return jsonify({
+        "ok": True,
+        "updated": updated,
+        "status": status
+    })
+
+
+@app.route("/api/bulk/detach-receipts", methods=["POST"])
+def api_bulk_detach_receipts():
+    """
+    Bulk detach receipts from multiple transactions.
+
+    POST body:
+    {
+        "indexes": [int, ...]
+    }
+    """
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    data = request.get_json(force=True) or {}
+    indexes = data.get("indexes", [])
+
+    if not indexes:
+        return jsonify({"ok": False, "error": "No indexes provided"}), 400
+
+    ensure_df()
+
+    updated = 0
+    for idx in indexes:
+        try:
+            mask = df["_index"] == idx
+            if mask.any():
+                update_row_by_index(idx, {
+                    "Receipt File": "",
+                    "r2_url": "",
+                    "receipt_url": "",
+                    "Review Status": "",
+                    "AI Confidence": "",
+                    "receipt_validation_status": ""
+                }, source="bulk_detach")
+                updated += 1
+        except Exception as e:
+            logger.error(f"Bulk detach error for {idx}: {e}")
+
+    return jsonify({
+        "ok": True,
+        "detached": updated
+    })
+
+
+@app.route("/api/review/stats", methods=["GET"])
+def api_review_stats():
+    """
+    Get review statistics for the dashboard.
+
+    Returns summary counts for transaction review status.
+    """
+    ensure_df()
+
+    total = len(df)
+    with_receipts = len(df[
+        (df.get("Receipt File", "").fillna("") != "") |
+        (df.get("r2_url", "").fillna("") != "") |
+        (df.get("receipt_url", "").fillna("") != "")
+    ])
+
+    # Review status counts
+    review_good = len(df[df.get("Review Status", "").fillna("") == "good"])
+    review_bad = len(df[df.get("Review Status", "").fillna("") == "bad"])
+    review_not_needed = len(df[df.get("Review Status", "").fillna("").isin(["not needed", "not_needed"])])
+    review_pending = total - review_good - review_bad - review_not_needed
+
+    # Business type counts
+    down_home = len(df[df.get("Business Type", "").fillna("") == "Down Home"])
+    mcr = len(df[df.get("Business Type", "").fillna("").isin(["Music City Rodeo", "MCR"])])
+    personal = len(df[df.get("Business Type", "").fillna("") == "Personal"])
+    emco = len(df[df.get("Business Type", "").fillna("") == "EM.co"])
+    unassigned = total - down_home - mcr - personal - emco
+
+    # Validation status counts
+    verified = len(df[df.get("receipt_validation_status", "").fillna("") == "verified"])
+    mismatch = len(df[df.get("receipt_validation_status", "").fillna("") == "mismatch"])
+
+    return jsonify({
+        "ok": True,
+        "stats": {
+            "total": total,
+            "with_receipts": with_receipts,
+            "missing_receipts": total - with_receipts,
+            "review": {
+                "good": review_good,
+                "bad": review_bad,
+                "not_needed": review_not_needed,
+                "pending": review_pending
+            },
+            "business": {
+                "down_home": down_home,
+                "mcr": mcr,
+                "personal": personal,
+                "emco": emco,
+                "unassigned": unassigned
+            },
+            "validation": {
+                "verified": verified,
+                "mismatch": mismatch
+            }
+        }
+    })
+
+
+# =============================================================================
+# COMPREHENSIVE REPORTS API
+# =============================================================================
+
+@app.route("/api/reports/stats", methods=["GET"])
+def api_reports_stats():
+    """
+    Get YTD statistics for reports dashboard.
+    Returns summary stats across all business types.
+    """
+    if not USE_DATABASE or not db:
+        return jsonify({
+            "total_amount": 0,
+            "total_transactions": 0,
+            "match_rate": 0,
+            "pending_review": 0
+        })
+
+    try:
+        conn, db_type = get_db_connection()
+
+        # Get YTD totals
+        year_start = f"{datetime.now().year}-01-01"
+
+        cursor = db_execute(conn, db_type, '''
+            SELECT
+                COUNT(*) as total,
+                SUM(ABS(chase_amount)) as total_amount,
+                SUM(CASE WHEN review_status IN ('MATCHED', 'VERIFIED', 'APPROVED') THEN 1 ELSE 0 END) as matched,
+                SUM(CASE WHEN review_status IS NULL OR review_status = '' THEN 1 ELSE 0 END) as pending
+            FROM transactions
+            WHERE chase_date >= ?
+            AND (deleted IS NULL OR deleted = 0)
+        ''', (year_start,))
+
+        row = cursor.fetchone()
+        return_db_connection(conn)
+
+        total = row['total'] or 0
+        total_amount = row['total_amount'] or 0
+        matched = row['matched'] or 0
+        pending = row['pending'] or 0
+        match_rate = (matched / total * 100) if total > 0 else 0
+
+        return jsonify({
+            "total_amount": round(float(total_amount), 2),
+            "total_transactions": total,
+            "match_rate": round(match_rate, 1),
+            "pending_review": pending
+        })
+
+    except Exception as e:
+        print(f"❌ Stats error: {e}", flush=True)
+        return jsonify({
+            "total_amount": 0,
+            "total_transactions": 0,
+            "match_rate": 0,
+            "pending_review": 0
+        })
+
+
+@app.route("/api/reports/generate", methods=["POST"])
+def api_reports_generate():
+    """
+    Generate a comprehensive expense report.
+
+    Request body:
+    {
+        "business_type": "Down Home" | "Music City Rodeo" | "Personal" | "EM.co" | "all",
+        "date_from": "2024-01-01",
+        "date_to": "2024-12-31",
+        "report_type": "expense_detail" | "business_summary" | "reconciliation" | "vendor_analysis",
+        "format": "excel" | "pdf" | "csv" | "quickbooks" | "json",
+        "options": {
+            "include_receipts": true,
+            "include_unmatched": true
+        }
+    }
+    """
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
+
+    try:
+        data = request.get_json(force=True) or {}
+
+        business_type = data.get("business_type", "all")
+        date_from = data.get("date_from")
+        date_to = data.get("date_to")
+        report_type = data.get("report_type", "expense_detail")
+        export_format = data.get("format", "excel")
+        options = data.get("options", {})
+
+        # Validate required fields
+        if not date_from or not date_to:
+            abort(400, "date_from and date_to are required")
+
+        # Import report generator
+        from services.report_generator import get_report_generator, ReportType
+
+        generator = get_report_generator(db=db)
+
+        # Map report type
+        type_map = {
+            "expense_detail": ReportType.EXPENSE_DETAIL,
+            "business_summary": ReportType.BUSINESS_SUMMARY,
+            "reconciliation": ReportType.RECONCILIATION,
+            "vendor_analysis": ReportType.VENDOR_ANALYSIS,
+        }
+        rpt_type = type_map.get(report_type, ReportType.EXPENSE_DETAIL)
+
+        # Generate report
+        business_types = None if business_type == "all" else [business_type]
+
+        if report_type == "reconciliation":
+            report = generator.generate_reconciliation_report(
+                date_range=(date_from, date_to),
+                business_type=business_type if business_type != "all" else None
+            )
+        elif report_type == "vendor_analysis":
+            report = generator.generate_vendor_analysis_report(
+                date_range=(date_from, date_to),
+                business_type=business_type if business_type != "all" else None
+            )
+        else:
+            report = generator.generate_report(
+                date_range=(date_from, date_to),
+                business_types=business_types,
+                report_type=rpt_type,
+                options=options
+            )
+
+        # Export in requested format
+        if export_format == "excel":
+            from services.excel_exporter import get_excel_exporter
+            exporter = get_excel_exporter()
+            content = exporter.export_report(report)
+            response = make_response(content)
+            response.headers["Content-Disposition"] = f"attachment; filename={report.report_id}.xlsx"
+            response.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            return response
+
+        elif export_format == "pdf":
+            from services.pdf_exporter import get_pdf_exporter
+            exporter = get_pdf_exporter()
+            content = exporter.export_report(report, include_receipts=options.get("include_receipts", False))
+            response = make_response(content)
+            response.headers["Content-Disposition"] = f"attachment; filename={report.report_id}.pdf"
+            response.headers["Content-Type"] = "application/pdf"
+            return response
+
+        elif export_format == "csv":
+            from services.csv_exporter import get_csv_exporter
+            exporter = get_csv_exporter()
+            content = exporter.export_standard_csv(report)
+            response = make_response(content)
+            response.headers["Content-Disposition"] = f"attachment; filename={report.report_id}.csv"
+            response.headers["Content-Type"] = "text/csv"
+            return response
+
+        elif export_format == "quickbooks":
+            from services.csv_exporter import get_csv_exporter
+            exporter = get_csv_exporter()
+            content = exporter.export_quickbooks_csv(report)
+            response = make_response(content)
+            response.headers["Content-Disposition"] = f"attachment; filename={report.report_id}_quickbooks.csv"
+            response.headers["Content-Type"] = "text/csv"
+            return response
+
+        elif export_format == "json":
+            return jsonify(safe_json(report.to_dict()))
+
+        else:
+            abort(400, f"Unsupported format: {export_format}")
+
+    except ImportError as e:
+        print(f"❌ Missing dependency for report export: {e}", flush=True)
+        abort(500, f"Missing dependency: {e}. Install with pip.")
+
+    except Exception as e:
+        print(f"❌ Report generation failed: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        abort(500, str(e))
+
+
+@app.route("/api/reports/<report_id>/export/<export_format>", methods=["GET"])
+def api_report_export(report_id, export_format):
+    """
+    Export an existing report in specified format.
+
+    Formats: excel, pdf, csv, quickbooks
+    """
+    if not USE_DATABASE or not db:
+        abort(503, "Reports require database mode")
+
+    try:
+        # Fetch report data
+        expenses = db.get_report_expenses(report_id)
+        if not expenses:
+            abort(404, f"Report {report_id} not found")
+
+        # Get report metadata
+        report_meta = db.get_report(report_id)
+        if not report_meta:
+            abort(404, f"Report metadata not found")
+
+        # Build report object for exporters
+        from services.report_generator import (
+            Report, ReportSummary, Transaction, ReportType,
+            CategoryBreakdown, VendorBreakdown
+        )
+        from decimal import Decimal
+        from collections import defaultdict
+
+        # Convert expenses to Transaction objects
+        transactions = []
+        for exp in expenses:
+            txn = Transaction(
+                index=exp.get('_index', 0),
+                date=datetime.strptime(str(exp['chase_date']), '%Y-%m-%d') if exp.get('chase_date') else None,
+                description=exp.get('chase_description', ''),
+                amount=Decimal(str(exp.get('chase_amount', 0) or 0)),
+                category=exp.get('category', ''),
+                chase_category=exp.get('chase_category', ''),
+                business_type=exp.get('business_type', ''),
+                receipt_file=exp.get('receipt_file'),
+                receipt_url=exp.get('receipt_url'),
+                r2_url=exp.get('r2_url'),
+                notes=exp.get('notes'),
+                ai_note=exp.get('ai_note'),
+                ai_confidence=float(exp.get('ai_confidence') or 0),
+                review_status=exp.get('review_status'),
+                mi_merchant=exp.get('mi_merchant'),
+                mi_category=exp.get('mi_category'),
+            )
+            transactions.append(txn)
+
+        # Calculate summary
+        total_amount = sum(abs(t.amount) for t in transactions)
+        matched = [t for t in transactions if t.review_status in ('MATCHED', 'VERIFIED', 'APPROVED')]
+        with_receipts = [t for t in transactions if t.has_receipt]
+        dates = [t.date for t in transactions if t.date]
+
+        # Category breakdown
+        cat_totals = defaultdict(lambda: {'total': Decimal('0'), 'count': 0})
+        for t in transactions:
+            cat = t.effective_category
+            cat_totals[cat]['total'] += abs(t.amount)
+            cat_totals[cat]['count'] += 1
+
+        categories = [
+            CategoryBreakdown(
+                category=cat,
+                total=data['total'],
+                count=data['count'],
+                percentage=float(data['total'] / total_amount * 100) if total_amount else 0
+            )
+            for cat, data in sorted(cat_totals.items(), key=lambda x: x[1]['total'], reverse=True)
+        ]
+
+        summary = ReportSummary(
+            total_transactions=len(transactions),
+            total_amount=total_amount,
+            matched_count=len(matched),
+            unmatched_count=len(transactions) - len(matched),
+            match_rate=len(matched) / len(transactions) * 100 if transactions else 0,
+            receipts_attached=len(with_receipts),
+            receipts_missing=len(transactions) - len(with_receipts),
+            receipt_rate=len(with_receipts) / len(transactions) * 100 if transactions else 0,
+            average_transaction=total_amount / len(transactions) if transactions else Decimal('0'),
+            largest_transaction=max(abs(t.amount) for t in transactions) if transactions else Decimal('0'),
+            smallest_transaction=min(abs(t.amount) for t in transactions) if transactions else Decimal('0'),
+            date_range_start=min(dates) if dates else datetime.now(),
+            date_range_end=max(dates) if dates else datetime.now(),
+            by_category=categories,
+            by_vendor=[],
+        )
+
+        report = Report(
+            report_id=report_id,
+            report_name=report_meta.get('report_name', report_id),
+            report_type=ReportType.EXPENSE_DETAIL,
+            business_type=report_meta.get('business_type', 'All'),
+            generated_at=datetime.now(),
+            date_range=(summary.date_range_start, summary.date_range_end),
+            summary=summary,
+            transactions=transactions,
+        )
+
+        # Export
+        if export_format == "excel":
+            from services.excel_exporter import get_excel_exporter
+            exporter = get_excel_exporter()
+            content = exporter.export_report(report)
+            response = make_response(content)
+            response.headers["Content-Disposition"] = f"attachment; filename={report_id}.xlsx"
+            response.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            return response
+
+        elif export_format == "pdf":
+            from services.pdf_exporter import get_pdf_exporter
+            exporter = get_pdf_exporter()
+            content = exporter.export_report(report)
+            response = make_response(content)
+            response.headers["Content-Disposition"] = f"attachment; filename={report_id}.pdf"
+            response.headers["Content-Type"] = "application/pdf"
+            return response
+
+        elif export_format == "csv":
+            from services.csv_exporter import get_csv_exporter
+            exporter = get_csv_exporter()
+            content = exporter.export_downhome_csv(report)
+            response = make_response(content)
+            response.headers["Content-Disposition"] = f"attachment; filename={report_id}.csv"
+            response.headers["Content-Type"] = "text/csv"
+            return response
+
+        else:
+            abort(400, f"Unsupported format: {export_format}")
+
+    except ImportError as e:
+        print(f"❌ Missing dependency: {e}", flush=True)
+        abort(500, f"Missing dependency: {e}")
+
+    except Exception as e:
+        print(f"❌ Export failed: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        abort(500, str(e))
+
+
+@app.route("/reports/dashboard", methods=["GET"])
+def reports_dashboard_page():
+    """Serve the reports dashboard page."""
+    template_path = Path(__file__).parent / "templates" / "reports_dashboard.html"
+
+    if template_path.exists():
+        return send_file(template_path)
+
+    # Fallback - redirect to report builder
+    return redirect("/reports")
+
+
+@app.route("/api/reports/business-summary", methods=["GET"])
+def api_business_summary():
+    """
+    Get summary for all business types.
+
+    Query params:
+    - year: Year (default: current)
+    - month: Month (default: current)
+    """
+    if not USE_DATABASE or not db:
+        return jsonify({"summaries": {}})
+
+    try:
+        year = request.args.get('year', datetime.now().year, type=int)
+        month = request.args.get('month', datetime.now().month, type=int)
+
+        # Calculate date range
+        from calendar import monthrange
+        date_from = f"{year}-{month:02d}-01"
+        last_day = monthrange(year, month)[1]
+        date_to = f"{year}-{month:02d}-{last_day}"
+
+        conn, db_type = get_db_connection()
+
+        # Get stats by business type
+        cursor = db_execute(conn, db_type, '''
+            SELECT
+                business_type,
+                COUNT(*) as count,
+                SUM(ABS(chase_amount)) as total,
+                SUM(CASE WHEN review_status IN ('MATCHED', 'VERIFIED', 'APPROVED') THEN 1 ELSE 0 END) as matched,
+                SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as with_receipts
+            FROM transactions
+            WHERE chase_date >= ? AND chase_date <= ?
+            AND (deleted IS NULL OR deleted = 0)
+            GROUP BY business_type
+        ''', (date_from, date_to))
+
+        rows = [dict(r) for r in cursor.fetchall()]
+        return_db_connection(conn)
+
+        summaries = {}
+        for row in rows:
+            bt = row['business_type'] or 'Unassigned'
+            count = row['count'] or 0
+            total = row['total'] or 0
+            matched = row['matched'] or 0
+            with_receipts = row['with_receipts'] or 0
+
+            summaries[bt] = {
+                "name": bt,
+                "total": round(float(total), 2),
+                "count": count,
+                "match_rate": round(matched / count * 100, 1) if count else 0,
+                "receipt_rate": round(with_receipts / count * 100, 1) if count else 0
+            }
+
+        return jsonify({
+            "year": year,
+            "month": month,
+            "summaries": summaries
+        })
+
+    except Exception as e:
+        print(f"❌ Business summary error: {e}", flush=True)
+        return jsonify({"summaries": {}, "error": str(e)})
+
+
+# =============================================================================
+# ENHANCED RECEIPT LIBRARY API (for receipt_library.html)
+# =============================================================================
+
+@app.route("/api/library/search", methods=["GET"])
+def library_search():
+    """
+    Enhanced search with natural language query parsing.
+    Supports operators like: merchant:starbucks, >$50, last-month, is:verified
+    """
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify({'ok': True, 'results': [], 'suggestions': []})
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Parse query for operators
+        filters = {}
+        remaining_terms = []
+
+        # Parse amount operators
+        import re
+        amount_match = re.search(r'>?\$?(\d+(?:\.\d{2})?)', query)
+        if amount_match:
+            filters['amount_min'] = float(amount_match.group(1))
+            query = query.replace(amount_match.group(0), '').strip()
+
+        # Parse date shortcuts
+        date_shortcuts = {
+            'today': 'CURDATE()',
+            'yesterday': 'DATE_SUB(CURDATE(), INTERVAL 1 DAY)',
+            'this-week': 'DATE_SUB(CURDATE(), INTERVAL 7 DAY)',
+            'last-week': 'DATE_SUB(CURDATE(), INTERVAL 14 DAY)',
+            'this-month': 'DATE_SUB(CURDATE(), INTERVAL 30 DAY)',
+            'last-month': 'DATE_SUB(CURDATE(), INTERVAL 60 DAY)',
+        }
+        for shortcut, sql_date in date_shortcuts.items():
+            if shortcut in query.lower():
+                filters['date_from'] = shortcut
+                query = query.lower().replace(shortcut, '').strip()
+
+        # Parse status operators (is:verified, is:matched)
+        status_match = re.search(r'is:(\w+)', query)
+        if status_match:
+            filters['status'] = status_match.group(1)
+            query = query.replace(status_match.group(0), '').strip()
+
+        # Build search query
+        search_term = query.strip()
+        params = []
+
+        sql = '''
+            SELECT
+                id, _index, chase_description as merchant, chase_amount as amount,
+                chase_date as date, receipt_url, r2_url, receipt_file,
+                business_type, source, ocr_verified, ocr_verification_status,
+                ai_notes
+            FROM transactions
+            WHERE (receipt_file IS NOT NULL OR receipt_url IS NOT NULL OR r2_url IS NOT NULL)
+        '''
+
+        if search_term:
+            sql += ' AND (chase_description LIKE %s OR notes LIKE %s OR ai_notes LIKE %s)'
+            params.extend([f'%{search_term}%'] * 3)
+
+        if filters.get('amount_min'):
+            sql += ' AND chase_amount >= %s'
+            params.append(filters['amount_min'])
+
+        if filters.get('date_from') in date_shortcuts:
+            sql += f' AND chase_date >= {date_shortcuts[filters["date_from"]]}'
+
+        if filters.get('status') == 'verified':
+            sql += ' AND (ocr_verified = TRUE OR ocr_verification_status = "verified")'
+        elif filters.get('status') == 'matched':
+            sql += ' AND receipt_file IS NOT NULL AND receipt_file != ""'
+
+        sql += ' ORDER BY chase_date DESC LIMIT 100'
+
+        cursor.execute(sql, params)
+        results = []
+        for row in cursor.fetchall():
+            r = dict(row)
+            receipt_url = r.get('r2_url') or r.get('receipt_url') or r.get('receipt_file')
+            results.append({
+                'uuid': f"tx_{r.get('id') or r.get('_index')}",
+                'merchant_name': r.get('merchant') or 'Unknown',
+                'amount': float(r.get('amount') or 0),
+                'receipt_date': str(r.get('date') or ''),
+                'receipt_url': receipt_url,
+                'thumbnail_url': receipt_url,
+                'business_type': r.get('business_type') or 'unknown',
+                'source': r.get('source') or 'manual',
+                'status': 'verified' if r.get('ocr_verified') else 'processing',
+                'ai_notes': r.get('ai_notes') or ''
+            })
+
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'results': results,
+            'total': len(results),
+            'query': query,
+            'filters': filters
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_id>", methods=["GET"])
+def get_library_receipt_detail(receipt_id):
+    """Get detailed information for a single receipt."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Parse receipt_id (format: tx_123 or inc_456)
+        if receipt_id.startswith('tx_'):
+            table = 'transactions'
+            id_val = receipt_id[3:]
+        elif receipt_id.startswith('inc_'):
+            table = 'incoming_receipts'
+            id_val = receipt_id[4:]
+        else:
+            id_val = receipt_id
+            table = 'transactions'
+
+        if table == 'transactions':
+            cursor.execute('SELECT * FROM transactions WHERE id = %s OR _index = %s', (id_val, id_val))
+        else:
+            cursor.execute('SELECT * FROM incoming_receipts WHERE id = %s', (id_val,))
+
+        row = cursor.fetchone()
+        db.return_connection(conn)
+
+        if not row:
+            return jsonify({'ok': False, 'error': 'Receipt not found'}), 404
+
+        r = dict(row)
+        receipt_url = r.get('r2_url') or r.get('receipt_url') or r.get('receipt_file')
+
+        return jsonify({
+            'ok': True,
+            'receipt': {
+                'uuid': receipt_id,
+                'merchant_name': r.get('chase_description') or r.get('merchant') or 'Unknown',
+                'amount': float(r.get('chase_amount') or r.get('amount') or 0),
+                'receipt_date': str(r.get('chase_date') or r.get('receipt_date') or ''),
+                'receipt_url': receipt_url,
+                'thumbnail_url': receipt_url,
+                'business_type': r.get('business_type') or 'unknown',
+                'source': r.get('source') or 'manual',
+                'status': 'verified' if r.get('ocr_verified') else 'processing',
+                'ai_description': r.get('ai_notes') or '',
+                'ocr_merchant': r.get('ocr_merchant'),
+                'ocr_amount': float(r.get('ocr_amount') or 0) if r.get('ocr_amount') else None,
+                'ocr_date': str(r.get('ocr_date') or ''),
+                'ocr_confidence': float(r.get('ocr_confidence') or 0),
+                'notes': r.get('notes') or '',
+                'tags': []  # TODO: Load from receipt_item_tags
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_id>", methods=["PATCH"])
+def update_library_receipt(receipt_id):
+    """Update receipt metadata."""
+    admin_key = request.json.get('admin_key') if request.json else None
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Parse receipt_id
+        if receipt_id.startswith('tx_'):
+            id_val = receipt_id[3:]
+        else:
+            id_val = receipt_id
+
+        updates = []
+        params = []
+
+        # Allowed fields to update
+        field_mapping = {
+            'business_type': 'business_type',
+            'notes': 'notes',
+            'is_favorite': None,  # Handled separately via favorites table
+            'merchant_name': 'chase_description',
+        }
+
+        for key, db_field in field_mapping.items():
+            if key in data and db_field:
+                updates.append(f'{db_field} = %s')
+                params.append(data[key])
+
+        if updates:
+            params.append(id_val)
+            params.append(id_val)
+            cursor.execute(
+                f'UPDATE transactions SET {", ".join(updates)} WHERE id = %s OR _index = %s',
+                params
+            )
+            conn.commit()
+
+        # Handle is_favorite separately
+        if 'is_favorite' in data:
+            if data['is_favorite']:
+                cursor.execute('''
+                    INSERT IGNORE INTO receipt_favorites (receipt_type, receipt_id, created_at)
+                    VALUES ('transaction', %s, NOW())
+                ''', (id_val,))
+            else:
+                cursor.execute('''
+                    DELETE FROM receipt_favorites
+                    WHERE receipt_type = 'transaction' AND receipt_id = %s
+                ''', (id_val,))
+            conn.commit()
+
+        db.return_connection(conn)
+        return jsonify({'ok': True, 'message': 'Receipt updated'})
+
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/receipts/<receipt_id>", methods=["DELETE"])
+def delete_library_receipt(receipt_id):
+    """Soft delete a receipt."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Parse receipt_id
+        if receipt_id.startswith('tx_'):
+            id_val = receipt_id[3:]
+            # Soft delete - clear receipt fields
+            cursor.execute('''
+                UPDATE transactions
+                SET receipt_file = NULL, receipt_url = NULL, r2_url = NULL
+                WHERE id = %s OR _index = %s
+            ''', (id_val, id_val))
+        elif receipt_id.startswith('inc_'):
+            id_val = receipt_id[4:]
+            cursor.execute('''
+                UPDATE incoming_receipts
+                SET status = 'rejected'
+                WHERE id = %s
+            ''', (id_val,))
+
+        conn.commit()
+        db.return_connection(conn)
+        return jsonify({'ok': True, 'message': 'Receipt deleted'})
+
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/upload", methods=["POST"])
+def library_upload_receipts():
+    """Upload new receipts to the library."""
+    admin_key = request.form.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        files = request.files.getlist('files')
+        business_type = request.form.get('business_type', 'auto')
+
+        if not files:
+            return jsonify({'ok': False, 'error': 'No files uploaded'}), 400
+
+        uploaded = []
+        for file in files:
+            if file.filename:
+                # Save to incoming_receipts
+                filename = file.filename
+                content = file.read()
+
+                # Try to upload to R2 if available
+                receipt_url = None
+                try:
+                    from r2_service import get_r2_service
+                    r2 = get_r2_service()
+                    if r2:
+                        import uuid
+                        key = f"receipts/{uuid.uuid4()}/{filename}"
+                        receipt_url = r2.upload_bytes(content, key)
+                except Exception as e:
+                    print(f"R2 upload failed: {e}")
+
+                # Insert into incoming_receipts
+                conn = db.get_connection()
+                cursor = conn.cursor()
+
+                cursor.execute('''
+                    INSERT INTO incoming_receipts
+                    (source, subject, receipt_file, receipt_url, status, received_date, business_type)
+                    VALUES (%s, %s, %s, %s, %s, NOW(), %s)
+                ''', (
+                    'manual_upload',
+                    f'Uploaded: {filename}',
+                    filename,
+                    receipt_url,
+                    'pending',
+                    business_type if business_type != 'auto' else None
+                ))
+                conn.commit()
+                receipt_id = cursor.lastrowid
+                db.return_connection(conn)
+
+                uploaded.append({
+                    'id': f'inc_{receipt_id}',
+                    'filename': filename,
+                    'url': receipt_url
+                })
+
+        return jsonify({
+            'ok': True,
+            'count': len(uploaded),
+            'receipts': uploaded
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/counts", methods=["GET"])
+def get_library_counts():
+    """Get counts for all library categories for sidebar."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        counts = {}
+
+        # Total receipts
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM transactions
+            WHERE receipt_file IS NOT NULL OR receipt_url IS NOT NULL OR r2_url IS NOT NULL
+        ''')
+        counts['total'] = cursor.fetchone().get('count', 0)
+
+        # Favorites
+        cursor.execute('SELECT COUNT(*) as count FROM receipt_favorites')
+        counts['favorites'] = cursor.fetchone().get('count', 0)
+
+        # Recent (last 7 days)
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM transactions
+            WHERE (receipt_file IS NOT NULL OR receipt_url IS NOT NULL OR r2_url IS NOT NULL)
+            AND chase_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        ''')
+        counts['recent'] = cursor.fetchone().get('count', 0)
+
+        # Needs review
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM transactions
+            WHERE (receipt_file IS NOT NULL OR receipt_url IS NOT NULL OR r2_url IS NOT NULL)
+            AND ocr_verification_status = 'needs_review'
+        ''')
+        counts['needs_review'] = cursor.fetchone().get('count', 0)
+
+        # By verification status
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM transactions
+            WHERE (receipt_file IS NOT NULL OR receipt_url IS NOT NULL OR r2_url IS NOT NULL)
+            AND (ocr_verified = TRUE OR ocr_verification_status = 'verified')
+        ''')
+        counts['verified'] = cursor.fetchone().get('count', 0)
+
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM transactions
+            WHERE (receipt_file IS NOT NULL OR receipt_url IS NOT NULL OR r2_url IS NOT NULL)
+            AND receipt_file IS NOT NULL AND receipt_file != ''
+        ''')
+        counts['matched'] = cursor.fetchone().get('count', 0)
+
+        # By business type
+        cursor.execute('''
+            SELECT business_type, COUNT(*) as count FROM transactions
+            WHERE receipt_file IS NOT NULL OR receipt_url IS NOT NULL OR r2_url IS NOT NULL
+            GROUP BY business_type
+        ''')
+        for row in cursor.fetchall():
+            bt = (row.get('business_type') or 'unknown').lower().replace(' ', '_')
+            counts[bt] = row.get('count', 0)
+
+        # By source
+        cursor.execute('''
+            SELECT source, COUNT(*) as count FROM transactions
+            WHERE receipt_file IS NOT NULL OR receipt_url IS NOT NULL OR r2_url IS NOT NULL
+            GROUP BY source
+        ''')
+        for row in cursor.fetchall():
+            src = (row.get('source') or 'manual').lower()
+            if 'gmail' in src:
+                counts['gmail'] = counts.get('gmail', 0) + row.get('count', 0)
+            elif 'scanner' in src:
+                counts['scanner'] = counts.get('scanner', 0) + row.get('count', 0)
+            else:
+                counts['upload'] = counts.get('upload', 0) + row.get('count', 0)
+
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'counts': counts})
+
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -22000,22 +23597,6 @@ if __name__ == "__main__":
         backup_path = CSV_PATH.with_suffix(f".backup.{ts}.csv")
         shutil.copy2(CSV_PATH, backup_path)
         print(f"💾 Backup created for {CSV_PATH.name} → {backup_path.name}")
-
-    # Validate SQLite database before starting (only for local SQLite)
-    if USE_DATABASE and db and hasattr(db, 'use_sqlite') and db.use_sqlite and Path("receipts.db").exists():
-        print("🔍 Validating database integrity...")
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["python3", "validate_database.py"],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            if result.returncode != 0:
-                print("⚠️  Database validation failed - check validate_database.py output")
-        except Exception as e:
-            print(f"⚠️  Could not run database validation: {e}")
 
     load_csv()
     RECEIPT_DIR.mkdir(exist_ok=True)

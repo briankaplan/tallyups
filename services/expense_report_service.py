@@ -2,7 +2,7 @@
 Expense Report Export Service
 
 Features:
-- Export by business entity (Down Home/Ragdoll/AMRF/CEO/Personal)
+- Export by business entity (Down Home/Ragdoll/AMRF/EM.co/Personal)
 - Monthly, quarterly, YTD reports
 - Bank transaction reconciliation
 - CSV/PDF export formats
@@ -19,7 +19,7 @@ BUSINESS_ENTITIES = {
     'downhome': 'Down Home',
     'ragdoll': 'Ragdoll',
     'amrf': 'AMRF',
-    'ceo': 'CEO Personal',
+    'emco': 'EM.co',
     'personal': 'Personal',
     'mcr': 'Music City Rodeo'
 }

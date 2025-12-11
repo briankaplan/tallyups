@@ -1712,6 +1712,225 @@
       color: #000;
     }
 
+    /* Live Camera Mode */
+    .camera-frame.live-mode #video-preview {
+      display: block;
+    }
+
+    .camera-frame.live-mode .camera-placeholder {
+      display: none;
+    }
+
+    /* Receipt Frame Detection Overlay */
+    .frame-detection-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .frame-detection-overlay svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .detected-frame {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0;
+      transition: opacity 0.3s, d 0.2s;
+    }
+
+    .detected-frame.visible {
+      opacity: 1;
+      animation: framePulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes framePulse {
+      0%, 100% { stroke-opacity: 1; }
+      50% { stroke-opacity: 0.5; }
+    }
+
+    /* Batch Mode */
+    .batch-mode-banner {
+      position: fixed;
+      top: calc(60px + var(--safe-top));
+      left: 16px;
+      right: 16px;
+      background: linear-gradient(135deg, var(--accent), #00cc6b);
+      color: #000;
+      padding: 12px 16px;
+      border-radius: 14px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4);
+    }
+
+    .batch-mode-banner.visible {
+      display: flex;
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .batch-count {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .batch-count-number {
+      background: #000;
+      color: var(--accent);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .batch-done-btn {
+      background: #000;
+      color: var(--accent);
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Batch Mode Toggle Button */
+    .batch-toggle {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s;
+    }
+
+    .batch-toggle:hover {
+      background: var(--bg-card);
+      border-color: var(--accent);
+    }
+
+    .batch-toggle.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    .batch-toggle svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Quick Capture Animation */
+    .quick-capture-flash {
+      position: absolute;
+      inset: 0;
+      background: #fff;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .quick-capture-flash.flash {
+      animation: captureFlash 0.3s ease-out;
+    }
+
+    @keyframes captureFlash {
+      0% { opacity: 0.8; }
+      100% { opacity: 0; }
+    }
+
+    /* Batch Queue Thumbnails */
+    .batch-queue {
+      display: none;
+      gap: 8px;
+      padding: 12px 16px;
+      overflow-x: auto;
+      background: var(--bg-elevated);
+      border-top: 1px solid var(--border);
+    }
+
+    .batch-queue.visible {
+      display: flex;
+    }
+
+    .batch-thumbnail {
+      width: 60px;
+      height: 80px;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+      border: 2px solid var(--border);
+    }
+
+    .batch-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .batch-thumbnail .remove-btn {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 22px;
+      height: 22px;
+      background: var(--error);
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .batch-thumbnail.processing {
+      border-color: var(--accent);
+    }
+
+    .batch-thumbnail.processing::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 255, 136, 0.3);
+      animation: processingPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes processingPulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.6; }
+    }
+
     /* Haptic feedback visual */
     .haptic-flash {
       position: fixed;
@@ -2243,6 +2462,15 @@
     </div>
   </header>
 
+  <!-- Batch Mode Banner -->
+  <div class="batch-mode-banner" id="batch-banner">
+    <div class="batch-count">
+      <span class="batch-count-number" id="batch-count">0</span>
+      <span>receipts captured</span>
+    </div>
+    <button class="batch-done-btn" id="batch-done-btn">Done</button>
+  </div>
+
   <!-- Main Content -->
   <main class="main">
     <!-- Camera View -->
@@ -2250,6 +2478,27 @@
       <div class="camera-frame" id="camera-frame">
         <video id="video-preview" autoplay playsinline muted></video>
         <img id="image-preview" alt="Receipt">
+
+        <!-- Frame Detection Overlay -->
+        <div class="frame-detection-overlay" id="frame-overlay">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path id="detected-frame" class="detected-frame" d="M10,10 L90,10 L90,90 L10,90 Z"/>
+          </svg>
+        </div>
+
+        <!-- Quick Capture Flash -->
+        <div class="quick-capture-flash" id="capture-flash"></div>
+
+        <!-- Batch Mode Toggle -->
+        <button class="batch-toggle" id="batch-toggle" title="Batch scanning mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Batch
+        </button>
 
         <!-- Retake button -->
         <button class="retake-btn" id="retake-btn" title="Retake">
@@ -2316,6 +2565,9 @@
           <span class="pending-badge" id="pending-badge">0</span>
         </button>
       </div>
+
+      <!-- Batch Queue (shows thumbnails of captured receipts) -->
+      <div class="batch-queue" id="batch-queue"></div>
 
       <!-- Quick Templates -->
       <div class="templates-section visible" id="templates-section">
@@ -2777,6 +3029,11 @@
     let tipAmount = 0;
     let subtotal = 0;
     let ocrStartTime = 0;
+
+    // Batch mode state
+    let batchMode = false;
+    let batchQueue = [];  // Array of {id, blob, dataUrl, status: 'pending'|'processing'|'done'}
+    let liveCameraActive = false;
 
     // ========================================
     // DOM ELEMENTS
@@ -3246,6 +3503,247 @@
 
       // Voice capture
       setupVoiceCapture();
+
+      // Batch mode toggle
+      $('batch-toggle').onclick = () => {
+        hapticFeedback();
+        toggleBatchMode();
+      };
+
+      // Batch done button
+      $('batch-done-btn').onclick = () => {
+        hapticFeedback('medium');
+        finishBatchMode();
+      };
+
+      // Long press on camera frame to start live preview
+      let longPressTimer = null;
+      $('camera-placeholder').addEventListener('touchstart', (e) => {
+        longPressTimer = setTimeout(() => {
+          hapticFeedback('heavy');
+          startLiveCamera();
+        }, 500);
+      });
+      $('camera-placeholder').addEventListener('touchend', () => {
+        clearTimeout(longPressTimer);
+      });
+    }
+
+    // ========================================
+    // BATCH MODE
+    // ========================================
+    function toggleBatchMode() {
+      batchMode = !batchMode;
+      $('batch-toggle').classList.toggle('active', batchMode);
+
+      if (batchMode) {
+        $('batch-banner').classList.add('visible');
+        $('batch-queue').classList.add('visible');
+        showToast('Batch mode ON - scan multiple receipts', 'info');
+      } else {
+        $('batch-banner').classList.remove('visible');
+        $('batch-queue').classList.remove('visible');
+        batchQueue = [];
+        updateBatchUI();
+      }
+    }
+
+    function addToBatch(blob, dataUrl) {
+      const id = Date.now();
+      batchQueue.push({ id, blob, dataUrl, status: 'pending' });
+      updateBatchUI();
+
+      // Flash effect
+      const flash = $('capture-flash');
+      flash.classList.add('flash');
+      setTimeout(() => flash.classList.remove('flash'), 300);
+
+      // Process in background
+      processBatchItem(id);
+    }
+
+    function updateBatchUI() {
+      $('batch-count').textContent = batchQueue.length;
+
+      const queueEl = $('batch-queue');
+      queueEl.innerHTML = batchQueue.map(item => `
+        <div class="batch-thumbnail ${item.status}" data-id="${item.id}">
+          <img src="${item.dataUrl}" alt="Receipt">
+          <button class="remove-btn" onclick="removeBatchItem(${item.id})">×</button>
+        </div>
+      `).join('');
+    }
+
+    function removeBatchItem(id) {
+      hapticFeedback();
+      batchQueue = batchQueue.filter(item => item.id !== id);
+      updateBatchUI();
+    }
+
+    async function processBatchItem(id) {
+      const item = batchQueue.find(i => i.id === id);
+      if (!item) return;
+
+      item.status = 'processing';
+      updateBatchUI();
+
+      try {
+        // Upload to server inbox
+        const formData = new FormData();
+        formData.append('file', item.blob, `batch_${id}.jpg`);
+        formData.append('source', SOURCE_TAG + '_batch');
+
+        const response = await fetch(`${API_BASE}/api/incoming/upload`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          item.status = 'done';
+          hapticFeedback('success');
+        } else {
+          item.status = 'error';
+        }
+      } catch (e) {
+        console.error('Batch upload error:', e);
+        item.status = 'error';
+      }
+
+      updateBatchUI();
+    }
+
+    async function finishBatchMode() {
+      const pending = batchQueue.filter(i => i.status === 'pending' || i.status === 'processing');
+      if (pending.length > 0) {
+        showToast(`Processing ${pending.length} receipts...`, 'info');
+        await Promise.all(pending.map(i => processBatchItem(i.id)));
+      }
+
+      const done = batchQueue.filter(i => i.status === 'done').length;
+      showToast(`${done} receipts uploaded to inbox!`, 'success');
+
+      batchMode = false;
+      batchQueue = [];
+      $('batch-toggle').classList.remove('active');
+      $('batch-banner').classList.remove('visible');
+      $('batch-queue').classList.remove('visible');
+      updateBatchUI();
+    }
+
+    // ========================================
+    // LIVE CAMERA
+    // ========================================
+    async function startLiveCamera() {
+      if (liveCameraActive) return;
+
+      try {
+        const constraints = {
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        };
+
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = $('video-preview');
+        video.srcObject = cameraStream;
+        await video.play();
+
+        liveCameraActive = true;
+        $('camera-frame').classList.add('live-mode');
+        $('flash-btn').classList.add('visible');
+
+        showToast('Live camera active - tap to capture', 'success');
+
+        // Update capture button behavior for live mode
+        $('capture-btn').onclick = captureFromLiveCamera;
+
+        // Start frame detection (simplified)
+        startFrameDetection();
+
+      } catch (err) {
+        console.error('Camera error:', err);
+        showToast('Camera not available', 'error');
+      }
+    }
+
+    function stopLiveCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
+
+      liveCameraActive = false;
+      $('camera-frame').classList.remove('live-mode');
+      $('flash-btn').classList.remove('visible');
+      $('video-preview').srcObject = null;
+
+      // Restore normal capture behavior
+      $('capture-btn').onclick = () => {
+        hapticFeedback();
+        $('file-input').setAttribute('capture', 'environment');
+        $('file-input').click();
+      };
+    }
+
+    async function captureFromLiveCamera() {
+      if (!liveCameraActive) return;
+
+      hapticFeedback('medium');
+
+      // Flash effect
+      const flash = $('capture-flash');
+      flash.classList.add('flash');
+      setTimeout(() => flash.classList.remove('flash'), 300);
+
+      const video = $('video-preview');
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      // Convert to blob
+      const blob = await new Promise(resolve => {
+        canvas.toBlob(resolve, 'image/jpeg', 0.9);
+      });
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+      if (batchMode) {
+        // Add to batch queue
+        addToBatch(blob, dataUrl);
+      } else {
+        // Stop camera and process single image
+        stopLiveCamera();
+
+        currentImage.blob = blob;
+        currentImage.data = dataUrl;
+
+        $('image-preview').src = dataUrl;
+        $('image-preview').style.display = 'block';
+        $('camera-placeholder').style.display = 'none';
+        $('camera-frame').classList.add('has-image');
+        $('retake-btn').classList.add('visible');
+
+        ocrStartTime = performance.now();
+        captureGeolocation();
+        fetchTodayCalendarEvents();
+        await processOCR();
+      }
+    }
+
+    function startFrameDetection() {
+      // Simple frame detection - show corners when receipt-like content is detected
+      // This is a simplified version - real implementation would use OpenCV.js
+      const framePath = $('detected-frame');
+
+      // For now, just show animated corners as visual feedback
+      framePath.classList.add('visible');
+
+      // Could add actual edge detection with OpenCV.js for production
     }
 
     // ========================================

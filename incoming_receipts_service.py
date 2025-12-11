@@ -403,6 +403,8 @@ def init_incoming_receipts_table():
             category VARCHAR(50) DEFAULT 'receipt',
             ai_notes TEXT,
             preview_url TEXT,
+            receipt_image_url TEXT,
+            thumbnail_url TEXT,
             reviewed_at DATETIME,
             accepted_as_transaction_id INT,
             rejection_reason TEXT,
@@ -428,6 +430,19 @@ def init_incoming_receipts_table():
             UNIQUE KEY unique_pattern (pattern_type, pattern_value)
         )
     ''')
+
+    # Add new columns if they don't exist (for existing installations)
+    try:
+        cursor.execute("ALTER TABLE incoming_receipts ADD COLUMN receipt_image_url TEXT")
+        print("   Added receipt_image_url column")
+    except:
+        pass  # Column already exists
+
+    try:
+        cursor.execute("ALTER TABLE incoming_receipts ADD COLUMN thumbnail_url TEXT")
+        print("   Added thumbnail_url column")
+    except:
+        pass  # Column already exists
 
     conn.commit()
     conn.close()
@@ -1500,6 +1515,7 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                 vision_category = None
                 ai_notes = None
                 receipt_image_url = None
+                thumbnail_url = None
 
                 # PRIORITY 1: Try Vision AI on attachments (PDF/image) - MOST ACCURATE
                 if has_attachment:
@@ -1544,10 +1560,10 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                             if v_notes:
                                                 print(f"      📝 Notes: {v_notes}")
 
-                                            # Upload image to R2 for preview
+                                            # Upload image to R2 for preview (with thumbnail)
                                             if img_bytes:
                                                 try:
-                                                    from r2_service import upload_to_r2, R2_ENABLED, R2_PUBLIC_URL
+                                                    from r2_service import upload_with_thumbnail, R2_ENABLED
                                                     if R2_ENABLED:
                                                         import uuid
                                                         r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
@@ -1555,11 +1571,14 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                                         with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
                                                             tmp.write(img_bytes)
                                                             tmp_path = tmp.name
-                                                        success, result = upload_to_r2(tmp_path, r2_key)
+                                                        full_url, thumb_url = upload_with_thumbnail(tmp_path, r2_key)
                                                         os.unlink(tmp_path)
-                                                        if success:
-                                                            receipt_image_url = result
+                                                        if full_url:
+                                                            receipt_image_url = full_url
+                                                            thumbnail_url = thumb_url
                                                             print(f"      ☁️  Uploaded to R2: {r2_key}")
+                                                            if thumb_url:
+                                                                print(f"      🖼️  Thumbnail: {thumb_url}")
                                                 except Exception as r2_err:
                                                     print(f"      ⚠️  R2 upload failed: {r2_err}")
 
@@ -1589,7 +1608,8 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                 screenshot_path = screenshot_html_receipt(html_body, tmp.name)
                                 if screenshot_path and os.path.exists(screenshot_path):
                                     with open(screenshot_path, 'rb') as f:
-                                        img_base64 = base64.b64encode(f.read()).decode('utf-8')
+                                        img_bytes = f.read()
+                                    img_base64 = base64.b64encode(img_bytes).decode('utf-8')
 
                                     v_merchant, v_amount, v_desc, v_sub, v_is_receipt, v_cat, v_notes = analyze_image_with_vision(
                                         img_base64, subject_hint=subject, from_hint=from_email_clean
@@ -1602,6 +1622,23 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                         print(f"      👁️  Vision (HTML): {v_merchant} ${v_amount} ({v_cat})")
                                         if v_notes:
                                             print(f"      📝 Notes: {v_notes}")
+
+                                    # Upload HTML screenshot to R2 for preview (with thumbnail)
+                                    if img_bytes and not receipt_image_url:
+                                        try:
+                                            from r2_service import upload_with_thumbnail, R2_ENABLED
+                                            if R2_ENABLED:
+                                                import uuid
+                                                r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
+                                                full_url, thumb_url = upload_with_thumbnail(screenshot_path, r2_key)
+                                                if full_url:
+                                                    receipt_image_url = full_url
+                                                    thumbnail_url = thumb_url
+                                                    print(f"      ☁️  Uploaded HTML screenshot to R2: {r2_key}")
+                                                    if thumb_url:
+                                                        print(f"      🖼️  Thumbnail: {thumb_url}")
+                                        except Exception as r2_err:
+                                            print(f"      ⚠️  R2 upload failed: {r2_err}")
 
                                     # Clean up temp file
                                     os.unlink(screenshot_path)
@@ -1679,7 +1716,8 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                     'is_subscription': is_subscription,
                     'category': category or 'receipt',  # Category for junk/marketing
                     'ai_notes': ai_notes,  # Notes from Vision AI (e.g., "Amount unclear")
-                    'receipt_image_url': receipt_image_url,  # R2 URL for preview image
+                    'receipt_image_url': receipt_image_url,  # R2 URL for full image
+                    'thumbnail_url': thumbnail_url,  # R2 URL for thumbnail
                     'matched_transaction_id': match_id,
                     'match_type': match_type
                 }
@@ -1702,15 +1740,15 @@ def save_incoming_receipt(receipt_data):
     cursor = conn.cursor()
 
     try:
-        # MySQL version - includes category, ai_notes, and receipt_image_url for Vision AI data
+        # MySQL version - includes category, ai_notes, receipt_image_url and thumbnail_url for Vision AI data
         cursor.execute('''
             INSERT INTO incoming_receipts (
                 email_id, gmail_account, subject, from_email, from_domain,
                 received_date, body_snippet, has_attachment, attachment_count,
                 confidence_score, merchant, amount, description, is_subscription,
                 matched_transaction_id, match_type, attachments, category, ai_notes,
-                receipt_image_url, status
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                receipt_image_url, thumbnail_url, status
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
         ''', (
             receipt_data['email_id'],
             receipt_data['gmail_account'],
@@ -1731,7 +1769,8 @@ def save_incoming_receipt(receipt_data):
             receipt_data.get('attachments', '[]'),
             receipt_data.get('category', 'receipt'),
             receipt_data.get('ai_notes'),  # Vision AI notes (e.g., "Amount unclear")
-            receipt_data.get('receipt_image_url')  # R2 URL for preview image
+            receipt_data.get('receipt_image_url'),  # R2 URL for full image
+            receipt_data.get('thumbnail_url')  # R2 URL for thumbnail
         ))
 
         conn.commit()
@@ -2296,6 +2335,7 @@ def reprocess_pending_receipts(limit=50, skip_with_amount=True):
                 new_notes = None
                 new_merchant = None
                 new_receipt_image_url = None
+                new_thumbnail_url = None
 
                 # Try to extract from PDF attachments
                 for att in attachments:
@@ -2336,21 +2376,24 @@ def reprocess_pending_receipts(limit=50, skip_with_amount=True):
                                         new_notes = v_notes
                                         print(f"      📝 Notes: {v_notes}")
 
-                                    # Upload image to R2 for preview
+                                    # Upload image to R2 for preview (with thumbnail)
                                     if img_bytes and (v_amount or v_merchant):
                                         try:
-                                            from r2_service import upload_to_r2, R2_ENABLED
+                                            from r2_service import upload_with_thumbnail, R2_ENABLED
                                             if R2_ENABLED:
                                                 import uuid
                                                 r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
                                                 with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
                                                     tmp.write(img_bytes)
                                                     tmp_path = tmp.name
-                                                success, result = upload_to_r2(tmp_path, r2_key)
+                                                full_url, thumb_url = upload_with_thumbnail(tmp_path, r2_key)
                                                 os.unlink(tmp_path)
-                                                if success:
-                                                    new_receipt_image_url = result
+                                                if full_url:
+                                                    new_receipt_image_url = full_url
+                                                    new_thumbnail_url = thumb_url
                                                     print(f"      ☁️ Uploaded to R2: {r2_key}")
+                                                    if thumb_url:
+                                                        print(f"      🖼️ Thumbnail: {thumb_url}")
                                         except Exception as r2_err:
                                             print(f"      ⚠️ R2 upload failed: {r2_err}")
 
@@ -2436,6 +2479,9 @@ def reprocess_pending_receipts(limit=50, skip_with_amount=True):
                 if new_receipt_image_url:
                     updates.append('receipt_image_url = %s')
                     params.append(new_receipt_image_url)
+                if new_thumbnail_url:
+                    updates.append('thumbnail_url = %s')
+                    params.append(new_thumbnail_url)
 
                 if updates:
                     params.append(receipt_id)

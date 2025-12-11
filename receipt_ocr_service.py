@@ -21,6 +21,7 @@ import base64
 import re
 import hashlib
 import time
+import threading
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
@@ -89,6 +90,7 @@ class OCRCache:
         if not self.db:
             return
 
+        conn = None
         try:
             conn = self.db.get_connection()
             cursor = conn.cursor()
@@ -109,9 +111,11 @@ class OCRCache:
                 )
             """)
             conn.commit()
-            self.db.return_connection(conn)
         except Exception as e:
             print(f"⚠️ Could not create OCR cache table: {e}")
+        finally:
+            if conn:
+                self.db.return_connection(conn)
 
     def _compute_hash(self, file_path: str) -> str:
         """Compute SHA256 hash of file contents"""
@@ -134,6 +138,7 @@ class OCRCache:
         if not file_hash:
             return None
 
+        conn = None
         try:
             conn = self.db.get_connection()
             cursor = conn.cursor()
@@ -142,7 +147,6 @@ class OCRCache:
                 (file_hash,)
             )
             row = cursor.fetchone()
-            self.db.return_connection(conn)
 
             if row and row.get('extracted_data'):
                 data = row['extracted_data']
@@ -151,6 +155,9 @@ class OCRCache:
                 return data
         except Exception as e:
             print(f"⚠️ OCR cache get error: {e}")
+        finally:
+            if conn:
+                self.db.return_connection(conn)
 
         return None
 
@@ -163,6 +170,7 @@ class OCRCache:
         if not file_hash:
             return
 
+        conn = None
         try:
             conn = self.db.get_connection()
             cursor = conn.cursor()
@@ -197,34 +205,43 @@ class OCRCache:
                 ocr_method
             ))
             conn.commit()
-            self.db.return_connection(conn)
         except Exception as e:
             print(f"⚠️ OCR cache set error: {e}")
+        finally:
+            if conn:
+                self.db.return_connection(conn)
 
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics"""
         if not self.db:
             return {"enabled": False, "count": 0}
 
+        conn = None
         try:
             conn = self.db.get_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) as cnt FROM ocr_cache")
             row = cursor.fetchone()
-            self.db.return_connection(conn)
             return {"enabled": True, "count": row['cnt'] if row else 0}
         except Exception as e:
             return {"enabled": False, "error": str(e)}
+        finally:
+            if conn:
+                self.db.return_connection(conn)
 
 
-# Global cache instance
+# Global cache instance with thread-safe initialization
 _ocr_cache = None
+_ocr_cache_lock = threading.Lock()
 
 def get_ocr_cache() -> OCRCache:
-    """Get singleton OCR cache instance"""
+    """Get singleton OCR cache instance (thread-safe)"""
     global _ocr_cache
     if _ocr_cache is None:
-        _ocr_cache = OCRCache()
+        with _ocr_cache_lock:
+            # Double-check locking pattern
+            if _ocr_cache is None:
+                _ocr_cache = OCRCache()
     return _ocr_cache
 
 

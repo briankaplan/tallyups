@@ -2354,11 +2354,12 @@ function renderMobileCard(receipt) {
   // Receipt date for accept function
   const receiptDate = receipt.receipt_date || receipt.received_date || '';
 
-  // Receipt thumbnail
-  const thumbUrl = receipt.preview_url || receipt.r2_url;
+  // Receipt thumbnail - prefer thumbnail_url for cards, fall back to full image
+  const thumbUrl = receipt.thumbnail_url || receipt.receipt_image_url || receipt.preview_url || receipt.r2_url;
+  const fullImageUrl = receipt.receipt_image_url || receipt.preview_url || receipt.r2_url || thumbUrl;
   const hasThumb = !!thumbUrl;
   const thumbHTML = hasThumb ? `
-    <div class="inbox-card-thumb" onclick="event.stopPropagation();openFullImage('${thumbUrl}')">
+    <div class="inbox-card-thumb" onclick="event.stopPropagation();openFullImage('${fullImageUrl}')">
       <img src="${thumbUrl}" alt="Receipt" loading="lazy" onerror="this.parentNode.style.display='none'">
       <span class="inbox-card-thumb-icon">🧾</span>
     </div>
@@ -2448,8 +2449,10 @@ function renderMobileCard(receipt) {
     `;
   }
 
-  // Receipt image URL (from Gmail attachment or R2)
+  // Receipt image URL (from Gmail attachment or R2) - use full image for display
   const imageUrl = receipt.receipt_image_url || receipt.preview_url || receipt.r2_url;
+  // Use thumbnail for card display if available (faster loading)
+  const cardImageUrl = receipt.thumbnail_url || imageUrl;
 
   // Gmail link for viewing the original email - use correct account index
   const emailId = receipt.email_id || '';
@@ -2460,10 +2463,10 @@ function renderMobileCard(receipt) {
 
   // If we have an image, show it; otherwise show a styled email preview card
   let imageHTML = '';
-  if (imageUrl) {
+  if (cardImageUrl) {
     imageHTML = `
-      <div class="inbox-card-image" onclick="event.stopPropagation();openFullImage('${imageUrl}')">
-        <img src="${imageUrl}" alt="Receipt" onerror="this.parentElement.classList.add('no-image')">
+      <div class="inbox-card-image" onclick="event.stopPropagation();openFullImage('${imageUrl || cardImageUrl}')">
+        <img src="${cardImageUrl}" alt="Receipt" onerror="this.parentElement.classList.add('no-image')">
       </div>
     `;
   } else {
@@ -3507,7 +3510,73 @@ function getAttachmentIcon(filename) {
 }
 
 function openFullImage(src) {
-  window.open(src, '_blank');
+  if (!src) return;
+
+  // Create fullscreen modal viewer
+  const existingModal = document.getElementById('fullscreen-image-modal');
+  if (existingModal) existingModal.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'fullscreen-image-modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+  `;
+
+  modal.innerHTML = `
+    <img src="${src}" alt="Receipt" style="
+      max-width: 95vw;
+      max-height: 95vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+    " onclick="event.stopPropagation()">
+    <button onclick="this.parentElement.remove()" style="
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255,255,255,0.9);
+      border: none;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">×</button>
+    <a href="${src}" target="_blank" onclick="event.stopPropagation()" style="
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: var(--accent);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+    ">Open in New Tab</a>
+  `;
+
+  modal.onclick = () => modal.remove();
+  document.addEventListener('keydown', function escHandler(e) {
+    if (e.key === 'Escape') {
+      modal.remove();
+      document.removeEventListener('keydown', escHandler);
+    }
+  });
+
+  document.body.appendChild(modal);
 }
 
 // View mode toggle

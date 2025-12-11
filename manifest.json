@@ -1,34 +1,189 @@
 {
-  "name": "Tallyups",
+  "name": "Tallyups - Receipt Scanner",
   "short_name": "Tallyups",
-  "description": "Expense tracking and receipt management",
+  "description": "AI-powered expense tracking. Scan receipts, track expenses, manage contacts.",
   "start_url": "/scanner",
+  "id": "/scanner",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#000000",
   "theme_color": "#00ff88",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "categories": ["finance", "productivity", "business"],
+  "iarc_rating_id": "",
   "icons": [
+    {
+      "src": "/static/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/static/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/static/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["finance", "productivity"],
   "shortcuts": [
     {
       "name": "Scan Receipt",
       "short_name": "Scan",
       "description": "Open camera to scan a receipt",
       "url": "/scanner?action=scan",
-      "icons": [{ "src": "/static/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/static/shortcut-scan.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Inbox",
+      "short_name": "Inbox",
+      "description": "View incoming receipts from email",
+      "url": "/incoming",
+      "icons": [
+        {
+          "src": "/static/shortcut-inbox.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Library",
+      "short_name": "Library",
+      "description": "Browse all transactions and receipts",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/static/shortcut-library.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Contacts",
+      "short_name": "Contacts",
+      "description": "Manage business contacts",
+      "url": "/contacts",
+      "icons": [
+        {
+          "src": "/static/shortcut-contacts.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/screenshot-scanner.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Receipt Scanner"
+    },
+    {
+      "src": "/static/screenshot-library.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Transaction Library"
+    }
+  ],
+  "related_applications": [],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "share_target": {
+    "action": "/scanner/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "receipt",
+          "accept": ["image/*", "application/pdf"]
+        }
+      ],
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+receipt",
+      "url": "/scanner?receipt=%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/scanner/open",
+      "accept": {
+        "image/*": [".jpg", ".jpeg", ".png", ".heic", ".webp"],
+        "application/pdf": [".pdf"]
+      }
     }
   ]
 }

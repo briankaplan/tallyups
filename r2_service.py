@@ -70,7 +70,8 @@ def upload_to_r2(local_path: Path, key: str = None) -> tuple[bool, str]:
 
         http_code = result.stdout.strip()
 
-        if http_code == '200':
+        # Accept both 200 (OK) and 201 (Created) as success
+        if http_code in ('200', '201'):
             public_url = f"{R2_PUBLIC_URL}/{key}"
             return True, public_url
         else:
@@ -102,6 +103,100 @@ def upload_receipt_and_get_url(local_path: Path) -> str:
     else:
         print(f"R2 upload failed: {result}")
         return None
+
+
+def generate_thumbnail(image_path: Path, max_size: int = 300) -> Path:
+    """
+    Generate a thumbnail from an image file.
+
+    Args:
+        image_path: Path to the source image
+        max_size: Maximum dimension (width or height) for thumbnail
+
+    Returns:
+        Path to the generated thumbnail, or None if failed
+    """
+    try:
+        from PIL import Image
+
+        image_path = Path(image_path)
+        if not image_path.exists():
+            return None
+
+        # Open and resize image
+        img = Image.open(image_path)
+
+        # Convert RGBA to RGB if necessary (for JPEG)
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+
+        # Calculate new dimensions maintaining aspect ratio
+        width, height = img.size
+        if width > height:
+            new_width = max_size
+            new_height = int(height * (max_size / width))
+        else:
+            new_height = max_size
+            new_width = int(width * (max_size / height))
+
+        # Resize with high quality
+        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        # Save thumbnail
+        thumb_path = image_path.parent / f"{image_path.stem}_thumb.jpg"
+        img.save(thumb_path, 'JPEG', quality=85, optimize=True)
+
+        return thumb_path
+
+    except ImportError:
+        print("PIL not available for thumbnail generation")
+        return None
+    except Exception as e:
+        print(f"Thumbnail generation failed: {e}")
+        return None
+
+
+def upload_with_thumbnail(local_path: Path, r2_key: str = None) -> tuple[str, str]:
+    """
+    Upload an image to R2 along with its thumbnail.
+
+    Args:
+        local_path: Path to the source image
+        r2_key: R2 key for the full image (thumbnail gets _thumb suffix)
+
+    Returns:
+        (full_url, thumbnail_url) - URLs for both images, None if upload failed
+    """
+    local_path = Path(local_path)
+
+    # Upload full image
+    success, full_url = upload_to_r2(local_path, r2_key)
+    if not success:
+        return None, None
+
+    # Generate and upload thumbnail
+    thumb_path = generate_thumbnail(local_path)
+    thumb_url = None
+
+    if thumb_path:
+        # Create thumbnail R2 key
+        if r2_key:
+            base, ext = r2_key.rsplit('.', 1) if '.' in r2_key else (r2_key, 'jpg')
+            thumb_key = f"{base}_thumb.{ext}"
+        else:
+            thumb_key = f"receipts/{local_path.stem}_thumb.jpg"
+
+        success, thumb_result = upload_to_r2(thumb_path, thumb_key)
+        if success:
+            thumb_url = thumb_result
+
+        # Clean up local thumbnail
+        try:
+            thumb_path.unlink()
+        except OSError:
+            pass
+
+    return full_url, thumb_url
 
 
 # Quick status check
