@@ -519,7 +519,7 @@ from auth import (
     verify_password, verify_pin, SECRET_KEY, SESSION_TIMEOUT,
     LOGIN_PAGE_HTML, PIN_PAGE_HTML, AUTH_PIN
 )
-from flask import session, redirect, url_for, render_template_string
+from flask import session, redirect, url_for, render_template_string, render_template
 
 app.secret_key = SECRET_KEY
 # Only require HTTPS cookies in production (Railway sets RAILWAY_ENVIRONMENT)
@@ -2062,6 +2062,12 @@ def logout():
 def index():
     """Serve the Dashboard as the main landing page."""
     return send_from_directory(BASE_DIR, "dashboard.html")
+
+
+@app.route("/privacy")
+def privacy_policy():
+    """Serve the Privacy Policy page (public, no auth required for Google verification)."""
+    return render_template("privacy.html")
 
 
 @app.route("/dashboard")
