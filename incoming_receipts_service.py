@@ -2,12 +2,19 @@
 """
 Incoming Receipts Service
 Monitors Gmail for new receipts and intelligently filters out marketing emails
+
+OPTIMIZED FOR RAILWAY:
+- Uses PyMuPDF (fitz) for PDF conversion - pure Python, no external deps
+- All receipt images uploaded to R2 with thumbnails
+- Fast MySQL operations with connection pooling
 """
 import pymysql
 import pymysql.cursors
 import json
 import os
 import re
+import tempfile
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from google.oauth2.credentials import Credentials
@@ -18,19 +25,183 @@ from dotenv import load_dotenv
 from PIL import Image
 from io import BytesIO
 
-# Lazy imports for optional dependencies (require system packages)
+# =============================================================================
+# PDF TO IMAGE CONVERSION - PyMuPDF (Pure Python, Railway Compatible)
+# =============================================================================
+
+def convert_pdf_to_image(pdf_bytes: bytes) -> bytes:
+    """
+    Convert PDF to JPG image using PyMuPDF (fitz).
+    Pure Python - works on Railway without external dependencies.
+
+    Returns: JPG image bytes or None if conversion fails
+    """
+    try:
+        import fitz  # PyMuPDF
+
+        # Open PDF from bytes
+        pdf_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+        if len(pdf_doc) == 0:
+            print("      ⚠️  PDF has no pages")
+            return None
+
+        # Get first page (most receipts are single page)
+        page = pdf_doc[0]
+
+        # Render at 2x resolution for clarity
+        mat = fitz.Matrix(2, 2)
+        pix = page.get_pixmap(matrix=mat)
+
+        # Convert to PIL Image
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+        # If PDF has multiple pages, append them vertically (for multi-page receipts)
+        if len(pdf_doc) > 1:
+            images = [img]
+            for i in range(1, min(len(pdf_doc), 5)):  # Max 5 pages
+                page = pdf_doc[i]
+                pix = page.get_pixmap(matrix=mat)
+                page_img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                images.append(page_img)
+
+            # Calculate total height
+            total_height = sum(im.height for im in images)
+            max_width = max(im.width for im in images)
+
+            # Create combined image
+            combined = Image.new('RGB', (max_width, total_height), 'white')
+            y_offset = 0
+            for im in images:
+                combined.paste(im, (0, y_offset))
+                y_offset += im.height
+            img = combined
+
+        pdf_doc.close()
+
+        # Convert to JPEG bytes
+        output = BytesIO()
+        img.save(output, format='JPEG', quality=90, optimize=True)
+        return output.getvalue()
+
+    except ImportError:
+        print("      ⚠️  PyMuPDF not available - install with: pip install PyMuPDF")
+        return None
+    except Exception as e:
+        print(f"      ⚠️  PDF conversion failed: {e}")
+        return None
+
+
+def convert_html_to_image(html_content: str) -> bytes:
+    """
+    Convert HTML email to image.
+    Uses simple approach: render key content as styled image.
+
+    Returns: JPG image bytes or None
+    """
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+
+        # Extract text content from HTML
+        import re
+
+        # Remove style/script tags
+        html_clean = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+        html_clean = re.sub(r'<script[^>]*>.*?</script>', '', html_clean, flags=re.DOTALL | re.IGNORECASE)
+
+        # Convert common HTML entities
+        html_clean = html_clean.replace('&nbsp;', ' ')
+        html_clean = html_clean.replace('&amp;', '&')
+        html_clean = html_clean.replace('&lt;', '<')
+        html_clean = html_clean.replace('&gt;', '>')
+        html_clean = html_clean.replace('&quot;', '"')
+        html_clean = html_clean.replace('&#39;', "'")
+
+        # Convert <br> and block elements to newlines
+        html_clean = re.sub(r'<br\s*/?>', '\n', html_clean, flags=re.IGNORECASE)
+        html_clean = re.sub(r'</(?:p|div|tr|li|h[1-6])>', '\n', html_clean, flags=re.IGNORECASE)
+
+        # Remove remaining HTML tags
+        text = re.sub(r'<[^>]+>', '', html_clean)
+
+        # Clean up whitespace
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        text = '\n'.join(lines[:100])  # Limit to 100 lines
+
+        if len(text) < 20:
+            return None
+
+        # Create image
+        width = 800
+        padding = 40
+        line_height = 20
+
+        # Calculate height based on content
+        num_lines = len(text.split('\n'))
+        height = max(400, min(2000, num_lines * line_height + padding * 2))
+
+        # Create white background
+        img = Image.new('RGB', (width, height), 'white')
+        draw = ImageDraw.Draw(img)
+
+        # Try to use a good font, fall back to default
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+        except:
+            try:
+                font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
+            except:
+                font = ImageFont.load_default()
+
+        # Draw text
+        y = padding
+        for line in text.split('\n')[:100]:
+            if y > height - padding:
+                break
+            # Truncate long lines
+            if len(line) > 90:
+                line = line[:87] + '...'
+            draw.text((padding, y), line, fill='black', font=font)
+            y += line_height
+
+        # Convert to JPEG bytes
+        output = BytesIO()
+        img.save(output, format='JPEG', quality=85)
+        return output.getvalue()
+
+    except Exception as e:
+        print(f"      ⚠️  HTML to image failed: {e}")
+        return None
+
+
+# Legacy imports for backwards compatibility
 convert_from_bytes = None
 imgkit = None
 
 def _lazy_import_pdf2image():
+    """Legacy - now uses PyMuPDF instead"""
     global convert_from_bytes
     if convert_from_bytes is None:
+        # Try PyMuPDF first (preferred)
         try:
-            from pdf2image import convert_from_bytes as _convert
+            import fitz
+            # Wrap in pdf2image-compatible interface
+            def _convert(pdf_bytes, **kwargs):
+                img_bytes = convert_pdf_to_image(pdf_bytes)
+                if img_bytes:
+                    return [Image.open(BytesIO(img_bytes))]
+                return []
             convert_from_bytes = _convert
+            print("✅ Using PyMuPDF for PDF conversion")
         except ImportError:
-            print("⚠️  pdf2image not available - PDF conversion disabled")
-            convert_from_bytes = lambda *args, **kwargs: []
+            # Fall back to pdf2image
+            try:
+                from pdf2image import convert_from_bytes as _convert
+                convert_from_bytes = _convert
+                print("⚠️  Using pdf2image (requires poppler)")
+            except ImportError:
+                print("⚠️  No PDF converter available")
+                convert_from_bytes = lambda *args, **kwargs: []
     return convert_from_bytes
 
 def _lazy_import_imgkit():
@@ -40,7 +211,7 @@ def _lazy_import_imgkit():
             import imgkit as _imgkit
             imgkit = _imgkit
         except ImportError:
-            print("⚠️  imgkit not available - HTML screenshot disabled")
+            # Not a problem - we have convert_html_to_image as fallback
             imgkit = None
     return imgkit
 
@@ -1076,17 +1247,34 @@ def convert_pdf_to_jpg(pdf_bytes, output_path):
 
 def screenshot_html_receipt(html_content, output_path):
     """
-    Convert HTML email to JPG screenshot using multiple fallback methods.
+    Convert HTML email to JPG image.
+    OPTIMIZED FOR RAILWAY: Uses pure Python methods that work without external deps.
+
+    Priority:
+    1. Pure Python text-to-image (always works)
+    2. Playwright (if available)
+    3. wkhtmltoimage (if available)
+
     Returns: path to saved JPG file
     """
-    # Ensure output is PNG for better quality, then convert to JPG
+    # Method 1: Pure Python - ALWAYS WORKS on Railway
+    try:
+        img_bytes = convert_html_to_image(html_content)
+        if img_bytes:
+            with open(output_path, 'wb') as f:
+                f.write(img_bytes)
+            print(f"      ✓ HTML to image (pure Python): {output_path}")
+            return output_path
+    except Exception as e:
+        print(f"      ⚠️  Pure Python HTML conversion failed: {e}")
+
+    # Method 2: Try Playwright (best quality, but may not be installed)
     png_path = output_path.replace('.jpg', '.png')
     temp_html = output_path.replace('.jpg', '_temp.html')
 
     try:
         # Save HTML to temp file
         with open(temp_html, 'w', encoding='utf-8') as f:
-            # Wrap HTML with basic styling for better rendering
             wrapped_html = f'''<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8">
@@ -1100,7 +1288,6 @@ img {{ max-width: 100%; height: auto; }}
 
         success = False
 
-        # Method 1: Try Playwright (most reliable)
         try:
             from playwright.sync_api import sync_playwright
             with sync_playwright() as p:
@@ -1113,9 +1300,9 @@ img {{ max-width: 100%; height: auto; }}
             success = True
             print(f"      ✓ Screenshot via Playwright: {output_path}")
         except Exception as e1:
-            print(f"      ⚠️  Playwright failed: {e1}")
+            pass  # Silent fail - pure Python method above is the primary
 
-        # Method 2: Try wkhtmltoimage if available
+        # Method 3: Try wkhtmltoimage if available
         if not success:
             try:
                 import subprocess
@@ -1124,19 +1311,8 @@ img {{ max-width: 100%; height: auto; }}
                 if result.returncode == 0:
                     success = True
                     print(f"      ✓ Screenshot via wkhtmltoimage: {output_path}")
-            except Exception as e2:
-                print(f"      ⚠️  wkhtmltoimage failed: {e2}")
-
-        # Method 3: Try imgkit as last resort
-        if not success:
-            try:
-                _imgkit = _lazy_import_imgkit()
-                if _imgkit:
-                    _imgkit.from_file(temp_html, png_path)
-                    success = True
-                    print(f"      ✓ Screenshot via imgkit: {output_path}")
-            except Exception as e3:
-                print(f"      ⚠️  imgkit failed: {e3}")
+            except Exception:
+                pass
 
         # Convert PNG to JPG if successful
         if success and os.path.exists(png_path):
@@ -1548,6 +1724,29 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                         img_base64 = base64.b64encode(att_data).decode('utf-8')
 
                                     if img_base64:
+                                        # ALWAYS upload image to R2 first (even before vision analysis)
+                                        if img_bytes and not receipt_image_url:
+                                            try:
+                                                from r2_service import upload_with_thumbnail, R2_ENABLED
+                                                if R2_ENABLED:
+                                                    import uuid
+                                                    r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
+                                                    # Save temp file for upload
+                                                    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                                                        tmp.write(img_bytes)
+                                                        tmp_path = tmp.name
+                                                    full_url, thumb_url = upload_with_thumbnail(tmp_path, r2_key)
+                                                    os.unlink(tmp_path)
+                                                    if full_url:
+                                                        receipt_image_url = full_url
+                                                        thumbnail_url = thumb_url
+                                                        print(f"      ☁️  Uploaded to R2: {r2_key}")
+                                                        if thumb_url:
+                                                            print(f"      🖼️  Thumbnail: {thumb_url}")
+                                            except Exception as r2_err:
+                                                print(f"      ⚠️  R2 upload failed: {r2_err}")
+
+                                        # Now try vision analysis (optional - image is already saved)
                                         v_merchant, v_amount, v_desc, v_sub, v_is_receipt, v_cat, v_notes = analyze_image_with_vision(
                                             img_base64, subject_hint=subject, from_hint=from_email_clean
                                         )
@@ -1560,34 +1759,13 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                             if v_notes:
                                                 print(f"      📝 Notes: {v_notes}")
 
-                                            # Upload image to R2 for preview (with thumbnail)
-                                            if img_bytes:
-                                                try:
-                                                    from r2_service import upload_with_thumbnail, R2_ENABLED
-                                                    if R2_ENABLED:
-                                                        import uuid
-                                                        r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
-                                                        # Save temp file for upload
-                                                        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
-                                                            tmp.write(img_bytes)
-                                                            tmp_path = tmp.name
-                                                        full_url, thumb_url = upload_with_thumbnail(tmp_path, r2_key)
-                                                        os.unlink(tmp_path)
-                                                        if full_url:
-                                                            receipt_image_url = full_url
-                                                            thumbnail_url = thumb_url
-                                                            print(f"      ☁️  Uploaded to R2: {r2_key}")
-                                                            if thumb_url:
-                                                                print(f"      🖼️  Thumbnail: {thumb_url}")
-                                                except Exception as r2_err:
-                                                    print(f"      ⚠️  R2 upload failed: {r2_err}")
-
-                                            break  # Use first successful attachment
+                                        break  # Use first successful attachment (image already uploaded)
                             except Exception as e:
                                 print(f"      ⚠️  Attachment analysis failed: {e}")
 
-                # PRIORITY 2: Try Vision AI on HTML email screenshot
-                if not vision_merchant and not vision_amount:
+                # PRIORITY 2: HTML screenshot - ALWAYS generate if no image yet
+                # Generate HTML screenshot for preview even if we don't need vision analysis
+                if not receipt_image_url:
                     # Check if we have HTML content
                     def get_html_body(payload):
                         """Extract HTML body from email payload"""
@@ -1597,11 +1775,15 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                     data = part.get('body', {}).get('data', '')
                                     if data:
                                         return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                        # Also check direct body
+                        body = payload.get('body', {})
+                        if body.get('data') and payload.get('mimeType') == 'text/html':
+                            return base64.urlsafe_b64decode(body['data']).decode('utf-8', errors='ignore')
                         return None
 
                     html_body = get_html_body(msg_data.get('payload', {}))
-                    if html_body and len(html_body) > 200:  # Substantial HTML content
-                        print(f"      📸 Taking HTML screenshot for Vision analysis...")
+                    if html_body and len(html_body) > 100:  # Reduced threshold for more coverage
+                        print(f"      📸 Generating HTML receipt image...")
                         try:
                             import tempfile
                             with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
@@ -1609,22 +1791,9 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                 if screenshot_path and os.path.exists(screenshot_path):
                                     with open(screenshot_path, 'rb') as f:
                                         img_bytes = f.read()
-                                    img_base64 = base64.b64encode(img_bytes).decode('utf-8')
 
-                                    v_merchant, v_amount, v_desc, v_sub, v_is_receipt, v_cat, v_notes = analyze_image_with_vision(
-                                        img_base64, subject_hint=subject, from_hint=from_email_clean
-                                    )
-                                    if v_merchant or v_amount:
-                                        vision_merchant = v_merchant
-                                        vision_amount = v_amount
-                                        vision_category = v_cat
-                                        ai_notes = v_notes
-                                        print(f"      👁️  Vision (HTML): {v_merchant} ${v_amount} ({v_cat})")
-                                        if v_notes:
-                                            print(f"      📝 Notes: {v_notes}")
-
-                                    # Upload HTML screenshot to R2 for preview (with thumbnail)
-                                    if img_bytes and not receipt_image_url:
+                                    # ALWAYS upload to R2 first (preview image)
+                                    if img_bytes:
                                         try:
                                             from r2_service import upload_with_thumbnail, R2_ENABLED
                                             if R2_ENABLED:
@@ -1639,6 +1808,24 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                                         print(f"      🖼️  Thumbnail: {thumb_url}")
                                         except Exception as r2_err:
                                             print(f"      ⚠️  R2 upload failed: {r2_err}")
+
+                                    # Try vision analysis only if we don't have merchant/amount yet
+                                    if not vision_merchant and not vision_amount:
+                                        try:
+                                            img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+                                            v_merchant, v_amount, v_desc, v_sub, v_is_receipt, v_cat, v_notes = analyze_image_with_vision(
+                                                img_base64, subject_hint=subject, from_hint=from_email_clean
+                                            )
+                                            if v_merchant or v_amount:
+                                                vision_merchant = v_merchant
+                                                vision_amount = v_amount
+                                                vision_category = v_cat
+                                                ai_notes = v_notes
+                                                print(f"      👁️  Vision (HTML): {v_merchant} ${v_amount} ({v_cat})")
+                                                if v_notes:
+                                                    print(f"      📝 Notes: {v_notes}")
+                                        except Exception as vis_err:
+                                            print(f"      ⚠️  Vision analysis skipped: {vis_err}")
 
                                     # Clean up temp file
                                     os.unlink(screenshot_path)

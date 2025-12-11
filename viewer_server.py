@@ -18386,6 +18386,290 @@ def get_incoming_stats():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/generate-images", methods=["POST"])
+def generate_incoming_images():
+    """
+    Generate and upload images for pending incoming receipts that are missing receipt_image_url.
+    This fixes the inbox preview by downloading attachments or screenshotting HTML emails.
+
+    Params:
+        limit: Max receipts to process (default 50)
+        admin_key: Required for API access
+
+    Pure Python implementation - works on Railway.
+    """
+    import traceback
+    import tempfile
+    import base64
+
+    # Check auth
+    admin_key = request.json.get('admin_key') if request.json else request.args.get('admin_key')
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not expected_key or admin_key != expected_key:
+        if not session.get('logged_in'):
+            return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    limit = int(request.json.get('limit', 50) if request.json else request.args.get('limit', 50))
+
+    try:
+        conn, db_type = get_db_connection()
+
+        # Find pending receipts without images
+        cursor = db_execute(conn, db_type, '''
+            SELECT id, email_id, gmail_account, subject, attachments, from_email
+            FROM incoming_receipts
+            WHERE status = 'pending'
+            AND (receipt_image_url IS NULL OR receipt_image_url = '')
+            AND email_id IS NOT NULL
+            AND gmail_account IS NOT NULL
+            ORDER BY received_date DESC
+            LIMIT %s
+        ''', (limit,))
+        rows = cursor.fetchall()
+
+        if not rows:
+            return_db_connection(conn)
+            return jsonify({
+                'ok': True,
+                'message': 'All pending receipts already have images!',
+                'processed': 0,
+                'success': 0,
+                'failed': 0
+            })
+
+        print(f"🖼️  Generating images for {len(rows)} pending receipts...")
+
+        # Import dependencies
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+        from PIL import Image
+        from io import BytesIO
+        import fitz  # PyMuPDF
+        import json
+
+        def _get_gmail_service(account_email):
+            """Get Gmail service for account"""
+            creds, error = get_gmail_credentials_with_autorefresh(account_email)
+            if error or not creds:
+                return None
+            try:
+                return build('gmail', 'v1', credentials=creds)
+            except Exception:
+                return None
+
+        def _download_attachment(service, message_id, attachment_id):
+            """Download attachment from Gmail"""
+            try:
+                attachment = service.users().messages().attachments().get(
+                    userId='me', messageId=message_id, id=attachment_id
+                ).execute()
+                return base64.urlsafe_b64decode(attachment['data'].encode('UTF-8'))
+            except Exception:
+                return None
+
+        def _pdf_to_jpg(pdf_bytes):
+            """Convert PDF to JPG using PyMuPDF"""
+            try:
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                if len(doc) == 0:
+                    return None
+                page = doc[0]
+                mat = fitz.Matrix(2, 2)  # 2x resolution
+                pix = page.get_pixmap(matrix=mat)
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                doc.close()
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=90)
+                return output.getvalue()
+            except Exception:
+                return None
+
+        def _html_to_image(html_content):
+            """Convert HTML to image using PIL"""
+            try:
+                from PIL import Image, ImageDraw, ImageFont
+                import re
+
+                # Strip HTML tags
+                text = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+                text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
+                text = text.replace('&nbsp;', ' ').replace('&amp;', '&')
+                text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+                text = re.sub(r'</(?:p|div|tr|li)>', '\n', text, flags=re.IGNORECASE)
+                text = re.sub(r'<[^>]+>', '', text)
+
+                lines = [line.strip() for line in text.split('\n') if line.strip()]
+                text = '\n'.join(lines[:80])
+                if len(text) < 20:
+                    return None
+
+                width, height = 800, max(400, min(1600, len(lines) * 20 + 80))
+                img = Image.new('RGB', (width, height), 'white')
+                draw = ImageDraw.Draw(img)
+
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+                except:
+                    font = ImageFont.load_default()
+
+                y = 40
+                for line in text.split('\n')[:80]:
+                    if y > height - 40:
+                        break
+                    draw.text((40, y), line[:90], fill='black', font=font)
+                    y += 20
+
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=85)
+                return output.getvalue()
+            except Exception:
+                return None
+
+        def _get_email_html(service, message_id):
+            """Get HTML body from email"""
+            try:
+                msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
+                payload = msg.get('payload', {})
+
+                def extract_html(p):
+                    if p.get('mimeType') == 'text/html':
+                        data = p.get('body', {}).get('data', '')
+                        if data:
+                            return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                    if 'parts' in p:
+                        for part in p['parts']:
+                            result = extract_html(part)
+                            if result:
+                                return result
+                    return None
+
+                return extract_html(payload)
+            except Exception:
+                return None
+
+        # Process each receipt
+        processed = 0
+        success = 0
+        failed = 0
+        results = []
+
+        from r2_service import upload_with_thumbnail, R2_ENABLED
+
+        for row in rows:
+            receipt_id = row['id']
+            email_id = row['email_id']
+            gmail_account = row['gmail_account']
+            subject = row['subject'] or 'Unknown'
+            attachments_str = row.get('attachments', '[]')
+
+            print(f"   📧 Processing: {subject[:40]}...")
+            processed += 1
+
+            try:
+                service = _get_gmail_service(gmail_account)
+                if not service:
+                    print(f"      ⚠️ Could not get Gmail service for {gmail_account}")
+                    failed += 1
+                    results.append({'id': receipt_id, 'status': 'failed', 'error': 'Gmail auth failed'})
+                    continue
+
+                img_bytes = None
+                source = None
+
+                # Try attachments first
+                try:
+                    attachments = json.loads(attachments_str) if attachments_str else []
+                except:
+                    attachments = []
+
+                for att in attachments:
+                    filename = att.get('filename', '').lower()
+                    att_id = att.get('attachment_id', '')
+                    if not att_id:
+                        continue
+
+                    if filename.endswith(('.pdf', '.jpg', '.jpeg', '.png', '.gif')):
+                        print(f"      📎 Downloading: {filename}")
+                        data = _download_attachment(service, email_id, att_id)
+                        if data:
+                            if filename.endswith('.pdf'):
+                                img_bytes = _pdf_to_jpg(data)
+                                source = 'pdf'
+                            else:
+                                img_bytes = data
+                                source = 'image'
+                            if img_bytes:
+                                break
+
+                # If no attachment image, try HTML screenshot
+                if not img_bytes:
+                    print(f"      📸 Taking HTML screenshot...")
+                    html = _get_email_html(service, email_id)
+                    if html and len(html) > 100:
+                        img_bytes = _html_to_image(html)
+                        source = 'html'
+
+                if not img_bytes:
+                    print(f"      ⚠️ Could not generate image")
+                    failed += 1
+                    results.append({'id': receipt_id, 'status': 'failed', 'error': 'No image generated'})
+                    continue
+
+                # Upload to R2
+                if R2_ENABLED:
+                    import uuid
+                    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                        tmp.write(img_bytes)
+                        tmp_path = tmp.name
+
+                    r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
+                    full_url, thumb_url = upload_with_thumbnail(tmp_path, r2_key)
+                    os.unlink(tmp_path)
+
+                    if full_url:
+                        # Update database
+                        db_execute(conn, db_type, '''
+                            UPDATE incoming_receipts
+                            SET receipt_image_url = %s, thumbnail_url = %s
+                            WHERE id = %s
+                        ''', (full_url, thumb_url, receipt_id))
+                        conn.commit()
+
+                        print(f"      ✅ Uploaded ({source}): {r2_key}")
+                        success += 1
+                        results.append({'id': receipt_id, 'status': 'success', 'source': source, 'url': full_url})
+                    else:
+                        print(f"      ⚠️ R2 upload failed")
+                        failed += 1
+                        results.append({'id': receipt_id, 'status': 'failed', 'error': 'R2 upload failed'})
+                else:
+                    print(f"      ⚠️ R2 not enabled")
+                    failed += 1
+                    results.append({'id': receipt_id, 'status': 'failed', 'error': 'R2 not enabled'})
+
+            except Exception as e:
+                print(f"      ⚠️ Error: {e}")
+                failed += 1
+                results.append({'id': receipt_id, 'status': 'failed', 'error': str(e)})
+
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'message': f'Generated images for {success} receipts',
+            'processed': processed,
+            'success': success,
+            'failed': failed,
+            'results': results[:20]  # First 20 results
+        })
+
+    except Exception as e:
+        print(f"❌ Error generating images: {e}")
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/admin/cleanup-broken-receipt-urls", methods=["POST"])
 def cleanup_broken_receipt_urls():
     """
