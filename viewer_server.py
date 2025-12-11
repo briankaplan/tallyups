@@ -2076,6 +2076,240 @@ def terms_of_service():
     return render_template("terms.html")
 
 
+@app.route("/demo")
+def demo_page():
+    """Serve the demo landing page (public, for Google OAuth review)."""
+    return render_template("demo.html")
+
+
+@app.route("/auth/google")
+def auth_google_start():
+    """Start Google OAuth flow for new users."""
+    import secrets
+    from urllib.parse import urlencode
+
+    # OAuth configuration - credentials from environment
+    client_id = os.getenv('GOOGLE_CLIENT_ID')
+    if not client_id:
+        return "GOOGLE_CLIENT_ID environment variable not set", 500
+
+    # Determine redirect URI based on environment
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        redirect_uri = 'https://tallyups.com/auth/google/callback'
+    else:
+        redirect_uri = 'http://localhost:5050/auth/google/callback'
+
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    session['oauth_state'] = state
+
+    # Scopes we need
+    scopes = [
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/gmail.modify',
+        'https://www.googleapis.com/auth/gmail.labels',
+        'https://www.googleapis.com/auth/contacts.readonly',
+        'https://www.googleapis.com/auth/calendar.readonly',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+    ]
+
+    auth_params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'scope': ' '.join(scopes),
+        'state': state,
+        'access_type': 'offline',
+        'prompt': 'consent',
+    }
+
+    auth_url = f"https://accounts.google.com/o/oauth2/auth?{urlencode(auth_params)}"
+    return redirect(auth_url)
+
+
+@app.route("/auth/google/callback")
+def auth_google_callback():
+    """Handle Google OAuth callback."""
+    import requests
+
+    # Verify state
+    state = request.args.get('state')
+    if state != session.get('oauth_state'):
+        return render_template_string('''
+            <h1>Authentication Error</h1>
+            <p>Invalid state parameter. Please try again.</p>
+            <a href="/demo">Back to Home</a>
+        '''), 400
+
+    # Check for errors
+    error = request.args.get('error')
+    if error:
+        return render_template_string('''
+            <h1>Authentication Cancelled</h1>
+            <p>{{ error }}</p>
+            <a href="/demo">Back to Home</a>
+        ''', error=error), 400
+
+    # Get authorization code
+    code = request.args.get('code')
+    if not code:
+        return render_template_string('''
+            <h1>Authentication Error</h1>
+            <p>No authorization code received.</p>
+            <a href="/demo">Back to Home</a>
+        '''), 400
+
+    # Exchange code for tokens - credentials from environment
+    client_id = os.getenv('GOOGLE_CLIENT_ID')
+    client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
+    if not client_id or not client_secret:
+        return "Google OAuth credentials not configured", 500
+
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        redirect_uri = 'https://tallyups.com/auth/google/callback'
+    else:
+        redirect_uri = 'http://localhost:5050/auth/google/callback'
+
+    token_response = requests.post('https://oauth2.googleapis.com/token', data={
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'code': code,
+        'grant_type': 'authorization_code',
+        'redirect_uri': redirect_uri,
+    })
+
+    if token_response.status_code != 200:
+        return render_template_string('''
+            <h1>Authentication Error</h1>
+            <p>Failed to exchange authorization code.</p>
+            <a href="/demo">Back to Home</a>
+        '''), 400
+
+    tokens = token_response.json()
+
+    # Get user info
+    userinfo_response = requests.get(
+        'https://www.googleapis.com/oauth2/v2/userinfo',
+        headers={'Authorization': f"Bearer {tokens['access_token']}"}
+    )
+
+    if userinfo_response.status_code == 200:
+        userinfo = userinfo_response.json()
+        email = userinfo.get('email', 'Unknown')
+        name = userinfo.get('name', email)
+    else:
+        email = 'Unknown'
+        name = 'User'
+
+    # Store in session
+    session['user_email'] = email
+    session['user_name'] = name
+    session['authenticated'] = True
+    session['oauth_tokens'] = tokens
+
+    # Redirect to success page
+    return redirect('/auth/success')
+
+
+@app.route("/auth/success")
+def auth_success():
+    """Show OAuth success page."""
+    email = session.get('user_email', 'Unknown')
+    name = session.get('user_name', 'User')
+
+    return render_template_string('''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connected - Tallyups</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card {
+            background: white;
+            padding: 50px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #34a853, #0f9d58);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 40px;
+            color: white;
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        .email { color: #667eea; font-size: 1.1rem; margin-bottom: 25px; }
+        .features {
+            text-align: left;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        .features h3 { color: #333; margin-bottom: 15px; }
+        .features li {
+            color: #555;
+            padding: 8px 0;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .features li::before { content: "✓"; color: #34a853; font-weight: bold; }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .btn:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="success-icon">✓</div>
+        <h1>Welcome, {{ name }}!</h1>
+        <p class="email">{{ email }}</p>
+
+        <div class="features">
+            <h3>Your Gmail is now connected</h3>
+            <ul>
+                <li>Scanning inbox for receipts</li>
+                <li>Auto-detecting merchants</li>
+                <li>Matching to transactions</li>
+                <li>Organizing expense data</li>
+            </ul>
+        </div>
+
+        <a href="/incoming" class="btn">View Your Receipts</a>
+    </div>
+</body>
+</html>
+    ''', name=name, email=email)
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
