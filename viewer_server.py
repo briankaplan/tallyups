@@ -16297,6 +16297,35 @@ def accept_incoming_receipt():
                     trans_date = f"{year}-{month_map.get(month_str, '01')}-{day.zfill(2)}"
         business_type = data.get('business_type', 'Personal')
 
+        # Infer business type from category/merchant if not explicitly set
+        if business_type == 'Personal':
+            incoming_cat = receipt_data.get('category', '').lower()
+            merchant_lower = merchant.lower() if merchant else ''
+            from_email_str = receipt_data.get('from_email', '').lower()
+
+            # Software/SaaS subscriptions are typically business (EM.co or Down Home)
+            saas_keywords = ['subscription', 'software', 'api', 'cloud', 'hosting', 'service']
+            saas_merchants = ['anthropic', 'openai', 'midjourney', 'stripe', 'railway', 'render',
+                            'vercel', 'netlify', 'github', 'gitlab', 'aws', 'azure', 'google cloud',
+                            'digitalocean', 'heroku', 'supabase', 'firebase', 'twilio', 'sendgrid',
+                            'mailchimp', 'zapier', 'notion', 'slack', 'zoom', 'figma', 'canva',
+                            'adobe', 'microsoft', 'dropbox', 'replit', 'cursor', 'taskade', 'ideogram',
+                            'runway', 'suno', 'pika', 'kodu', 'rostr', 'chartmetric', 'calendarbridge']
+
+            if any(kw in incoming_cat for kw in saas_keywords) or any(m in merchant_lower for m in saas_merchants):
+                business_type = 'EM.co'  # Tech/SaaS defaults to EM.co
+            # Music industry merchants go to Music City Rodeo
+            elif any(m in merchant_lower for m in ['spotify', 'distrokid', 'tunecore', 'cd baby', 'bandcamp', 'soundcloud']):
+                business_type = 'Music City Rodeo'
+            # Down Home for production/studio expenses
+            elif any(m in merchant_lower for m in ['guitar center', 'sweetwater', 'sam ash', 'musician']):
+                business_type = 'Down Home'
+            # Check from_email domain for business hints
+            elif 'downhome.com' in from_email_str:
+                business_type = 'Down Home'
+            elif 'musiccityrodeo.com' in from_email_str:
+                business_type = 'Music City Rodeo'
+
         # Validate we have minimum required data
         if not merchant:
             merchant = "Unknown Merchant"
@@ -16446,6 +16475,12 @@ def accept_incoming_receipt():
             match_type = 'needs_receipt'
             print(f"   📎 Found existing transaction #{matched_transaction_id} without receipt")
 
+        # Extract additional fields from incoming receipt for proper mapping
+        is_refund = data.get('is_refund', False) or get_col('is_refund', False)
+        is_subscription = get_col('is_subscription', False)
+        incoming_category = get_col('category', '')
+        from_domain = get_col('from_domain', '')
+
         # Separate R2 URLs from local file paths
         r2_urls = [f for f in receipt_files if f.startswith('http')]
         local_files = [f for f in receipt_files if not f.startswith('http')]
@@ -16492,9 +16527,11 @@ def accept_incoming_receipt():
                 INSERT INTO transactions (
                     _index, chase_description, chase_amount, chase_date,
                     business_type, review_status, notes,
-                    receipt_file, receipt_url, source
-                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, 'incoming_receipt')
-            ''', (next_index, merchant, amount, trans_date, business_type, notes_text, receipt_file_str, receipt_url_str))
+                    receipt_file, receipt_url, source,
+                    is_refund, is_subscription, incoming_category, from_domain
+                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, 'incoming_receipt', ?, ?, ?, ?)
+            ''', (next_index, merchant, amount, trans_date, business_type, notes_text, receipt_file_str, receipt_url_str,
+                  is_refund, is_subscription, incoming_category, from_domain))
 
             transaction_id = next_index
             action = 'created'
@@ -16534,7 +16571,11 @@ def accept_incoming_receipt():
                 'notes': notes_text,
                 'Receipt File': receipt_file_str,
                 'receipt_url': receipt_url_str,
-                'source': 'incoming_receipt'
+                'source': 'incoming_receipt',
+                'is_refund': is_refund,
+                'is_subscription': is_subscription,
+                'incoming_category': incoming_category,
+                'from_domain': from_domain
             }
             # Add missing columns with empty values
             for col in df.columns:

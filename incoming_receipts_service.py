@@ -899,6 +899,11 @@ def find_matching_transaction(merchant, amount, transaction_date):
     """
     Check if a similar transaction already exists in the database (MySQL)
     Returns: (transaction_id, has_receipt, needs_receipt)
+
+    Enhanced matching logic:
+    1. First tries to match by amount + date range (strongest signal for subscriptions)
+    2. Falls back to merchant name + date range
+    3. Scores matches to pick the best one
     """
     if not merchant:
         return None, False, False
@@ -919,33 +924,61 @@ def find_matching_transaction(merchant, amount, transaction_date):
         date_min = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
         date_max = datetime.now().strftime('%Y-%m-%d')
 
-    # Search by merchant name similarity (MySQL uses %s placeholders)
-    merchant_pattern = f'%{merchant}%'
+    # FIRST: Try exact amount match within date range (best for subscriptions)
+    best_match = None
+    if amount and amount > 0:
+        cursor.execute('''
+            SELECT _index, chase_description, chase_amount, chase_date, receipt_file
+            FROM transactions
+            WHERE ABS(chase_amount - %s) < 0.02
+              AND chase_date BETWEEN %s AND %s
+            ORDER BY ABS(DATEDIFF(chase_date, %s)) ASC
+            LIMIT 5
+        ''', (amount, date_min, date_max, transaction_date or date_max))
 
-    cursor.execute('''
-        SELECT id, chase_description, chase_amount, chase_date, receipt_file
-        FROM transactions
-        WHERE chase_description LIKE %s
-          AND chase_date BETWEEN %s AND %s
-        ORDER BY chase_date DESC
-        LIMIT 1
-    ''', (merchant_pattern, date_min, date_max))
+        amount_matches = cursor.fetchall()
+        for match in amount_matches:
+            match_desc = str(match['chase_description'] or '').lower()
+            merchant_lower = merchant.lower()
+            # Check if merchant name is somewhat similar
+            if merchant_lower in match_desc or match_desc in merchant_lower:
+                best_match = match
+                break
+            # Check for common words
+            merchant_words = set(merchant_lower.split())
+            desc_words = set(match_desc.split())
+            if merchant_words & desc_words:  # Any common words
+                best_match = match
+                break
 
-    result = cursor.fetchone()
+    # SECOND: Try merchant name match if no amount match
+    if not best_match:
+        merchant_pattern = f'%{merchant}%'
+        cursor.execute('''
+            SELECT _index, chase_description, chase_amount, chase_date, receipt_file
+            FROM transactions
+            WHERE chase_description LIKE %s
+              AND chase_date BETWEEN %s AND %s
+            ORDER BY chase_date DESC
+            LIMIT 1
+        ''', (merchant_pattern, date_min, date_max))
+        best_match = cursor.fetchone()
+
     conn.close()
 
-    if result:
+    if best_match:
         # DictCursor returns dict, so access by key
-        trans_id = result['id']
-        trans_amount = result['chase_amount']
-        receipt_file = result.get('receipt_file', '')
+        trans_id = best_match['_index']
+        trans_amount = best_match['chase_amount']
+        receipt_file = best_match.get('receipt_file', '')
         has_receipt = receipt_file and str(receipt_file).strip() != ''
 
-        # Check amount match (within 10%)
+        # Check amount match (within 5% or $0.50 for small amounts)
         amount_match = False
         if amount and trans_amount:
-            diff_pct = abs(amount - float(trans_amount)) / float(trans_amount) * 100
-            amount_match = diff_pct < 10
+            diff = abs(amount - float(trans_amount))
+            diff_pct = diff / max(float(trans_amount), 0.01) * 100
+            amount_match = diff_pct < 5 or diff < 0.50
 
         return trans_id, has_receipt, (not has_receipt and amount_match)
 
