@@ -1499,7 +1499,7 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                 vision_amount = None
                 vision_category = None
                 ai_notes = None
-                preview_url = None
+                receipt_image_url = None
 
                 # PRIORITY 1: Try Vision AI on attachments (PDF/image) - MOST ACCURATE
                 if has_attachment:
@@ -1514,6 +1514,7 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                 )
                                 if att_data:
                                     # Convert to base64 for Vision API
+                                    img_bytes = None
                                     if filename.endswith('.pdf'):
                                         # Convert PDF to JPG first
                                         import tempfile
@@ -1521,11 +1522,13 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                             jpg_path = convert_pdf_to_jpg(att_data, tmp.name)
                                             if jpg_path:
                                                 with open(jpg_path, 'rb') as f:
-                                                    img_base64 = base64.b64encode(f.read()).decode('utf-8')
+                                                    img_bytes = f.read()
+                                                img_base64 = base64.b64encode(img_bytes).decode('utf-8')
                                                 os.unlink(jpg_path)
                                             else:
                                                 img_base64 = None
                                     else:
+                                        img_bytes = att_data
                                         img_base64 = base64.b64encode(att_data).decode('utf-8')
 
                                     if img_base64:
@@ -1540,6 +1543,26 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                             print(f"      👁️  Vision: {v_merchant} ${v_amount} ({v_cat})")
                                             if v_notes:
                                                 print(f"      📝 Notes: {v_notes}")
+
+                                            # Upload image to R2 for preview
+                                            if img_bytes:
+                                                try:
+                                                    from r2_service import upload_to_r2, R2_ENABLED, R2_PUBLIC_URL
+                                                    if R2_ENABLED:
+                                                        import uuid
+                                                        r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
+                                                        # Save temp file for upload
+                                                        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                                                            tmp.write(img_bytes)
+                                                            tmp_path = tmp.name
+                                                        success, result = upload_to_r2(tmp_path, r2_key)
+                                                        os.unlink(tmp_path)
+                                                        if success:
+                                                            receipt_image_url = result
+                                                            print(f"      ☁️  Uploaded to R2: {r2_key}")
+                                                except Exception as r2_err:
+                                                    print(f"      ⚠️  R2 upload failed: {r2_err}")
+
                                             break  # Use first successful attachment
                             except Exception as e:
                                 print(f"      ⚠️  Attachment analysis failed: {e}")
@@ -1656,6 +1679,7 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                     'is_subscription': is_subscription,
                     'category': category or 'receipt',  # Category for junk/marketing
                     'ai_notes': ai_notes,  # Notes from Vision AI (e.g., "Amount unclear")
+                    'receipt_image_url': receipt_image_url,  # R2 URL for preview image
                     'matched_transaction_id': match_id,
                     'match_type': match_type
                 }
@@ -1678,14 +1702,15 @@ def save_incoming_receipt(receipt_data):
     cursor = conn.cursor()
 
     try:
-        # MySQL version - includes category and ai_notes fields for Vision AI data
+        # MySQL version - includes category, ai_notes, and receipt_image_url for Vision AI data
         cursor.execute('''
             INSERT INTO incoming_receipts (
                 email_id, gmail_account, subject, from_email, from_domain,
                 received_date, body_snippet, has_attachment, attachment_count,
                 confidence_score, merchant, amount, description, is_subscription,
-                matched_transaction_id, match_type, attachments, category, ai_notes, status
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                matched_transaction_id, match_type, attachments, category, ai_notes,
+                receipt_image_url, status
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
         ''', (
             receipt_data['email_id'],
             receipt_data['gmail_account'],
@@ -1705,7 +1730,8 @@ def save_incoming_receipt(receipt_data):
             receipt_data.get('match_type', 'new'),
             receipt_data.get('attachments', '[]'),
             receipt_data.get('category', 'receipt'),
-            receipt_data.get('ai_notes')  # Vision AI notes (e.g., "Amount unclear")
+            receipt_data.get('ai_notes'),  # Vision AI notes (e.g., "Amount unclear")
+            receipt_data.get('receipt_image_url')  # R2 URL for preview image
         ))
 
         conn.commit()
@@ -2269,6 +2295,7 @@ def reprocess_pending_receipts(limit=50, skip_with_amount=True):
                 new_amount = None
                 new_notes = None
                 new_merchant = None
+                new_receipt_image_url = None
 
                 # Try to extract from PDF attachments
                 for att in attachments:
@@ -2280,17 +2307,20 @@ def reprocess_pending_receipts(limit=50, skip_with_amount=True):
                                 service, email_id, att['attachment_id'], att['filename']
                             )
                             if att_data:
+                                img_bytes = None
                                 if filename.endswith('.pdf'):
                                     # Convert PDF to JPG
                                     with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
                                         jpg_path = convert_pdf_to_jpg(att_data, tmp.name)
                                         if jpg_path and os.path.exists(jpg_path):
                                             with open(jpg_path, 'rb') as f:
-                                                img_base64 = base64.b64encode(f.read()).decode('utf-8')
+                                                img_bytes = f.read()
+                                            img_base64 = base64.b64encode(img_bytes).decode('utf-8')
                                             os.unlink(jpg_path)
                                         else:
                                             img_base64 = None
                                 else:
+                                    img_bytes = att_data
                                     img_base64 = base64.b64encode(att_data).decode('utf-8')
 
                                 if img_base64:
@@ -2305,6 +2335,25 @@ def reprocess_pending_receipts(limit=50, skip_with_amount=True):
                                     if v_notes:
                                         new_notes = v_notes
                                         print(f"      📝 Notes: {v_notes}")
+
+                                    # Upload image to R2 for preview
+                                    if img_bytes and (v_amount or v_merchant):
+                                        try:
+                                            from r2_service import upload_to_r2, R2_ENABLED
+                                            if R2_ENABLED:
+                                                import uuid
+                                                r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
+                                                with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                                                    tmp.write(img_bytes)
+                                                    tmp_path = tmp.name
+                                                success, result = upload_to_r2(tmp_path, r2_key)
+                                                os.unlink(tmp_path)
+                                                if success:
+                                                    new_receipt_image_url = result
+                                                    print(f"      ☁️ Uploaded to R2: {r2_key}")
+                                        except Exception as r2_err:
+                                            print(f"      ⚠️ R2 upload failed: {r2_err}")
+
                                     if new_amount:
                                         break  # Got what we need
                         except Exception as e:
@@ -2384,6 +2433,9 @@ def reprocess_pending_receipts(limit=50, skip_with_amount=True):
                     params.append(True)
                     updates.append('attachment_count = %s')
                     params.append(len(attachments))
+                if new_receipt_image_url:
+                    updates.append('receipt_image_url = %s')
+                    params.append(new_receipt_image_url)
 
                 if updates:
                     params.append(receipt_id)
