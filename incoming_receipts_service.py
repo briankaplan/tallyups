@@ -1507,17 +1507,63 @@ def load_gmail_service(account_email):
         env_token = os.getenv(env_key)
         if env_token:
             try:
-                token_data = json.loads(env_token)
-                print(f"   ✓ Loaded token from env {env_key}")
+                # Try base64 decode first (new format)
+                try:
+                    decoded = base64.b64decode(env_token).decode('utf-8')
+                    token_data = json.loads(decoded)
+                    print(f"   ✓ Loaded token from env {env_key} (base64)")
+                except:
+                    # Fall back to plain JSON (old format)
+                    token_data = json.loads(env_token)
+                    print(f"   ✓ Loaded token from env {env_key} (json)")
             except json.JSONDecodeError as e:
-                print(f"   ⚠️  Invalid JSON in {env_key}: {e}")
+                print(f"   ⚠️  Invalid token format in {env_key}: {e}")
 
     if not token_data:
         print(f"   ⚠️  Token not found for: {account_email}")
         return None
 
     try:
-        creds = Credentials.from_authorized_user_info(token_data)
+        creds = Credentials(
+            token=token_data.get('token'),
+            refresh_token=token_data.get('refresh_token'),
+            token_uri=token_data.get('token_uri', 'https://oauth2.googleapis.com/token'),
+            client_id=token_data.get('client_id'),
+            client_secret=token_data.get('client_secret'),
+            scopes=token_data.get('scopes')
+        )
+
+        # AUTO-REFRESH: If token is expired, refresh it automatically
+        if creds.expired or not creds.valid:
+            try:
+                from google.auth.transport.requests import Request
+                creds.refresh(Request())
+                print(f"   🔄 Token auto-refreshed for {account_email}")
+
+                # Save refreshed token back to file if we loaded from file
+                for token_dir in token_dirs:
+                    token_path = token_dir / token_file
+                    if token_path.exists():
+                        try:
+                            updated_token = {
+                                'token': creds.token,
+                                'refresh_token': creds.refresh_token,
+                                'token_uri': creds.token_uri,
+                                'client_id': creds.client_id,
+                                'client_secret': creds.client_secret,
+                                'scopes': list(creds.scopes) if creds.scopes else token_data.get('scopes'),
+                                'email': account_email
+                            }
+                            with open(token_path, 'w') as f:
+                                json.dump(updated_token, f, indent=2)
+                            print(f"   💾 Saved refreshed token to {token_path}")
+                        except Exception as save_err:
+                            print(f"   ⚠️  Could not save refreshed token: {save_err}")
+                        break
+            except Exception as refresh_err:
+                print(f"   ⚠️  Token refresh failed: {refresh_err}")
+                return None
+
         service = build('gmail', 'v1', credentials=creds)
         return service
     except Exception as e:
