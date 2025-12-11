@@ -3455,7 +3455,7 @@ function showPreview(receiptId) {
 
   // Account badge
   const accountBadgeEl = document.getElementById('preview-account-badge');
-  const gmailAccount = receipt.gmail_account || '';
+  // gmailAccount already declared above
   let accountClass = 'personal';
   let accountLabel = gmailAccount.split('@')[0] || 'Unknown';
   if (gmailAccount.includes('musiccity')) {
