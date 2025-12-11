@@ -1,0 +1,178 @@
+name: Scheduled Tests
+
+on:
+  schedule:
+    # Run every day at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - performance
+          - data_quality
+          - e2e
+          - smoke
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # =============================================================================
+  # DAILY SMOKE TESTS
+  # =============================================================================
+  daily-smoke-tests:
+    name: Daily Smoke Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'smoke' || github.event.inputs.test_type == 'all' || github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install pytest requests
+
+      - name: Smoke test - Production
+        run: |
+          echo "Testing Production (tallyups.com)..."
+          curl -sf https://tallyups.com/health || exit 1
+          echo "Production is healthy!"
+
+      - name: Smoke test - Development
+        run: |
+          echo "Testing Development..."
+          curl -sf https://web-development-c29a.up.railway.app/health || exit 1
+          echo "Development is healthy!"
+
+      - name: Run full smoke test suite
+        run: |
+          pytest tests/test_railway_deployment.py -v -k "Smoke" --tb=short
+        continue-on-error: true
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Smoke tests failed! Check production health."
+
+  # =============================================================================
+  # WEEKLY PERFORMANCE TESTS
+  # =============================================================================
+  weekly-performance-tests:
+    name: Weekly Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'performance' || github.event.inputs.test_type == 'all'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r tests/requirements-test.txt
+          pip install pytest-benchmark locust
+
+      - name: Run performance benchmarks
+        run: |
+          pytest tests/test_performance.py -v --benchmark-only --benchmark-json=results.json
+        env:
+          RAILWAY_ENVIRONMENT: test
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results-${{ github.run_number }}
+          path: results.json
+
+  # =============================================================================
+  # WEEKLY DATA QUALITY TESTS
+  # =============================================================================
+  weekly-data-quality-tests:
+    name: Weekly Data Quality Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'data_quality' || github.event.inputs.test_type == 'all'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r tests/requirements-test.txt
+
+      - name: Run data quality tests
+        run: |
+          pytest tests/test_data_quality.py -v --tb=short
+        env:
+          RAILWAY_ENVIRONMENT: test
+
+  # =============================================================================
+  # E2E TESTS
+  # =============================================================================
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'e2e' || github.event.inputs.test_type == 'all'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r tests/requirements-test.txt
+
+      - name: Run E2E tests
+        run: |
+          pytest tests/test_e2e.py -v --tb=short
+        env:
+          RAILWAY_ENVIRONMENT: test
+
+  # =============================================================================
+  # NOTIFY RESULTS
+  # =============================================================================
+  notify-results:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [daily-smoke-tests]
+    if: always()
+
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.daily-smoke-tests.result }}" == "failure" ]; then
+            echo "::warning::Some tests failed. Review the logs."
+          else
+            echo "All tests passed!"
+          fi

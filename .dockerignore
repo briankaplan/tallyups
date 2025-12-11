@@ -1,0 +1,112 @@
+# ReceiptAI Docker Ignore
+# ========================
+# Files to exclude from Docker build context
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local configuration
+.env
+.env.local
+.env.*.local
+*.local.json
+
+# Credentials (never include in Docker image!)
+config/credentials.json
+config/*.pickle
+*.pickle
+*token*.json
+*token*.pickle
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+logs/
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Large data files
+data/
+archive/
+heic_conversions/
+*.csv
+*.json
+!package.json
+!package-lock.json
+
+# Test artifacts
+tests/__pycache__/
+.tox/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Node modules (if any)
+node_modules/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Railway/Wrangler
+.railway/
+.wrangler/
+
+# Reports and exports
+reports/
+*.numbers
+AUDIT_REPORT.md
+*_REPORT.csv
+*_REPORT.md

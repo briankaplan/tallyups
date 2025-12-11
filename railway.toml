@@ -1,14 +1,30 @@
+# ReceiptAI Railway Configuration
+# ================================
+# https://docs.railway.app/reference/config-as-code
+#
+# Environments:
+# - production: https://tallyups.com (branch: main)
+# - development: https://web-development-c29a.up.railway.app (branch: dev)
+
 [build]
 builder = "nixpacks"
 
 [deploy]
-startCommand = "gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 300 --graceful-timeout 300"
+# Gunicorn with optimized settings for Railway
+startCommand = "gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 300 --graceful-timeout 30 --keep-alive 65 --access-logfile - --error-logfile -"
+
+# Health check configuration
 healthcheckPath = "/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 30
+
+# Restart policy
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
-# Persistent volume for SQLite database
+# Graceful shutdown (seconds to wait for requests to complete)
+# Note: Railway handles this via gunicorn --graceful-timeout
+
+# Persistent volume for local file storage (receipts, cache)
 [[mounts]]
 source = "receipts_data"
 destination = "/app/data"
