@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ period_label }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.5;
+            color: #333;
+            padding: 40px;
+        }
+
+        h1 {
+            font-size: 28pt;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .logo-small {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            right: 0;
+            top: 0;
+        }
+
+        .invoice-details {
+            font-size: 10pt;
+            margin-bottom: 20px;
+        }
+
+        .vendor-info {
+            flex: 1;
+        }
+
+        .payment-amount {
+            font-size: 24pt;
+            font-weight: bold;
+            margin: 30px 0 20px 0;
+        }
+
+        .usage-period {
+            font-size: 11pt;
+            margin-bottom: 30px;
+        }
+
+        .parties {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            margin-top: 30px;
+            gap: 40px;
+        }
+
+        .bill-to, .period-info {
+            flex: 1;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-bottom: 8px;
+        }
+
+        .bill-to-name {
+            font-weight: bold;
+            font-size: 10pt;
+            margin-bottom: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .line-items-table {
+            margin-bottom: 30px;
+        }
+
+        th {
+            background-color: #f5f5f5;
+            padding: 10px;
+            text-align: left;
+            font-size: 9pt;
+            font-weight: 600;
+            text-transform: uppercase;
+            border-bottom: 2px solid #ddd;
+            color: #666;
+        }
+
+        th.amount-col, td.amount-col {
+            text-align: right;
+        }
+
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 10pt;
+        }
+
+        .totals-section {
+            margin-top: 30px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .totals-table {
+            width: 300px;
+            margin-bottom: 0;
+        }
+
+        .totals-table td {
+            border: none;
+            padding: 8px 10px;
+        }
+
+        .totals-table .label-col {
+            text-align: right;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .totals-table .amount-col {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .total-row {
+            border-top: 2px solid #333;
+            font-size: 12pt;
+        }
+
+        .total-row td {
+            padding-top: 12px;
+            font-weight: bold;
+        }
+
+        .payments-section {
+            margin-top: 40px;
+            page-break-inside: avoid;
+        }
+
+        .payments-title {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #000;
+        }
+
+        .footer {
+            margin-top: 60px;
+            padding-top: 20px;
+            font-size: 9pt;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-row">
+            <h1>Receipt</h1>
+            <img src="{{ logo_data_uri }}" alt="Cursor Logo" class="logo-small">
+        </div>
+        <div class="invoice-details">
+            <div><strong>Receipt number</strong> {{ receipt_number }}</div>
+        </div>
+    </div>
+
+    <div class="parties">
+        <div class="vendor-info">
+            <div class="section-title">{{ vendor_name }}</div>
+            <div>
+                {{ vendor_address_line1 }}<br>
+                {{ vendor_address_line2 }}<br>
+                {{ vendor_country }}<br>
+                {{ vendor_phone }}<br>
+                {{ vendor_email }}
+            </div>
+        </div>
+        <div class="bill-to">
+            <div class="section-title">Bill to</div>
+            <div class="bill-to-name">{{ bill_to_name }}</div>
+            <div>
+                {{ bill_to_address_line1 }}<br>
+                {{ bill_to_address_line2 }}<br>
+                {{ bill_to_country }}<br>
+                {{ bill_to_email }}
+            </div>
+        </div>
+    </div>
+
+    <div class="payment-amount">
+        ${{ "%.2f"|format(amount_paid) }} paid on {{ period_range }}
+    </div>
+
+    <div class="usage-period">
+        Cursor Subscription Statement 12 Month
+    </div>
+
+    <table class="line-items-table">
+        <thead>
+            <tr>
+                <th style="width: 50%;">Description</th>
+                <th style="width: 15%; text-align: center;">Qty</th>
+                <th class="amount-col" style="width: 17.5%;">Unit Price</th>
+                <th class="amount-col" style="width: 17.5%;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in line_items %}
+            <tr>
+                <td>{{ item.description }}</td>
+                <td style="text-align: center;">{{ item.qty }}</td>
+                <td class="amount-col">
+                    {% if item.unit_price is not none %}
+                        ${{ "%.2f"|format(item.unit_price) }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td class="amount-col">${{ "%.2f"|format(item.amount) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totals-section">
+        <table class="totals-table">
+            <tr>
+                <td class="label-col">Subtotal:</td>
+                <td class="amount-col">${{ "%.2f"|format(subtotal) }}</td>
+            </tr>
+            <tr class="total-row">
+                <td class="label-col">Total:</td>
+                <td class="amount-col">${{ "%.2f"|format(total) }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="payments-section">
+        <div class="payments-title">Payment History</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Receipt Number</th>
+                    <th style="width: 20%;">Date</th>
+                    <th style="width: 35%;">Payment Method</th>
+                    <th class="amount-col" style="width: 20%;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td>{{ payment.receipt_number }}</td>
+                    <td>{{ payment.date }}</td>
+                    <td>{{ payment.method }}</td>
+                    <td class="amount-col">${{ "%.2f"|format(payment.amount) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <div>Anysphere, Inc.</div>
+        <div>US EIN 87-4436547</div>
+    </div>
+</body>
+</html>

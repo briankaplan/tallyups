@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="Tallyups Reports Dashboard - Comprehensive expense reporting">
+<meta name="theme-color" content="#0b0d10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Reports Dashboard - Tallyups</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<style>
+:root {
+  --bg: #000000;
+  --panel: #111111;
+  --panel2: #0a0a0a;
+  --edge: #222;
+  --ink: #f0f0f0;
+  --muted: #888;
+  --brand: #00ff88;
+  --ok: #00ff88;
+  --bad: #ff4e6a;
+  --warn: #ffd85e;
+  --info: #6b8aff;
+  --glow: rgba(0,255,136,.35);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Header */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + var(--safe-top));
+  padding-top: var(--safe-top);
+  background: linear-gradient(180deg, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.95) 100%);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--edge);
+  display: flex;
+  align-items: center;
+  padding-left: 20px;
+  padding-right: 20px;
+  z-index: 100;
+  gap: 16px;
+}
+
+.header-back {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: var(--ink);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.header-back:hover { background: rgba(255,255,255,0.15); }
+
+.header-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+}
+
+/* Main Container */
+.main {
+  margin-top: calc(60px + var(--safe-top));
+  padding: 24px;
+  padding-bottom: calc(24px + var(--safe-bottom));
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+/* Cards */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.2s;
+}
+
+.card:hover {
+  border-color: rgba(0,255,136,0.3);
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--brand);
+}
+
+/* Quick Reports */
+.quick-reports {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.quick-report-btn {
+  background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05));
+  border: 1px solid rgba(0,255,136,0.3);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.quick-report-btn:hover {
+  background: linear-gradient(135deg, rgba(0,255,136,0.25), rgba(0,255,136,0.1));
+  border-color: var(--brand);
+  transform: translateY(-2px);
+}
+
+.quick-report-btn:active {
+  transform: translateY(0);
+}
+
+.quick-report-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.quick-report-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.quick-report-desc {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Report Builder Form */
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-input, .form-select {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--glow);
+}
+
+.form-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.btn {
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand), #00cc6a);
+  color: #000;
+  box-shadow: 0 4px 16px rgba(0,255,136,0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,255,136,0.4);
+}
+
+.btn-secondary {
+  background: rgba(255,255,255,0.1);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+}
+
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: var(--muted);
+}
+
+.btn-full {
+  width: 100%;
+}
+
+/* Export Format Buttons */
+.export-formats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.export-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.export-btn:hover {
+  border-color: var(--brand);
+  background: rgba(0,255,136,0.1);
+}
+
+.export-btn.active {
+  background: var(--brand);
+  color: #000;
+  border-color: var(--brand);
+}
+
+.export-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--brand);
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* Recent Reports */
+.recent-reports {
+  margin-top: 32px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-item {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s;
+}
+
+.report-item:hover {
+  border-color: var(--brand);
+  background: rgba(0,255,136,0.03);
+}
+
+.report-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,255,136,0.05));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.report-info {
+  flex: 1;
+}
+
+.report-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.report-meta {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  gap: 16px;
+}
+
+.report-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.report-action-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+}
+
+.report-action-btn:hover {
+  border-color: var(--brand);
+}
+
+/* Loading State */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--muted);
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--edge);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  bottom: calc(20px + var(--safe-bottom));
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 14px 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideIn 0.3s ease;
+  max-width: 400px;
+}
+
+.toast.success { border-color: var(--ok); }
+.toast.error { border-color: var(--bad); }
+.toast.warning { border-color: var(--warn); }
+
+@keyframes slideIn {
+  from { transform: translateX(100px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: modalIn 0.3s ease;
+}
+
+@keyframes modalIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--edge);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.modal-close:hover { color: var(--ink); }
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--edge);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Preview Table */
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--edge);
+}
+
+.preview-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.preview-table tr:hover td {
+  background: rgba(0,255,136,0.03);
+}
+
+/* Business Type Pills */
+.business-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.business-pill {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--edge);
+}
+
+.business-pill:hover {
+  border-color: var(--brand);
+  color: var(--ink);
+}
+
+.business-pill.active {
+  background: var(--brand);
+  color: #000;
+  border-color: var(--brand);
+}
+
+/* Chart Placeholder */
+.chart-container {
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 20px;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <a href="/" class="header-back">← Library</a>
+  <h1 class="header-title">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M18 20V10M12 20V4M6 20v-6"/>
+    </svg>
+    Reports Dashboard
+  </h1>
+  <div class="header-actions">
+    <a href="/reports" class="btn btn-secondary">Report Builder</a>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="main">
+
+  <!-- Stats Grid -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total-amount">$0</div>
+      <div class="stat-label">Total YTD</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-transactions">0</div>
+      <div class="stat-label">Transactions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-match-rate">0%</div>
+      <div class="stat-label">Match Rate</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-pending">0</div>
+      <div class="stat-label">Pending Review</div>
+    </div>
+  </div>
+
+  <!-- Dashboard Grid -->
+  <div class="dashboard-grid">
+
+    <!-- Quick Reports Card -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/>
+          <path d="M13 2v7h7"/>
+        </svg>
+        Quick Reports
+      </div>
+      <div class="quick-reports">
+        <button class="quick-report-btn" onclick="generateQuickReport('this_month', 'Down Home')">
+          <div class="quick-report-icon">🏠</div>
+          <div class="quick-report-name">Down Home - This Month</div>
+          <div class="quick-report-desc">Current month expenses</div>
+        </button>
+        <button class="quick-report-btn" onclick="generateQuickReport('this_month', 'Music City Rodeo')">
+          <div class="quick-report-icon">🤠</div>
+          <div class="quick-report-name">MCR - This Month</div>
+          <div class="quick-report-desc">Current month expenses</div>
+        </button>
+        <button class="quick-report-btn" onclick="generateQuickReport('ytd', 'all')">
+          <div class="quick-report-icon">📊</div>
+          <div class="quick-report-name">All - YTD Summary</div>
+          <div class="quick-report-desc">Year to date all business</div>
+        </button>
+        <button class="quick-report-btn" onclick="generateQuickReport('last_quarter', 'all')">
+          <div class="quick-report-icon">📈</div>
+          <div class="quick-report-name">Quarterly Report</div>
+          <div class="quick-report-desc">Last quarter summary</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Custom Report Builder Card -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        Custom Report Builder
+      </div>
+
+      <form id="custom-report-form" onsubmit="generateCustomReport(event)">
+        <!-- Business Type Selection -->
+        <div class="form-section">
+          <label class="form-label">Business Type</label>
+          <div class="business-pills" id="business-pills">
+            <button type="button" class="business-pill active" data-value="all">All</button>
+            <button type="button" class="business-pill" data-value="Down Home">Down Home</button>
+            <button type="button" class="business-pill" data-value="Music City Rodeo">MCR</button>
+            <button type="button" class="business-pill" data-value="Personal">Personal</button>
+            <button type="button" class="business-pill" data-value="EM.co">EM.co</button>
+          </div>
+          <input type="hidden" id="selected-business" name="business_type" value="all">
+        </div>
+
+        <!-- Date Range -->
+        <div class="form-section">
+          <label class="form-label">Date Range</label>
+          <div class="form-row">
+            <input type="date" class="form-input" id="date-from" name="date_from" required>
+            <input type="date" class="form-input" id="date-to" name="date_to" required>
+          </div>
+        </div>
+
+        <!-- Report Type -->
+        <div class="form-section">
+          <label class="form-label">Report Type</label>
+          <select class="form-select" id="report-type" name="report_type">
+            <option value="expense_detail">Expense Detail Report</option>
+            <option value="business_summary">Business Summary</option>
+            <option value="reconciliation">Reconciliation Report</option>
+            <option value="vendor_analysis">Vendor Analysis</option>
+          </select>
+        </div>
+
+        <!-- Export Format -->
+        <div class="form-section">
+          <label class="form-label">Export Format</label>
+          <div class="export-formats" id="export-formats">
+            <button type="button" class="export-btn active" data-format="excel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6M8 13h8M8 17h8"/>
+              </svg>
+              Excel
+            </button>
+            <button type="button" class="export-btn" data-format="pdf">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6"/>
+              </svg>
+              PDF
+            </button>
+            <button type="button" class="export-btn" data-format="csv">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6M10 9h4M10 13h4M10 17h4"/>
+              </svg>
+              CSV
+            </button>
+            <button type="button" class="export-btn" data-format="quickbooks">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              QuickBooks
+            </button>
+          </div>
+          <input type="hidden" id="selected-format" name="format" value="excel">
+        </div>
+
+        <!-- Generate Button -->
+        <button type="submit" class="btn btn-primary btn-full">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7,10 12,15 17,10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Generate Report
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Recent Reports -->
+  <section class="recent-reports">
+    <h2 class="section-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12,6 12,12 16,14"/>
+      </svg>
+      Recent Reports
+    </h2>
+    <div class="report-list" id="report-list">
+      <div class="loading">
+        <div class="spinner"></div>
+        Loading reports...
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Preview Modal -->
+<div class="modal-overlay" id="preview-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="preview-title">Report Preview</h3>
+      <button class="modal-close" onclick="closePreview()">&times;</button>
+    </div>
+    <div class="modal-body" id="preview-body">
+      <div class="loading">
+        <div class="spinner"></div>
+        Loading preview...
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePreview()">Cancel</button>
+      <button class="btn btn-primary" id="preview-download-btn">Download Report</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+let selectedBusinessType = 'all';
+let selectedFormat = 'excel';
+let currentReportId = null;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  initDatePickers();
+  initBusinessPills();
+  initFormatButtons();
+  loadStats();
+  loadRecentReports();
+});
+
+// Initialize date pickers with defaults
+function initDatePickers() {
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  document.getElementById('date-from').value = formatDateInput(firstOfMonth);
+  document.getElementById('date-to').value = formatDateInput(today);
+}
+
+function formatDateInput(date) {
+  return date.toISOString().split('T')[0];
+}
+
+// Business pill selection
+function initBusinessPills() {
+  document.querySelectorAll('.business-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.business-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      selectedBusinessType = pill.dataset.value;
+      document.getElementById('selected-business').value = selectedBusinessType;
+    });
+  });
+}
+
+// Format button selection
+function initFormatButtons() {
+  document.querySelectorAll('.export-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.export-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedFormat = btn.dataset.format;
+      document.getElementById('selected-format').value = selectedFormat;
+    });
+  });
+}
+
+// Load stats
+async function loadStats() {
+  try {
+    const response = await fetch('/api/reports/stats');
+    if (response.ok) {
+      const data = await response.json();
+
+      document.getElementById('stat-total-amount').textContent =
+        '$' + (data.total_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2});
+      document.getElementById('stat-transactions').textContent =
+        (data.total_transactions || 0).toLocaleString();
+      document.getElementById('stat-match-rate').textContent =
+        (data.match_rate || 0).toFixed(1) + '%';
+      document.getElementById('stat-pending').textContent =
+        (data.pending_review || 0).toLocaleString();
+    }
+  } catch (err) {
+    console.error('Failed to load stats:', err);
+  }
+}
+
+// Load recent reports
+async function loadRecentReports() {
+  const container = document.getElementById('report-list');
+
+  try {
+    const response = await fetch('/reports/list');
+    if (!response.ok) throw new Error('Failed to fetch reports');
+
+    const data = await response.json();
+
+    if (!data.reports || data.reports.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: var(--muted);">
+          No reports yet. Generate your first report above!
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = data.reports.slice(0, 10).map(report => `
+      <div class="report-item">
+        <div class="report-icon">📄</div>
+        <div class="report-info">
+          <div class="report-name">${report.report_name || report.report_id}</div>
+          <div class="report-meta">
+            <span>${report.business_type || 'All'}</span>
+            <span>${report.expense_count || 0} expenses</span>
+            <span>$${(report.total_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+            <span>${formatDate(report.created_at)}</span>
+          </div>
+        </div>
+        <div class="report-actions">
+          <button class="report-action-btn" onclick="viewReport('${report.report_id}')">View</button>
+          <button class="report-action-btn" onclick="downloadReport('${report.report_id}', 'excel')">Excel</button>
+          <button class="report-action-btn" onclick="downloadReport('${report.report_id}', 'csv')">CSV</button>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    console.error('Failed to load reports:', err);
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: var(--bad);">
+        Failed to load reports. Please try again.
+      </div>
+    `;
+  }
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Quick report generation
+async function generateQuickReport(period, businessType) {
+  const today = new Date();
+  let dateFrom, dateTo;
+
+  switch (period) {
+    case 'this_month':
+      dateFrom = new Date(today.getFullYear(), today.getMonth(), 1);
+      dateTo = today;
+      break;
+    case 'last_month':
+      dateFrom = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      dateTo = new Date(today.getFullYear(), today.getMonth(), 0);
+      break;
+    case 'ytd':
+      dateFrom = new Date(today.getFullYear(), 0, 1);
+      dateTo = today;
+      break;
+    case 'last_quarter':
+      const quarter = Math.floor(today.getMonth() / 3);
+      dateFrom = new Date(today.getFullYear(), (quarter - 1) * 3, 1);
+      dateTo = new Date(today.getFullYear(), quarter * 3, 0);
+      break;
+    default:
+      dateFrom = new Date(today.getFullYear(), today.getMonth(), 1);
+      dateTo = today;
+  }
+
+  await generateReport({
+    business_type: businessType,
+    date_from: formatDateInput(dateFrom),
+    date_to: formatDateInput(dateTo),
+    report_type: 'expense_detail',
+    format: 'excel'
+  });
+}
+
+// Custom report generation
+async function generateCustomReport(event) {
+  event.preventDefault();
+
+  const formData = new FormData(event.target);
+  const params = {
+    business_type: formData.get('business_type'),
+    date_from: formData.get('date_from'),
+    date_to: formData.get('date_to'),
+    report_type: formData.get('report_type'),
+    format: formData.get('format')
+  };
+
+  await generateReport(params);
+}
+
+// Generate report
+async function generateReport(params) {
+  showToast('Generating report...', 'info');
+
+  try {
+    const response = await fetch('/api/reports/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to generate report');
+    }
+
+    // Check content type for direct download vs JSON response
+    const contentType = response.headers.get('content-type');
+
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+
+      if (data.download_url) {
+        // Download the file
+        window.location.href = data.download_url;
+        showToast('Report downloaded!', 'success');
+      } else {
+        showToast('Report generated!', 'success');
+      }
+    } else {
+      // Direct file download
+      const blob = await response.blob();
+      const filename = getFilenameFromResponse(response) || `report.${params.format}`;
+      downloadBlob(blob, filename);
+      showToast('Report downloaded!', 'success');
+    }
+
+    // Refresh recent reports
+    loadRecentReports();
+
+  } catch (err) {
+    console.error('Report generation failed:', err);
+    showToast(err.message || 'Failed to generate report', 'error');
+  }
+}
+
+function getFilenameFromResponse(response) {
+  const disposition = response.headers.get('content-disposition');
+  if (disposition) {
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// View existing report
+async function viewReport(reportId) {
+  currentReportId = reportId;
+  const modal = document.getElementById('preview-modal');
+  const body = document.getElementById('preview-body');
+
+  modal.classList.add('active');
+  body.innerHTML = '<div class="loading"><div class="spinner"></div>Loading preview...</div>';
+
+  try {
+    const response = await fetch(`/reports/${reportId}`);
+    if (!response.ok) throw new Error('Failed to load report');
+
+    const data = await response.json();
+
+    document.getElementById('preview-title').textContent = data.report_name || reportId;
+
+    // Build preview content
+    let html = `
+      <div style="margin-bottom: 16px;">
+        <strong>Business Type:</strong> ${data.business_type}<br>
+        <strong>Expenses:</strong> ${data.count}<br>
+        <strong>Total:</strong> $${(data.total_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}
+      </div>
+    `;
+
+    if (data.expenses && data.expenses.length > 0) {
+      html += `
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Category</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.expenses.slice(0, 20).map(exp => `
+              <tr>
+                <td>${exp['Chase Date'] || ''}</td>
+                <td>${(exp['Chase Description'] || '').substring(0, 40)}</td>
+                <td style="text-align: right;">$${Math.abs(exp['Chase Amount'] || 0).toFixed(2)}</td>
+                <td>${exp['Category'] || exp['Chase Category'] || ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+      if (data.expenses.length > 20) {
+        html += `<p style="color: var(--muted); margin-top: 12px;">Showing 20 of ${data.expenses.length} expenses</p>`;
+      }
+    }
+
+    body.innerHTML = html;
+
+  } catch (err) {
+    console.error('Failed to load report:', err);
+    body.innerHTML = `<div style="color: var(--bad);">Failed to load report preview</div>`;
+  }
+}
+
+function closePreview() {
+  document.getElementById('preview-modal').classList.remove('active');
+}
+
+// Download report in specific format
+async function downloadReport(reportId, format) {
+  let url;
+
+  switch (format) {
+    case 'excel':
+      url = `/api/reports/${reportId}/export/excel`;
+      break;
+    case 'csv':
+      url = `/reports/${reportId}/export/downhome`;
+      break;
+    case 'pdf':
+      url = `/api/reports/${reportId}/export/pdf`;
+      break;
+    default:
+      url = `/reports/${reportId}/export/downhome`;
+  }
+
+  window.location.href = url;
+  showToast('Downloading report...', 'info');
+}
+
+// Setup preview download button
+document.getElementById('preview-download-btn').addEventListener('click', () => {
+  if (currentReportId) {
+    downloadReport(currentReportId, 'excel');
+    closePreview();
+  }
+});
+
+// Toast notifications
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+
+  const icons = {
+    success: '✓',
+    error: '✕',
+    warning: '⚠',
+    info: 'ℹ'
+  };
+
+  toast.innerHTML = `
+    <span style="font-size: 18px;">${icons[type] || icons.info}</span>
+    <span>${message}</span>
+  `;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'slideIn 0.3s ease reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Close modal on outside click
+document.getElementById('preview-modal').addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal-overlay')) {
+    closePreview();
+  }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closePreview();
+  }
+});
+</script>
+
+</body>
+</html>

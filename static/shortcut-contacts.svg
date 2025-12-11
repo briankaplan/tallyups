@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <rect width="96" height="96" rx="20" fill="#00ff88"/>
+  <g transform="translate(16, 12)">
+    <!-- Contact card -->
+    <rect x="0" y="8" width="64" height="64" rx="8" fill="#ffffff"/>
+
+    <!-- Profile circle -->
+    <circle cx="32" cy="34" r="14" fill="#e8e8e8"/>
+    <circle cx="32" cy="30" r="6" fill="#00cc6b"/>
+    <path d="M22 46 a14 14 0 0 1 20 0" fill="#00cc6b"/>
+
+    <!-- Name line -->
+    <rect x="12" y="56" width="40" height="6" rx="3" fill="#333333"/>
+
+    <!-- Contact info -->
+    <rect x="12" y="66" width="28" height="4" rx="2" fill="#e0e0e0"/>
+
+    <!-- Badge notches on left -->
+    <rect x="-4" y="20" width="8" height="12" rx="2" fill="#00cc6b"/>
+    <rect x="-4" y="40" width="8" height="12" rx="2" fill="#00cc6b"/>
+    <rect x="-4" y="60" width="8" height="12" rx="2" fill="#00cc6b"/>
+  </g>
+</svg>

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tallyups - Transaction Review</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <link rel="stylesheet" href="/static/css/review.css">
+    <!-- Panzoom for image zoom/pan -->
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+</head>
+<body>
+    <div class="review-container">
+        <!-- Left Panel: Transaction Table -->
+        <div class="table-panel">
+            <!-- Header -->
+            <div class="table-header">
+                <div class="table-title">
+                    <span>⚡</span>
+                    <span>Transaction Review</span>
+                </div>
+                <span class="table-count" id="table-count">0 transactions</span>
+
+                <!-- Search -->
+                <div class="search-wrapper">
+                    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input type="search" class="search-input" id="search-input" placeholder="Search transactions... (/)">
+                </div>
+
+                <!-- Filter buttons -->
+                <div class="filter-buttons">
+                    <button class="filter-btn" data-filter="all" title="Show all">
+                        All
+                    </button>
+                    <button class="filter-btn" data-filter="needs-review" title="Needs review (n)">
+                        👀 Review
+                        <span class="filter-badge" id="needs-review-count"></span>
+                    </button>
+                    <button class="filter-btn" data-filter="unmatched" title="Unmatched (u)">
+                        ❓ Unmatched
+                        <span class="filter-badge" id="unmatched-count"></span>
+                    </button>
+                    <button class="filter-btn" id="filter-panel-btn" title="Filter panel (f)">
+                        🔍 Filters
+                        <span class="filter-badge" id="filter-badge"></span>
+                    </button>
+                    <button class="filter-btn" id="bulk-btn" title="Bulk actions (Ctrl+Shift+A)">
+                        📦 Bulk
+                    </button>
+                </div>
+
+                <!-- Help button -->
+                <button class="filter-btn" id="help-btn" title="Keyboard shortcuts (?)">
+                    ⌨️
+                </button>
+            </div>
+
+            <!-- Transaction Table -->
+            <div id="transaction-table" tabindex="0">
+                <table class="transaction-table">
+                    <thead>
+                        <tr>
+                            <th class="col-select">
+                                <input type="checkbox" id="select-all" title="Select all visible" />
+                            </th>
+                            <th class="col-date" data-sort="Chase Date">Date ↕</th>
+                            <th class="col-merchant" data-sort="Chase Description">Merchant ↕</th>
+                            <th class="col-amount" data-sort="Chase Amount">Amount ↕</th>
+                            <th class="col-receipt">Receipt</th>
+                            <th class="col-confidence" data-sort="AI Confidence">Match</th>
+                            <th class="col-business" data-sort="Business Type">Type</th>
+                            <th class="col-status" data-sort="Review Status">Status</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows rendered dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer Stats -->
+            <div class="table-footer" id="table-footer" style="display:none;">
+                <div class="stats-row">
+                    <span id="stats-total">Total: $0.00</span>
+                    <span id="stats-selected">Selected: 0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Receipt Preview -->
+        <div id="receipt-preview">
+            <!-- Content rendered by preview.js -->
+        </div>
+    </div>
+
+    <!-- Filter Panel (Slide-out) -->
+    <div id="filter-panel" class="filter-panel">
+        <div class="filter-panel-header">
+            <h3>🔍 Filters</h3>
+            <button class="filter-panel-close">×</button>
+        </div>
+        <div class="filter-panel-body">
+            <!-- Presets -->
+            <div class="filter-group">
+                <label>Quick Presets</label>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-preset="all">📊 All</button>
+                    <button class="preset-btn" data-preset="needs-work">🔧 Needs Work</button>
+                    <button class="preset-btn" data-preset="unmatched">❓ Unmatched</button>
+                    <button class="preset-btn" data-preset="high-value">💰 High Value</button>
+                    <button class="preset-btn" data-preset="this-month">📅 This Month</button>
+                    <button class="preset-btn" data-preset="verified">✅ Verified</button>
+                </div>
+            </div>
+
+            <!-- Business Type -->
+            <div class="filter-group">
+                <label>Business Type</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" value="Down Home"> 🏠 Down Home</label>
+                    <label><input type="checkbox" value="Music City Rodeo"> 🤠 MCR</label>
+                    <label><input type="checkbox" value="Personal"> 👤 Personal</label>
+                    <label><input type="checkbox" value="EM.co"> 🏢 EM.co</label>
+                    <label><input type="checkbox" value="Unassigned"> — Unassigned</label>
+                </div>
+            </div>
+
+            <!-- Date Range -->
+            <div class="filter-group">
+                <label>Date Range</label>
+                <div class="date-range">
+                    <input type="date" id="date-start" placeholder="Start">
+                    <span>to</span>
+                    <input type="date" id="date-end" placeholder="End">
+                </div>
+            </div>
+
+            <!-- Amount Range -->
+            <div class="filter-group">
+                <label>Amount Range</label>
+                <div class="amount-range">
+                    <input type="number" id="amount-min" placeholder="Min $">
+                    <span>to</span>
+                    <input type="number" id="amount-max" placeholder="Max $">
+                </div>
+            </div>
+
+            <!-- Receipt Status -->
+            <div class="filter-group">
+                <label>Receipt Status</label>
+                <select id="receipt-status">
+                    <option value="">Any</option>
+                    <option value="has">Has Receipt</option>
+                    <option value="missing">Missing Receipt</option>
+                    <option value="verified">Verified</option>
+                    <option value="mismatch">Mismatch</option>
+                </select>
+            </div>
+
+            <!-- Review Status -->
+            <div class="filter-group">
+                <label>Review Status</label>
+                <select id="review-status">
+                    <option value="">Any</option>
+                    <option value="pending">Pending</option>
+                    <option value="good">Good</option>
+                    <option value="bad">Bad</option>
+                    <option value="not needed">Not Needed</option>
+                </select>
+            </div>
+        </div>
+        <div class="filter-panel-footer">
+            <button class="filter-clear-btn">Clear All</button>
+            <button class="filter-apply-btn">Apply Filters</button>
+        </div>
+    </div>
+
+    <!-- Load JavaScript modules -->
+    <script src="/static/js/filters.js"></script>
+    <script src="/static/js/keyboard.js"></script>
+    <script src="/static/js/preview.js"></script>
+    <script src="/static/js/bulk-actions.js"></script>
+    <script src="/static/js/review-interface.js"></script>
+
+    <script>
+        // Initialize the review interface
+        document.addEventListener('DOMContentLoaded', () => {
+            // Performance measurement
+            const startTime = performance.now();
+
+            // Create the main interface
+            window.reviewUI = new TransactionReviewInterface({
+                tableContainer: '#transaction-table',
+                previewContainer: '#receipt-preview',
+                filterContainer: '#filter-panel',
+            });
+
+            // Log initialization time
+            const elapsed = performance.now() - startTime;
+            console.log(`Review interface initialized in ${elapsed.toFixed(0)}ms`);
+
+            // Bind header buttons
+            document.getElementById('help-btn')?.addEventListener('click', () => {
+                window.keyboardHandler?.toggleHelp();
+            });
+
+            document.getElementById('bulk-btn')?.addEventListener('click', () => {
+                window.reviewUI.bulk.open();
+            });
+
+            document.getElementById('filter-panel-btn')?.addEventListener('click', () => {
+                document.getElementById('filter-panel')?.classList.toggle('active');
+            });
+
+            document.querySelector('.filter-panel-close')?.addEventListener('click', () => {
+                document.getElementById('filter-panel')?.classList.remove('active');
+            });
+
+            // Quick filter buttons
+            document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const filter = btn.dataset.filter;
+                    document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    if (filter === 'all') {
+                        window.reviewUI.filter.clearAll();
+                    } else if (filter === 'needs-review') {
+                        window.reviewUI.filter.applyPreset('needs-work');
+                    } else if (filter === 'unmatched') {
+                        window.reviewUI.filter.applyPreset('unmatched');
+                    }
+                });
+            });
+
+            // Filter panel presets
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const preset = btn.dataset.preset;
+                    window.reviewUI.filter.applyPreset(preset);
+                    document.getElementById('filter-panel')?.classList.remove('active');
+                });
+            });
+
+            // Filter panel apply button
+            document.querySelector('.filter-apply-btn')?.addEventListener('click', () => {
+                // Collect filter values from panel
+                const filters = {};
+
+                // Business types
+                const businessTypes = [];
+                document.querySelectorAll('#filter-panel .checkbox-group input:checked').forEach(cb => {
+                    businessTypes.push(cb.value);
+                });
+                if (businessTypes.length) filters.businessTypes = businessTypes;
+
+                // Date range
+                const dateStart = document.getElementById('date-start')?.value;
+                const dateEnd = document.getElementById('date-end')?.value;
+                if (dateStart || dateEnd) {
+                    filters.dateRange = {
+                        start: dateStart ? new Date(dateStart) : null,
+                        end: dateEnd ? new Date(dateEnd) : null,
+                    };
+                }
+
+                // Amount range
+                const amountMin = document.getElementById('amount-min')?.value;
+                const amountMax = document.getElementById('amount-max')?.value;
+                if (amountMin || amountMax) {
+                    filters.amountRange = {
+                        min: amountMin ? parseFloat(amountMin) : null,
+                        max: amountMax ? parseFloat(amountMax) : null,
+                    };
+                }
+
+                // Receipt status
+                const receiptStatus = document.getElementById('receipt-status')?.value;
+                if (receiptStatus) {
+                    if (receiptStatus === 'has') filters.hasReceipt = true;
+                    else if (receiptStatus === 'missing') filters.hasReceipt = false;
+                    else filters.validationStatus = receiptStatus;
+                }
+
+                // Review status
+                const reviewStatus = document.getElementById('review-status')?.value;
+                if (reviewStatus) filters.reviewStatus = reviewStatus;
+
+                window.reviewUI.filter.setFilters(filters);
+                document.getElementById('filter-panel')?.classList.remove('active');
+            });
+
+            // Clear filters button
+            document.querySelector('.filter-clear-btn')?.addEventListener('click', () => {
+                window.reviewUI.filter.clearAll();
+
+                // Reset form elements
+                document.querySelectorAll('#filter-panel input[type="checkbox"]').forEach(cb => cb.checked = false);
+                document.querySelectorAll('#filter-panel input[type="date"], #filter-panel input[type="number"]').forEach(inp => inp.value = '');
+                document.querySelectorAll('#filter-panel select').forEach(sel => sel.value = '');
+            });
+
+            // Select all checkbox
+            document.getElementById('select-all')?.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    window.reviewUI.selectAll();
+                } else {
+                    window.reviewUI.bulk.clearSelection();
+                }
+            });
+
+            // Column sorting
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                th.addEventListener('click', () => {
+                    const column = th.dataset.sort;
+                    // TODO: Implement sorting
+                    console.log('Sort by:', column);
+                });
+            });
+
+            // Update stats display
+            document.addEventListener('statsUpdated', (e) => {
+                const { total, filtered, withReceipts, needsReview } = e.detail;
+                document.getElementById('table-count').textContent = `${filtered} of ${total} transactions`;
+                document.getElementById('needs-review-count').textContent = needsReview || '';
+                document.getElementById('unmatched-count').textContent = (filtered - withReceipts) || '';
+            });
+        });
+    </script>
+
+    <style>
+        /* Filter Panel Slide-out */
+        .filter-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 350px;
+            height: 100%;
+            background: var(--bg-card);
+            border-left: 1px solid var(--border);
+            z-index: 500;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-panel.active {
+            right: 0;
+        }
+
+        .filter-panel-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .filter-panel-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .filter-panel-close {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .filter-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-group > label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text);
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .preset-btn:hover {
+            border-color: var(--brand);
+            background: var(--brand-dim);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            accent-color: var(--brand);
+        }
+
+        .date-range, .amount-range {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .date-range input, .amount-range input {
+            flex: 1;
+            padding: 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .date-range span, .amount-range span {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .filter-group select {
+            width: 100%;
+            padding: 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .filter-panel-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-clear-btn {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .filter-apply-btn {
+            flex: 1;
+            padding: 10px;
+            background: var(--brand);
+            border: none;
+            border-radius: var(--radius-md);
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Table footer */
+        .table-footer {
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</body>
+</html>

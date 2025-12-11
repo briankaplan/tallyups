@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <rect width="96" height="96" rx="20" fill="#00ff88"/>
+  <g transform="translate(18, 18)">
+    <!-- Inbox tray -->
+    <path d="M0 30 L0 52 a8 8 0 0 0 8 8 h44 a8 8 0 0 0 8-8 V30 L45 30 L40 42 h-20 L15 30 Z" fill="#ffffff"/>
+    <!-- Envelope coming in -->
+    <g transform="translate(12, 4)">
+      <rect x="0" y="8" width="36" height="24" rx="4" fill="#ffffff"/>
+      <path d="M0 12 L18 24 L36 12" stroke="#00cc6b" stroke-width="3" fill="none"/>
+    </g>
+    <!-- Arrow down -->
+    <path d="M30 36 L30 48 M24 42 L30 48 L36 42" stroke="#00cc6b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
