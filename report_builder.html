@@ -3,817 +3,651 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="description" content="Tallyups Report Builder - Review and build expense reports">
-<meta name="theme-color" content="#0b0d10">
+<meta name="description" content="Tallyups Reports Dashboard - Track and manage your expense reports">
+<meta name="theme-color" content="#0a0f14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Report Builder - Tallyups</title>
+<title>Reports - Tallyups</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/static/tallyups-design.css">
 <style>
-:root {
-  --bg: #000000;
-  --panel: #111111;
-  --panel2: #0a0a0a;
-  --edge: #222;
-  --ink: #f0f0f0;
-  --muted: #888;
-  --brand: #00ff88;
-  --ok: #00ff88;
-  --bad: #ff4e6a;
-  --warn: #ffd85e;
-  --glow: rgba(0,255,136,.35);
-}
+/* ============================================
+   REPORTS DASHBOARD - PREMIUM DESIGN
+   ============================================ */
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* Override body for this page */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
-  color: var(--ink);
   min-height: 100vh;
-  overflow-x: hidden;
 }
 
-/* Header */
-.header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.9) 100%);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--edge);
+.reports-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  padding-bottom: 100px;
+}
+
+/* Page Header */
+.page-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
-  z-index: 100;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
   gap: 16px;
 }
 
-.header-back {
-  background: rgba(255,255,255,0.1);
-  border: none;
-  color: var(--ink);
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-.header-back:hover { background: rgba(255,255,255,0.15); }
-
-/* Top Navigation Links */
-.nav-links {
-  display: none;
-  gap: 4px;
-  margin-left: auto;
-  margin-right: 16px;
-}
-@media (min-width: 1024px) {
-  .nav-links { display: flex; }
-}
-.nav-link-btn {
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 13px;
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid transparent;
-  transition: all 0.15s;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.nav-link-btn:hover {
-  background: rgba(0, 255, 136, 0.15);
-  color: var(--ink);
-}
-.nav-link-btn.active {
-  background: rgba(0, 255, 136, 0.15);
-  color: var(--brand);
-  border-color: rgba(0, 255, 136, 0.2);
-}
-.nav-link-btn svg { width: 16px; height: 16px; }
-
-.header-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--brand);
-}
-
-.header-progress {
-  margin-left: auto;
+.page-title {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.progress-bar {
-  width: 200px;
-  height: 6px;
-  background: var(--panel);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--brand), #00cc6a);
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  font-size: 13px;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-/* Main Layout */
-.main {
-  margin-top: 60px;
-  height: calc(100vh - 60px);
-  display: flex;
-}
-
-/* Setup Panel (shown when no report selected) */
-.setup-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-}
-
-.setup-card {
-  background: var(--panel);
-  border: 1px solid var(--edge);
-  border-radius: 16px;
-  padding: 32px;
-  max-width: 500px;
-  width: 100%;
-}
-
-.setup-title {
-  font-size: 24px;
+.page-title h1 {
+  font-size: 28px;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin: 0;
+}
+
+.page-title .badge {
+  background: var(--brand-dim);
   color: var(--brand);
-}
-
-.setup-subtitle {
-  color: var(--muted);
-  margin-bottom: 24px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 8px;
-}
-.form-input, .form-select {
-  width: 100%;
-  padding: 14px 16px;
-  background: var(--bg);
-  border: 1px solid var(--edge);
-  border-radius: 10px;
-  color: var(--ink);
-  font-size: 15px;
-}
-.form-input:focus, .form-select:focus {
-  outline: none;
-  border-color: var(--brand);
-  box-shadow: 0 0 0 3px var(--glow);
-}
-
-.btn-start {
-  width: 100%;
-  padding: 16px;
-  background: linear-gradient(135deg, var(--brand), #00cc6a);
-  color: #000;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 16px rgba(0,255,136,0.3);
-}
-.btn-start:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(0,255,136,0.4);
-}
-
-/* Submitted Reports List */
-.submitted-report-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  background: var(--bg);
-  border: 1px solid var(--edge);
-  border-radius: 12px;
-  margin-bottom: 12px;
-  transition: all 0.2s;
-}
-.submitted-report-item:hover {
-  border-color: var(--brand);
-  background: rgba(0,255,136,0.05);
-}
-.submitted-report-info {
-  flex: 1;
-}
-.submitted-report-name {
-  font-weight: 600;
-  font-size: 15px;
-  margin-bottom: 4px;
-}
-.submitted-report-meta {
-  font-size: 13px;
-  color: var(--muted);
-}
-.submitted-report-actions {
-  display: flex;
-  gap: 8px;
-}
-.submitted-report-btn {
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--edge);
-  background: var(--panel);
-  color: var(--ink);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.submitted-report-btn:hover {
-  background: var(--edge);
-}
-.submitted-report-btn.export {
-  background: var(--brand);
-  color: #000;
-  border: none;
-}
-.submitted-report-btn.export:hover {
-  background: #00cc6a;
-}
-
-/* Review Panel */
-.review-panel {
-  flex: 1;
-  display: none;
-  flex-direction: column;
-}
-
-.review-panel.active {
-  display: flex;
-}
-
-/* Split View - Transaction | Receipt */
-.split-view {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-  overflow: hidden;
-}
-
-/* Transaction Side */
-.transaction-panel {
-  background: var(--panel);
-  border-right: 1px solid var(--edge);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.panel-header {
-  padding: 20px;
-  border-bottom: 1px solid var(--edge);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.panel-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.panel-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
-
-/* Transaction Card */
-.tx-card {
-  background: var(--bg);
-  border: 1px solid var(--edge);
-  border-radius: 16px;
-  padding: 24px;
-}
-
-.tx-merchant {
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.tx-date {
-  font-size: 14px;
-  color: var(--muted);
-  margin-bottom: 16px;
-}
-
-.tx-amount {
-  font-size: 36px;
-  font-weight: 800;
-  color: var(--brand);
-  margin-bottom: 20px;
-}
-
-.tx-details {
-  display: grid;
-  gap: 12px;
-}
-
-.tx-detail {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px;
-  background: var(--panel);
-  border-radius: 8px;
-}
-
-.tx-detail-label {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.tx-detail-value {
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.tx-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  padding: 4px 10px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
 }
-.tx-status-badge.good {
-  background: rgba(0,255,136,0.15);
-  color: var(--ok);
-}
-.tx-status-badge.bad {
-  background: rgba(255,78,106,0.15);
-  color: var(--bad);
-}
-.tx-status-badge.missing {
-  background: rgba(255,216,94,0.15);
-  color: var(--warn);
-}
 
-/* Receipt Side */
-.receipt-panel {
-  background: var(--panel2);
+.header-actions {
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.receipt-image-container {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  overflow: hidden;
-  background: repeating-conic-gradient(var(--panel) 0% 25%, var(--bg) 0% 50%) 50% / 20px 20px;
-}
-
-.receipt-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  cursor: zoom-in;
-  transition: transform 0.2s;
-}
-
-.receipt-image:hover {
-  transform: scale(1.02);
-}
-
-.receipt-placeholder {
-  text-align: center;
-  color: var(--muted);
-}
-
-.receipt-placeholder-icon {
-  font-size: 64px;
-  opacity: 0.5;
-  margin-bottom: 16px;
-}
-
-.receipt-placeholder-text {
-  font-size: 16px;
-}
-
-/* Action Bar */
-.action-bar {
-  background: var(--panel);
-  border-top: 1px solid var(--edge);
-  padding: 20px;
-  display: flex;
-  align-items: center;
   gap: 12px;
+  align-items: center;
 }
 
-.action-nav {
-  display: flex;
+.btn-new-report {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-}
-
-.btn-nav {
-  padding: 12px 20px;
-  background: var(--bg);
-  border: 1px solid var(--edge);
-  border-radius: 8px;
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.btn-nav:hover:not(:disabled) {
-  background: var(--panel2);
-  border-color: var(--brand);
-}
-.btn-nav:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.action-main {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-.btn-action {
-  padding: 14px 28px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--brand), #00cc6a);
+  color: #000;
   border: none;
-  border-radius: 10px;
-  font-size: 15px;
+  border-radius: 12px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-add {
-  background: linear-gradient(135deg, var(--brand), #00cc6a);
-  color: #000;
   box-shadow: 0 4px 16px rgba(0,255,136,0.3);
 }
-.btn-add:hover {
+
+.btn-new-report:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 24px rgba(0,255,136,0.4);
 }
 
-.btn-skip {
-  background: rgba(255,255,255,0.1);
-  color: var(--ink);
-}
-.btn-skip:hover {
-  background: rgba(255,255,255,0.15);
-}
-
-.btn-bad {
-  background: rgba(255,78,106,0.2);
-  color: var(--bad);
-}
-.btn-bad:hover {
-  background: rgba(255,78,106,0.3);
-}
-
-.action-shortcuts {
+.date-selector {
   display: flex;
-  flex-direction: column;
   gap: 4px;
-  align-items: flex-end;
+  background: var(--bg-card);
+  border-radius: 10px;
+  padding: 4px;
+  border: 1px solid var(--border);
 }
 
-.shortcut-hint {
-  font-size: 11px;
-  color: var(--muted);
+.date-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.shortcut-hint .kbd {
-  display: inline-block;
-  background: var(--bg);
-  border: 1px solid var(--edge);
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 10px;
-  font-family: monospace;
-  margin: 0 2px;
+.date-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
-/* Report Summary */
-.report-summary {
-  background: var(--panel);
-  border-top: 1px solid var(--edge);
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.summary-stat {
-  text-align: center;
-}
-
-.summary-label {
-  font-size: 11px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.summary-value {
-  font-size: 20px;
-  font-weight: 700;
+.date-btn.active {
+  background: var(--brand-dim);
   color: var(--brand);
 }
 
-.summary-actions {
-  margin-left: auto;
-  display: flex;
-  gap: 8px;
+/* Stats Cards Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
 }
 
-.btn-finish {
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.btn-finish:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+@media (max-width: 1024px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* Receipt Modal (zoomed view) */
-.receipt-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.95);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 40px;
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: 1fr; }
 }
 
-.receipt-modal.active {
-  display: flex;
-}
-
-.receipt-modal img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-.modal-close {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(255,255,255,0.1);
-  border: none;
-  color: white;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  font-size: 24px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.modal-close:hover {
-  background: rgba(255,255,255,0.2);
-}
-
-/* Report View Modal */
-.report-view-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.9);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-.report-view-modal.active {
-  display: flex;
-}
-.report-view-container {
-  background: var(--panel);
-  border: 1px solid var(--edge);
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  width: 100%;
-  max-width: 1000px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
+  padding: 20px;
+  position: relative;
   overflow: hidden;
 }
-.report-view-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--edge);
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-card.highlight {
+  background: linear-gradient(135deg, rgba(0,255,136,0.1), var(--bg-card));
+  border-color: rgba(0,255,136,0.3);
+}
+
+.stat-card.highlight::before {
+  opacity: 1;
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 4px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+}
+
+.stat-card.highlight .stat-value {
+  background: linear-gradient(135deg, var(--brand), #00cc6a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-change {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-change.positive { color: var(--brand); }
+.stat-change.negative { color: var(--error); }
+.stat-change.neutral { color: var(--text-secondary); }
+
+/* Charts Section */
+.charts-section {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 1024px) {
+  .charts-section { grid-template-columns: 1fr; }
+}
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.chart-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.chart-toggle-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-toggle-btn:hover {
+  color: var(--text);
+}
+
+.chart-toggle-btn.active {
+  background: var(--bg-card);
+  color: var(--brand);
+}
+
+.chart-container {
+  position: relative;
+  height: 250px;
+}
+
+/* Business Breakdown */
+.business-section {
+  margin-bottom: 32px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.business-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.business-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.business-card:hover {
+  border-color: var(--brand);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+.business-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  margin-bottom: 12px;
 }
-.report-view-header h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--brand);
-  margin: 0 0 4px 0;
-}
-.report-view-header p {
+
+.business-name {
   font-size: 14px;
-  color: var(--muted);
-  margin: 0;
-}
-.report-view-header .modal-close {
-  position: static;
-  width: 36px;
-  height: 36px;
-  font-size: 18px;
-}
-.report-view-summary {
-  padding: 16px 24px;
-  background: var(--bg);
-  display: flex;
-  gap: 40px;
-  border-bottom: 1px solid var(--edge);
-}
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.summary-item .summary-label {
-  font-size: 12px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.summary-item .summary-value {
-  font-size: 24px;
   font-weight: 700;
-  color: var(--brand);
+  color: var(--text);
 }
-.report-view-table-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0;
-}
-.report-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-.report-table thead {
-  position: sticky;
-  top: 0;
-  background: var(--panel);
-  z-index: 1;
-}
-.report-table th {
-  text-align: left;
-  padding: 12px 16px;
+
+.business-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--muted);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--edge);
 }
-.report-table th.amount-col {
-  text-align: right;
-}
-.report-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.report-table tbody tr:hover {
-  background: rgba(0,255,136,0.05);
-}
-.report-table .amount-col {
-  text-align: right;
-  font-weight: 600;
+
+.business-badge.down-home { background: rgba(0,255,136,0.2); color: #00ff88; }
+.business-badge.mcr { background: rgba(255,216,94,0.2); color: #ffd85e; }
+.business-badge.personal { background: rgba(110,181,255,0.2); color: #6eb5ff; }
+.business-badge.other { background: rgba(136,136,136,0.2); color: #888; }
+
+.business-amount {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 4px;
   font-family: 'SF Mono', Monaco, monospace;
 }
-.report-table .receipt-link {
-  color: var(--brand);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.report-table .receipt-link:hover {
-  text-decoration: underline;
-}
-.report-table .no-receipt {
-  color: var(--muted);
-  font-style: italic;
-}
-.report-view-actions {
-  padding: 16px 24px;
-  border-top: 1px solid var(--edge);
+
+.business-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-}
-.btn-unsubmit {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: rgba(255,78,106,0.15);
-  color: var(--bad);
-  border: 1px solid rgba(255,78,106,0.3);
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.btn-unsubmit:hover {
-  background: rgba(255,78,106,0.25);
-  border-color: var(--bad);
-}
-.btn-export, .btn-export-zip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: var(--brand);
-  color: #000;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-}
-.btn-export:hover, .btn-export-zip:hover {
-  background: #00cc6a;
-  transform: translateY(-1px);
-}
-.btn-export-zip {
-  background: rgba(255,255,255,0.1);
-  color: var(--ink);
-}
-.btn-export-zip:hover {
-  background: rgba(255,255,255,0.15);
 }
 
-/* Empty state */
+.business-count {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.business-percent {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.business-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand), #00cc6a);
+  transition: width 0.5s ease;
+}
+
+/* Reports List */
+.reports-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.reports-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  background: var(--bg-elevated);
+}
+
+.reports-tab {
+  padding: 16px 20px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.reports-tab:hover {
+  color: var(--text);
+}
+
+.reports-tab.active {
+  color: var(--brand);
+}
+
+.reports-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20px;
+  right: 20px;
+  height: 2px;
+  background: var(--brand);
+  border-radius: 1px 1px 0 0;
+}
+
+.reports-tab .count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  background: var(--bg-card);
+  border-radius: 10px;
+  font-size: 11px;
+  margin-left: 6px;
+  padding: 0 6px;
+}
+
+.reports-tab.active .count {
+  background: var(--brand-dim);
+  color: var(--brand);
+}
+
+.reports-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  flex: 1;
+  max-width: 300px;
+}
+
+.search-box:focus-within {
+  border-color: var(--brand);
+}
+
+.search-box input {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+}
+
+.search-box input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-box svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toolbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  border-color: var(--border-light);
+}
+
+/* Reports Table */
+.reports-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.reports-table th {
+  text-align: left;
+  padding: 14px 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+}
+
+.reports-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.reports-table th.sortable:hover {
+  color: var(--text-secondary);
+}
+
+.reports-table th.sortable svg {
+  width: 12px;
+  height: 12px;
+  vertical-align: middle;
+  margin-left: 4px;
+  opacity: 0.5;
+}
+
+.reports-table th.sorted svg {
+  opacity: 1;
+  color: var(--brand);
+}
+
+.reports-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.reports-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.reports-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.reports-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.report-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.report-date {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.report-amount {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.report-count {
+  color: var(--text-secondary);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-badge.draft {
+  background: rgba(255,216,94,0.15);
+  color: #ffd85e;
+}
+
+.status-badge.submitted {
+  background: rgba(0,255,136,0.15);
+  color: #00ff88;
+}
+
+.status-badge.pending {
+  background: rgba(110,181,255,0.15);
+  color: #6eb5ff;
+}
+
+.report-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.reports-table tbody tr:hover .report-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.action-btn:hover {
+  background: var(--bg-card);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Empty State */
 .empty-state {
-  text-align: center;
   padding: 60px 20px;
+  text-align: center;
 }
 
 .empty-icon {
@@ -822,1660 +656,844 @@ body {
 }
 
 .empty-title {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   margin-bottom: 8px;
-  color: var(--brand);
 }
 
 .empty-text {
-  color: var(--muted);
+  color: var(--text-secondary);
   margin-bottom: 24px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-/* Toast notifications */
-.toast {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  background: var(--panel);
-  border: 1px solid var(--edge);
-  border-radius: 12px;
-  padding: 16px 24px;
+/* Loading State */
+.loading-spinner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  opacity: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1001;
-}
-
-.toast.show {
-  transform: translateX(-50%) translateY(0);
-  opacity: 1;
-}
-
-.toast.success {
-  border-color: var(--ok);
-}
-
-.toast.error {
-  border-color: var(--bad);
-}
-
-.toast-icon {
-  font-size: 20px;
-}
-
-.toast-message {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-/* Loading spinner */
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  justify-content: center;
+  padding: 60px 20px;
 }
 
 .spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--edge);
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
   border-top-color: var(--brand);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-/* Safe Area Support */
-:root {
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-/* Mobile responsive */
-@media (max-width: 900px) {
-  .split-view {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
-  }
-
-  .transaction-panel {
-    border-right: none;
-    border-bottom: 1px solid var(--edge);
-  }
-
-  .progress-bar {
-    width: 120px;
-  }
-
-  .action-bar {
-    flex-wrap: wrap;
-  }
-
-  .action-shortcuts {
-    display: none;
-  }
+/* New Report Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
 }
 
-/* Mobile responsive */
+.modal-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
+  transform: scale(0.95) translateY(20px);
+  transition: transform 0.3s;
+}
+
+.modal-overlay.visible .modal {
+  transform: scale(1) translateY(0);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-select {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.btn-cancel {
+  padding: 12px 24px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.btn-create {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--brand), #00cc6a);
+  border: none;
+  border-radius: 10px;
+  color: #000;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-create:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,255,136,0.3);
+}
+
+/* Mobile Navigation */
 @media (max-width: 768px) {
-  body {
-    padding-bottom: calc(20px + var(--safe-bottom));
-  }
+  .reports-container { padding: 16px; }
+  .page-header { margin-bottom: 20px; }
+  .page-title h1 { font-size: 22px; }
+  .stat-value { font-size: 24px; }
+  .charts-section { gap: 16px; }
+  .chart-container { height: 200px; }
+  .business-amount { font-size: 22px; }
+  .reports-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .reports-table { font-size: 13px; }
+  .reports-table th, .reports-table td { padding: 12px 16px; }
+  .date-selector { display: none; }
+}
 
-  .header {
-    padding-top: calc(12px + var(--safe-top));
-  }
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-hover) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
 
-  .toast {
-    bottom: calc(20px + var(--safe-bottom));
-  }
-
-  .main {
-    height: calc(100vh - 60px - var(--safe-top) - var(--safe-bottom));
-  }
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 </style>
 </head>
 <body>
-
-<!-- Header -->
-<header class="header">
-  <button class="header-back" onclick="goBack()">← Back</button>
-  <div class="header-title">📊 Report Builder</div>
-
-  <!-- Desktop Navigation Links -->
-  <nav class="nav-links">
-    <a href="/" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      Home
-    </a>
-    <a href="/viewer" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-      Reconcile
-    </a>
-    <a href="/library" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-      Library
-    </a>
-    <a href="/scanner" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      Scan
-    </a>
-    <a href="/incoming" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
-      Inbox
-    </a>
-    <a href="/reports" class="nav-link-btn active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      Reports
-    </a>
-  </nav>
-
-  <div class="header-progress" id="progress-section" style="display:none">
-    <div class="progress-bar">
-      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+  <!-- Site Header (from shared design system) -->
+  <header class="site-header">
+    <div class="site-header-content">
+      <div class="site-brand">
+        <h1>🧾 Tallyups</h1>
+        <span class="version">v2.0</span>
+      </div>
+      <nav class="header-nav">
+        <a href="/" class="nav-link-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Home
+        </a>
+        <a href="/viewer" class="nav-link-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Reconcile
+        </a>
+        <a href="/reports" class="nav-link-btn active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Reports
+        </a>
+        <a href="/scanner" class="nav-link-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Scan
+        </a>
+        <a href="/incoming" class="nav-link-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+          Inbox
+        </a>
+      </nav>
     </div>
-    <span class="progress-text" id="progress-text">0 / 0</span>
-  </div>
-</header>
+  </header>
 
-<!-- Main Content -->
-<main class="main">
-  <!-- Setup Panel -->
-  <div class="setup-panel" id="setup-panel">
-    <div class="setup-card">
-      <div class="setup-title">Create New Report</div>
-      <div class="setup-subtitle">Review expenses one by one and add them to your report</div>
-
-      <div class="form-group">
-        <label class="form-label">Report Name</label>
-        <input type="text" class="form-input" id="report-name-input" placeholder="e.g., Q4 2024 Music City Rodeo">
+  <main class="reports-container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-title">
+        <h1>Reports</h1>
+        <span class="badge" id="ytd-badge">2025 YTD</span>
       </div>
-
-      <div class="form-group">
-        <label class="form-label">Business Entity</label>
-        <select class="form-select" id="business-filter">
-          <option value="">All Businesses</option>
-          <option value="Music City Rodeo">Music City Rodeo</option>
-          <option value="Down Home">Down Home</option>
-          <option value="Personal">Personal</option>
-        </select>
-      </div>
-
-      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div>
-          <label class="form-label">From Date</label>
-          <input type="date" class="form-input" id="date-from">
+      <div class="header-actions">
+        <div class="date-selector">
+          <button class="date-btn" data-range="month">This Month</button>
+          <button class="date-btn" data-range="quarter">Quarter</button>
+          <button class="date-btn active" data-range="ytd">YTD</button>
+          <button class="date-btn" data-range="all">All Time</button>
         </div>
-        <div>
-          <label class="form-label">To Date</label>
-          <input type="date" class="form-input" id="date-to">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Filter By Status</label>
-        <select class="form-select" id="status-filter">
-          <option value="good">Good Receipts (Reviewed)</option>
-          <option value="has-receipt">Has Receipt (Any)</option>
-          <option value="all">All Expenses</option>
-        </select>
-      </div>
-
-      <button class="btn-start" onclick="startReview()">
-        Start Review →
-      </button>
-
-      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--edge)">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Or continue existing report:</div>
-        <select class="form-select" id="existing-reports" onchange="loadExistingReport(this.value)">
-          <option value="">Select a draft report...</option>
-        </select>
+        <button class="btn-new-report" onclick="showNewReportModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Report
+        </button>
       </div>
     </div>
 
-    <!-- Submitted Reports Section -->
-    <div class="setup-card" style="margin-top: 24px;" id="submitted-reports-card">
-      <div class="setup-title" style="display:flex;align-items:center;gap:8px">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-          <polyline points="14,2 14,8 20,8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
-          <polyline points="10,9 9,9 8,9"/>
-        </svg>
-        Submitted Reports
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card highlight">
+        <div class="stat-label">Total Expenses</div>
+        <div class="stat-value" id="stat-total-amount">$0</div>
+        <div class="stat-change neutral" id="stat-total-change">
+          <span id="stat-total-count">0</span> transactions YTD
+        </div>
       </div>
-      <div class="setup-subtitle">View and manage your previously submitted reports</div>
-      <div id="submitted-reports-list" style="margin-top:16px">
-        <div style="text-align:center;color:var(--muted);padding:20px">Loading reports...</div>
+      <div class="stat-card">
+        <div class="stat-label">Reports Filed</div>
+        <div class="stat-value" id="stat-report-count">0</div>
+        <div class="stat-change neutral" id="stat-report-change">
+          <span id="stat-reports-month">0</span> this month
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Receipt Coverage</div>
+        <div class="stat-value" id="stat-coverage">0%</div>
+        <div class="stat-change neutral" id="stat-missing">
+          <span id="stat-missing-count">0</span> missing
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending Review</div>
+        <div class="stat-value" id="stat-pending">0</div>
+        <div class="stat-change neutral">
+          Needs attention
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Review Panel -->
-  <div class="review-panel" id="review-panel">
-    <div class="split-view">
-      <!-- Transaction Side -->
-      <div class="transaction-panel">
-        <div class="panel-header">
-          <span class="panel-title">Transaction</span>
-          <span id="tx-index-label" style="margin-left:auto;font-size:13px;color:var(--muted)">#1</span>
+    <!-- Charts Section -->
+    <div class="charts-section">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Spending Trend</div>
+          <div class="chart-toggle">
+            <button class="chart-toggle-btn active" data-view="amount">Amount</button>
+            <button class="chart-toggle-btn" data-view="count">Count</button>
+          </div>
         </div>
-        <div class="panel-content">
-          <div class="tx-card" id="tx-card">
-            <!-- Filled by JS -->
+        <div class="chart-container">
+          <canvas id="spending-chart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">By Category</div>
+        </div>
+        <div class="chart-container">
+          <canvas id="category-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Business Type Breakdown -->
+    <div class="business-section">
+      <div class="section-header">
+        <div class="section-title">By Business Type</div>
+      </div>
+      <div class="business-grid" id="business-grid">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- Reports List -->
+    <div class="reports-section">
+      <div class="reports-tabs">
+        <button class="reports-tab active" data-tab="all">
+          All Reports <span class="count" id="tab-all-count">0</span>
+        </button>
+        <button class="reports-tab" data-tab="draft">
+          Drafts <span class="count" id="tab-draft-count">0</span>
+        </button>
+        <button class="reports-tab" data-tab="submitted">
+          Submitted <span class="count" id="tab-submitted-count">0</span>
+        </button>
+      </div>
+      <div class="reports-toolbar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" placeholder="Search reports..." id="search-input" oninput="filterReports()">
+        </div>
+        <div class="toolbar-actions">
+          <button class="toolbar-btn" onclick="exportAllReports()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export All
+          </button>
+        </div>
+      </div>
+      <div id="reports-list-container">
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- New Report Modal -->
+  <div class="modal-overlay" id="new-report-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Create New Report</div>
+        <button class="modal-close" onclick="hideNewReportModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Report Name</label>
+          <input type="text" class="form-input" id="report-name" placeholder="e.g., December 2024 Expenses">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Business Type</label>
+          <select class="form-select" id="report-business">
+            <option value="all">All Business Types</option>
+            <option value="Down Home">Down Home Media</option>
+            <option value="Music City Rodeo">Music City Rodeo</option>
+            <option value="Personal">Personal</option>
+            <option value="EM.co">EM.co</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date From</label>
+            <input type="date" class="form-input" id="report-date-from">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date To</label>
+            <input type="date" class="form-input" id="report-date-to">
           </div>
         </div>
       </div>
-
-      <!-- Receipt Side -->
-      <div class="receipt-panel">
-        <div class="panel-header">
-          <span class="panel-title">Receipt</span>
-          <button onclick="openReceiptModal()" style="margin-left:auto;background:var(--bg);border:1px solid var(--edge);color:var(--ink);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px">
-            🔍 Zoom
-          </button>
-        </div>
-        <div class="receipt-image-container" id="receipt-container">
-          <!-- Filled by JS -->
-        </div>
-      </div>
-    </div>
-
-    <!-- Action Bar -->
-    <div class="action-bar">
-      <div class="action-nav">
-        <button class="btn-nav" onclick="prevTransaction()" id="btn-prev" disabled>
-          ← Prev
-        </button>
-        <button class="btn-nav" onclick="nextTransaction()" id="btn-next">
-          Next →
-        </button>
-      </div>
-
-      <div class="action-main">
-        <button class="btn-action btn-bad" onclick="markBadMatch()">
-          ⚠️ Wrong Receipt
-        </button>
-        <button class="btn-action btn-skip" onclick="skipTransaction()">
-          Skip
-        </button>
-        <button class="btn-action btn-add" onclick="addToReport()">
-          ✓ Add to Report
-        </button>
-      </div>
-
-      <div class="action-shortcuts">
-        <div class="shortcut-hint"><span class="kbd">A</span> Add</div>
-        <div class="shortcut-hint"><span class="kbd">S</span> Skip</div>
-        <div class="shortcut-hint"><span class="kbd">W</span> Wrong</div>
-        <div class="shortcut-hint"><span class="kbd">← →</span> Nav</div>
-      </div>
-    </div>
-
-    <!-- Report Summary -->
-    <div class="report-summary">
-      <div class="summary-stat">
-        <div class="summary-label">In Report</div>
-        <div class="summary-value" id="report-count">0</div>
-      </div>
-      <div class="summary-stat">
-        <div class="summary-label">Total Amount</div>
-        <div class="summary-value" id="report-total">$0.00</div>
-      </div>
-      <div class="summary-stat">
-        <div class="summary-label">Skipped</div>
-        <div class="summary-value" style="color:var(--muted)" id="skipped-count">0</div>
-      </div>
-      <div class="summary-stat">
-        <div class="summary-label">Remaining</div>
-        <div class="summary-value" style="color:var(--warn)" id="remaining-count">0</div>
-      </div>
-      <div class="summary-actions">
-        <button class="btn-finish" onclick="saveAsDraft()" style="background: rgba(255,255,255,0.1);color:var(--ink);border:1px solid var(--edge)">
-          💾 Save Draft
-        </button>
-        <button class="btn-finish" onclick="finishReport()">
-          📤 Submit & Export
-        </button>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="hideNewReportModal()">Cancel</button>
+        <button class="btn-create" onclick="createNewReport()">Create Report</button>
       </div>
     </div>
   </div>
-</main>
-
-<!-- Receipt Modal -->
-<div class="receipt-modal" id="receipt-modal" onclick="closeReceiptModal()">
-  <button class="modal-close" onclick="closeReceiptModal()">×</button>
-  <img id="receipt-modal-img" src="" alt="Receipt">
-</div>
-
-<!-- Report View Modal -->
-<div class="report-view-modal" id="report-view-modal">
-  <div class="report-view-container">
-    <div class="report-view-header">
-      <div>
-        <h2 id="report-view-title">Report Name</h2>
-        <p id="report-view-meta">Business Type • Created Date</p>
-      </div>
-      <button class="modal-close" onclick="closeReportViewModal()">×</button>
-    </div>
-    <div class="report-view-summary">
-      <div class="summary-item">
-        <span class="summary-label">Expenses</span>
-        <span class="summary-value" id="report-view-count">0</span>
-      </div>
-      <div class="summary-item">
-        <span class="summary-label">Total Amount</span>
-        <span class="summary-value" id="report-view-total">$0.00</span>
-      </div>
-    </div>
-    <div class="report-view-table-container">
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Merchant</th>
-            <th>Description</th>
-            <th>Category</th>
-            <th>Business</th>
-            <th class="amount-col">Amount</th>
-            <th>Receipt</th>
-          </tr>
-        </thead>
-        <tbody id="report-view-tbody">
-        </tbody>
-      </table>
-    </div>
-    <div class="report-view-actions">
-      <button class="btn-unsubmit" onclick="unsubmitCurrentReport()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/>
-          <path d="M3 3v5h5"/>
-        </svg>
-        Unsubmit Report
-      </button>
-      <div style="display:flex;gap:8px">
-        <a class="btn-export" id="report-export-link" download>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-            <polyline points="7,10 12,15 17,10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Export CSV
-        </a>
-        <a class="btn-export-zip" id="report-zip-link" download>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
-          </svg>
-          Download Receipts
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="toast" id="toast">
-  <span class="toast-icon" id="toast-icon">✓</span>
-  <span class="toast-message" id="toast-message"></span>
-</div>
 
 <script>
 // ============================================
-// STATE
+// REPORTS DASHBOARD JAVASCRIPT
 // ============================================
-let allTransactions = [];
-let filteredTransactions = [];
-let currentIndex = 0;
-let reportItems = [];
-let skippedItems = new Set();
-let reportName = '';
 
-// ============================================
-// INITIALIZATION
-// ============================================
-document.addEventListener('DOMContentLoaded', async () => {
-  // Set default dates (last 30 days)
-  const today = new Date();
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+let dashboardData = null;
+let spendingChart = null;
+let categoryChart = null;
+let currentTab = 'all';
 
-  document.getElementById('date-to').value = today.toISOString().split('T')[0];
-  document.getElementById('date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
-
-  // Check for pending items from reconciliation (R key adds items)
-  checkPendingReportItems();
-
-  // Load existing draft reports
-  loadDraftReports();
-
-  // Load submitted reports
-  loadSubmittedReports();
-
-  // Keyboard shortcuts
-  document.addEventListener('keydown', handleKeyboard);
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', () => {
+  loadDashboard();
+  setupEventListeners();
+  setDefaultDates();
 });
 
-// Check for pending items added from reconciliation view via R key
-function checkPendingReportItems() {
-  const pendingItems = JSON.parse(localStorage.getItem('tallyups_pending_report_items') || '[]');
-
-  if (pendingItems.length > 0) {
-    // Show pending items banner
-    showPendingItemsBanner(pendingItems);
-  }
-}
-
-function showPendingItemsBanner(items) {
-  const total = items.reduce((sum, item) => sum + Math.abs(item.amount || 0), 0);
-  const businesses = [...new Set(items.map(i => i.business).filter(Boolean))];
-
-  const banner = document.createElement('div');
-  banner.id = 'pending-items-banner';
-  banner.style.cssText = `
-    position: fixed;
-    top: 70px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,200,100,0.2));
-    border: 1px solid var(--brand);
-    border-radius: 12px;
-    padding: 16px 24px;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    box-shadow: 0 4px 20px rgba(0,255,136,0.3);
-  `;
-
-  banner.innerHTML = `
-    <div style="flex:1">
-      <div style="font-weight:700;font-size:16px;color:var(--brand);margin-bottom:4px">
-        📋 ${items.length} Item${items.length > 1 ? 's' : ''} Ready for Report
-      </div>
-      <div style="font-size:13px;color:var(--muted)">
-        Total: $${total.toFixed(2)}${businesses.length ? ' • ' + businesses.join(', ') : ''}
-      </div>
-    </div>
-    <button onclick="createReportFromPending()" style="
-      background: var(--brand);
-      color: #000;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-weight: 700;
-      cursor: pointer;
-    ">Create Report</button>
-    <button onclick="clearPendingItems()" style="
-      background: transparent;
-      color: var(--muted);
-      border: 1px solid var(--edge);
-      padding: 10px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-    ">Clear</button>
-  `;
-
-  document.body.appendChild(banner);
-}
-
-async function createReportFromPending() {
-  const pendingItems = JSON.parse(localStorage.getItem('tallyups_pending_report_items') || '[]');
-  if (pendingItems.length === 0) return;
-
-  // Set report name based on items
-  const businesses = [...new Set(pendingItems.map(i => i.business).filter(Boolean))];
-  const today = new Date().toISOString().split('T')[0];
-  const suggestedName = businesses.length === 1
-    ? `${businesses[0]} - ${today}`
-    : `Expense Report - ${today}`;
-
-  document.getElementById('report-name').value = suggestedName;
-
-  // Set business filter if all same business
-  if (businesses.length === 1) {
-    document.getElementById('business-filter').value = businesses[0];
-  }
-
-  // Move pending items to report items
-  reportItems = pendingItems.map(item => ({
-    id: item._index,
-    merchant: item.merchant,
-    amount: item.amount,
-    date: item.date,
-    category: item.category,
-    business: item.business,
-    hasReceipt: !!item.receipt_url,
-    receiptUrl: item.receipt_url,
-    aiNote: item.ai_note
-  }));
-
-  // Clear pending items
-  localStorage.removeItem('tallyups_pending_report_items');
-  document.getElementById('pending-items-banner')?.remove();
-
-  // Show review panel directly with the items
-  document.getElementById('setup-panel').style.display = 'none';
-  document.getElementById('review-panel').style.display = 'block';
-
-  // Update UI
-  updateReportSummary();
-  showToast(`Report started with ${reportItems.length} items`, 'success');
-
-  // Show finish panel since items are already added
-  showFinishPanel();
-}
-
-function clearPendingItems() {
-  localStorage.removeItem('tallyups_pending_report_items');
-  document.getElementById('pending-items-banner')?.remove();
-  showToast('Pending items cleared', 'info');
-}
-
-function showFinishPanel() {
-  // Update summary
-  const total = reportItems.reduce((sum, item) => sum + Math.abs(item.amount || 0), 0);
-
-  document.getElementById('review-content').innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:24px;padding:40px">
-      <div style="font-size:48px">✅</div>
-      <div style="font-size:24px;font-weight:700;color:var(--brand)">${reportItems.length} Items Ready</div>
-      <div style="font-size:18px;color:var(--muted)">Total: $${total.toFixed(2)}</div>
-      <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:400px;margin-top:20px">
-        <button onclick="finishReport()" style="
-          background: linear-gradient(135deg, var(--brand), #00cc6a);
-          color: #000;
-          border: none;
-          padding: 16px 32px;
-          border-radius: 12px;
-          font-size: 16px;
-          font-weight: 700;
-          cursor: pointer;
-        ">📤 Export Report</button>
-        <button onclick="viewReportItems()" style="
-          background: var(--panel);
-          color: var(--ink);
-          border: 1px solid var(--edge);
-          padding: 12px 24px;
-          border-radius: 8px;
-          cursor: pointer;
-        ">👁️ Review Items</button>
-        <button onclick="backToSetup()" style="
-          background: transparent;
-          color: var(--muted);
-          border: none;
-          padding: 12px;
-          cursor: pointer;
-        ">← Back to Setup</button>
-      </div>
-    </div>
-  `;
-}
-
-function viewReportItems() {
-  const container = document.getElementById('review-content');
-  const total = reportItems.reduce((sum, item) => sum + Math.abs(item.amount || 0), 0);
-
-  container.innerHTML = `
-    <div style="padding:20px;max-width:800px;margin:0 auto">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-        <h2 style="color:var(--brand)">${reportItems.length} Items - $${total.toFixed(2)}</h2>
-        <button onclick="showFinishPanel()" style="
-          background: var(--brand);
-          color: #000;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-        ">Continue to Export</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${reportItems.map((item, idx) => `
-          <div style="
-            background: var(--panel);
-            border: 1px solid var(--edge);
-            border-radius: 10px;
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          ">
-            <div>
-              <div style="font-weight:600">${item.merchant || 'Unknown'}</div>
-              <div style="font-size:12px;color:var(--muted)">${item.date || ''} • ${item.category || ''}</div>
-              ${item.aiNote ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">"${item.aiNote}"</div>` : ''}
-            </div>
-            <div style="display:flex;align-items:center;gap:12px">
-              <div style="font-size:18px;font-weight:700;color:var(--brand)">$${Math.abs(item.amount || 0).toFixed(2)}</div>
-              <button onclick="removeReportItem(${idx})" style="
-                background: transparent;
-                border: none;
-                color: var(--bad);
-                cursor: pointer;
-                padding: 4px;
-              ">✕</button>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function removeReportItem(idx) {
-  reportItems.splice(idx, 1);
-  updateReportSummary();
-  if (reportItems.length === 0) {
-    backToSetup();
-  } else {
-    viewReportItems();
-  }
-}
-
-// ============================================
-// SUBMITTED REPORTS
-// ============================================
-async function loadSubmittedReports() {
-  const container = document.getElementById('submitted-reports-list');
-  if (!container) return;
-
-  try {
-    const response = await fetch('/reports/list', {
-      credentials: 'include'
+function setupEventListeners() {
+  // Tab clicks
+  document.querySelectorAll('.reports-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.reports-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentTab = tab.dataset.tab;
+      renderReportsList();
     });
+  });
 
-    if (!response.ok) {
-      container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px">Unable to load reports</div>';
-      return;
-    }
+  // Chart toggle
+  document.querySelectorAll('.chart-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.chart-toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateSpendingChart(btn.dataset.view);
+    });
+  });
 
-    const data = await response.json();
-    const reports = data.reports || [];
+  // Date range selector
+  document.querySelectorAll('.date-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // Could reload data with different date range
+    });
+  });
+}
 
-    if (!reports || reports.length === 0) {
-      container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px">No reports yet</div>';
-      return;
-    }
+function setDefaultDates() {
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  document.getElementById('report-date-from').value = firstOfMonth.toISOString().split('T')[0];
+  document.getElementById('report-date-to').value = today.toISOString().split('T')[0];
+}
 
-    // Separate drafts and submitted
-    const drafts = reports.filter(r => r.status === 'draft');
-    const submitted = reports.filter(r => r.status !== 'draft');
+async function loadDashboard() {
+  try {
+    const response = await fetch('/api/reports/dashboard');
+    if (!response.ok) throw new Error('Failed to load dashboard');
+    dashboardData = await response.json();
 
-    let html = '';
-
-    // Show drafts first with visual distinction
-    if (drafts.length > 0) {
-      html += '<div class="reports-section-label" style="color:var(--warn);font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:8px;padding-left:4px">📝 Drafts</div>';
-      html += drafts.map(report => {
-        const date = report.created_at ? new Date(report.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-        const total = report.total_amount ? `$${parseFloat(report.total_amount).toFixed(2)}` : '';
-        const count = report.expense_count || 0;
-
-        return `
-          <div class="submitted-report-item draft" style="border-color:var(--warn);background:rgba(255,216,94,0.05)">
-            <div class="submitted-report-info">
-              <div class="submitted-report-name">${report.report_name || report.report_id} <span style="color:var(--warn);font-size:11px">DRAFT</span></div>
-              <div class="submitted-report-meta">${count} expenses${total ? ` - ${total}` : ''}${date ? ` - ${date}` : ''}</div>
-            </div>
-            <div class="submitted-report-actions">
-              <button class="submitted-report-btn" onclick="resumeDraft('${report.report_id}')" style="background:var(--warn);color:#000">Resume</button>
-              <button class="submitted-report-btn" onclick="viewReport('${report.report_id}')">View</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // Show submitted reports
-    if (submitted.length > 0) {
-      if (drafts.length > 0) {
-        html += '<div class="reports-section-label" style="color:var(--ok);font-size:12px;font-weight:600;text-transform:uppercase;margin:16px 0 8px;padding-left:4px">✓ Submitted</div>';
-      }
-      html += submitted.map(report => {
-        const date = report.submitted_at ? new Date(report.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-        const total = report.total_amount ? `$${parseFloat(report.total_amount).toFixed(2)}` : '';
-        const count = report.expense_count || 0;
-
-        return `
-          <div class="submitted-report-item">
-            <div class="submitted-report-info">
-              <div class="submitted-report-name">${report.report_name || report.report_id}</div>
-              <div class="submitted-report-meta">${count} expenses${total ? ` - ${total}` : ''}${date ? ` - ${date}` : ''}</div>
-            </div>
-            <div class="submitted-report-actions">
-              <button class="submitted-report-btn" onclick="viewReport('${report.report_id}')">View</button>
-              <button class="submitted-report-btn export" onclick="exportReport('${report.report_id}')">Export</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    container.innerHTML = html;
-  } catch (e) {
-    console.error('Error loading submitted reports:', e);
-    container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px">Error loading reports</div>';
+    renderStats();
+    renderCharts();
+    renderBusinessBreakdown();
+    renderReportsList();
+  } catch (error) {
+    console.error('Dashboard load error:', error);
+    // Show error state
   }
 }
 
-let currentViewingReportId = null;
+function renderStats() {
+  const ytd = dashboardData.ytd;
 
-async function viewReport(reportId) {
-  try {
-    showToast('Loading report...', 'info');
+  document.getElementById('stat-total-amount').textContent = formatCurrency(ytd.total_amount);
+  document.getElementById('stat-total-count').textContent = ytd.total_transactions.toLocaleString();
+  document.getElementById('stat-report-count').textContent = ytd.report_count;
+  document.getElementById('stat-reports-month').textContent = ytd.reports_this_month;
+  document.getElementById('stat-coverage').textContent = Math.round(ytd.receipt_coverage) + '%';
+  document.getElementById('stat-missing-count').textContent = ytd.missing_receipts;
+  document.getElementById('stat-pending').textContent = ytd.pending_review;
+}
 
-    const response = await fetch(`/reports/${reportId}`, {
-      credentials: 'include'
-    });
-    const data = await response.json();
+function renderCharts() {
+  renderSpendingChart();
+  renderCategoryChart();
+}
 
-    if (!data.expenses || data.expenses.length === 0) {
-      showToast('No expenses found in this report', 'error');
-      return;
-    }
+function renderSpendingChart() {
+  const ctx = document.getElementById('spending-chart').getContext('2d');
+  const data = dashboardData.monthly_trend;
 
-    currentViewingReportId = reportId;
+  if (spendingChart) spendingChart.destroy();
 
-    // Set header info
-    document.getElementById('report-view-title').textContent = data.report_name || reportId;
-
-    // Try to get business type and date from report metadata
-    const businessType = data.business_type || '';
-    const createdAt = data.created_at ? new Date(data.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-    document.getElementById('report-view-meta').textContent = [businessType, createdAt].filter(Boolean).join(' • ') || reportId;
-
-    // Calculate total from expenses
-    const total = data.expenses.reduce((sum, e) => {
-      const amt = parseFloat(e['Chase Amount'] || e.amount || e.chase_amount || 0);
-      return sum + Math.abs(amt);
-    }, 0);
-
-    document.getElementById('report-view-count').textContent = data.expenses.length;
-    document.getElementById('report-view-total').textContent = formatMoney(total);
-
-    // Build table rows
-    const tbody = document.getElementById('report-view-tbody');
-    tbody.innerHTML = data.expenses.map(exp => {
-      const date = exp['Chase Date'] || exp.date || exp.chase_date || '';
-      const merchant = exp['MI Merchant'] || exp['Chase Description'] || exp.merchant || exp.mi_merchant || exp.chase_description || 'Unknown';
-      const description = exp['AI Note'] || exp['ai_note'] || exp['Notes'] || exp['notes'] || '';
-      const category = exp['Chase Category'] || exp['MI Category'] || exp.category || exp.chase_category || exp.mi_category || '';
-      const businessType = exp['Business Type'] || exp['business_type'] || '';
-      const amount = parseFloat(exp['Chase Amount'] || exp.amount || exp.chase_amount || 0);
-      const receipt = exp['R2 URL'] || exp['receipt_url'] || exp.r2_url || exp['Receipt File'] || exp.receipt_file || '';
-
-      let receiptCell = '';
-      if (receipt) {
-        const receiptUrl = receipt.startsWith('http') ? receipt : '/receipts/' + receipt.replace(/^receipts\//, '');
-        receiptCell = `<a href="${escapeHtml(receiptUrl)}" target="_blank" class="receipt-link">View</a>`;
-      } else {
-        receiptCell = '<span class="no-receipt">None</span>';
+  spendingChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.month),
+      datasets: [{
+        label: 'Spending',
+        data: data.map(d => d.amount),
+        backgroundColor: 'rgba(0, 255, 136, 0.3)',
+        borderColor: '#00ff88',
+        borderWidth: 2,
+        borderRadius: 6,
+        barPercentage: 0.6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a1a',
+          titleColor: '#fff',
+          bodyColor: '#888',
+          borderColor: '#333',
+          borderWidth: 1,
+          cornerRadius: 8,
+          callbacks: {
+            label: (ctx) => formatCurrency(ctx.raw)
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#666' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#666',
+            callback: (v) => '$' + (v/1000).toFixed(0) + 'k'
+          }
+        }
       }
+    }
+  });
+}
 
-      return `
-        <tr>
-          <td>${formatDate(date)}</td>
-          <td>${escapeHtml(merchant)}</td>
-          <td class="desc-col" title="${escapeHtml(description)}">${escapeHtml(description ? (description.length > 50 ? description.substring(0, 47) + '...' : description) : '—')}</td>
-          <td>${escapeHtml(category) || '—'}</td>
-          <td>${escapeHtml(businessType) || '—'}</td>
-          <td class="amount-col">${formatMoney(Math.abs(amount))}</td>
-          <td>${receiptCell}</td>
-        </tr>
+function updateSpendingChart(view) {
+  const data = dashboardData.monthly_trend;
+  spendingChart.data.datasets[0].data = data.map(d => view === 'count' ? d.count : d.amount);
+  spendingChart.options.scales.y.ticks.callback = view === 'count'
+    ? (v) => v
+    : (v) => '$' + (v/1000).toFixed(0) + 'k';
+  spendingChart.update();
+}
+
+function renderCategoryChart() {
+  const ctx = document.getElementById('category-chart').getContext('2d');
+  const data = dashboardData.by_category.slice(0, 6);
+
+  if (categoryChart) categoryChart.destroy();
+
+  const colors = [
+    '#00ff88', '#00cc6a', '#ffd85e', '#6eb5ff', '#ff8ea4', '#b388ff'
+  ];
+
+  categoryChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: data.map(d => d.name),
+      datasets: [{
+        data: data.map(d => d.amount),
+        backgroundColor: colors,
+        borderWidth: 0,
+        spacing: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            color: '#888',
+            font: { size: 11 },
+            boxWidth: 12,
+            padding: 8
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1a1a1a',
+          titleColor: '#fff',
+          bodyColor: '#888',
+          borderColor: '#333',
+          borderWidth: 1,
+          cornerRadius: 8,
+          callbacks: {
+            label: (ctx) => formatCurrency(ctx.raw)
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderBusinessBreakdown() {
+  const container = document.getElementById('business-grid');
+  const byBusiness = dashboardData.by_business;
+
+  const total = Object.values(byBusiness).reduce((sum, b) => sum + b.total, 0);
+
+  const businessColors = {
+    'Down Home': 'down-home',
+    'Music City Rodeo': 'mcr',
+    'Personal': 'personal'
+  };
+
+  let html = '';
+  Object.entries(byBusiness)
+    .sort((a, b) => b[1].total - a[1].total)
+    .forEach(([name, data]) => {
+      const percent = total > 0 ? ((data.total / total) * 100).toFixed(0) : 0;
+      const badgeClass = businessColors[name] || 'other';
+
+      html += `
+        <div class="business-card" onclick="filterByBusiness('${name}')">
+          <div class="business-card-header">
+            <div class="business-name">${name}</div>
+            <span class="business-badge ${badgeClass}">${percent}%</span>
+          </div>
+          <div class="business-amount">${formatCurrency(data.total)}</div>
+          <div class="business-meta">
+            <span class="business-count">${data.count} transactions</span>
+            <span class="business-percent">${percent}% of total</span>
+          </div>
+          <div class="business-bar" style="width: ${percent}%"></div>
+        </div>
       `;
-    }).join('');
-
-    // Set export links
-    document.getElementById('report-export-link').href = `/reports/${reportId}/export/downhome`;
-    document.getElementById('report-zip-link').href = `/reports/${reportId}/receipts.zip`;
-
-    // Show modal
-    document.getElementById('report-view-modal').classList.add('active');
-
-  } catch (e) {
-    console.error('Error viewing report:', e);
-    showToast('Error loading report', 'error');
-  }
-}
-
-function closeReportViewModal() {
-  document.getElementById('report-view-modal').classList.remove('active');
-  currentViewingReportId = null;
-}
-
-async function unsubmitCurrentReport() {
-  if (!currentViewingReportId) return;
-
-  const confirmed = confirm('Are you sure you want to unsubmit this report? All transactions will be returned to the main viewer and can be added to a new report.');
-  if (!confirmed) return;
-
-  try {
-    showToast('Unsubmitting report...', 'info');
-
-    const response = await fetch(`/reports/${currentViewingReportId}/unsubmit`, {
-      method: 'POST',
-      credentials: 'include'
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to unsubmit report');
-    }
+  container.innerHTML = html;
+}
+
+function renderReportsList() {
+  const container = document.getElementById('reports-list-container');
+  let reports = dashboardData.recent_reports || [];
+
+  // Filter by tab
+  if (currentTab === 'draft') {
+    reports = reports.filter(r => r.status === 'draft');
+  } else if (currentTab === 'submitted') {
+    reports = reports.filter(r => r.status === 'submitted');
+  }
+
+  // Update tab counts
+  const allReports = dashboardData.recent_reports || [];
+  document.getElementById('tab-all-count').textContent = allReports.length;
+  document.getElementById('tab-draft-count').textContent = allReports.filter(r => r.status === 'draft').length;
+  document.getElementById('tab-submitted-count').textContent = allReports.filter(r => r.status === 'submitted').length;
+
+  if (reports.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">No Reports Yet</div>
+        <div class="empty-text">Create your first expense report to start tracking your business expenses.</div>
+        <button class="btn-new-report" onclick="showNewReportModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Report
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  let html = `
+    <table class="reports-table">
+      <thead>
+        <tr>
+          <th class="sortable">Report Name</th>
+          <th class="sortable">Date</th>
+          <th class="sortable">Amount</th>
+          <th>Items</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  reports.forEach(report => {
+    const statusClass = report.status === 'submitted' ? 'submitted' : 'draft';
+    const statusText = report.status === 'submitted' ? 'Submitted' : 'Draft';
+    const date = report.submitted_at || report.created_at;
+    const formattedDate = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+
+    html += `
+      <tr onclick="viewReport('${report.report_id}')">
+        <td><span class="report-name">${report.name || 'Untitled Report'}</span></td>
+        <td><span class="report-date">${formattedDate}</span></td>
+        <td><span class="report-amount">${formatCurrency(report.total_amount)}</span></td>
+        <td><span class="report-count">${report.expense_count} items</span></td>
+        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+        <td>
+          <div class="report-actions">
+            <button class="action-btn" onclick="event.stopPropagation(); exportReport('${report.report_id}')" title="Export">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="action-btn" onclick="event.stopPropagation(); deleteReport('${report.report_id}')" title="Delete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function filterReports() {
+  const query = document.getElementById('search-input').value.toLowerCase();
+  // Filter logic would go here
+  renderReportsList();
+}
+
+function filterByBusiness(businessType) {
+  // Navigate to viewer with business filter
+  window.location.href = `/viewer?business=${encodeURIComponent(businessType)}`;
+}
+
+// Modal functions
+function showNewReportModal() {
+  document.getElementById('new-report-modal').classList.add('visible');
+}
+
+function hideNewReportModal() {
+  document.getElementById('new-report-modal').classList.remove('visible');
+}
+
+async function createNewReport() {
+  const name = document.getElementById('report-name').value;
+  const business = document.getElementById('report-business').value;
+  const dateFrom = document.getElementById('report-date-from').value;
+  const dateTo = document.getElementById('report-date-to').value;
+
+  if (!name) {
+    alert('Please enter a report name');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        business_type: business === 'all' ? null : business,
+        date_from: dateFrom,
+        date_to: dateTo
+      })
+    });
+
+    if (!response.ok) throw new Error('Failed to create report');
 
     const data = await response.json();
+    hideNewReportModal();
 
-    showToast(data.message || 'Report unsubmitted successfully!', 'success');
-
-    // Close modal and refresh list
-    closeReportViewModal();
-    loadSubmittedReports();
-
-  } catch (e) {
-    console.error('Error unsubmitting report:', e);
-    showToast('Failed to unsubmit report: ' + e.message, 'error');
+    // Navigate to viewer to build the report
+    window.location.href = `/viewer?report=${data.report_id}`;
+  } catch (error) {
+    console.error('Create report error:', error);
+    alert('Failed to create report');
   }
 }
 
-function exportReport(reportId) {
+function viewReport(reportId) {
+  window.location.href = `/reports/${reportId}/page`;
+}
+
+async function exportReport(reportId) {
   window.location.href = `/reports/${reportId}/export/downhome`;
 }
 
-// ============================================
-// REPORT SETUP
-// ============================================
-async function startReview() {
-  reportName = document.getElementById('report-name-input').value || 'Unnamed Report';
-  const business = document.getElementById('business-filter').value;
-  const dateFrom = document.getElementById('date-from').value;
-  const dateTo = document.getElementById('date-to').value;
-  const statusFilter = document.getElementById('status-filter').value;
-
-  // Load transactions
-  showToast('Loading transactions...', 'info');
+async function deleteReport(reportId) {
+  if (!confirm('Are you sure you want to delete this report?')) return;
 
   try {
-    const response = await fetch('/api/transactions', {
-      credentials: 'include'
-    });
-
-    // Handle auth errors
-    if (response.status === 401) {
-      showToast('Session expired - redirecting to login', 'error');
-      window.location.href = '/login?next=/reports';
-      return;
-    }
-
-    const data = await response.json();
-    allTransactions = data;
-
-    // Filter transactions
-    filteredTransactions = allTransactions.filter(tx => {
-      // Skip already submitted
-      const submitted = (tx['Already Submitted'] || '').toLowerCase().trim();
-      if (submitted === 'yes') return false;
-
-      // Business filter
-      if (business && tx['Business Type'] !== business) return false;
-
-      // Date filter - parse RFC 2822 or ISO date formats
-      const txDateRaw = tx['Chase Date'] || tx['date'] || '';
-      // Convert to ISO format for comparison (handles both "Thu, 27 Nov 2025 00:00:00 GMT" and "2024-07-01")
-      let txDateISO = '';
-      if (txDateRaw) {
-        try {
-          const parsed = new Date(txDateRaw);
-          if (!isNaN(parsed.getTime())) {
-            txDateISO = parsed.toISOString().split('T')[0]; // "YYYY-MM-DD"
-          }
-        } catch(e) {
-          txDateISO = txDateRaw; // fallback to raw string
-        }
-      }
-      if (dateFrom && txDateISO < dateFrom) return false;
-      if (dateTo && txDateISO > dateTo) return false;
-
-      // Status filter
-      const status = (tx['Review Status'] || '').toLowerCase();
-      const hasReceipt = !!(tx['Receipt File'] || tx['receipt_file'] || tx['R2 URL'] || tx['r2_url'] || tx['receipt_url']);
-
-      if (statusFilter === 'good') {
-        return status === 'good' && hasReceipt;
-      } else if (statusFilter === 'has-receipt') {
-        return hasReceipt;
-      }
-      // 'all' - show everything
-      return true;
-    });
-
-    if (filteredTransactions.length === 0) {
-      showToast('No transactions match your filters', 'error');
-      return;
-    }
-
-    // Sort by date descending (parse dates properly)
-    filteredTransactions.sort((a, b) => {
-      const dateAraw = a['Chase Date'] || a['date'] || '';
-      const dateBraw = b['Chase Date'] || b['date'] || '';
-      const dateA = dateAraw ? new Date(dateAraw).getTime() : 0;
-      const dateB = dateBraw ? new Date(dateBraw).getTime() : 0;
-      return dateB - dateA; // descending order
-    });
-
-    // Initialize
-    currentIndex = 0;
-    reportItems = [];
-    skippedItems = new Set();
-
-    // Show review panel
-    document.getElementById('setup-panel').style.display = 'none';
-    document.getElementById('review-panel').classList.add('active');
-    document.getElementById('progress-section').style.display = 'flex';
-
-    // Render first transaction
-    renderCurrentTransaction();
-    updateProgress();
-    updateSummary();
-
-    showToast(`${filteredTransactions.length} transactions to review`, 'success');
-
-  } catch (e) {
-    console.error('Error loading:', e);
-    showToast('Failed to load transactions', 'error');
+    const response = await fetch(`/api/reports/${reportId}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete');
+    loadDashboard();
+  } catch (error) {
+    console.error('Delete error:', error);
+    alert('Failed to delete report');
   }
 }
 
-function loadDraftReports() {
-  // Load from localStorage
-  const drafts = JSON.parse(localStorage.getItem('tallyups_draft_reports') || '[]');
-  const select = document.getElementById('existing-reports');
-
-  drafts.forEach(draft => {
-    const opt = document.createElement('option');
-    opt.value = draft.id;
-    opt.textContent = `${draft.name} (${draft.items.length} items, ${draft.date})`;
-    select.appendChild(opt);
-  });
+function exportAllReports() {
+  alert('Export all reports - Coming soon!');
 }
 
-function loadExistingReport(id) {
-  if (!id) return;
-
-  const drafts = JSON.parse(localStorage.getItem('tallyups_draft_reports') || '[]');
-  const draft = drafts.find(d => d.id === id);
-
-  if (draft) {
-    reportName = draft.name;
-    reportItems = draft.items;
-    skippedItems = new Set(draft.skipped || []);
-
-    // Set filters
-    document.getElementById('report-name-input').value = draft.name;
-    if (draft.business) document.getElementById('business-filter').value = draft.business;
-    if (draft.dateFrom) document.getElementById('date-from').value = draft.dateFrom;
-    if (draft.dateTo) document.getElementById('date-to').value = draft.dateTo;
-
-    showToast('Draft loaded! Click Start Review to continue.', 'success');
-  }
-}
-
-// Resume a server-side draft report
-async function resumeDraft(reportId) {
-  try {
-    showToast('Loading draft...', 'info');
-
-    const response = await fetch(`/reports/${reportId}`, {
-      credentials: 'include'
-    });
-    const data = await response.json();
-
-    if (!data.expenses || data.expenses.length === 0) {
-      showToast('No expenses in this draft', 'error');
-      return;
-    }
-
-    // Set report name (remove " (Draft)" suffix if present)
-    reportName = (data.report_name || reportId).replace(/ \(Draft\)$/, '');
-    document.getElementById('report-name-input').value = reportName;
-
-    // Set business filter if available
-    if (data.business_type) {
-      document.getElementById('business-filter').value = data.business_type;
-    }
-
-    // Load expenses into report items
-    reportItems = data.expenses.map(exp => ({
-      id: exp._index,
-      _index: exp._index,
-      merchant: exp['MI Merchant'] || exp['Chase Description'] || exp.merchant || 'Unknown',
-      amount: parseFloat(exp['Chase Amount'] || exp.amount || 0),
-      date: exp['Chase Date'] || exp.date || '',
-      category: exp['MI Category'] || exp['Chase Category'] || exp.category || '',
-      business: exp['Business Type'] || exp.business_type || '',
-      receipt_url: exp['R2 URL'] || exp['Receipt File'] || exp.receipt_url || '',
-      ai_note: exp['AI Note'] || exp['Notes'] || ''
-    }));
-
-    currentDraftReportId = reportId;
-    updateReportSummary();
-
-    showToast(`Draft loaded: ${reportItems.length} expenses`, 'success');
-
-    // Switch to review view or show completion
-    if (reportItems.length > 0) {
-      document.getElementById('setup-panel').style.display = 'none';
-      document.getElementById('review-panel').style.display = 'flex';
-      showCompletionState(); // Show summary since items are already reviewed
-    }
-
-  } catch (e) {
-    console.error('Error loading draft:', e);
-    showToast('Failed to load draft', 'error');
-  }
-}
-
-let currentDraftReportId = null;
-
-// ============================================
-// TRANSACTION RENDERING
-// ============================================
-function renderCurrentTransaction() {
-  if (currentIndex >= filteredTransactions.length) {
-    showCompletionState();
-    return;
-  }
-
-  const tx = filteredTransactions[currentIndex];
-  const txCard = document.getElementById('tx-card');
-  const receiptContainer = document.getElementById('receipt-container');
-
-  // Transaction details
-  const merchant = tx['MI Merchant'] || tx['merchant'] || tx['Chase Description'] || 'Unknown';
-  const date = tx['Chase Date'] || tx['date'] || '';
-  const amount = parseFloat(tx['Chase Amount'] || tx['amount'] || 0);
-  const category = tx['Chase Category'] || tx['MI Category'] || tx['category'] || '';
-  const businessType = tx['Business Type'] || '';
-  const status = tx['Review Status'] || '';
-  const card = tx['card'] || '';
-  const aiNotes = tx['ai_notes'] || tx['AI Notes'] || '';
-
-  let statusBadge = '';
-  if (status === 'good' || status === 'Good') {
-    statusBadge = '<span class="tx-status-badge good">✓ Good</span>';
-  } else if (status === 'bad' || status === 'Bad') {
-    statusBadge = '<span class="tx-status-badge bad">✕ Bad</span>';
-  } else if (!status) {
-    statusBadge = '<span class="tx-status-badge missing">? Needs Review</span>';
-  }
-
-  txCard.innerHTML = `
-    <div class="tx-merchant">${escapeHtml(merchant)}</div>
-    <div class="tx-date">${formatDate(date)}</div>
-    <div class="tx-amount">${formatMoney(amount)}</div>
-    <div class="tx-details">
-      <div class="tx-detail">
-        <span class="tx-detail-label">Category</span>
-        <span class="tx-detail-value">${escapeHtml(category) || '—'}</span>
-      </div>
-      <div class="tx-detail">
-        <span class="tx-detail-label">Business</span>
-        <span class="tx-detail-value">${escapeHtml(businessType) || '—'}</span>
-      </div>
-      ${card ? `
-      <div class="tx-detail">
-        <span class="tx-detail-label">Card</span>
-        <span class="tx-detail-value">${escapeHtml(card)}</span>
-      </div>
-      ` : ''}
-      <div class="tx-detail">
-        <span class="tx-detail-label">Review Status</span>
-        <span class="tx-detail-value">${statusBadge}</span>
-      </div>
-      ${aiNotes ? `
-      <div class="tx-detail" style="flex-direction:column;align-items:flex-start;gap:4px">
-        <span class="tx-detail-label">AI Notes</span>
-        <span class="tx-detail-value" style="font-size:13px;font-weight:400;color:var(--muted)">${escapeHtml(aiNotes)}</span>
-      </div>
-      ` : ''}
-    </div>
-  `;
-
-  // Receipt image
-  const receiptUrl = tx['R2 URL'] || tx['r2_url'] || tx['receipt_url'] || tx['Receipt File'] || tx['receipt_file'] || '';
-
-  if (receiptUrl) {
-    let imgSrc = receiptUrl;
-    // Handle local files
-    if (!receiptUrl.startsWith('http') && !receiptUrl.startsWith('data:')) {
-      imgSrc = '/receipts/' + receiptUrl.replace(/^receipts\//, '');
-    }
-
-    receiptContainer.innerHTML = `
-      <img class="receipt-image" src="${imgSrc}" alt="Receipt" onclick="openReceiptModal()" onerror="this.parentNode.innerHTML='<div class=\\'receipt-placeholder\\'><div class=\\'receipt-placeholder-icon\\'>⚠️</div><div class=\\'receipt-placeholder-text\\'>Failed to load receipt</div></div>'">
-    `;
-    document.getElementById('receipt-modal-img').src = imgSrc;
-  } else {
-    receiptContainer.innerHTML = `
-      <div class="receipt-placeholder">
-        <div class="receipt-placeholder-icon">📄</div>
-        <div class="receipt-placeholder-text">No receipt attached</div>
-      </div>
-    `;
-  }
-
-  // Update index label
-  document.getElementById('tx-index-label').textContent = `#${currentIndex + 1}`;
-
-  // Update nav buttons
-  document.getElementById('btn-prev').disabled = currentIndex === 0;
-  document.getElementById('btn-next').disabled = currentIndex >= filteredTransactions.length - 1;
-}
-
-function showCompletionState() {
-  document.getElementById('tx-card').innerHTML = `
-    <div class="empty-state">
-      <div class="empty-icon">🎉</div>
-      <div class="empty-title">Review Complete!</div>
-      <div class="empty-text">You've reviewed all ${filteredTransactions.length} transactions</div>
-    </div>
-  `;
-
-  document.getElementById('receipt-container').innerHTML = `
-    <div class="receipt-placeholder">
-      <div class="receipt-placeholder-icon">✓</div>
-      <div class="receipt-placeholder-text">All done!</div>
-    </div>
-  `;
-}
-
-// ============================================
-// ACTIONS
-// ============================================
-async function addToReport() {
-  if (currentIndex >= filteredTransactions.length) return;
-
-  const tx = filteredTransactions[currentIndex];
-  const txId = tx['_index'] || tx['id'];
-
-  // Check if already in report
-  if (reportItems.find(item => item.id === txId)) {
-    showToast('Already in report', 'info');
-    nextTransaction();
-    return;
-  }
-
-  // Add to report
-  reportItems.push({
-    id: txId,
-    merchant: tx['MI Merchant'] || tx['merchant'] || tx['Chase Description'],
-    amount: parseFloat(tx['Chase Amount'] || tx['amount'] || 0),
-    date: tx['Chase Date'] || tx['date'],
-    category: tx['Chase Category'] || tx['MI Category'] || tx['category'],
-    business: tx['Business Type'],
-    hasReceipt: !!(tx['Receipt File'] || tx['R2 URL'] || tx['receipt_url'])
-  });
-
-  // Remove from skipped if was there
-  skippedItems.delete(txId);
-
-  // Visual feedback
-  showToast('Added to report!', 'success');
-
-  // Save draft
-  saveDraft();
-
-  // Update UI and move to next
-  updateSummary();
-  updateProgress();
-  nextTransaction();
-}
-
-function skipTransaction() {
-  if (currentIndex >= filteredTransactions.length) return;
-
-  const tx = filteredTransactions[currentIndex];
-  const txId = tx['_index'] || tx['id'];
-
-  skippedItems.add(txId);
-
-  showToast('Skipped', 'info');
-  saveDraft();
-  updateSummary();
-  nextTransaction();
-}
-
-async function markBadMatch() {
-  if (currentIndex >= filteredTransactions.length) return;
-
-  const tx = filteredTransactions[currentIndex];
-  const txId = tx['_index'] || tx['id'];
-
-  // Call API to mark receipt as wrong/mismatch (but DON'T skip - user can still add to report)
-  try {
-    const response = await fetch('/save_row', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'include',
-      body: JSON.stringify({
-        _index: txId,
-        patches: [{'Review Status': 'Wrong Receipt'}]
-      })
-    });
-
-    // Show confirmation with choice to still add or skip
-    showBadMatchChoice(tx);
-  } catch (e) {
-    console.error('Error:', e);
-    showToast('Failed to mark receipt', 'error');
-  }
-}
-
-function showBadMatchChoice(tx) {
-  const txCard = document.getElementById('tx-card');
-  const merchant = tx['MI Merchant'] || tx['merchant'] || tx['Chase Description'] || 'Unknown';
-  const amount = parseFloat(tx['Chase Amount'] || tx['amount'] || 0);
-
-  txCard.innerHTML += `
-    <div id="bad-match-choice" style="
-      margin-top:20px;
-      padding:20px;
-      background:rgba(255,78,106,0.1);
-      border:1px solid rgba(255,78,106,0.3);
-      border-radius:12px;
-    ">
-      <div style="font-weight:700;color:var(--warn);margin-bottom:12px">⚠️ Receipt Flagged as Wrong Match</div>
-      <div style="color:var(--muted);font-size:13px;margin-bottom:16px">
-        This receipt doesn't match the transaction. What would you like to do?
-      </div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <button onclick="addToReportAnyway()" style="
-          flex:1;
-          padding:12px 16px;
-          background:linear-gradient(135deg, var(--brand), #00cc6a);
-          color:#000;
-          border:none;
-          border-radius:8px;
-          font-weight:600;
-          cursor:pointer;
-        ">✓ Add Anyway (need receipt)</button>
-        <button onclick="skipBadMatch()" style="
-          flex:1;
-          padding:12px 16px;
-          background:rgba(255,255,255,0.1);
-          color:var(--ink);
-          border:1px solid var(--edge);
-          border-radius:8px;
-          font-weight:600;
-          cursor:pointer;
-        ">Skip to Next</button>
-      </div>
-    </div>
-  `;
-}
-
-function addToReportAnyway() {
-  document.getElementById('bad-match-choice')?.remove();
-  addToReport();
-}
-
-function skipBadMatch() {
-  const tx = filteredTransactions[currentIndex];
-  const txId = tx['_index'] || tx['id'];
-  skippedItems.add(txId);
-  saveDraft();
-  updateSummary();
-  nextTransaction();
-}
-
-function nextTransaction() {
-  if (currentIndex < filteredTransactions.length - 1) {
-    currentIndex++;
-    renderCurrentTransaction();
-    updateProgress();
-  } else if (currentIndex === filteredTransactions.length - 1) {
-    currentIndex++;
-    showCompletionState();
-    updateProgress();
-  }
-}
-
-function prevTransaction() {
-  if (currentIndex > 0) {
-    currentIndex--;
-    renderCurrentTransaction();
-    updateProgress();
-  }
-}
-
-// ============================================
-// REPORT FINALIZATION
-// ============================================
-async function finishReport() {
-  if (reportItems.length === 0) {
-    showToast('No items in report yet', 'error');
-    return;
-  }
-
-  // Mark all report items as submitted
-  showToast('Submitting report...', 'info');
-
-  try {
-    for (const item of reportItems) {
-      await fetch('/save_row', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        credentials: 'include',
-        body: JSON.stringify({
-          _index: item.id,
-          patches: [{'Already Submitted': 'yes'}]
-        })
-      });
-    }
-
-    // Generate CSV
-    const csvContent = generateReportCSV();
-
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${reportName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-
-    // Clear draft
-    clearDraft();
-
-    showToast(`Report "${reportName}" submitted with ${reportItems.length} items!`, 'success');
-
-    // Return to setup after delay
-    setTimeout(() => {
-      document.getElementById('review-panel').classList.remove('active');
-      document.getElementById('setup-panel').style.display = 'flex';
-      document.getElementById('progress-section').style.display = 'none';
-
-      // Reset state
-      reportItems = [];
-      skippedItems = new Set();
-      currentIndex = 0;
-    }, 2000);
-
-  } catch (e) {
-    console.error('Error submitting:', e);
-    showToast('Failed to submit report', 'error');
-  }
-}
-
-function generateReportCSV() {
-  const headers = ['Date', 'Merchant', 'Amount', 'Category', 'Business', 'Has Receipt'];
-  const rows = reportItems.map(item => [
-    item.date,
-    `"${(item.merchant || '').replace(/"/g, '""')}"`,
-    item.amount.toFixed(2),
-    `"${(item.category || '').replace(/"/g, '""')}"`,
-    item.business || '',
-    item.hasReceipt ? 'Yes' : 'No'
-  ]);
-
-  return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-}
-
-// ============================================
-// DRAFT MANAGEMENT
-// ============================================
-function saveDraft() {
-  const drafts = JSON.parse(localStorage.getItem('tallyups_draft_reports') || '[]');
-
-  // Find or create draft
-  const existingIndex = drafts.findIndex(d => d.name === reportName);
-  const draft = {
-    id: existingIndex >= 0 ? drafts[existingIndex].id : Date.now().toString(),
-    name: reportName,
-    date: new Date().toLocaleDateString(),
-    items: reportItems,
-    skipped: Array.from(skippedItems),
-    business: document.getElementById('business-filter').value,
-    dateFrom: document.getElementById('date-from').value,
-    dateTo: document.getElementById('date-to').value,
-    currentIndex: currentIndex
-  };
-
-  if (existingIndex >= 0) {
-    drafts[existingIndex] = draft;
-  } else {
-    drafts.push(draft);
-  }
-
-  localStorage.setItem('tallyups_draft_reports', JSON.stringify(drafts));
-}
-
-function clearDraft() {
-  const drafts = JSON.parse(localStorage.getItem('tallyups_draft_reports') || '[]');
-  const filtered = drafts.filter(d => d.name !== reportName);
-  localStorage.setItem('tallyups_draft_reports', JSON.stringify(filtered));
-}
-
-// Save as draft without submitting (user can continue later)
-async function saveAsDraft() {
-  if (reportItems.length === 0) {
-    showToast('No items to save yet', 'info');
-    return;
-  }
-
-  saveDraft();
-
-  // Create a server-side draft report
-  try {
-    const business = document.getElementById('business-filter').value || 'Mixed';
-
-    const response = await fetch('/reports/submit', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'include',
-      body: JSON.stringify({
-        report_name: reportName + ' (Draft)',
-        business_type: business,
-        expense_indexes: reportItems.map(item => item.id),
-        status: 'draft'
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to save draft');
-    }
-
-    const data = await response.json();
-    showToast(`Draft saved! ${reportItems.length} items. ID: ${data.report_id}`, 'success');
-
-    // Don't mark as submitted or export - just save
-    loadSubmittedReports();
-
-  } catch (e) {
-    console.error('Error saving draft:', e);
-    // Still saved locally even if server fails
-    showToast('Draft saved locally (server save failed)', 'warning');
-  }
-}
-
-// ============================================
-// UI UPDATES
-// ============================================
-function updateProgress() {
-  const reviewed = reportItems.length + skippedItems.size;
-  const total = filteredTransactions.length;
-  const percent = total > 0 ? (reviewed / total) * 100 : 0;
-
-  document.getElementById('progress-fill').style.width = percent + '%';
-  document.getElementById('progress-text').textContent = `${reviewed} / ${total}`;
-}
-
-function updateSummary() {
-  const total = reportItems.reduce((sum, item) => sum + item.amount, 0);
-
-  document.getElementById('report-count').textContent = reportItems.length;
-  document.getElementById('report-total').textContent = formatMoney(total);
-  document.getElementById('skipped-count').textContent = skippedItems.size;
-  document.getElementById('remaining-count').textContent =
-    filteredTransactions.length - reportItems.length - skippedItems.size;
-}
-
-// ============================================
-// KEYBOARD SHORTCUTS
-// ============================================
-function handleKeyboard(e) {
-  // Don't handle if typing in input
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
-    return;
-  }
-
-  // Only handle in review mode
-  if (!document.getElementById('review-panel').classList.contains('active')) {
-    return;
-  }
-
-  switch(e.key.toLowerCase()) {
-    case 'a':
-      e.preventDefault();
-      addToReport();
-      break;
-    case 's':
-      e.preventDefault();
-      skipTransaction();
-      break;
-    case 'w':
-    case 'x':
-      e.preventDefault();
-      markBadMatch();
-      break;
-    case 'arrowleft':
-      e.preventDefault();
-      prevTransaction();
-      break;
-    case 'arrowright':
-      e.preventDefault();
-      nextTransaction();
-      break;
-    case 'escape':
-      closeReceiptModal();
-      closeReportViewModal();
-      break;
-  }
-}
-
-// ============================================
-// RECEIPT MODAL
-// ============================================
-function openReceiptModal() {
-  const img = document.getElementById('receipt-modal-img');
-  if (img.src && !img.src.includes('undefined')) {
-    document.getElementById('receipt-modal').classList.add('active');
-  }
-}
-
-function closeReceiptModal() {
-  document.getElementById('receipt-modal').classList.remove('active');
-}
-
-// ============================================
-// NAVIGATION
-// ============================================
-function goBack() {
-  if (reportItems.length > 0) {
-    if (confirm('You have unsaved work. Save as draft before leaving?')) {
-      saveDraft();
-    }
-  }
-  window.location.href = '/?page=reports';
-}
-
-// ============================================
-// UTILITIES
-// ============================================
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function formatMoney(amount) {
-  const absAmount = Math.abs(amount);
-  const formatted = absAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return amount < 0 ? `-$${formatted}` : `$${formatted}`;
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  try {
-    // Handle various date formats
-    let date;
-    const str = String(dateStr).trim();
-
-    // Already a Date object
-    if (dateStr instanceof Date) {
-      date = dateStr;
-    }
-    // ISO format: 2024-01-15 or 2024-01-15T00:00:00
-    else if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-      // Add time component to avoid timezone issues
-      const datePart = str.split('T')[0];
-      date = new Date(datePart + 'T12:00:00');
-    }
-    // US format: 01/15/2024 or 1/15/2024
-    else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
-      const [m, d, y] = str.split('/');
-      date = new Date(y, parseInt(m) - 1, d, 12, 0, 0);
-    }
-    // Try parsing as-is
-    else {
-      date = new Date(str);
-    }
-
-    // Check if valid
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid date:', dateStr);
-      return str || '';
-    }
-
-    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  } catch (e) {
-    console.warn('Date format error:', dateStr, e);
-    return String(dateStr) || '';
-  }
-}
-
-let toastTimeout;
-function showToast(message, type = 'success') {
-  const toast = document.getElementById('toast');
-  const icon = document.getElementById('toast-icon');
-  const msg = document.getElementById('toast-message');
-
-  icon.textContent = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ️';
-  msg.textContent = message;
-
-  toast.className = 'toast ' + type;
-
-  // Clear any existing timeout
-  clearTimeout(toastTimeout);
-
-  // Show toast
-  requestAnimationFrame(() => {
-    toast.classList.add('show');
-  });
-
-  // Hide after delay
-  toastTimeout = setTimeout(() => {
-    toast.classList.remove('show');
-  }, 2500);
+// Utility functions
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount || 0);
 }
 </script>
-
 </body>
 </html>

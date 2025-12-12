@@ -23764,6 +23764,206 @@ def api_reports_stats():
         })
 
 
+@app.route("/api/reports/dashboard", methods=["GET"])
+@login_required
+def api_reports_dashboard():
+    """
+    Comprehensive dashboard stats for reports page.
+    Returns YTD totals, monthly trends, business breakdowns, category data, and reports list.
+    """
+    if not USE_DATABASE or not db:
+        return jsonify({"error": "Database required"}), 503
+
+    try:
+        conn, db_type = get_db_connection()
+        year_start = f"{datetime.now().year}-01-01"
+        current_month_start = datetime.now().replace(day=1).strftime("%Y-%m-%d")
+
+        # ========== YTD TOTALS ==========
+        cursor = db_execute(conn, db_type, '''
+            SELECT
+                COUNT(*) as total_transactions,
+                SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))) as total_amount,
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipt,
+                SUM(CASE WHEN review_status = 'NEEDS_REVIEW' OR review_status IS NULL THEN 1 ELSE 0 END) as pending_review
+            FROM transactions
+            WHERE chase_date >= ?
+            AND (deleted IS NULL OR deleted = 0)
+        ''', (year_start,))
+        ytd_row = cursor.fetchone()
+        cursor.close()
+
+        total_transactions = ytd_row['total_transactions'] or 0
+        total_amount = float(ytd_row['total_amount'] or 0)
+        with_receipt = ytd_row['with_receipt'] or 0
+        pending_review = ytd_row['pending_review'] or 0
+        receipt_coverage = (with_receipt / total_transactions * 100) if total_transactions > 0 else 0
+
+        # ========== REPORT COUNT ==========
+        report_count = 0
+        reports_this_month = 0
+        try:
+            cursor = db_execute(conn, db_type, '''
+                SELECT COUNT(*) as cnt FROM expense_reports WHERE status = 'submitted'
+            ''')
+            row = cursor.fetchone()
+            report_count = row['cnt'] if row else 0
+            cursor.close()
+
+            cursor = db_execute(conn, db_type, '''
+                SELECT COUNT(*) as cnt FROM expense_reports
+                WHERE status = 'submitted' AND created_at >= ?
+            ''', (current_month_start,))
+            row = cursor.fetchone()
+            reports_this_month = row['cnt'] if row else 0
+            cursor.close()
+        except:
+            pass
+
+        # ========== MONTHLY TREND (last 6 months) ==========
+        monthly_trend = []
+        try:
+            if db_type == 'mysql':
+                cursor = db_execute(conn, db_type, '''
+                    SELECT
+                        DATE_FORMAT(chase_date, '%Y-%m') as month,
+                        SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))) as amount,
+                        COUNT(*) as count
+                    FROM transactions
+                    WHERE chase_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
+                    AND (deleted IS NULL OR deleted = 0)
+                    GROUP BY DATE_FORMAT(chase_date, '%Y-%m')
+                    ORDER BY month
+                ''')
+            else:
+                cursor = db_execute(conn, db_type, '''
+                    SELECT
+                        strftime('%Y-%m', chase_date) as month,
+                        SUM(ABS(CAST(chase_amount AS REAL))) as amount,
+                        COUNT(*) as count
+                    FROM transactions
+                    WHERE chase_date >= date('now', '-6 months')
+                    AND (deleted IS NULL OR deleted = 0)
+                    GROUP BY strftime('%Y-%m', chase_date)
+                    ORDER BY month
+                ''')
+
+            for row in cursor.fetchall():
+                month_name = datetime.strptime(row['month'], '%Y-%m').strftime('%b')
+                monthly_trend.append({
+                    'month': month_name,
+                    'amount': float(row['amount'] or 0),
+                    'count': row['count'] or 0
+                })
+            cursor.close()
+        except Exception as e:
+            print(f"Monthly trend error: {e}")
+
+        # ========== BY BUSINESS TYPE ==========
+        by_business = {}
+        try:
+            cursor = db_execute(conn, db_type, '''
+                SELECT
+                    COALESCE(mi_business_type, 'Uncategorized') as business,
+                    SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))) as total,
+                    COUNT(*) as count
+                FROM transactions
+                WHERE chase_date >= ?
+                AND (deleted IS NULL OR deleted = 0)
+                GROUP BY COALESCE(mi_business_type, 'Uncategorized')
+            ''', (year_start,))
+
+            for row in cursor.fetchall():
+                by_business[row['business']] = {
+                    'total': float(row['total'] or 0),
+                    'count': row['count'] or 0
+                }
+            cursor.close()
+        except Exception as e:
+            print(f"Business type error: {e}")
+
+        # ========== BY CATEGORY (top 10) ==========
+        by_category = []
+        try:
+            cursor = db_execute(conn, db_type, '''
+                SELECT
+                    COALESCE(mi_category, chase_category, 'Other') as category,
+                    SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))) as total,
+                    COUNT(*) as count
+                FROM transactions
+                WHERE chase_date >= ?
+                AND (deleted IS NULL OR deleted = 0)
+                GROUP BY COALESCE(mi_category, chase_category, 'Other')
+                ORDER BY total DESC
+                LIMIT 10
+            ''', (year_start,))
+
+            for row in cursor.fetchall():
+                by_category.append({
+                    'name': row['category'],
+                    'amount': float(row['total'] or 0),
+                    'count': row['count'] or 0
+                })
+            cursor.close()
+        except Exception as e:
+            print(f"Category error: {e}")
+
+        # ========== RECENT REPORTS ==========
+        recent_reports = []
+        try:
+            cursor = db_execute(conn, db_type, '''
+                SELECT
+                    er.report_id,
+                    er.name,
+                    er.status,
+                    er.total_amount,
+                    er.expense_count,
+                    er.created_at,
+                    er.submitted_at
+                FROM expense_reports er
+                ORDER BY er.created_at DESC
+                LIMIT 10
+            ''')
+
+            for row in cursor.fetchall():
+                recent_reports.append({
+                    'report_id': row['report_id'],
+                    'name': row['name'],
+                    'status': row['status'],
+                    'total_amount': float(row['total_amount'] or 0),
+                    'expense_count': row['expense_count'] or 0,
+                    'created_at': str(row['created_at']) if row['created_at'] else None,
+                    'submitted_at': str(row['submitted_at']) if row['submitted_at'] else None
+                })
+            cursor.close()
+        except Exception as e:
+            print(f"Recent reports error: {e}")
+
+        return_db_connection(conn)
+
+        return jsonify({
+            "ytd": {
+                "total_amount": round(total_amount, 2),
+                "total_transactions": total_transactions,
+                "receipt_coverage": round(receipt_coverage, 1),
+                "missing_receipts": total_transactions - with_receipt,
+                "pending_review": pending_review,
+                "report_count": report_count,
+                "reports_this_month": reports_this_month
+            },
+            "monthly_trend": monthly_trend,
+            "by_business": by_business,
+            "by_category": by_category,
+            "recent_reports": recent_reports
+        })
+
+    except Exception as e:
+        print(f"Dashboard stats error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/reports/generate", methods=["POST"])
 def api_reports_generate():
     """
