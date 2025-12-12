@@ -644,6 +644,414 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   display:flex;justify-content:flex-end;gap:10px;
 }
 
+/* Report Selector Popup */
+.report-selector-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 24px 48px rgba(0,0,0,.5);
+  z-index: 10002;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+.report-selector-popup.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+}
+.report-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--edge);
+  font-weight: 600;
+  color: var(--ink);
+}
+.report-selector-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.report-selector-close:hover {
+  background: rgba(239,68,68,.15);
+  color: var(--bad);
+}
+.report-selector-list {
+  padding: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.report-selector-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--ink);
+}
+.report-selector-item:hover {
+  background: var(--chip);
+}
+.report-selector-item.active {
+  background: var(--chipOn);
+  border-left: 3px solid var(--brand);
+}
+.report-selector-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--edge);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.report-selector-item:hover .report-selector-shortcut {
+  background: var(--brand);
+  color: #000;
+}
+.report-selector-name {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-selector-count {
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.report-selector-new {
+  border-top: 1px solid var(--edge);
+  margin-top: 8px;
+  padding-top: 16px;
+}
+.report-selector-new .report-selector-name {
+  color: var(--brand);
+}
+.report-selector-hint {
+  padding: 12px 20px;
+  border-top: 1px solid var(--edge);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ============================================
+   10X REPORT BUILDER - RAMP/BREX INSPIRED
+   ============================================ */
+
+/* Live Report Widget - Always Visible */
+#live-report-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: linear-gradient(145deg, rgba(0,255,136,.15), rgba(0,204,106,.1));
+  border: 1px solid rgba(0,255,136,.3);
+  border-radius: 16px;
+  padding: 16px 20px;
+  min-width: 240px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.4), 0 0 0 1px rgba(0,255,136,.1) inset;
+  z-index: 1000;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+#live-report-widget:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,.5), 0 0 20px rgba(0,255,136,.2);
+}
+#live-report-widget.hidden { display: none; }
+#live-report-widget.pulse {
+  animation: widgetPulse 0.5s ease;
+}
+@keyframes widgetPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.widget-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.widget-count {
+  background: var(--brand);
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.widget-total {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.widget-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+.widget-hint kbd {
+  background: var(--edge);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  margin: 0 2px;
+}
+
+/* Quick Action Bar */
+#quick-action-bar {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#quick-action-bar.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  background: var(--panel2);
+  color: var(--ink);
+}
+.action-btn:hover {
+  background: var(--edge);
+}
+.action-btn.primary {
+  background: var(--brand);
+  color: #000;
+}
+.action-btn.primary:hover {
+  background: #00cc6a;
+}
+.action-btn kbd {
+  background: rgba(0,0,0,.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+/* Swipeable Row */
+.swipe-row {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.swipe-row.swiping {
+  transition: none;
+}
+.swipe-row.swipe-add {
+  background: rgba(0,255,136,.15) !important;
+}
+.swipe-row.swipe-skip {
+  background: rgba(255,78,106,.15) !important;
+}
+.swipe-action-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.swipe-action-indicator.left {
+  left: 0;
+  background: linear-gradient(90deg, rgba(0,255,136,.3), transparent);
+  color: var(--brand);
+}
+.swipe-action-indicator.right {
+  right: 0;
+  background: linear-gradient(-90deg, rgba(255,78,106,.3), transparent);
+  color: var(--bad);
+}
+.swipe-row.swiping .swipe-action-indicator {
+  opacity: 1;
+}
+
+/* Speed Mode Indicator */
+#speed-mode-indicator {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--brand), #00cc6a);
+  color: #000;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(0,255,136,.4);
+  z-index: 1001;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+#speed-mode-indicator.visible {
+  opacity: 1;
+  visibility: visible;
+}
+#speed-mode-indicator .progress {
+  width: 100px;
+  height: 4px;
+  background: rgba(0,0,0,.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#speed-mode-indicator .progress-bar {
+  height: 100%;
+  background: #000;
+  transition: width 0.3s ease;
+}
+
+/* Transaction Preview Card (for speed mode) */
+#transaction-preview {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--panel);
+  border: 2px solid var(--edge);
+  border-radius: 20px;
+  padding: 32px;
+  min-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  z-index: 1002;
+  display: none;
+}
+#transaction-preview.visible {
+  display: block;
+  animation: cardSlideIn 0.3s ease;
+}
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.preview-amount {
+  font-size: 48px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.preview-merchant {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.preview-date {
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 24px;
+}
+.preview-receipt {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  background: var(--panel2);
+}
+.preview-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.preview-actions button {
+  flex: 1;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+.preview-actions .add-btn {
+  background: var(--brand);
+  color: #000;
+}
+.preview-actions .add-btn:hover {
+  background: #00cc6a;
+  transform: scale(1.02);
+}
+.preview-actions .skip-btn {
+  background: var(--panel2);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+}
+.preview-actions .skip-btn:hover {
+  background: var(--edge);
+}
+
 /* Hotkey Menu */
 .hotkey-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;
@@ -2620,6 +3028,27 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
       </div>
     </div>
 
+    <!-- Draft Reports Section -->
+    <div id="draft-reports-section" style="margin-bottom:28px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="margin:0;font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">📝</span>
+          Draft Reports
+          <span id="draft-reports-count" style="background:var(--edge);color:var(--muted);padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600">0</span>
+        </h3>
+        <button class="btn-secondary" onclick="refreshDraftReports()" style="padding:8px 12px;font-size:12px">
+          🔄 Refresh
+        </button>
+      </div>
+      <div id="draft-reports-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px">
+        <!-- Draft report cards will be populated here -->
+        <div id="draft-reports-empty" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);background:var(--panel);border-radius:12px;border:1px dashed var(--edge)">
+          <div style="font-size:32px;margin-bottom:12px;opacity:0.5">📋</div>
+          <p style="margin:0">No draft reports yet. Use <kbd style="background:var(--edge);padding:2px 6px;border-radius:4px;font-size:11px">R</kbd> in the viewer to add transactions to a report.</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Report Preview (hidden, kept for legacy) -->
     <div id="report-preview-section" style="display:none">
       <div style="background:var(--panel);padding:24px;border-radius:12px;border:1px solid var(--edge);margin-bottom:24px">
@@ -3572,6 +4001,213 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   </div>
 </div>
 
+<!-- Report Selector Popup -->
+<div id="report-selector-popup" class="report-selector-popup">
+  <div class="report-selector-header">
+    <span>Add to Report</span>
+    <button class="report-selector-close" onclick="closeReportSelector()">×</button>
+  </div>
+  <div id="report-selector-list" class="report-selector-list">
+    <!-- Populated dynamically -->
+  </div>
+  <div class="report-selector-hint">
+    Press 1-9 to select • N for new • Esc to close
+  </div>
+</div>
+
+<!-- 10X REPORT BUILDER WIDGETS -->
+
+<!-- Live Report Widget -->
+<div id="live-report-widget" class="hidden" onclick="toggleReportPanel()">
+  <div class="widget-header">
+    <span class="widget-title">
+      <span id="widget-report-name">Report</span>
+      <span class="widget-count" id="widget-item-count">0</span>
+    </span>
+  </div>
+  <div class="widget-total" id="widget-total">$0.00</div>
+  <div class="widget-hint">
+    <kbd>Space</kbd> add • <kbd>S</kbd> skip • <kbd>Tab</kbd> next
+  </div>
+</div>
+
+<!-- Quick Action Bar (shows when transaction selected) -->
+<div id="quick-action-bar">
+  <button class="action-btn primary" onclick="quickAddToReport()">
+    <span>Add to Report</span>
+    <kbd>Space</kbd>
+  </button>
+  <button class="action-btn" onclick="quickSkipTransaction()">
+    <span>Skip</span>
+    <kbd>S</kbd>
+  </button>
+  <button class="action-btn" onclick="showQuickEditPopup()">
+    <span>Edit</span>
+    <kbd>E</kbd>
+  </button>
+  <button class="action-btn" onclick="markAsPersonal()">
+    <span>Personal</span>
+    <kbd>P</kbd>
+  </button>
+  <button class="action-btn" onclick="enterSpeedMode()">
+    <span>Speed Mode</span>
+    <kbd>Ctrl+Enter</kbd>
+  </button>
+</div>
+
+<!-- Quick Edit Popup -->
+<div id="quick-edit-popup" class="report-selector-popup" style="min-width:400px">
+  <div class="report-selector-header">
+    <span>Quick Edit</span>
+    <button class="report-selector-close" onclick="closeQuickEditPopup()">×</button>
+  </div>
+  <div style="padding:16px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Category</label>
+        <select id="quick-edit-category" class="input" style="width:100%;padding:10px">
+          <option value="">Select...</option>
+          <option value="Advertising">Advertising</option>
+          <option value="Artist Fees">Artist Fees</option>
+          <option value="Audio/Visual">Audio/Visual</option>
+          <option value="Catering">Catering</option>
+          <option value="Consulting">Consulting</option>
+          <option value="Equipment Rental">Equipment Rental</option>
+          <option value="Food & Beverage">Food & Beverage</option>
+          <option value="Insurance">Insurance</option>
+          <option value="Legal">Legal</option>
+          <option value="Marketing">Marketing</option>
+          <option value="Meals & Entertainment">Meals & Entertainment</option>
+          <option value="Merchandise">Merchandise</option>
+          <option value="Office Supplies">Office Supplies</option>
+          <option value="Parking">Parking</option>
+          <option value="Photography">Photography</option>
+          <option value="Production">Production</option>
+          <option value="Rent">Rent</option>
+          <option value="Security">Security</option>
+          <option value="Software">Software</option>
+          <option value="Subscriptions">Subscriptions</option>
+          <option value="Supplies">Supplies</option>
+          <option value="Travel">Travel</option>
+          <option value="Utilities">Utilities</option>
+          <option value="Venue">Venue</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Business</label>
+        <select id="quick-edit-business" class="input" style="width:100%;padding:10px">
+          <option value="">Select...</option>
+          <option value="Down Home">Down Home</option>
+          <option value="Music City Rodeo">Music City Rodeo</option>
+          <option value="Personal">Personal</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Notes / Description</label>
+      <input type="text" id="quick-edit-notes" class="input" style="width:100%;padding:10px" placeholder="Add notes...">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-ghost" onclick="closeQuickEditPopup()" style="flex:1">Cancel</button>
+      <button class="btn-success" onclick="saveQuickEdit()" style="flex:1">Save & Next</button>
+    </div>
+  </div>
+</div>
+
+<!-- Speed Mode Indicator -->
+<div id="speed-mode-indicator">
+  <span>⚡ SPEED MODE</span>
+  <div class="progress">
+    <div class="progress-bar" id="speed-progress-bar"></div>
+  </div>
+  <span id="speed-count">0/0</span>
+  <button onclick="exitSpeedMode()" style="background:rgba(0,0,0,.2);border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px">ESC</button>
+</div>
+
+<!-- Transaction Preview Card (for Speed Mode) -->
+<div id="transaction-preview">
+  <div class="preview-amount" id="preview-amount">$0.00</div>
+  <div class="preview-merchant" id="preview-merchant">Merchant Name</div>
+  <div class="preview-date" id="preview-date">Jan 1, 2025</div>
+
+  <!-- Editable Fields -->
+  <div class="preview-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0">
+    <div>
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Category</label>
+      <select id="preview-category" class="input" style="width:100%;padding:10px;font-size:14px" onchange="updateSpeedCategory(this.value)">
+        <option value="">Select category...</option>
+        <option value="Advertising">Advertising</option>
+        <option value="Artist Fees">Artist Fees</option>
+        <option value="Audio/Visual">Audio/Visual</option>
+        <option value="Bank Fees">Bank Fees</option>
+        <option value="Catering">Catering</option>
+        <option value="Cleaning">Cleaning</option>
+        <option value="Commissions">Commissions</option>
+        <option value="Consulting">Consulting</option>
+        <option value="Decorations">Decorations</option>
+        <option value="Equipment Rental">Equipment Rental</option>
+        <option value="Food & Beverage">Food & Beverage</option>
+        <option value="Furniture">Furniture</option>
+        <option value="Insurance">Insurance</option>
+        <option value="Legal">Legal</option>
+        <option value="Licensing">Licensing</option>
+        <option value="Marketing">Marketing</option>
+        <option value="Meals & Entertainment">Meals & Entertainment</option>
+        <option value="Merchandise">Merchandise</option>
+        <option value="Office Supplies">Office Supplies</option>
+        <option value="Parking">Parking</option>
+        <option value="Payroll">Payroll</option>
+        <option value="Photography">Photography</option>
+        <option value="Printing">Printing</option>
+        <option value="Production">Production</option>
+        <option value="Rent">Rent</option>
+        <option value="Repairs">Repairs</option>
+        <option value="Security">Security</option>
+        <option value="Shipping">Shipping</option>
+        <option value="Software">Software</option>
+        <option value="Staging">Staging</option>
+        <option value="Subscriptions">Subscriptions</option>
+        <option value="Supplies">Supplies</option>
+        <option value="Talent">Talent</option>
+        <option value="Taxes">Taxes</option>
+        <option value="Technology">Technology</option>
+        <option value="Tickets">Tickets</option>
+        <option value="Travel">Travel</option>
+        <option value="Uniforms">Uniforms</option>
+        <option value="Utilities">Utilities</option>
+        <option value="Venue">Venue</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Business</label>
+      <select id="preview-business" class="input" style="width:100%;padding:10px;font-size:14px" onchange="updateSpeedBusiness(this.value)">
+        <option value="">Select business...</option>
+        <option value="Down Home">Down Home</option>
+        <option value="Music City Rodeo">Music City Rodeo</option>
+        <option value="Personal">Personal</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="margin-bottom:16px">
+    <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Description / Notes</label>
+    <input type="text" id="preview-notes" class="input" style="width:100%;padding:10px;font-size:14px"
+           placeholder="Add description or notes..." onchange="updateSpeedNotes(this.value)">
+  </div>
+
+  <img class="preview-receipt" id="preview-receipt-img" src="" alt="Receipt">
+  <div class="preview-actions">
+    <button class="skip-btn" onclick="speedSkip()">
+      Skip <kbd>S</kbd>
+    </button>
+    <button class="add-btn" onclick="speedAdd()">
+      Add <kbd>Space</kbd>
+    </button>
+  </div>
+</div>
+
 <!-- Toast Notification -->
 <div class="toast" id="toast">
   <span class="toast-icon" id="toast-icon">✓</span>
@@ -3634,6 +4270,69 @@ function isInAnyReport(index) {
   });
 })();
 
+// Load draft reports from database and merge with localStorage
+async function loadDraftReportsFromDatabase() {
+  try {
+    const response = await fetch('/api/reports?status=draft');
+    if (!response.ok) return;
+
+    const data = await response.json();
+    if (!data.ok || !data.reports) return;
+
+    // Merge database reports with localStorage reports
+    data.reports.forEach(dbReport => {
+      const existing = openReports.find(r => r.id === dbReport.report_id);
+      if (!existing) {
+        // Add report from database
+        const report = {
+          id: dbReport.report_id,
+          name: dbReport.report_name || dbReport.report_id,
+          created: dbReport.created_at,
+          synced: true
+        };
+        openReports.push(report);
+        reportTransactions.set(report.id, new Set());
+      }
+    });
+
+    // Load transactions for each synced report
+    for (const report of openReports) {
+      if (!report.id.startsWith('report_')) {
+        try {
+          const itemsRes = await fetch(`/api/reports/${report.id}/items`);
+          if (itemsRes.ok) {
+            const itemsData = await itemsRes.json();
+            if (itemsData.ok && itemsData.items) {
+              const indices = new Set(itemsData.items.map(i => i._index).filter(Boolean));
+              if (indices.size > 0) {
+                reportTransactions.set(report.id, indices);
+              }
+            }
+          }
+        } catch (e) {
+          // Use localStorage fallback
+        }
+      }
+    }
+
+    // Update currentReportId if needed
+    if (openReports.length > 0 && !currentReportId) {
+      currentReportId = openReports[0].id;
+    }
+
+    // Save merged state back to localStorage
+    localStorage.setItem('tallyups_open_reports', JSON.stringify(openReports));
+
+    // Re-render to reflect loaded reports
+    if (typeof updateReportUI === 'function') updateReportUI();
+    if (typeof updateReportFAB === 'function') updateReportFAB();
+    if (typeof renderTable === 'function') renderTable();
+
+  } catch (e) {
+    console.log('Using localStorage reports (offline or error):', e);
+  }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   await loadCSV();
@@ -3642,6 +4341,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupResizer();
   loadTheme();
   updateIncomingBadge();  // Show pending incoming receipts count
+
+  // Load draft reports from database (in background)
+  loadDraftReportsFromDatabase();
 
   // Handle URL parameters for navigation (e.g., /?page=reports)
   const urlParams = new URLSearchParams(window.location.search);
@@ -5043,6 +5745,10 @@ function renderTable() {
     const tr = document.createElement('tr');
     const rowIndex = row._index;
 
+    // Add data-index for swipe gestures and swipe-row class
+    tr.dataset.index = rowIndex;
+    tr.classList.add('swipe-row');
+
     if (selectedIndex !== null && rowIndex === selectedIndex) {
       tr.classList.add('selected');
     }
@@ -5447,6 +6153,11 @@ function selectRow(row) {
   selectedRow = row;
   renderTable();
   loadReceipt();
+
+  // Show quick action bar when row is selected
+  if (typeof updateQuickActionBar === 'function') {
+    updateQuickActionBar();
+  }
 }
 
 // Notes inline editing
@@ -8020,6 +8731,7 @@ function switchPage(page) {
   // Load data for Reports page
   if (page === 'reports') {
     loadArchivedReports();
+    refreshDraftReports();
   }
 
   // Load data for Stats page
@@ -9959,31 +10671,828 @@ function initReportPanel() {
 }
 
 // Create a new report
-function createNewReport() {
-  const id = 'report_' + Date.now();
-  const report = {
-    id: id,
-    name: 'Report ' + (openReports.length + 1),
-    created: new Date().toISOString()
-  };
-  openReports.push(report);
-  reportTransactions.set(id, new Set());
-  currentReportId = id;
+async function createNewReport() {
+  const tempId = 'report_' + Date.now();
+  const reportName = 'Report ' + (openReports.length + 1);
+
+  // Try to create in database first
+  try {
+    const response = await fetch('/api/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: reportName,
+        status: 'draft'
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const report = {
+        id: data.id,
+        name: data.name || reportName,
+        created: new Date().toISOString(),
+        synced: true
+      };
+      openReports.push(report);
+      reportTransactions.set(data.id, new Set());
+      currentReportId = data.id;
+    } else {
+      // Fallback to local-only report
+      const report = {
+        id: tempId,
+        name: reportName,
+        created: new Date().toISOString(),
+        synced: false
+      };
+      openReports.push(report);
+      reportTransactions.set(tempId, new Set());
+      currentReportId = tempId;
+    }
+  } catch (e) {
+    // Offline - create local report
+    const report = {
+      id: tempId,
+      name: reportName,
+      created: new Date().toISOString(),
+      synced: false
+    };
+    openReports.push(report);
+    reportTransactions.set(tempId, new Set());
+    currentReportId = tempId;
+  }
+
   saveReportsState();
   updateReportUI();
   showToast('Created new report', 'success');
 }
 
-// Save reports state to localStorage
+// Save reports state to localStorage AND sync to database
 function saveReportsState() {
+  // Always save to localStorage as cache/fallback
   localStorage.setItem('tallyups_open_reports', JSON.stringify(openReports));
   localStorage.setItem('tallyups_current_report', currentReportId);
 
-  // Save each report's transactions
+  // Save each report's transactions to localStorage
   reportTransactions.forEach((indices, reportId) => {
     localStorage.setItem(`tallyups_report_${reportId}`, JSON.stringify([...indices]));
   });
+
+  // Sync transaction assignments to database (debounced)
+  debouncedSyncToDatabase();
 }
+
+// Debounce database sync to avoid too many API calls
+let syncTimeout = null;
+function debouncedSyncToDatabase() {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => syncReportsToDatabase(), 500);
+}
+
+// Sync report transactions to database
+async function syncReportsToDatabase() {
+  for (const [reportId, indices] of reportTransactions) {
+    // Skip local-only reports (not synced to DB yet)
+    if (reportId.startsWith('report_')) continue;
+
+    for (const idx of indices) {
+      try {
+        await fetch(`/api/reports/${reportId}/add`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transaction_id: idx })
+        });
+      } catch (e) {
+        // Silently fail, localStorage is the backup
+      }
+    }
+  }
+}
+
+// Refresh and display draft reports in the reports page
+async function refreshDraftReports() {
+  const grid = document.getElementById('draft-reports-grid');
+  const countBadge = document.getElementById('draft-reports-count');
+  const emptyState = document.getElementById('draft-reports-empty');
+
+  if (!grid) return;
+
+  // Combine localStorage and database reports
+  const allDrafts = [...openReports];
+
+  // Also fetch from database
+  try {
+    const res = await fetch('/api/reports?status=draft');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ok && data.reports) {
+        data.reports.forEach(dbReport => {
+          if (!allDrafts.find(r => r.id === dbReport.report_id)) {
+            allDrafts.push({
+              id: dbReport.report_id,
+              name: dbReport.report_name || dbReport.name,
+              created: dbReport.created_at,
+              total: dbReport.total || 0,
+              count: dbReport.count || 0,
+              synced: true
+            });
+          }
+        });
+      }
+    }
+  } catch (e) {
+    // Use localStorage only
+  }
+
+  // Update count badge
+  countBadge.textContent = allDrafts.length;
+
+  // Clear existing cards (except empty state)
+  grid.querySelectorAll('.draft-report-card').forEach(c => c.remove());
+
+  if (allDrafts.length === 0) {
+    emptyState.style.display = '';
+    return;
+  }
+
+  emptyState.style.display = 'none';
+
+  // Create cards for each draft report
+  allDrafts.forEach(report => {
+    const indices = reportTransactions.get(report.id) || new Set();
+    const itemCount = indices.size || report.count || 0;
+
+    // Calculate total from indices if available
+    let total = report.total || 0;
+    if (indices.size > 0 && csvData) {
+      total = 0;
+      indices.forEach(idx => {
+        const row = csvData.find(r => r._index === idx);
+        if (row) {
+          total += Math.abs(parseFloat(row['Chase Amount'] || row['Amount'] || 0));
+        }
+      });
+    }
+
+    const card = document.createElement('div');
+    card.className = 'draft-report-card';
+    card.style.cssText = 'background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:20px;cursor:pointer;transition:all .2s;position:relative';
+    card.onmouseenter = () => card.style.borderColor = 'var(--brand)';
+    card.onmouseleave = () => card.style.borderColor = 'var(--edge)';
+
+    const syncStatus = report.synced ? '☁️' : '💾';
+    const syncTooltip = report.synced ? 'Synced to server' : 'Local only';
+
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div style="font-size:24px">📋</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span title="${syncTooltip}" style="font-size:14px;opacity:0.6">${syncStatus}</span>
+          <button onclick="event.stopPropagation();deleteDraftReport('${report.id}')" style="width:24px;height:24px;border-radius:6px;background:transparent;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none" title="Delete draft">×</button>
+        </div>
+      </div>
+      <h4 style="margin:0 0 8px 0;font-size:16px;font-weight:600;color:var(--ink)">${escapeHtml(report.name)}</h4>
+      <div style="display:flex;gap:16px;font-size:13px;color:var(--muted)">
+        <span>${itemCount} item${itemCount !== 1 ? 's' : ''}</span>
+        <span style="color:var(--brand);font-weight:600">$${total.toFixed(2)}</span>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button onclick="event.stopPropagation();continueDraftReport('${report.id}')" class="btn-success" style="flex:1;padding:8px 12px;font-size:12px">
+          Continue
+        </button>
+        <button onclick="event.stopPropagation();viewDraftReportDetails('${report.id}')" class="btn-secondary" style="padding:8px 12px;font-size:12px">
+          View
+        </button>
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+}
+
+// Continue working on a draft report
+function continueDraftReport(reportId) {
+  currentReportId = reportId;
+  localStorage.setItem('tallyups_current_report', currentReportId);
+
+  // Switch to home page (viewer) and show report panel
+  switchPage('home');
+  showReportPanel();
+  updateReportUI();
+  showToast('Draft report loaded', 'success');
+}
+
+// View draft report details in a modal
+function viewDraftReportDetails(reportId) {
+  const report = openReports.find(r => r.id === reportId);
+  if (!report) return;
+
+  const indices = reportTransactions.get(reportId) || new Set();
+  const items = [];
+  let total = 0;
+
+  indices.forEach(idx => {
+    const row = csvData.find(r => r._index === idx);
+    if (row) {
+      const amt = Math.abs(parseFloat(row['Chase Amount'] || row['Amount'] || 0));
+      total += amt;
+      items.push({
+        date: row['Chase Date'] || row['Date'],
+        merchant: row['MI Merchant'] || row['Chase Description'],
+        amount: amt
+      });
+    }
+  });
+
+  // Show modal with report details
+  const modalHTML = `
+    <div class="modal-overlay active" id="draft-report-detail-modal" style="z-index:10001">
+      <div class="modal" style="max-width:600px;max-height:80vh">
+        <div class="modal-header">
+          <div class="modal-title">📋 ${escapeHtml(report.name)}</div>
+          <button class="modal-close" onclick="document.getElementById('draft-report-detail-modal').remove()">×</button>
+        </div>
+        <div class="modal-body" style="max-height:50vh;overflow-y:auto">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+            <div style="background:var(--panel2);padding:16px;border-radius:10px;text-align:center">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Items</div>
+              <div style="font-size:24px;font-weight:700;color:var(--brand)">${items.length}</div>
+            </div>
+            <div style="background:var(--panel2);padding:16px;border-radius:10px;text-align:center">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Total</div>
+              <div style="font-size:24px;font-weight:700;color:var(--brand)">$${total.toFixed(2)}</div>
+            </div>
+          </div>
+          <div style="border:1px solid var(--edge);border-radius:8px;overflow:hidden">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead style="background:var(--panel2)">
+                <tr>
+                  <th style="padding:10px;text-align:left;color:var(--muted)">Date</th>
+                  <th style="padding:10px;text-align:left;color:var(--muted)">Merchant</th>
+                  <th style="padding:10px;text-align:right;color:var(--muted)">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map(item => `
+                  <tr style="border-top:1px solid var(--edge)">
+                    <td style="padding:10px">${escapeHtml(item.date || '')}</td>
+                    <td style="padding:10px">${escapeHtml(item.merchant || '')}</td>
+                    <td style="padding:10px;text-align:right;font-weight:600">$${item.amount.toFixed(2)}</td>
+                  </tr>
+                `).join('') || '<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--muted)">No items yet</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" onclick="document.getElementById('draft-report-detail-modal').remove()">Close</button>
+          <button class="btn-success" onclick="document.getElementById('draft-report-detail-modal').remove();continueDraftReport('${reportId}')">Continue Editing</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// Delete a draft report
+async function deleteDraftReport(reportId) {
+  if (!confirm('Delete this draft report?')) return;
+
+  // Remove from openReports
+  openReports = openReports.filter(r => r.id !== reportId);
+  reportTransactions.delete(reportId);
+  localStorage.removeItem(`tallyups_report_${reportId}`);
+
+  // Update currentReportId if needed
+  if (currentReportId === reportId) {
+    currentReportId = openReports.length > 0 ? openReports[0].id : null;
+  }
+
+  saveReportsState();
+
+  // Also delete from database if it's a synced report
+  if (!reportId.startsWith('report_')) {
+    try {
+      await fetch(`/reports/${reportId}/delete`, { method: 'POST' });
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  refreshDraftReports();
+  renderTable();
+  showToast('Draft deleted', 'info');
+}
+
+// ============================================
+// 10X REPORT BUILDER - SPEED & POWER FEATURES
+// ============================================
+
+let speedModeActive = false;
+let speedModeQueue = [];
+let speedModeIndex = 0;
+let quickActionBarVisible = false;
+
+// Update the live report widget with current totals
+function updateLiveReportWidget() {
+  const widget = document.getElementById('live-report-widget');
+  if (!widget) return;
+
+  // Only show when we have an active report
+  if (openReports.length === 0) {
+    widget.classList.add('hidden');
+    return;
+  }
+
+  widget.classList.remove('hidden');
+
+  const report = openReports.find(r => r.id === currentReportId) || openReports[0];
+  const indices = reportTransactions.get(report.id) || new Set();
+
+  // Calculate total
+  let total = 0;
+  indices.forEach(idx => {
+    const row = csvData.find(r => r._index === idx);
+    if (row) {
+      total += Math.abs(parseFloat(row['Chase Amount'] || row['Amount'] || 0));
+    }
+  });
+
+  document.getElementById('widget-report-name').textContent = report.name;
+  document.getElementById('widget-item-count').textContent = indices.size;
+  document.getElementById('widget-total').textContent = '$' + total.toFixed(2);
+
+  // Pulse animation when item added
+  widget.classList.add('pulse');
+  setTimeout(() => widget.classList.remove('pulse'), 500);
+}
+
+// Show/hide quick action bar based on selection
+function updateQuickActionBar() {
+  const bar = document.getElementById('quick-action-bar');
+  if (!bar) return;
+
+  if (selectedRow && !speedModeActive) {
+    bar.classList.add('visible');
+    quickActionBarVisible = true;
+  } else {
+    bar.classList.remove('visible');
+    quickActionBarVisible = false;
+  }
+}
+
+// Quick add current transaction to report (Space key)
+function quickAddToReport() {
+  if (!selectedRow) return;
+
+  // Auto-create report if none exists
+  if (!currentReportId || openReports.length === 0) {
+    createNewReport();
+  }
+
+  const currentSet = reportTransactions.get(currentReportId) || new Set();
+  const index = selectedRow._index;
+
+  if (currentSet.has(index)) {
+    showToast('Already in report', 'info');
+    return;
+  }
+
+  currentSet.add(index);
+  reportTransactions.set(currentReportId, currentSet);
+  saveReportsState();
+
+  // Update UI
+  updateLiveReportWidget();
+  updateReportUI();
+
+  const merchant = selectedRow['MI Merchant'] || selectedRow['Chase Description'] || 'Transaction';
+  showToast(`Added "${merchant}"`, 'success');
+
+  // Re-render and move to next
+  renderTable();
+  navigateRow(1);
+}
+
+// Quick skip transaction (S key) - marks as reviewed but not added
+function quickSkipTransaction() {
+  if (!selectedRow) return;
+
+  // Just move to next without adding to report
+  showToast('Skipped', 'info');
+  navigateRow(1);
+}
+
+// Mark as personal (P key)
+function markAsPersonal() {
+  if (!selectedRow) return;
+
+  updateField('Business Type', 'Personal');
+  showToast('Marked as Personal', 'success');
+  navigateRow(1);
+}
+
+// ============================================
+// QUICK EDIT POPUP
+// ============================================
+
+let quickEditVisible = false;
+
+function showQuickEditPopup() {
+  if (!selectedRow) return;
+
+  const popup = document.getElementById('quick-edit-popup');
+
+  // Populate with current values
+  document.getElementById('quick-edit-category').value = selectedRow['MI Category'] || selectedRow['Chase Category'] || '';
+  document.getElementById('quick-edit-business').value = selectedRow['Business Type'] || '';
+  document.getElementById('quick-edit-notes').value = selectedRow['Notes'] || selectedRow['MI Description'] || '';
+
+  popup.classList.add('visible');
+  quickEditVisible = true;
+
+  // Focus on first field
+  document.getElementById('quick-edit-category').focus();
+
+  // Handle keyboard
+  document.addEventListener('keydown', handleQuickEditKeys);
+}
+
+function closeQuickEditPopup() {
+  document.getElementById('quick-edit-popup').classList.remove('visible');
+  quickEditVisible = false;
+  document.removeEventListener('keydown', handleQuickEditKeys);
+}
+
+function handleQuickEditKeys(e) {
+  if (!quickEditVisible) return;
+
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeQuickEditPopup();
+  } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    saveQuickEdit();
+  }
+}
+
+function saveQuickEdit() {
+  if (!selectedRow) return;
+
+  const category = document.getElementById('quick-edit-category').value;
+  const business = document.getElementById('quick-edit-business').value;
+  const notes = document.getElementById('quick-edit-notes').value;
+
+  // Update local data
+  if (category) {
+    selectedRow['MI Category'] = category;
+    updateField('MI Category', category);
+  }
+  if (business) {
+    selectedRow['Business Type'] = business;
+    updateField('Business Type', business);
+  }
+  if (notes !== undefined) {
+    selectedRow['Notes'] = notes;
+    updateField('Notes', notes);
+  }
+
+  closeQuickEditPopup();
+  showToast('Saved', 'success');
+
+  // Move to next transaction
+  navigateRow(1);
+}
+
+// ============================================
+// SPEED MODE - Rapid-fire expense categorization
+// ============================================
+
+function enterSpeedMode() {
+  // Get all visible transactions that aren't in a report
+  speedModeQueue = filteredData.filter(row => {
+    if (typeof isInAnyReport === 'function' && isInAnyReport(row._index)) {
+      return false;
+    }
+    return true;
+  });
+
+  if (speedModeQueue.length === 0) {
+    showToast('No transactions to process', 'warning');
+    return;
+  }
+
+  speedModeActive = true;
+  speedModeIndex = 0;
+
+  // Auto-create report if needed
+  if (!currentReportId || openReports.length === 0) {
+    createNewReport();
+  }
+
+  // Show speed mode UI
+  document.getElementById('speed-mode-indicator').classList.add('visible');
+  document.getElementById('transaction-preview').classList.add('visible');
+  document.getElementById('quick-action-bar').classList.remove('visible');
+
+  // Show first transaction
+  showSpeedModeTransaction();
+
+  showToast('Speed Mode activated! Space=Add, S=Skip, Esc=Exit', 'success');
+}
+
+function exitSpeedMode() {
+  speedModeActive = false;
+  speedModeQueue = [];
+  speedModeIndex = 0;
+
+  document.getElementById('speed-mode-indicator').classList.remove('visible');
+  document.getElementById('transaction-preview').classList.remove('visible');
+  updateQuickActionBar();
+
+  renderTable();
+  showToast('Speed Mode exited', 'info');
+}
+
+function showSpeedModeTransaction() {
+  if (speedModeIndex >= speedModeQueue.length) {
+    exitSpeedMode();
+    showToast('All transactions processed!', 'success');
+    return;
+  }
+
+  const row = speedModeQueue[speedModeIndex];
+  const amt = Math.abs(parseFloat(row['Chase Amount'] || row['Amount'] || 0));
+  const merchant = row['MI Merchant'] || row['Chase Description'] || 'Unknown';
+  const date = row['Chase Date'] || '';
+  const receiptUrl = row.receipt_url || row['Receipt'] || '';
+
+  // Update preview card
+  const amtClass = (parseFloat(row['Chase Amount'] || 0)) > 0 ? 'neg' : 'pos';
+  document.getElementById('preview-amount').innerHTML = `<span class="amount ${amtClass}">$${amt.toFixed(2)}</span>`;
+  document.getElementById('preview-merchant').textContent = merchant;
+  document.getElementById('preview-date').textContent = formatDateForDisplay(date);
+
+  // Populate editable fields with current values
+  const categoryEl = document.getElementById('preview-category');
+  const businessEl = document.getElementById('preview-business');
+  const notesEl = document.getElementById('preview-notes');
+
+  categoryEl.value = row['MI Category'] || row['Chase Category'] || '';
+  businessEl.value = row['Business Type'] || '';
+  notesEl.value = row['Notes'] || row['MI Description'] || '';
+
+  // Show/hide receipt image
+  const imgEl = document.getElementById('preview-receipt-img');
+  if (receiptUrl) {
+    imgEl.src = receiptUrl;
+    imgEl.style.display = 'block';
+  } else {
+    imgEl.style.display = 'none';
+  }
+
+  // Update progress
+  const progress = ((speedModeIndex + 1) / speedModeQueue.length) * 100;
+  document.getElementById('speed-progress-bar').style.width = progress + '%';
+  document.getElementById('speed-count').textContent = `${speedModeIndex + 1}/${speedModeQueue.length}`;
+}
+
+// Update category for current speed mode transaction
+function updateSpeedCategory(value) {
+  if (!speedModeActive || speedModeIndex >= speedModeQueue.length) return;
+  const row = speedModeQueue[speedModeIndex];
+  row['MI Category'] = value;
+  // Save to server
+  updateFieldForIndex(row._index, 'MI Category', value);
+}
+
+// Update business type for current speed mode transaction
+function updateSpeedBusiness(value) {
+  if (!speedModeActive || speedModeIndex >= speedModeQueue.length) return;
+  const row = speedModeQueue[speedModeIndex];
+  row['Business Type'] = value;
+  // Save to server
+  updateFieldForIndex(row._index, 'Business Type', value);
+}
+
+// Update notes for current speed mode transaction
+function updateSpeedNotes(value) {
+  if (!speedModeActive || speedModeIndex >= speedModeQueue.length) return;
+  const row = speedModeQueue[speedModeIndex];
+  row['Notes'] = value;
+  // Save to server
+  updateFieldForIndex(row._index, 'Notes', value);
+}
+
+// Helper to update a field by index (without changing selectedRow)
+async function updateFieldForIndex(rowIndex, field, value) {
+  try {
+    const response = await fetch('/api/transaction/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        index: rowIndex,
+        field: field,
+        value: value
+      })
+    });
+    if (!response.ok) {
+      console.error('Failed to update field');
+    }
+  } catch (e) {
+    console.error('Error updating field:', e);
+  }
+}
+
+function speedAdd() {
+  if (!speedModeActive || speedModeIndex >= speedModeQueue.length) return;
+
+  const row = speedModeQueue[speedModeIndex];
+  const currentSet = reportTransactions.get(currentReportId) || new Set();
+  currentSet.add(row._index);
+  reportTransactions.set(currentReportId, currentSet);
+  saveReportsState();
+  updateLiveReportWidget();
+
+  // Animate card out
+  const preview = document.getElementById('transaction-preview');
+  preview.style.animation = 'none';
+  preview.offsetHeight; // Force reflow
+  preview.style.animation = 'cardSlideIn 0.3s ease';
+
+  speedModeIndex++;
+  showSpeedModeTransaction();
+}
+
+function speedSkip() {
+  if (!speedModeActive) return;
+
+  // Animate card out
+  const preview = document.getElementById('transaction-preview');
+  preview.style.animation = 'none';
+  preview.offsetHeight;
+  preview.style.animation = 'cardSlideIn 0.3s ease';
+
+  speedModeIndex++;
+  showSpeedModeTransaction();
+}
+
+// Helper for date formatting
+function formatDateForDisplay(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (e) {
+    return dateStr;
+  }
+}
+
+// ============================================
+// ENHANCED KEYBOARD SHORTCUTS
+// ============================================
+
+// Add speed mode keyboard handlers
+document.addEventListener('keydown', (e) => {
+  // Speed mode controls
+  if (speedModeActive) {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      speedAdd();
+    } else if (e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      speedSkip();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      exitSpeedMode();
+    }
+    return;
+  }
+
+  // Skip if quick edit popup is open
+  if (quickEditVisible) return;
+
+  // Normal mode - quick action shortcuts (only when not in input)
+  if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT') {
+    return;
+  }
+
+  // Space to add to report (when transaction selected)
+  if (e.code === 'Space' && selectedRow && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    quickAddToReport();
+  }
+
+  // S to skip
+  if (e.key.toLowerCase() === 's' && selectedRow && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+    e.preventDefault();
+    quickSkipTransaction();
+  }
+
+  // E to edit
+  if (e.key.toLowerCase() === 'e' && selectedRow && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+    e.preventDefault();
+    showQuickEditPopup();
+  }
+
+  // Ctrl+Enter for speed mode
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    enterSpeedMode();
+  }
+});
+
+// ============================================
+// SWIPE GESTURES (Touch support)
+// ============================================
+
+let touchStartX = 0;
+let touchStartY = 0;
+let swipingRow = null;
+const SWIPE_THRESHOLD = 80;
+
+function initSwipeGestures() {
+  const tbody = document.getElementById('tbody');
+  if (!tbody) return;
+
+  tbody.addEventListener('touchstart', (e) => {
+    const row = e.target.closest('tr');
+    if (!row) return;
+
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    swipingRow = row;
+    row.classList.add('swiping');
+  }, { passive: true });
+
+  tbody.addEventListener('touchmove', (e) => {
+    if (!swipingRow) return;
+
+    const deltaX = e.touches[0].clientX - touchStartX;
+    const deltaY = e.touches[0].clientY - touchStartY;
+
+    // Only allow horizontal swipes
+    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+
+    // Limit swipe distance
+    const clampedX = Math.max(-100, Math.min(100, deltaX));
+    swipingRow.style.transform = `translateX(${clampedX}px)`;
+
+    // Show action indicators
+    if (deltaX > SWIPE_THRESHOLD) {
+      swipingRow.classList.add('swipe-add');
+      swipingRow.classList.remove('swipe-skip');
+    } else if (deltaX < -SWIPE_THRESHOLD) {
+      swipingRow.classList.add('swipe-skip');
+      swipingRow.classList.remove('swipe-add');
+    } else {
+      swipingRow.classList.remove('swipe-add', 'swipe-skip');
+    }
+  }, { passive: true });
+
+  tbody.addEventListener('touchend', (e) => {
+    if (!swipingRow) return;
+
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const rowIndex = parseInt(swipingRow.dataset.index);
+
+    // Execute action based on swipe direction
+    if (deltaX > SWIPE_THRESHOLD) {
+      // Swipe right = add to report
+      const row = csvData.find(r => r._index === rowIndex);
+      if (row) {
+        selectedRow = row;
+        quickAddToReport();
+      }
+    } else if (deltaX < -SWIPE_THRESHOLD) {
+      // Swipe left = mark as personal
+      const row = csvData.find(r => r._index === rowIndex);
+      if (row) {
+        selectedRow = row;
+        markAsPersonal();
+      }
+    }
+
+    // Reset row
+    swipingRow.style.transform = '';
+    swipingRow.classList.remove('swiping', 'swipe-add', 'swipe-skip');
+    swipingRow = null;
+  });
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+  initSwipeGestures();
+  updateLiveReportWidget();
+});
+
+// Update widget when reports change
+const originalSaveReportsState = saveReportsState;
+saveReportsState = function() {
+  originalSaveReportsState.apply(this, arguments);
+  updateLiveReportWidget();
+};
 
 // Add selected transactions to current report
 function addSelectedToReport() {
@@ -10490,14 +11999,6 @@ function deleteReport(reportId) {
   updateReportUI();
   renderTable();
   showToast('Report deleted', 'info');
-}
-
-// Check if transaction is in any report
-function isInAnyReport(index) {
-  for (const [_, indices] of reportTransactions) {
-    if (indices.has(index)) return true;
-  }
-  return false;
 }
 
 // Format date helper

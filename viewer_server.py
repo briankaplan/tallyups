@@ -14741,16 +14741,25 @@ def api_reports_list():
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
     try:
+        status_filter = request.args.get('status')
         reports = db.get_all_reports()
+
         # Transform to simpler format for mobile
         result = []
         for r in reports:
+            report_status = r.get('status') or 'draft'
+            # Filter by status if specified
+            if status_filter and report_status != status_filter:
+                continue
+
             result.append({
+                'report_id': r.get('report_id') or r.get('id'),
                 'id': r.get('report_id') or r.get('id'),
+                'report_name': r.get('report_name') or r.get('name') or 'Untitled',
                 'name': r.get('report_name') or r.get('name') or 'Untitled',
                 'total': float(r.get('total_amount') or 0),
                 'count': r.get('expense_count') or 0,
-                'status': r.get('status') or 'draft',
+                'status': report_status,
                 'created_at': str(r.get('created_at') or '')
             })
         return jsonify({'ok': True, 'reports': result})
