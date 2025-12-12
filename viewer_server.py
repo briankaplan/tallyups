@@ -14353,12 +14353,15 @@ def get_library_receipts():
 
             receipt = {
                 'id': f"tx_{tx.get('id') or tx.get('_index')}",
+                'uuid': f"tx_{tx.get('id') or tx.get('_index')}",  # Alias for JS compatibility
                 'type': 'transaction',
                 'transaction_id': tx.get('id') or tx.get('_index'),
                 '_index': tx.get('_index'),  # MySQL uses _index for linking
                 'merchant': merchant,
+                'merchant_name': merchant,  # Alias for JS compatibility
                 'amount': float(amount or 0),
                 'date': str(date_val),
+                'receipt_date': str(date_val),  # Alias for JS compatibility
                 'receipt_url': receipt_image,
                 'thumbnail_url': tx.get('thumbnail_url') or receipt_image,
                 'source': receipt_source,
@@ -14475,11 +14478,14 @@ def get_library_receipts():
 
                     receipt = {
                         'id': f"inc_{inc.get('id')}",
+                        'uuid': f"inc_{inc.get('id')}",  # Alias for JS compatibility
                         'type': 'incoming',
                         'incoming_id': inc.get('id'),
                         'merchant': merchant,
+                        'merchant_name': merchant,  # Alias for JS compatibility
                         'amount': float(inc.get('amount') or 0),
                         'date': str(receipt_date),
+                        'receipt_date': str(receipt_date),  # Alias for JS compatibility
                         'receipt_url': inc.get('receipt_image_url') or receipt_file,
                         'thumbnail_url': thumbnail,
                         'source': receipt_source,
