@@ -212,7 +212,75 @@ def convert_html_to_image(html_content: str) -> bytes:
         print(f"      ⚠️  Playwright failed: {e}")
         print(f"      📋 Traceback: {traceback.format_exc()}")
 
-    # Fallback to text-based rendering if Playwright fails
+    # Try wkhtmltoimage as second option (better than text fallback)
+    try:
+        import subprocess
+        import tempfile
+        import shutil
+
+        wkhtmltoimage_path = shutil.which('wkhtmltoimage')
+        if wkhtmltoimage_path:
+            print(f"      📸 Trying wkhtmltoimage fallback...")
+
+            # Wrap HTML in document structure
+            wrapped_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{
+            font-family: Arial, Helvetica, sans-serif;
+            background: white;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            line-height: 1.5;
+            color: #333;
+        }}
+        img {{ max-width: 100%; height: auto; }}
+        table {{ max-width: 100%; border-collapse: collapse; }}
+        td, th {{ padding: 8px; border: 1px solid #ddd; }}
+        a {{ color: #0066cc; }}
+    </style>
+</head>
+<body>
+    {html_content}
+</body>
+</html>"""
+
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as html_file:
+                html_file.write(wrapped_html)
+                html_path = html_file.name
+
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as img_file:
+                img_path = img_file.name
+
+            try:
+                result = subprocess.run(
+                    [wkhtmltoimage_path, '--quality', '90', '--width', '800',
+                     '--disable-smart-width', html_path, img_path],
+                    capture_output=True, timeout=30
+                )
+
+                if result.returncode == 0 and os.path.exists(img_path):
+                    with open(img_path, 'rb') as f:
+                        jpg_bytes = f.read()
+                    if len(jpg_bytes) > 1000:  # Sanity check
+                        print(f"      ✅ wkhtmltoimage screenshot: {len(jpg_bytes)} bytes")
+                        return jpg_bytes
+                else:
+                    print(f"      ⚠️  wkhtmltoimage failed: {result.stderr.decode()[:200]}")
+            finally:
+                # Clean up temp files
+                try:
+                    os.unlink(html_path)
+                    os.unlink(img_path)
+                except:
+                    pass
+    except Exception as e:
+        print(f"      ⚠️  wkhtmltoimage fallback failed: {e}")
+
+    # Fallback to text-based rendering if all else fails
     try:
         from PIL import Image, ImageDraw, ImageFont
         import re
