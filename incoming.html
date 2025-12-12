@@ -3018,13 +3018,33 @@ async function attachToExpense(receiptId, transactionId, btn) {
       // Refresh to update stats
       loadReceipts();
     } else {
-      showToast(data.error || 'Failed to attach', 'error');
-      renderMobileCards();
+      // Show error persistently
+      const errorMsg = data.error || 'Failed to attach receipt';
+      if (actionsDiv) {
+        actionsDiv.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:8px;padding:12px;background:rgba(255,80,80,0.1);border-radius:8px;border:1px solid rgba(255,80,80,0.3)">
+            <div style="color:var(--error);font-weight:600;font-size:12px">Error</div>
+            <div style="font-size:11px;color:var(--muted);word-break:break-word">${errorMsg}</div>
+            <button class="inbox-card-btn" onclick="renderMobileCards()" style="margin-top:4px">Dismiss</button>
+          </div>
+        `;
+      }
+      showToast(errorMsg, 'error');
+      console.error('Attach failed:', errorMsg);
     }
   } catch (e) {
     console.error('Attach error:', e);
+    const errorMsg = e.message || 'Network error - try again';
+    if (actionsDiv) {
+      actionsDiv.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:8px;padding:12px;background:rgba(255,80,80,0.1);border-radius:8px;border:1px solid rgba(255,80,80,0.3)">
+          <div style="color:var(--error);font-weight:600;font-size:12px">Error</div>
+          <div style="font-size:11px;color:var(--muted);word-break:break-word">${errorMsg}</div>
+          <button class="inbox-card-btn" onclick="renderMobileCards()" style="margin-top:4px">Dismiss</button>
+        </div>
+      `;
+    }
     showToast('Error attaching receipt', 'error');
-    renderMobileCards();
   }
 }
 
@@ -3109,13 +3129,30 @@ async function doAccept(id, merchant, amount, isRefund, transDate, card, actions
       // Refresh stats
       loadReceipts();
     } else {
-      showToast(data.error || 'Failed', 'error');
-      renderMobileCards();
+      // Show error persistently in the card
+      const errorMsg = data.error || 'Failed to accept receipt';
+      actionsDiv.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:8px;padding:12px;background:rgba(255,80,80,0.1);border-radius:8px;border:1px solid rgba(255,80,80,0.3)">
+          <div style="color:var(--error);font-weight:600;font-size:12px">Error</div>
+          <div style="font-size:11px;color:var(--muted);word-break:break-word">${errorMsg}</div>
+          <button class="inbox-card-btn" onclick="renderMobileCards()" style="margin-top:4px">Dismiss</button>
+        </div>
+      `;
+      showToast(errorMsg, 'error');
+      console.error('Accept failed:', errorMsg);
     }
   } catch (e) {
     console.error('Accept error:', e);
-    showToast('Error accepting', 'error');
-    renderMobileCards();
+    // Show error persistently in the card
+    const errorMsg = e.message || 'Network error - try again';
+    actionsDiv.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:8px;padding:12px;background:rgba(255,80,80,0.1);border-radius:8px;border:1px solid rgba(255,80,80,0.3)">
+        <div style="color:var(--error);font-weight:600;font-size:12px">Error</div>
+        <div style="font-size:11px;color:var(--muted);word-break:break-word">${errorMsg}</div>
+        <button class="inbox-card-btn" onclick="renderMobileCards()" style="margin-top:4px">Dismiss</button>
+      </div>
+    `;
+    showToast('Error accepting receipt', 'error');
   }
 }
 
