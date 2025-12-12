@@ -921,12 +921,15 @@
           $('missing-stat').querySelector('.quick-stat-value').classList.add('brand');
         }
 
-        // Inbox badge
-        if (pending > 0) {
-          $('inbox-badge').textContent = pending > 99 ? '99+' : pending;
-          $('inbox-badge').style.display = 'flex';
-        } else {
-          $('inbox-badge').style.display = 'none';
+        // Inbox badge (element may not exist on all pages)
+        const inboxBadge = $('inbox-badge');
+        if (inboxBadge) {
+          if (pending > 0) {
+            inboxBadge.textContent = pending > 99 ? '99+' : pending;
+            inboxBadge.style.display = 'flex';
+          } else {
+            inboxBadge.style.display = 'none';
+          }
         }
 
         // Workflow Alert
