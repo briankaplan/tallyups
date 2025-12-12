@@ -17220,9 +17220,9 @@ def unreject_incoming_receipt():
                 'error': 'Receipt not found'
             }), 404
 
-        # Check if it's actually rejected
+        # Check if it's actually rejected (either rejected or auto_rejected)
         receipt_status = receipt['status'] if isinstance(receipt, dict) else receipt[list(receipt.keys()).index('status')]
-        if receipt_status != 'rejected':
+        if receipt_status not in ('rejected', 'auto_rejected'):
             return_db_connection(conn)
             return jsonify({
                 'ok': False,
