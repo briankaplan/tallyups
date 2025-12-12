@@ -3771,11 +3771,54 @@ async function aiNote() {
     const data = await res.json();
     if (data.ok) {
       selectedRow.Notes = data.note;
+      selectedRow['AI Note'] = data.note;
+      // Update textarea if quick viewer is open
+      const aiNoteTextarea = document.getElementById('quick-ai-note');
+      if (aiNoteTextarea) aiNoteTextarea.value = data.note || '';
       renderTable();
       showToast('AI note generated', '✓');
     }
   } catch (e) {
     showToast('AI Note failed: ' + e.message, '❌');
+  }
+}
+
+// Auto-generate AI note in background (no toast spam)
+const pendingAutoNotes = new Set();
+async function autoGenerateAINote(idx) {
+  // Prevent duplicate requests for same transaction
+  if (pendingAutoNotes.has(idx)) return;
+  pendingAutoNotes.add(idx);
+
+  try {
+    const res = await fetch('/ai_note', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({_index: idx})
+    });
+    const data = await res.json();
+    if (data.ok && data.note) {
+      // Update the data in memory
+      const row = allData.find(r => r._index === idx);
+      if (row) {
+        row['AI Note'] = data.note;
+        row.Notes = row.Notes || data.note;
+      }
+      // Update quick viewer if still showing this transaction
+      if (selectedRow && selectedRow._index === idx) {
+        selectedRow['AI Note'] = data.note;
+        const aiNoteTextarea = document.getElementById('quick-ai-note');
+        if (aiNoteTextarea && !aiNoteTextarea.value) {
+          aiNoteTextarea.value = data.note;
+        }
+      }
+      // Subtle indicator
+      console.log(`Auto-generated AI note for transaction ${idx}`);
+    }
+  } catch (e) {
+    console.warn(`Auto AI note failed for ${idx}:`, e.message);
+  } finally {
+    pendingAutoNotes.delete(idx);
   }
 }
 
@@ -5807,6 +5850,11 @@ function updateQuickViewer() {
   const aiNoteTextarea = document.getElementById('quick-ai-note');
   aiNoteTextarea.value = receipt['AI Note'] || '';
 
+  // Auto-generate AI note if missing
+  if (!receipt['AI Note'] && receipt._index !== undefined) {
+    autoGenerateAINote(receipt._index);
+  }
+
   // Update position indicator
   document.getElementById('quick-position').textContent =
     `${quickViewerIndex + 1} / ${quickViewerReceipts.length}`;
@@ -6029,6 +6077,11 @@ document.addEventListener('keydown', (e) => {
       closeQuickViewer();
       openMissingReceiptModal();
       break;
+    case 'r':
+      e.preventDefault();
+      closeQuickViewer();
+      addToReportAndGo();
+      break;
     case '1': case '2': case '3': case '4': case '5':
     case '6': case '7': case '8': case '9':
       e.preventDefault();
@@ -6157,8 +6210,55 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       openMissingReceiptModal();
       break;
+
+    case 'r':
+      e.preventDefault();
+      addToReportAndGo();
+      break;
   }
 });
+
+// Add current transaction to report and navigate to reports page
+async function addToReportAndGo() {
+  if (!selectedRow) {
+    showToast('No transaction selected', '⚠️');
+    return;
+  }
+
+  // Mark as good if not already marked
+  if (selectedRow['Review Status'] !== 'good') {
+    await updateField('Review Status', 'good');
+  }
+
+  // Store transaction info for report builder
+  const reportItem = {
+    _index: selectedRow._index,
+    merchant: selectedRow['MI Merchant'] || selectedRow['Chase Description'],
+    amount: parseFloat(selectedRow['Chase Amount']),
+    date: selectedRow['Chase Date'],
+    category: selectedRow['MI Category'] || selectedRow['Chase Category'],
+    business: selectedRow['Business Type'],
+    receipt_url: selectedRow['R2 URL'] || selectedRow['Receipt File'],
+    ai_note: selectedRow['AI Note'] || selectedRow['Notes'] || ''
+  };
+
+  // Get or create pending report items in localStorage
+  let pendingItems = JSON.parse(localStorage.getItem('tallyups_pending_report_items') || '[]');
+
+  // Check if already added
+  if (!pendingItems.find(item => item._index === reportItem._index)) {
+    pendingItems.push(reportItem);
+    localStorage.setItem('tallyups_pending_report_items', JSON.stringify(pendingItems));
+    showToast(`Added to report (${pendingItems.length} items)`, '📋');
+  } else {
+    showToast('Already in report', 'ℹ️');
+  }
+
+  // Navigate to reports page
+  setTimeout(() => {
+    window.location.href = '/reports';
+  }, 500);
+}
 
 // Navigate table rows with arrow keys
 function navigateTable(direction) {

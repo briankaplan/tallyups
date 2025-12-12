@@ -1242,6 +1242,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('date-to').value = today.toISOString().split('T')[0];
   document.getElementById('date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
 
+  // Check for pending items from reconciliation (R key adds items)
+  checkPendingReportItems();
+
   // Load existing draft reports
   loadDraftReports();
 
@@ -1251,6 +1254,223 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Keyboard shortcuts
   document.addEventListener('keydown', handleKeyboard);
 });
+
+// Check for pending items added from reconciliation view via R key
+function checkPendingReportItems() {
+  const pendingItems = JSON.parse(localStorage.getItem('tallyups_pending_report_items') || '[]');
+
+  if (pendingItems.length > 0) {
+    // Show pending items banner
+    showPendingItemsBanner(pendingItems);
+  }
+}
+
+function showPendingItemsBanner(items) {
+  const total = items.reduce((sum, item) => sum + Math.abs(item.amount || 0), 0);
+  const businesses = [...new Set(items.map(i => i.business).filter(Boolean))];
+
+  const banner = document.createElement('div');
+  banner.id = 'pending-items-banner';
+  banner.style.cssText = `
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,200,100,0.2));
+    border: 1px solid var(--brand);
+    border-radius: 12px;
+    padding: 16px 24px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 4px 20px rgba(0,255,136,0.3);
+  `;
+
+  banner.innerHTML = `
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:16px;color:var(--brand);margin-bottom:4px">
+        📋 ${items.length} Item${items.length > 1 ? 's' : ''} Ready for Report
+      </div>
+      <div style="font-size:13px;color:var(--muted)">
+        Total: $${total.toFixed(2)}${businesses.length ? ' • ' + businesses.join(', ') : ''}
+      </div>
+    </div>
+    <button onclick="createReportFromPending()" style="
+      background: var(--brand);
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+    ">Create Report</button>
+    <button onclick="clearPendingItems()" style="
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--edge);
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    ">Clear</button>
+  `;
+
+  document.body.appendChild(banner);
+}
+
+async function createReportFromPending() {
+  const pendingItems = JSON.parse(localStorage.getItem('tallyups_pending_report_items') || '[]');
+  if (pendingItems.length === 0) return;
+
+  // Set report name based on items
+  const businesses = [...new Set(pendingItems.map(i => i.business).filter(Boolean))];
+  const today = new Date().toISOString().split('T')[0];
+  const suggestedName = businesses.length === 1
+    ? `${businesses[0]} - ${today}`
+    : `Expense Report - ${today}`;
+
+  document.getElementById('report-name').value = suggestedName;
+
+  // Set business filter if all same business
+  if (businesses.length === 1) {
+    document.getElementById('business-filter').value = businesses[0];
+  }
+
+  // Move pending items to report items
+  reportItems = pendingItems.map(item => ({
+    id: item._index,
+    merchant: item.merchant,
+    amount: item.amount,
+    date: item.date,
+    category: item.category,
+    business: item.business,
+    hasReceipt: !!item.receipt_url,
+    receiptUrl: item.receipt_url,
+    aiNote: item.ai_note
+  }));
+
+  // Clear pending items
+  localStorage.removeItem('tallyups_pending_report_items');
+  document.getElementById('pending-items-banner')?.remove();
+
+  // Show review panel directly with the items
+  document.getElementById('setup-panel').style.display = 'none';
+  document.getElementById('review-panel').style.display = 'block';
+
+  // Update UI
+  updateReportSummary();
+  showToast(`Report started with ${reportItems.length} items`, 'success');
+
+  // Show finish panel since items are already added
+  showFinishPanel();
+}
+
+function clearPendingItems() {
+  localStorage.removeItem('tallyups_pending_report_items');
+  document.getElementById('pending-items-banner')?.remove();
+  showToast('Pending items cleared', 'info');
+}
+
+function showFinishPanel() {
+  // Update summary
+  const total = reportItems.reduce((sum, item) => sum + Math.abs(item.amount || 0), 0);
+
+  document.getElementById('review-content').innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:24px;padding:40px">
+      <div style="font-size:48px">✅</div>
+      <div style="font-size:24px;font-weight:700;color:var(--brand)">${reportItems.length} Items Ready</div>
+      <div style="font-size:18px;color:var(--muted)">Total: $${total.toFixed(2)}</div>
+      <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:400px;margin-top:20px">
+        <button onclick="finishReport()" style="
+          background: linear-gradient(135deg, var(--brand), #00cc6a);
+          color: #000;
+          border: none;
+          padding: 16px 32px;
+          border-radius: 12px;
+          font-size: 16px;
+          font-weight: 700;
+          cursor: pointer;
+        ">📤 Export Report</button>
+        <button onclick="viewReportItems()" style="
+          background: var(--panel);
+          color: var(--ink);
+          border: 1px solid var(--edge);
+          padding: 12px 24px;
+          border-radius: 8px;
+          cursor: pointer;
+        ">👁️ Review Items</button>
+        <button onclick="backToSetup()" style="
+          background: transparent;
+          color: var(--muted);
+          border: none;
+          padding: 12px;
+          cursor: pointer;
+        ">← Back to Setup</button>
+      </div>
+    </div>
+  `;
+}
+
+function viewReportItems() {
+  const container = document.getElementById('review-content');
+  const total = reportItems.reduce((sum, item) => sum + Math.abs(item.amount || 0), 0);
+
+  container.innerHTML = `
+    <div style="padding:20px;max-width:800px;margin:0 auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2 style="color:var(--brand)">${reportItems.length} Items - $${total.toFixed(2)}</h2>
+        <button onclick="showFinishPanel()" style="
+          background: var(--brand);
+          color: #000;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+        ">Continue to Export</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${reportItems.map((item, idx) => `
+          <div style="
+            background: var(--panel);
+            border: 1px solid var(--edge);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          ">
+            <div>
+              <div style="font-weight:600">${item.merchant || 'Unknown'}</div>
+              <div style="font-size:12px;color:var(--muted)">${item.date || ''} • ${item.category || ''}</div>
+              ${item.aiNote ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">"${item.aiNote}"</div>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="font-size:18px;font-weight:700;color:var(--brand)">$${Math.abs(item.amount || 0).toFixed(2)}</div>
+              <button onclick="removeReportItem(${idx})" style="
+                background: transparent;
+                border: none;
+                color: var(--bad);
+                cursor: pointer;
+                padding: 4px;
+              ">✕</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function removeReportItem(idx) {
+  reportItems.splice(idx, 1);
+  updateReportSummary();
+  if (reportItems.length === 0) {
+    backToSetup();
+  } else {
+    viewReportItems();
+  }
+}
 
 // ============================================
 // SUBMITTED REPORTS
