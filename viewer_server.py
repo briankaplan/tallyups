@@ -16755,11 +16755,35 @@ def accept_incoming_receipt():
 
         existing_transaction = cursor.fetchone()
 
-        # Note: We no longer auto-reject duplicates since multiple receipts might have same amount
-        # (e.g., two separate Kit refunds). Instead we just warn in the log.
+        # Check for potential duplicate - transaction with same merchant/amount that already has receipt
+        force_accept = data.get('force', False)  # Allow user to force accept after seeing warning
+
         if existing_transaction and existing_transaction['receipt_file']:
-            print(f"   ℹ️  Similar transaction #{existing_transaction['_index']} exists with receipt (proceeding anyway)")
-            # Continue to create new transaction - user explicitly clicked accept
+            existing_id = existing_transaction['_index']
+            existing_desc = existing_transaction['chase_description']
+            existing_amount = existing_transaction['chase_amount']
+            existing_date = existing_transaction['chase_date']
+
+            if not force_accept:
+                # Return warning to UI - let user decide whether to proceed
+                return_db_connection(conn)
+                print(f"   ⚠️  Duplicate warning: Similar transaction #{existing_id} already has receipt")
+                return jsonify({
+                    'ok': False,
+                    'duplicate_warning': True,
+                    'error': f'Similar transaction already exists with a receipt',
+                    'existing_transaction': {
+                        'id': existing_id,
+                        'description': existing_desc,
+                        'amount': float(existing_amount) if existing_amount else 0,
+                        'date': str(existing_date) if existing_date else '',
+                        'has_receipt': True
+                    },
+                    'message': f'Transaction #{existing_id} ({existing_desc}, ${existing_amount}) from {existing_date} already has a receipt. Accept anyway?'
+                }), 200  # Return 200 so UI can handle gracefully
+
+            # User explicitly forced - proceed but log it
+            print(f"   ℹ️  Force accepted: Similar transaction #{existing_id} exists with receipt (user confirmed)")
 
         # Check if this should attach to existing transaction
         match_type = get_col('match_type')

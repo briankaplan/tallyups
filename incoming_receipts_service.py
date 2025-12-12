@@ -1276,7 +1276,7 @@ def find_matching_transaction(merchant, amount, transaction_date):
     best_match = None
     best_score = 0
 
-    # STRATEGY 1: Exact amount match (highest confidence for subscriptions)
+    # STRATEGY 1: Amount + Merchant + Date match (requires ALL THREE for high confidence)
     if amount and amount > 0:
         # Allow small tolerance for rounding (within 1 cent)
         cursor.execute('''
@@ -1295,34 +1295,68 @@ def find_matching_transaction(merchant, amount, transaction_date):
             mi_merchant = str(match.get('mi_merchant') or '').lower()
             match_amount = float(match['chase_amount'] or 0)
 
-            score = 50  # Base score for exact amount match
+            # Start with 0 - need ALL of: merchant + amount + date
+            score = 0
+            has_merchant_match = False
+            has_date_match = False
+            days_diff = 999
 
-            # Boost score for merchant name similarity
-            combined_desc = f"{match_desc} {mi_merchant}"
-
-            # Direct substring match (very strong signal)
-            if merchant_lower and len(merchant_lower) >= 3:
-                if merchant_lower in combined_desc:
-                    score += 40
-                elif any(word in combined_desc for word in merchant_words if len(word) >= 4):
-                    score += 30
-
-            # Word overlap matching
-            desc_words = set(w for w in re.split(r'[\s\.\-\_\*]+', combined_desc) if len(w) > 2 and w not in stop_words)
-            common_words = merchant_words & desc_words
-            if common_words:
-                score += len(common_words) * 10
-
-            # Penalize if date is far from receipt date
+            # Calculate date proximity FIRST - this is required
             if transaction_date and match.get('chase_date'):
                 try:
                     match_date = match['chase_date']
                     if isinstance(match_date, str):
                         match_date = datetime.fromisoformat(match_date.split('T')[0])
-                    days_diff = abs((date_obj - match_date).days) if isinstance(match_date, datetime) else abs((date_obj - datetime.combine(match_date, datetime.min.time())).days)
-                    score -= days_diff * 2  # Penalize 2 points per day difference
+                    if isinstance(match_date, datetime):
+                        days_diff = abs((date_obj - match_date).days)
+                    else:
+                        days_diff = abs((date_obj - datetime.combine(match_date, datetime.min.time())).days)
+
+                    # Date must be within 5 days to be considered a match
+                    if days_diff <= 5:
+                        has_date_match = True
+                        # Closer dates get bonus points
+                        if days_diff == 0:
+                            score += 30  # Same day - strong signal
+                        elif days_diff <= 2:
+                            score += 20  # Within 2 days - good
+                        else:
+                            score += 10  # 3-5 days - acceptable
                 except:
                     pass
+
+            # Skip this match if date is too far off
+            if not has_date_match:
+                continue
+
+            # Check for merchant name similarity
+            combined_desc = f"{match_desc} {mi_merchant}"
+
+            # Direct substring match (very strong signal)
+            if merchant_lower and len(merchant_lower) >= 3:
+                if merchant_lower in combined_desc:
+                    score += 80  # Strong merchant match
+                    has_merchant_match = True
+                elif any(word in combined_desc for word in merchant_words if len(word) >= 4):
+                    score += 60  # Partial merchant match
+                    has_merchant_match = True
+
+            # Word overlap matching
+            desc_words = set(w for w in re.split(r'[\s\.\-\_\*]+', combined_desc) if len(w) > 2 and w not in stop_words)
+            common_words = merchant_words & desc_words
+            if common_words:
+                score += len(common_words) * 15  # Boost word overlap score
+                if len(common_words) >= 1:
+                    has_merchant_match = True
+
+            # Only count as valid match if BOTH merchant AND date match
+            # Amount is already filtered in SQL
+            if has_merchant_match and has_date_match:
+                score += 30  # Bonus for having all three: merchant + amount + date
+            else:
+                # Missing merchant match - not a valid match even if amount/date match
+                score = 0
+                continue
 
             if score > best_score:
                 best_score = score

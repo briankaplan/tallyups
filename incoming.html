@@ -2858,7 +2858,7 @@ async function attachToExpense(receiptId, transactionId, btn) {
 }
 
 // Perform the actual accept
-async function doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType = 'Personal') {
+async function doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType = 'Personal', forceAccept = false) {
   actionsDiv.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--brand)">
       <span class="spinner"></span> Processing...
@@ -2876,11 +2876,34 @@ async function doAccept(id, merchant, amount, isRefund, transDate, card, actions
         amount: amount || 0,
         is_refund: isRefund,
         date: transDate,
-        business_type: businessType
+        business_type: businessType,
+        force: forceAccept
       })
     });
 
     const data = await response.json();
+
+    // Handle duplicate warning - ask user to confirm
+    if (data.duplicate_warning && !forceAccept) {
+      const existing = data.existing_transaction;
+      const confirmMsg = `⚠️ DUPLICATE DETECTED!\n\nSimilar transaction already exists:\n• ${existing.description}\n• $${existing.amount}\n• Date: ${existing.date}\n• Already has receipt ✓\n\nAre you sure you want to create a duplicate?`;
+
+      actionsDiv.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:8px;padding:12px;background:rgba(255,200,0,0.1);border-radius:8px;border:1px solid rgba(255,200,0,0.3)">
+          <div style="color:var(--warn);font-weight:600;font-size:12px">⚠️ Possible Duplicate</div>
+          <div style="font-size:11px;color:var(--muted)">
+            Transaction #${existing.id} already has receipt<br>
+            $${existing.amount} on ${existing.date}
+          </div>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:4px">
+            <button class="inbox-card-btn reject" onclick="event.stopPropagation();renderMobileCards()" style="flex:1">Cancel</button>
+            <button class="inbox-card-btn accept create" onclick="event.stopPropagation();doAccept(${id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${transDate}', this.closest('.inbox-card'), this.closest('.inbox-card-actions'), '${businessType}', true)" style="flex:1">Create Anyway</button>
+          </div>
+        </div>
+      `;
+      showToast('⚠️ Similar transaction already has receipt', 'warning');
+      return;
+    }
 
     if (data.ok) {
       // Success animation
@@ -3127,7 +3150,7 @@ function extractMerchantFromSubject(subject) {
   return 'Unknown';
 }
 
-async function quickAccept(id, merchant, amount, isRefund = false, receiptDate = '') {
+async function quickAccept(id, merchant, amount, isRefund = false, receiptDate = '', forceAccept = false) {
   const row = document.querySelector(`tr[data-id="${id}"]`);
   const actionsCell = row.querySelector('td:last-child');
 
@@ -3148,11 +3171,28 @@ async function quickAccept(id, merchant, amount, isRefund = false, receiptDate =
         amount: amount || 0,
         is_refund: isRefund,
         date: transDate,
-        business_type: 'Personal'
+        business_type: 'Personal',
+        force: forceAccept
       })
     });
 
     const data = await response.json();
+
+    // Handle duplicate warning - show inline confirmation
+    if (data.duplicate_warning && !forceAccept) {
+      const existing = data.existing_transaction;
+      actionsCell.innerHTML = `
+        <div style="font-size:10px;padding:4px 8px;background:rgba(255,200,0,.15);border-radius:4px;border:1px solid rgba(255,200,0,.3)">
+          <div style="color:var(--warn);font-weight:600;margin-bottom:4px">⚠️ Duplicate?</div>
+          <div style="color:var(--muted);margin-bottom:6px">#${existing.id} has receipt ($${existing.amount})</div>
+          <div style="display:flex;gap:4px">
+            <button class="btn-danger btn-sm" onclick="loadReceipts()">Cancel</button>
+            <button class="btn-success btn-sm" onclick="quickAccept(${id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}', true)">Force</button>
+          </div>
+        </div>`;
+      showToast('⚠️ Similar transaction already has receipt', 'warning');
+      return;
+    }
 
     if (data.ok) {
       // Show success with transaction details
@@ -3181,13 +3221,13 @@ async function quickAccept(id, merchant, amount, isRefund = false, receiptDate =
       loadReceipts();
     } else {
       showToast(data.error || 'Failed to accept', 'error');
-      actionsCell.innerHTML = `<button class="btn-success btn-sm" onclick="quickAccept(${id}, '${merchant}', ${amount}, ${isRefund})">✓</button>
+      actionsCell.innerHTML = `<button class="btn-success btn-sm" onclick="quickAccept(${id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}')">✓</button>
                                <button class="btn-danger btn-sm" onclick="quickReject(${id})">✗</button>`;
     }
   } catch (e) {
     console.error('Accept error:', e);
     showToast('Error accepting receipt', 'error');
-    actionsCell.innerHTML = `<button class="btn-success btn-sm" onclick="quickAccept(${id}, '${merchant}', ${amount}, ${isRefund})">✓</button>
+    actionsCell.innerHTML = `<button class="btn-success btn-sm" onclick="quickAccept(${id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}')">✓</button>
                              <button class="btn-danger btn-sm" onclick="quickReject(${id})">✗</button>`;
   }
 }
