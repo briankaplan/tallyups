@@ -2414,8 +2414,10 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                     with open(screenshot_path, 'rb') as f:
                                         img_bytes = f.read()
 
-                                    # ALWAYS upload to R2 first (preview image)
-                                    if img_bytes:
+                                    # Upload to R2 ONLY if it's a proper render (not text-based fallback)
+                                    # Text-based fallbacks are typically < 50KB, proper HTML renders are > 50KB
+                                    img_size_kb = len(img_bytes) / 1024
+                                    if img_bytes and img_size_kb >= 50:
                                         try:
                                             from r2_service import upload_with_thumbnail, R2_ENABLED
                                             if R2_ENABLED:
@@ -2425,11 +2427,13 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                                 if full_url:
                                                     receipt_image_url = full_url
                                                     thumbnail_url = thumb_url
-                                                    print(f"      ☁️  Uploaded HTML screenshot to R2: {r2_key}")
+                                                    print(f"      ☁️  Uploaded HTML screenshot to R2: {r2_key} ({img_size_kb:.1f}KB)")
                                                     if thumb_url:
                                                         print(f"      🖼️  Thumbnail: {thumb_url}")
                                         except Exception as r2_err:
                                             print(f"      ⚠️  R2 upload failed: {r2_err}")
+                                    elif img_bytes:
+                                        print(f"      ⚠️  Skipping R2 upload - text-based fallback detected ({img_size_kb:.1f}KB < 50KB)")
 
                                     # Try vision analysis only if we don't have merchant/amount yet
                                     if not vision_merchant and not vision_amount:
