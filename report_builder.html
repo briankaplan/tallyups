@@ -1098,8 +1098,8 @@ body {
       </div>
 
       <div class="action-main">
-        <button class="btn-action btn-bad" onclick="markBad()">
-          ✕ Bad Match
+        <button class="btn-action btn-bad" onclick="markBadMatch()">
+          ⚠️ Wrong Receipt
         </button>
         <button class="btn-action btn-skip" onclick="skipTransaction()">
           Skip
@@ -1112,7 +1112,7 @@ body {
       <div class="action-shortcuts">
         <div class="shortcut-hint"><span class="kbd">A</span> Add</div>
         <div class="shortcut-hint"><span class="kbd">S</span> Skip</div>
-        <div class="shortcut-hint"><span class="kbd">X</span> Bad</div>
+        <div class="shortcut-hint"><span class="kbd">W</span> Wrong</div>
         <div class="shortcut-hint"><span class="kbd">← →</span> Nav</div>
       </div>
     </div>
@@ -1136,8 +1136,11 @@ body {
         <div class="summary-value" style="color:var(--warn)" id="remaining-count">0</div>
       </div>
       <div class="summary-actions">
+        <button class="btn-finish" onclick="saveAsDraft()" style="background: rgba(255,255,255,0.1);color:var(--ink);border:1px solid var(--edge)">
+          💾 Save Draft
+        </button>
         <button class="btn-finish" onclick="finishReport()">
-          📤 Finish & Export
+          📤 Submit & Export
         </button>
       </div>
     </div>
@@ -1945,13 +1948,13 @@ function skipTransaction() {
   nextTransaction();
 }
 
-async function markBad() {
+async function markBadMatch() {
   if (currentIndex >= filteredTransactions.length) return;
 
   const tx = filteredTransactions[currentIndex];
   const txId = tx['_index'] || tx['id'];
 
-  // Call API to mark as bad
+  // Call API to mark receipt as wrong/mismatch (but DON'T skip - user can still add to report)
   try {
     const response = await fetch('/save_row', {
       method: 'POST',
@@ -1959,19 +1962,73 @@ async function markBad() {
       credentials: 'include',
       body: JSON.stringify({
         _index: txId,
-        patches: [{'Review Status': 'Bad'}]
+        patches: [{'Review Status': 'Wrong Receipt'}]
       })
     });
 
-    showToast('Marked as bad match', 'error');
-    skippedItems.add(txId);
-    saveDraft();
-    updateSummary();
-    nextTransaction();
+    // Show confirmation with choice to still add or skip
+    showBadMatchChoice(tx);
   } catch (e) {
     console.error('Error:', e);
-    showToast('Failed to mark as bad', 'error');
+    showToast('Failed to mark receipt', 'error');
   }
+}
+
+function showBadMatchChoice(tx) {
+  const txCard = document.getElementById('tx-card');
+  const merchant = tx['MI Merchant'] || tx['merchant'] || tx['Chase Description'] || 'Unknown';
+  const amount = parseFloat(tx['Chase Amount'] || tx['amount'] || 0);
+
+  txCard.innerHTML += `
+    <div id="bad-match-choice" style="
+      margin-top:20px;
+      padding:20px;
+      background:rgba(255,78,106,0.1);
+      border:1px solid rgba(255,78,106,0.3);
+      border-radius:12px;
+    ">
+      <div style="font-weight:700;color:var(--warn);margin-bottom:12px">⚠️ Receipt Flagged as Wrong Match</div>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:16px">
+        This receipt doesn't match the transaction. What would you like to do?
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button onclick="addToReportAnyway()" style="
+          flex:1;
+          padding:12px 16px;
+          background:linear-gradient(135deg, var(--brand), #00cc6a);
+          color:#000;
+          border:none;
+          border-radius:8px;
+          font-weight:600;
+          cursor:pointer;
+        ">✓ Add Anyway (need receipt)</button>
+        <button onclick="skipBadMatch()" style="
+          flex:1;
+          padding:12px 16px;
+          background:rgba(255,255,255,0.1);
+          color:var(--ink);
+          border:1px solid var(--edge);
+          border-radius:8px;
+          font-weight:600;
+          cursor:pointer;
+        ">Skip to Next</button>
+      </div>
+    </div>
+  `;
+}
+
+function addToReportAnyway() {
+  document.getElementById('bad-match-choice')?.remove();
+  addToReport();
+}
+
+function skipBadMatch() {
+  const tx = filteredTransactions[currentIndex];
+  const txId = tx['_index'] || tx['id'];
+  skippedItems.add(txId);
+  saveDraft();
+  updateSummary();
+  nextTransaction();
 }
 
 function nextTransaction() {
@@ -2103,6 +2160,48 @@ function clearDraft() {
   localStorage.setItem('tallyups_draft_reports', JSON.stringify(filtered));
 }
 
+// Save as draft without submitting (user can continue later)
+async function saveAsDraft() {
+  if (reportItems.length === 0) {
+    showToast('No items to save yet', 'info');
+    return;
+  }
+
+  saveDraft();
+
+  // Create a server-side draft report
+  try {
+    const business = document.getElementById('business-filter').value || 'Mixed';
+
+    const response = await fetch('/reports/submit', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({
+        report_name: reportName + ' (Draft)',
+        business_type: business,
+        expense_indexes: reportItems.map(item => item.id),
+        status: 'draft'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to save draft');
+    }
+
+    const data = await response.json();
+    showToast(`Draft saved! ${reportItems.length} items. ID: ${data.report_id}`, 'success');
+
+    // Don't mark as submitted or export - just save
+    loadSubmittedReports();
+
+  } catch (e) {
+    console.error('Error saving draft:', e);
+    // Still saved locally even if server fails
+    showToast('Draft saved locally (server save failed)', 'warning');
+  }
+}
+
 // ============================================
 // UI UPDATES
 // ============================================
@@ -2148,9 +2247,10 @@ function handleKeyboard(e) {
       e.preventDefault();
       skipTransaction();
       break;
+    case 'w':
     case 'x':
       e.preventDefault();
-      markBad();
+      markBadMatch();
       break;
     case 'arrowleft':
       e.preventDefault();
