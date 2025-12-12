@@ -1179,7 +1179,9 @@ body {
           <tr>
             <th>Date</th>
             <th>Merchant</th>
+            <th>Description</th>
             <th>Category</th>
+            <th>Business</th>
             <th class="amount-col">Amount</th>
             <th>Receipt</th>
           </tr>
@@ -1496,28 +1498,65 @@ async function loadSubmittedReports() {
     const reports = data.reports || [];
 
     if (!reports || reports.length === 0) {
-      container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px">No submitted reports yet</div>';
+      container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px">No reports yet</div>';
       return;
     }
 
-    container.innerHTML = reports.map(report => {
-      const date = report.submitted_at ? new Date(report.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-      const total = report.total_amount ? `$${parseFloat(report.total_amount).toFixed(2)}` : '';
-      const count = report.expense_count || 0;
+    // Separate drafts and submitted
+    const drafts = reports.filter(r => r.status === 'draft');
+    const submitted = reports.filter(r => r.status !== 'draft');
 
-      return `
-        <div class="submitted-report-item">
-          <div class="submitted-report-info">
-            <div class="submitted-report-name">${report.report_name || report.report_id}</div>
-            <div class="submitted-report-meta">${count} expenses${total ? ` - ${total}` : ''}${date ? ` - ${date}` : ''}</div>
+    let html = '';
+
+    // Show drafts first with visual distinction
+    if (drafts.length > 0) {
+      html += '<div class="reports-section-label" style="color:var(--warn);font-size:12px;font-weight:600;text-transform:uppercase;margin-bottom:8px;padding-left:4px">📝 Drafts</div>';
+      html += drafts.map(report => {
+        const date = report.created_at ? new Date(report.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        const total = report.total_amount ? `$${parseFloat(report.total_amount).toFixed(2)}` : '';
+        const count = report.expense_count || 0;
+
+        return `
+          <div class="submitted-report-item draft" style="border-color:var(--warn);background:rgba(255,216,94,0.05)">
+            <div class="submitted-report-info">
+              <div class="submitted-report-name">${report.report_name || report.report_id} <span style="color:var(--warn);font-size:11px">DRAFT</span></div>
+              <div class="submitted-report-meta">${count} expenses${total ? ` - ${total}` : ''}${date ? ` - ${date}` : ''}</div>
+            </div>
+            <div class="submitted-report-actions">
+              <button class="submitted-report-btn" onclick="resumeDraft('${report.report_id}')" style="background:var(--warn);color:#000">Resume</button>
+              <button class="submitted-report-btn" onclick="viewReport('${report.report_id}')">View</button>
+            </div>
           </div>
-          <div class="submitted-report-actions">
-            <button class="submitted-report-btn" onclick="viewReport('${report.report_id}')">View</button>
-            <button class="submitted-report-btn export" onclick="exportReport('${report.report_id}')">Export</button>
+        `;
+      }).join('');
+    }
+
+    // Show submitted reports
+    if (submitted.length > 0) {
+      if (drafts.length > 0) {
+        html += '<div class="reports-section-label" style="color:var(--ok);font-size:12px;font-weight:600;text-transform:uppercase;margin:16px 0 8px;padding-left:4px">✓ Submitted</div>';
+      }
+      html += submitted.map(report => {
+        const date = report.submitted_at ? new Date(report.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        const total = report.total_amount ? `$${parseFloat(report.total_amount).toFixed(2)}` : '';
+        const count = report.expense_count || 0;
+
+        return `
+          <div class="submitted-report-item">
+            <div class="submitted-report-info">
+              <div class="submitted-report-name">${report.report_name || report.report_id}</div>
+              <div class="submitted-report-meta">${count} expenses${total ? ` - ${total}` : ''}${date ? ` - ${date}` : ''}</div>
+            </div>
+            <div class="submitted-report-actions">
+              <button class="submitted-report-btn" onclick="viewReport('${report.report_id}')">View</button>
+              <button class="submitted-report-btn export" onclick="exportReport('${report.report_id}')">Export</button>
+            </div>
           </div>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    }
+
+    container.innerHTML = html;
   } catch (e) {
     console.error('Error loading submitted reports:', e);
     container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px">Error loading reports</div>';
@@ -1564,7 +1603,9 @@ async function viewReport(reportId) {
     tbody.innerHTML = data.expenses.map(exp => {
       const date = exp['Chase Date'] || exp.date || exp.chase_date || '';
       const merchant = exp['MI Merchant'] || exp['Chase Description'] || exp.merchant || exp.mi_merchant || exp.chase_description || 'Unknown';
+      const description = exp['AI Note'] || exp['ai_note'] || exp['Notes'] || exp['notes'] || '';
       const category = exp['Chase Category'] || exp['MI Category'] || exp.category || exp.chase_category || exp.mi_category || '';
+      const businessType = exp['Business Type'] || exp['business_type'] || '';
       const amount = parseFloat(exp['Chase Amount'] || exp.amount || exp.chase_amount || 0);
       const receipt = exp['R2 URL'] || exp['receipt_url'] || exp.r2_url || exp['Receipt File'] || exp.receipt_file || '';
 
@@ -1580,7 +1621,9 @@ async function viewReport(reportId) {
         <tr>
           <td>${formatDate(date)}</td>
           <td>${escapeHtml(merchant)}</td>
-          <td>${escapeHtml(category)}</td>
+          <td class="desc-col" title="${escapeHtml(description)}">${escapeHtml(description ? (description.length > 50 ? description.substring(0, 47) + '...' : description) : '—')}</td>
+          <td>${escapeHtml(category) || '—'}</td>
+          <td>${escapeHtml(businessType) || '—'}</td>
           <td class="amount-col">${formatMoney(Math.abs(amount))}</td>
           <td>${receiptCell}</td>
         </tr>
@@ -1779,6 +1822,63 @@ function loadExistingReport(id) {
     showToast('Draft loaded! Click Start Review to continue.', 'success');
   }
 }
+
+// Resume a server-side draft report
+async function resumeDraft(reportId) {
+  try {
+    showToast('Loading draft...', 'info');
+
+    const response = await fetch(`/reports/${reportId}`, {
+      credentials: 'include'
+    });
+    const data = await response.json();
+
+    if (!data.expenses || data.expenses.length === 0) {
+      showToast('No expenses in this draft', 'error');
+      return;
+    }
+
+    // Set report name (remove " (Draft)" suffix if present)
+    reportName = (data.report_name || reportId).replace(/ \(Draft\)$/, '');
+    document.getElementById('report-name-input').value = reportName;
+
+    // Set business filter if available
+    if (data.business_type) {
+      document.getElementById('business-filter').value = data.business_type;
+    }
+
+    // Load expenses into report items
+    reportItems = data.expenses.map(exp => ({
+      id: exp._index,
+      _index: exp._index,
+      merchant: exp['MI Merchant'] || exp['Chase Description'] || exp.merchant || 'Unknown',
+      amount: parseFloat(exp['Chase Amount'] || exp.amount || 0),
+      date: exp['Chase Date'] || exp.date || '',
+      category: exp['MI Category'] || exp['Chase Category'] || exp.category || '',
+      business: exp['Business Type'] || exp.business_type || '',
+      receipt_url: exp['R2 URL'] || exp['Receipt File'] || exp.receipt_url || '',
+      ai_note: exp['AI Note'] || exp['Notes'] || ''
+    }));
+
+    currentDraftReportId = reportId;
+    updateReportSummary();
+
+    showToast(`Draft loaded: ${reportItems.length} expenses`, 'success');
+
+    // Switch to review view or show completion
+    if (reportItems.length > 0) {
+      document.getElementById('setup-panel').style.display = 'none';
+      document.getElementById('review-panel').style.display = 'flex';
+      showCompletionState(); // Show summary since items are already reviewed
+    }
+
+  } catch (e) {
+    console.error('Error loading draft:', e);
+    showToast('Failed to load draft', 'error');
+  }
+}
+
+let currentDraftReportId = null;
 
 // ============================================
 // TRANSACTION RENDERING
@@ -2314,10 +2414,40 @@ function formatMoney(amount) {
 function formatDate(dateStr) {
   if (!dateStr) return '';
   try {
-    const date = new Date(dateStr + 'T00:00:00');
+    // Handle various date formats
+    let date;
+    const str = String(dateStr).trim();
+
+    // Already a Date object
+    if (dateStr instanceof Date) {
+      date = dateStr;
+    }
+    // ISO format: 2024-01-15 or 2024-01-15T00:00:00
+    else if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+      // Add time component to avoid timezone issues
+      const datePart = str.split('T')[0];
+      date = new Date(datePart + 'T12:00:00');
+    }
+    // US format: 01/15/2024 or 1/15/2024
+    else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
+      const [m, d, y] = str.split('/');
+      date = new Date(y, parseInt(m) - 1, d, 12, 0, 0);
+    }
+    // Try parsing as-is
+    else {
+      date = new Date(str);
+    }
+
+    // Check if valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date:', dateStr);
+      return str || '';
+    }
+
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return dateStr;
+  } catch (e) {
+    console.warn('Date format error:', dateStr, e);
+    return String(dateStr) || '';
   }
 }
 

@@ -11248,6 +11248,7 @@ def reports_submit():
     report_name = data.get("report_name")
     business_type = data.get("business_type")
     expense_indexes = data.get("expense_indexes", [])
+    status = data.get("status", "submitted")  # 'draft' or 'submitted'
 
     if not report_name or not business_type or not expense_indexes:
         abort(400, "Missing required fields (report_name, business_type, expense_indexes)")
@@ -11256,7 +11257,8 @@ def reports_submit():
         report_id = db.submit_report(
             report_name=report_name,
             business_type=business_type,
-            expense_indexes=expense_indexes
+            expense_indexes=expense_indexes,
+            status=status
         )
 
         # Reload df to reflect changes

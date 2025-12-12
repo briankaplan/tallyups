@@ -736,9 +736,12 @@ class MySQLReceiptDatabase:
                 business_type VARCHAR(255) NOT NULL,
                 expense_count INT NOT NULL,
                 total_amount DECIMAL(10,2) NOT NULL,
+                status VARCHAR(50) DEFAULT 'submitted',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                submitted_at TIMESTAMP NULL,
                 INDEX idx_report_id (report_id),
-                INDEX idx_business (business_type)
+                INDEX idx_business (business_type),
+                INDEX idx_status (status)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
 
@@ -1236,6 +1239,38 @@ class MySQLReceiptDatabase:
                                         print(f"  ⚠️  receipt_metadata migration for {col_name}: {e}")
                 except Exception as e:
                     print(f"  ⚠️  receipt_metadata migration check: {e}")
+
+                # Add status and submitted_at columns to reports table
+                try:
+                    cursor.execute("SHOW TABLES LIKE 'reports'")
+                    if cursor.fetchone():
+                        cursor.execute("SHOW COLUMNS FROM reports")
+                        reports_cols = {row['Field'] for row in cursor.fetchall()}
+
+                        reports_migrations = [
+                            ("status", "ALTER TABLE reports ADD COLUMN status VARCHAR(50) DEFAULT 'submitted'"),
+                            ("submitted_at", "ALTER TABLE reports ADD COLUMN submitted_at TIMESTAMP NULL"),
+                        ]
+
+                        for col_name, alter_sql in reports_migrations:
+                            if col_name not in reports_cols:
+                                try:
+                                    cursor.execute(alter_sql)
+                                    print(f"  ✅ Added reports column: {col_name}")
+                                except Exception as e:
+                                    if "Duplicate column" not in str(e):
+                                        print(f"  ⚠️  reports migration for {col_name}: {e}")
+
+                        # Add index on status if not exists
+                        try:
+                            cursor.execute("SHOW INDEX FROM reports WHERE Key_name = 'idx_status'")
+                            if not cursor.fetchone():
+                                cursor.execute("ALTER TABLE reports ADD INDEX idx_status (status)")
+                                print(f"  ✅ Added reports index: idx_status")
+                        except Exception:
+                            pass
+                except Exception as e:
+                    print(f"  ⚠️  reports migration check: {e}")
 
                 # Commit is handled by context manager
         except Exception as e:
@@ -2030,15 +2065,21 @@ class MySQLReceiptDatabase:
         self,
         report_name: str,
         business_type: str,
-        expense_indexes: List[int]
+        expense_indexes: List[int],
+        status: str = 'submitted'
     ) -> str:
-        """Create a report and assign report_id to selected expenses"""
+        """Create a report and assign report_id to selected expenses
+
+        Args:
+            status: 'draft' or 'submitted' (default)
+        """
         if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         business_abbrev = business_type.replace(" ", "")[:3].upper()
-        report_id = f"REPORT-{business_abbrev}-{timestamp}"
+        prefix = "DRAFT" if status == 'draft' else "REPORT"
+        report_id = f"{prefix}-{business_abbrev}-{timestamp}"
 
         cursor = self.conn.cursor()
         placeholders = ",".join(["%s"] * len(expense_indexes))
@@ -2054,20 +2095,23 @@ class MySQLReceiptDatabase:
         expense_count = row['count']
         total_amount = float(row['total'] or 0)
 
+        # Set submitted_at only for actual submissions
+        submitted_at = datetime.now() if status == 'submitted' else None
+
         cursor.execute("""
-            INSERT INTO reports (report_id, report_name, business_type, expense_count, total_amount)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (report_id, report_name, business_type, expense_count, total_amount))
+            INSERT INTO reports (report_id, report_name, business_type, expense_count, total_amount, status, submitted_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (report_id, report_name, business_type, expense_count, total_amount, status, submitted_at))
 
         cursor.execute(f"""
             UPDATE transactions
-            SET report_id = %s, already_submitted = 'yes'
+            SET report_id = %s, already_submitted = %s
             WHERE _index IN ({placeholders})
-        """, [report_id] + expense_indexes)
+        """, [report_id, 'yes' if status == 'submitted' else 'draft'] + expense_indexes)
 
         self.conn.commit()
 
-        print(f"✅ Report created: {report_id} ({expense_count} expenses, ${total_amount:.2f})", flush=True)
+        print(f"✅ Report created: {report_id} ({expense_count} expenses, ${total_amount:.2f}) [status={status}]", flush=True)
 
         return report_id
 

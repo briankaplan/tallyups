@@ -6311,7 +6311,7 @@ document.addEventListener('keydown', (e) => {
     case 'r':
       e.preventDefault();
       closeQuickViewer();
-      addToReportAndGo();
+      toggleReportTrayAndAdd();
       break;
     case '1': case '2': case '3': case '4': case '5':
     case '6': case '7': case '8': case '9':
@@ -7704,7 +7704,10 @@ function setupEventListeners() {
     } else if (key === 'p') {
       e.preventDefault();
       updateField('Business Type', 'Personal');
-    } else if (key === 'r') {
+    } else if (key === 'r' && !e.shiftKey) {
+      e.preventDefault();
+      toggleReportTrayAndAdd();
+    } else if (key === 'r' && e.shiftKey) {
       e.preventDefault();
       rotateImage();
     } else if (key === '0') {
@@ -10128,6 +10131,44 @@ function showReportPanel() {
   reportPanelVisible = true;
   document.getElementById('report-panel').classList.add('visible');
   document.getElementById('report-fab').classList.add('hidden');
+}
+
+// Toggle report tray and add current transaction (triggered by 'R' key)
+function toggleReportTrayAndAdd() {
+  if (!selectedRow) {
+    showToast('No transaction selected', 'warning');
+    return;
+  }
+
+  // Show the report panel if not visible
+  if (!reportPanelVisible) {
+    showReportPanel();
+  }
+
+  // Ensure we have a report
+  if (!currentReportId) {
+    createNewReport();
+  }
+
+  // Add current transaction to report
+  const currentSet = reportTransactions.get(currentReportId) || new Set();
+  const index = selectedRow._index;
+
+  if (currentSet.has(index)) {
+    showToast('Already in report', 'info');
+  } else {
+    currentSet.add(index);
+    reportTransactions.set(currentReportId, currentSet);
+    saveReportsState();
+    updateReportUI();
+    updateReportFAB();
+
+    const merchant = selectedRow['MI Merchant'] || selectedRow['Chase Description'] || 'Transaction';
+    showToast(`Added "${merchant}" to report`, 'success');
+
+    // Auto-navigate to next row
+    navigateRow(1);
+  }
 }
 
 // Toggle minimize
