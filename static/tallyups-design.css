@@ -4,16 +4,16 @@
 
 /* ---------- CSS Variables ---------- */
 :root {
-  /* Background colors */
-  --bg: #000000;
-  --bg-card: #0a0a0a;
-  --bg-elevated: #111111;
-  --bg-hover: #161616;
-  --bg-active: #1a1a1a;
+  /* Background colors - Blue-tinted dark theme */
+  --bg: #0a0f14;
+  --bg-card: #0e141a;
+  --bg-elevated: #121a25;
+  --bg-hover: #1a2432;
+  --bg-active: #1e2a3a;
 
   /* Border colors */
-  --border: #222222;
-  --border-light: #333333;
+  --border: #1b2a3a;
+  --border-light: #2a3a4a;
   --border-focus: rgba(0,255,136,0.5);
 
   /* Text colors */
@@ -276,13 +276,129 @@ h4, .h4 { font-size: 15px; font-weight: 600; line-height: 1.4; }
   margin-top: 4px;
 }
 
+/* ---------- Unified Top Header ---------- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(10,15,20,0.95) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  padding-top: calc(12px + var(--safe-top));
+}
+
+.site-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.site-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-brand h1 {
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-brand .version {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--brand-dim);
+  color: var(--brand);
+  border-radius: var(--radius-full);
+  font-weight: 600;
+}
+
+/* Desktop Navigation in Header */
+.header-nav {
+  display: none;
+  gap: 4px;
+}
+
+@media (min-width: 769px) {
+  .header-nav {
+    display: flex;
+  }
+}
+
+.nav-link-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: var(--transition-fast);
+  border: 1px solid transparent;
+}
+
+.nav-link-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.nav-link-btn.active {
+  background: var(--brand-dim);
+  color: var(--brand);
+  border-color: rgba(0,255,136,0.2);
+}
+
+.nav-link-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.header-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition: var(--transition-fast);
+  color: var(--text-secondary);
+}
+
+.header-icon-btn:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.header-icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 /* ---------- Unified Bottom Navigation ---------- */
 .bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(10,10,10,0.95);
+  background: rgba(10,15,20,0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);

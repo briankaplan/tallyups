@@ -3599,6 +3599,41 @@ let currentRotation = 0;
 let undoStack = [];
 const MAX_UNDO_STACK = 50;
 
+// ============================================
+// REPORT STATE (must be before renderTable)
+// ============================================
+let openReports = JSON.parse(localStorage.getItem('tallyups_open_reports') || '[]');
+let currentReportId = localStorage.getItem('tallyups_current_report') || null;
+let reportPanelVisible = false;
+let reportPanelMinimized = false;
+let reportPanelTab = 'items';
+let reportTransactions = new Map(); // reportId -> Set of transaction indices
+let reportSelectorVisible = false;
+
+// Check if transaction is in any draft report
+function isInAnyReport(index) {
+  for (const [_, indices] of reportTransactions) {
+    if (indices.has(index)) return true;
+  }
+  return false;
+}
+
+// Initialize report transactions from localStorage (called early)
+(function initReportTransactionsEarly() {
+  openReports.forEach(report => {
+    const stored = localStorage.getItem(`tallyups_report_${report.id}`);
+    if (stored) {
+      try {
+        reportTransactions.set(report.id, new Set(JSON.parse(stored)));
+      } catch (e) {
+        reportTransactions.set(report.id, new Set());
+      }
+    } else {
+      reportTransactions.set(report.id, new Set());
+    }
+  });
+})();
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   await loadCSV();
@@ -10140,31 +10175,139 @@ function toggleReportTrayAndAdd() {
     return;
   }
 
-  // Show the report panel if not visible
+  // If multiple draft reports exist, show selector popup
+  if (openReports.length > 1) {
+    showReportSelector();
+    return;
+  }
+
+  // Single report or no reports - add directly
+  addToReport(currentReportId);
+}
+
+// Show report selector popup for choosing which report to add to
+function showReportSelector() {
+  const selector = document.getElementById('report-selector-popup');
+  const list = document.getElementById('report-selector-list');
+
+  // Build the list of reports
+  list.innerHTML = openReports.map((report, idx) => {
+    const count = (reportTransactions.get(report.id) || new Set()).size;
+    const isActive = report.id === currentReportId;
+    const shortcut = idx < 9 ? `<span class="report-selector-shortcut">${idx + 1}</span>` : '';
+    return `
+      <div class="report-selector-item ${isActive ? 'active' : ''}"
+           onclick="selectReportAndAdd('${report.id}')"
+           data-report-id="${report.id}">
+        ${shortcut}
+        <span class="report-selector-name">${escapeHtml(report.name)}</span>
+        <span class="report-selector-count">${count} items</span>
+      </div>
+    `;
+  }).join('') + `
+    <div class="report-selector-item report-selector-new" onclick="createNewReportAndAdd()">
+      <span class="report-selector-shortcut">N</span>
+      <span class="report-selector-name">+ New Report</span>
+    </div>
+  `;
+
+  selector.classList.add('visible');
+  reportSelectorVisible = true;
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', closeReportSelectorOnOutsideClick);
+    document.addEventListener('keydown', handleReportSelectorKeys);
+  }, 10);
+}
+
+// Handle keyboard in report selector
+function handleReportSelectorKeys(e) {
+  if (!reportSelectorVisible) return;
+
+  const key = e.key.toLowerCase();
+
+  // Number keys 1-9 to select report
+  if (key >= '1' && key <= '9') {
+    e.preventDefault();
+    const idx = parseInt(key) - 1;
+    if (idx < openReports.length) {
+      selectReportAndAdd(openReports[idx].id);
+    }
+  }
+  // N for new report
+  else if (key === 'n') {
+    e.preventDefault();
+    createNewReportAndAdd();
+  }
+  // Escape to close
+  else if (key === 'escape') {
+    e.preventDefault();
+    closeReportSelector();
+  }
+}
+
+function closeReportSelectorOnOutsideClick(e) {
+  const selector = document.getElementById('report-selector-popup');
+  if (!selector.contains(e.target)) {
+    closeReportSelector();
+  }
+}
+
+function closeReportSelector() {
+  document.getElementById('report-selector-popup').classList.remove('visible');
+  reportSelectorVisible = false;
+  document.removeEventListener('click', closeReportSelectorOnOutsideClick);
+  document.removeEventListener('keydown', handleReportSelectorKeys);
+}
+
+// Select a report and add current transaction to it
+function selectReportAndAdd(reportId) {
+  closeReportSelector();
+  currentReportId = reportId;
+  saveReportsState();
+  addToReport(reportId);
+}
+
+// Create new report and add current transaction
+function createNewReportAndAdd() {
+  closeReportSelector();
+  createNewReport();
+  addToReport(currentReportId);
+}
+
+// Add current selected transaction to a specific report
+function addToReport(reportId) {
+  if (!selectedRow) return;
+
+  // Ensure we have a report
+  if (!reportId) {
+    createNewReport();
+    reportId = currentReportId;
+  }
+
+  // Show the report panel
   if (!reportPanelVisible) {
     showReportPanel();
   }
 
-  // Ensure we have a report
-  if (!currentReportId) {
-    createNewReport();
-  }
-
   // Add current transaction to report
-  const currentSet = reportTransactions.get(currentReportId) || new Set();
+  const currentSet = reportTransactions.get(reportId) || new Set();
   const index = selectedRow._index;
 
   if (currentSet.has(index)) {
     showToast('Already in report', 'info');
   } else {
     currentSet.add(index);
-    reportTransactions.set(currentReportId, currentSet);
+    reportTransactions.set(reportId, currentSet);
     saveReportsState();
     updateReportUI();
     updateReportFAB();
+    renderTable(); // Re-render to hide the added transaction
 
     const merchant = selectedRow['MI Merchant'] || selectedRow['Chase Description'] || 'Transaction';
-    showToast(`Added "${merchant}" to report`, 'success');
+    const reportName = openReports.find(r => r.id === reportId)?.name || 'Report';
+    showToast(`Added "${merchant}" to ${reportName}`, 'success');
 
     // Auto-navigate to next row
     navigateRow(1);

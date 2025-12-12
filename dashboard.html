@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#0a0f14">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
@@ -13,106 +13,7 @@
   <link rel="stylesheet" href="/static/tallyups-design.css">
   <style>
     body {
-      padding-top: var(--safe-top);
       padding-bottom: 20px;
-    }
-
-    /* Header */
-    .header {
-      padding: 16px;
-      background: linear-gradient(180deg, rgba(0,255,136,0.05) 0%, transparent 100%);
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-    }
-    .header-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .logo-icon {
-      width: 36px;
-      height: 36px;
-      background: var(--brand);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .logo-icon svg { width: 20px; height: 20px; color: #000; }
-    .logo-text {
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
-    .logo-text span { color: var(--brand); }
-    .header-actions { display: flex; gap: 8px; }
-    .icon-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      text-decoration: none;
-      transition: var(--transition-fast);
-    }
-    .icon-btn:hover { border-color: var(--brand); }
-    .icon-btn svg { width: 18px; height: 18px; color: var(--text-secondary); }
-
-    /* Top Navigation Links */
-    .nav-links {
-      display: none;
-      gap: 4px;
-      margin-left: auto;
-      margin-right: 16px;
-    }
-
-    @media (min-width: 1024px) {
-      .nav-links {
-        display: flex;
-      }
-    }
-
-    .nav-link-btn {
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 13px;
-      background: transparent;
-      color: var(--text-secondary);
-      border: 1px solid transparent;
-      transition: all 0.15s;
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .nav-link-btn:hover {
-      background: rgba(0,255,136,.15);
-      color: var(--text-primary);
-    }
-
-    .nav-link-btn.active {
-      background: rgba(0,255,136,.15);
-      color: var(--brand);
-      border-color: rgba(0,255,136,.2);
-    }
-
-    .nav-link-btn svg {
-      width: 16px;
-      height: 16px;
     }
 
     /* Content */
@@ -621,20 +522,15 @@
   </style>
 </head>
 <body>
-  <header class="header">
-    <div class="header-content">
-      <div class="logo">
-        <div class="logo-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-            <path d="M9 12l2 2 4-4"/>
-          </svg>
-        </div>
-        <span class="logo-text">Tally<span>ups</span></span>
+  <header class="site-header">
+    <div class="site-header-content">
+      <div class="site-brand">
+        <h1>🧾 Tallyups</h1>
+        <span class="version">v2.0</span>
       </div>
 
       <!-- Desktop Navigation Links -->
-      <nav class="nav-links">
+      <nav class="header-nav">
         <a href="/" class="nav-link-btn active">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -684,12 +580,12 @@
       </nav>
 
       <div class="header-actions">
-        <a href="/library" class="icon-btn" title="Search">
+        <a href="/library" class="header-icon-btn" title="Search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
         </a>
-        <a href="/settings" class="icon-btn" title="Settings">
+        <a href="/settings" class="header-icon-btn" title="Settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
