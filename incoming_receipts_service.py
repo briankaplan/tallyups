@@ -1563,14 +1563,14 @@ def find_matching_transaction(merchant, amount, transaction_date):
 
     # STRATEGY 1: Amount match with merchant verification
     # When we have a date, require date proximity. When no date, be more lenient.
+    # NOTE: We search ALL transactions (even those with receipts) so we can show "already has receipt"
     if amount and amount > 0:
         # Allow small tolerance for rounding (within 1 cent)
         cursor.execute('''
-            SELECT _index, chase_description, chase_amount, chase_date, receipt_file, mi_merchant
+            SELECT _index, chase_description, chase_amount, chase_date, receipt_file, receipt_url, mi_merchant
             FROM transactions
             WHERE ABS(chase_amount - %s) < 0.02
               AND chase_date BETWEEN %s AND %s
-              AND (receipt_file IS NULL OR receipt_file = '' OR receipt_file = 'None')
               AND deleted != 1
             ORDER BY chase_date DESC
             LIMIT 20
@@ -2982,10 +2982,16 @@ def cleanup_inbox_and_rematch():
             stats['kept_valid'] += 1
             if merchant and amount:
                 match_id, has_receipt, needs_receipt, match_score = find_matching_transaction(merchant, float(amount), None)
-                if match_id and needs_receipt:
-                    cursor.execute('UPDATE incoming_receipts SET matched_transaction_id = %s, match_score = %s WHERE id = %s', (match_id, match_score, item_id))
+                if match_id:
+                    # Store match regardless of whether TX already has receipt
+                    # match_type indicates: 'needs_receipt' or 'has_receipt'
+                    match_type = 'has_receipt' if has_receipt else 'needs_receipt'
+                    score_decimal = round(match_score / 100.0, 4) if match_score > 1 else match_score
+                    cursor.execute('UPDATE incoming_receipts SET matched_transaction_id = %s, match_score = %s, match_type = %s WHERE id = %s',
+                                  (match_id, score_decimal, match_type, item_id))
                     stats['matched'] += 1
-                    print(f"   ✅ Matched #{item_id} to TX #{match_id}")
+                    status = "has receipt" if has_receipt else "needs receipt"
+                    print(f"   ✅ Matched #{item_id} to TX #{match_id} ({status})")
     conn.commit()
     conn.close()
     return stats
@@ -3097,14 +3103,18 @@ def aggressive_rematch_all():
         if merchant and amount and amount > 0:
             match_id, has_receipt, needs_receipt, match_score = find_matching_transaction(merchant, float(amount), receipt_date)
 
-            if match_id and needs_receipt:
+            if match_id:
+                # Store ALL matches - both 'has_receipt' and 'needs_receipt' types
+                match_type = 'has_receipt' if has_receipt else 'needs_receipt'
+                score_decimal = round(match_score / 100.0, 4) if match_score > 1 else round(match_score, 4)
                 cursor.execute('''
                     UPDATE incoming_receipts
-                    SET matched_transaction_id = %s, match_score = %s
+                    SET matched_transaction_id = %s, match_score = %s, match_type = %s
                     WHERE id = %s
-                ''', (match_id, match_score, item_id))
+                ''', (match_id, score_decimal, match_type, item_id))
                 stats['matched'] += 1
-                print(f"   ✅ #{item_id} -> TX #{match_id}: {merchant} ${amount}")
+                status = "🔄 (already has receipt)" if has_receipt else "✅"
+                print(f"   {status} #{item_id} -> TX #{match_id}: {merchant} ${amount}")
             else:
                 stats['still_unmatched'] += 1
                 if stats['still_unmatched'] <= 10:  # Show first 10 unmatched
