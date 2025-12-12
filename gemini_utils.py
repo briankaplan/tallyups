@@ -1,13 +1,45 @@
 #!/usr/bin/env python3
 """
-Gemini API Utility with Automatic Key Fallback
-Provides a shared Gemini client that automatically switches API keys when quota is exceeded
+AI API Utility with Automatic Fallback
+Provides shared AI clients (Gemini + OpenAI fallback) that automatically switch when quota is exceeded
 """
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# OpenAI setup
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+_openai_client = None
+
+def get_openai_client():
+    """Get or create OpenAI client"""
+    global _openai_client
+    if _openai_client is None and OPENAI_API_KEY:
+        try:
+            from openai import OpenAI
+            _openai_client = OpenAI(api_key=OPENAI_API_KEY)
+        except ImportError:
+            print("⚠️ OpenAI package not installed")
+    return _openai_client
+
+def generate_with_openai(prompt, max_tokens=1000):
+    """Generate content using OpenAI GPT-4o-mini as fallback"""
+    client = get_openai_client()
+    if not client:
+        return None
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            temperature=0.3
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"   ❌ OpenAI error: {e}")
+        return None
 
 # Load all available API keys
 GEMINI_API_KEYS = [
@@ -146,10 +178,16 @@ def generate_content_with_fallback(prompt, image=None, max_retries=5, base_delay
                 keys_tried += 1
 
                 if keys_tried >= len(GEMINI_API_KEYS):
-                    # All keys tried, use longer exponential backoff and reset to first key
+                    # All Gemini keys exhausted - try OpenAI immediately instead of waiting
+                    print(f"   ⚠️ All {len(GEMINI_API_KEYS)} Gemini keys rate limited, trying OpenAI...")
+                    openai_result = generate_with_openai(prompt)
+                    if openai_result:
+                        print(f"   ✅ OpenAI fallback successful")
+                        return openai_result
+
+                    # OpenAI also failed, wait and retry Gemini
                     long_delay = calculate_backoff_delay(keys_tried, base_delay * 2, max_delay * 2)
-                    print(f"   🔄 All {len(GEMINI_API_KEYS)} keys rate limited, "
-                          f"waiting {long_delay:.1f}s and retrying from key #1...")
+                    print(f"   🔄 OpenAI unavailable, waiting {long_delay:.1f}s and retrying Gemini...")
                     time.sleep(long_delay)
                     reset_to_first_key()
                     model = get_model()
@@ -184,8 +222,14 @@ def generate_content_with_fallback(prompt, image=None, max_retries=5, base_delay
             print(f"   ❌ Gemini error (non-recoverable): {e}")
             return None
 
-    # Exceeded max total attempts
-    print(f"   ❌ Exceeded maximum total attempts ({max_total_attempts})")
+    # Exceeded max total attempts - try OpenAI as final fallback
+    print(f"   ⚠️ Gemini exhausted after {max_total_attempts} attempts, trying OpenAI...")
+    openai_result = generate_with_openai(prompt)
+    if openai_result:
+        print(f"   ✅ OpenAI fallback successful")
+        return openai_result
+
+    print(f"   ❌ All AI providers failed")
     return None
 
 def analyze_receipt_image(image, prompt=None):
