@@ -1120,7 +1120,7 @@ Respond with ONLY valid JSON (no markdown, no code blocks):
 
         # Fallback: Try to extract amount with regex
         amount = extract_amount_from_text(subject + " " + body_text)
-        merchant_fallback, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
+        merchant_fallback, _, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
 
         if amount:
             print(f"      ✓ Regex extracted amount: ${amount}")
@@ -1141,7 +1141,7 @@ def analyze_email_with_gemini_fallback(subject, from_email, body_text):
     if not GEMINI_AVAILABLE or not generate_content_with_fallback:
         print("      ⚠️  Gemini not available either, using regex only...")
         amount = extract_amount_from_text(subject + " " + body_text)
-        merchant_fallback, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
+        merchant_fallback, _, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
         ai_notes = f"Email from {from_email.split('@')[0]} - {subject[:50]}" if subject else None
         return (merchant_fallback, amount, None, False, 'receipt', ai_notes)
 
@@ -1180,7 +1180,7 @@ Respond with ONLY valid JSON:
     except Exception as e:
         print(f"      ⚠️  Gemini fallback failed: {e}")
         amount = extract_amount_from_text(subject + " " + body_text)
-        merchant_fallback, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
+        merchant_fallback, _, _ = extract_merchant_and_amount(subject, from_email, body_text[:500])
         ai_notes = f"Email from {from_email.split('@')[0]} - {subject[:50]}" if subject else None
         return (merchant_fallback, amount, None, False, 'receipt', ai_notes)
 
@@ -1193,46 +1193,107 @@ def analyze_email_with_gemini(subject, from_email, body_text):
 
 def extract_merchant_and_amount(subject, from_email, body_snippet):
     """
-    Extract merchant name and amount from email content (fallback)
-    Returns: (merchant, amount)
+    Extract merchant name and amount from email content (IMPROVED)
+    Returns: (merchant, amount, receipt_date)
     """
     import re
 
     merchant = None
     amount = None
+    receipt_date = None
 
     subject_lower = subject.lower() if subject else ''
+    subject_orig = subject or ''
 
-    # Extract merchant from subject patterns
-    merchant_patterns = [
-        r'receipt from ([^#\n]+?)(?:\s*#|\s*$)',
-        r'invoice from ([^#\n]+?)(?:\s*#|\s*$)',
-        r'payment (?:to|from) ([^#\n]+?)(?:\s*#|\s*$)',
-        r'your ([^#\n]+?) (?:receipt|invoice)',
-        r'order from ([^#\n]+?)(?:\s*#|\s*$)',
-    ]
+    # ==========================================================
+    # MERCHANT EXTRACTION - Much more aggressive patterns
+    # ==========================================================
 
-    for pattern in merchant_patterns:
-        match = re.search(pattern, subject_lower)
-        if match:
-            merchant = match.group(1).strip().title()
-            merchant = re.sub(r',?\s*(?:Inc|LLC|Ltd|Corp)\.?$', '', merchant, flags=re.IGNORECASE)
+    # Common merchants to look for directly in subject
+    known_merchants = {
+        'apple': 'Apple',
+        'uber': 'Uber',
+        'uber eats': 'Uber Eats',
+        'lyft': 'Lyft',
+        'doordash': 'DoorDash',
+        'grubhub': 'Grubhub',
+        'instacart': 'Instacart',
+        'amazon': 'Amazon',
+        'spotify': 'Spotify',
+        'netflix': 'Netflix',
+        'hulu': 'Hulu',
+        'disney': 'Disney+',
+        'anthropic': 'Anthropic',
+        'openai': 'OpenAI',
+        'cloudflare': 'Cloudflare',
+        'stripe': 'Stripe',
+        'paypal': 'PayPal',
+        'venmo': 'Venmo',
+        'cash app': 'Cash App',
+        'zelle': 'Zelle',
+        'starbucks': 'Starbucks',
+        'chipotle': 'Chipotle',
+        'sonic': 'Sonic',
+        'first watch': 'First Watch',
+        'chick-fil-a': 'Chick-fil-A',
+        'target': 'Target',
+        'walmart': 'Walmart',
+        'costco': 'Costco',
+        'home depot': 'Home Depot',
+        'lowes': 'Lowes',
+        'charles tyrwhitt': 'Charles Tyrwhitt',
+        'kia': 'Kia',
+        'cima solutions': 'Cima Solutions',
+    }
+
+    # Check for known merchants in subject first
+    for key, name in known_merchants.items():
+        if key in subject_lower:
+            merchant = name
             break
 
+    # Extract merchant from subject patterns
+    if not merchant:
+        merchant_patterns = [
+            r'receipt from ([^#\n\.]+?)(?:\s*#|\s*\.|$)',
+            r'invoice from ([^#\n\.]+?)(?:\s*#|\s*\.|$)',
+            r'payment (?:to|from) ([^#\n\.]+?)(?:\s*#|\s*\.|$)',
+            r'your ([^#\n]+?) (?:receipt|invoice|order)',
+            r'order from ([^#\n\.]+?)(?:\s*#|\s*\.|$)',
+            r'confirmation from ([^#\n\.]+?)(?:\s*#|\s*\.|$)',
+            r'([A-Za-z][A-Za-z\s]{2,20})\s+(?:Receipt|Invoice|Order|Payment)',  # "Company Receipt"
+        ]
+
+        for pattern in merchant_patterns:
+            match = re.search(pattern, subject_orig, re.IGNORECASE)
+            if match:
+                merchant = match.group(1).strip().title()
+                merchant = re.sub(r',?\s*(?:Inc|LLC|Ltd|Corp|Co)\.?$', '', merchant, flags=re.IGNORECASE)
+                # Clean up "Your " prefix
+                merchant = re.sub(r'^Your\s+', '', merchant, flags=re.IGNORECASE)
+                if len(merchant) > 2:
+                    break
+
+    # Extract from email domain (but not generic ones)
     if not merchant and from_email:
         domain = from_email.split('@')[-1] if '@' in from_email else ''
-        if domain:
-            if domain not in ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com']:
-                company = domain.split('.')[0].title()
-                if company and len(company) > 2:
-                    merchant = company
+        generic_domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'me.com', 'aol.com']
+        if domain and domain not in generic_domains:
+            company = domain.split('.')[0].title()
+            # Handle some common patterns
+            company = company.replace('Noreply', '').replace('Receipt', '').replace('Invoice', '').strip()
+            if company and len(company) > 2:
+                merchant = company
 
-    # Extract amount
+    # ==========================================================
+    # AMOUNT EXTRACTION
+    # ==========================================================
     amount_patterns = [
-        r'\$\s*(\d+(?:,\d{3})*(?:\.\d{2})?)',
-        r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:USD|usd)',
-        r'total[:\s]+\$?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)',
-        r'amount[:\s]+\$?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)',
+        r'\$\s*(\d+(?:,\d{3})*(?:\.\d{2}))',  # $XX.XX (require cents)
+        r'total[:\s]+\$?\s*(\d+(?:,\d{3})*(?:\.\d{2}))',
+        r'amount[:\s]+\$?\s*(\d+(?:,\d{3})*(?:\.\d{2}))',
+        r'charged[:\s]+\$?\s*(\d+(?:,\d{3})*(?:\.\d{2}))',
+        r'(\d+(?:,\d{3})*(?:\.\d{2}))\s*(?:USD|usd)',
     ]
 
     search_text = subject + ' ' + (body_snippet or '')
@@ -1242,11 +1303,42 @@ def extract_merchant_and_amount(subject, from_email, body_snippet):
             amount_str = match.group(1).replace(',', '')
             try:
                 amount = float(amount_str)
-                break
+                if amount > 0.01 and amount < 100000:  # Sanity check
+                    break
             except ValueError:
                 continue
 
-    return merchant, amount
+    # ==========================================================
+    # DATE EXTRACTION - Parse dates from subject/body
+    # ==========================================================
+    date_patterns = [
+        r'(\d{1,2}/\d{1,2}/\d{2,4})',  # MM/DD/YYYY or M/D/YY
+        r'(\d{4}-\d{2}-\d{2})',  # YYYY-MM-DD
+        r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})',  # Jan 15, 2024
+        r'(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4})',  # 15 Jan 2024
+    ]
+
+    for pattern in date_patterns:
+        match = re.search(pattern, search_text, re.IGNORECASE)
+        if match:
+            date_str = match.group(1)
+            try:
+                # Try various date formats
+                for fmt in ['%m/%d/%Y', '%m/%d/%y', '%Y-%m-%d', '%B %d, %Y', '%b %d, %Y', '%d %B %Y', '%d %b %Y']:
+                    try:
+                        parsed_date = datetime.strptime(date_str, fmt)
+                        # Sanity check - should be within last 2 years
+                        if datetime.now() - timedelta(days=730) < parsed_date <= datetime.now() + timedelta(days=7):
+                            receipt_date = parsed_date.strftime('%Y-%m-%d')
+                            break
+                    except ValueError:
+                        continue
+                if receipt_date:
+                    break
+            except:
+                continue
+
+    return merchant, amount, receipt_date
 
 
 def find_matching_transaction(merchant, amount, transaction_date):
@@ -1254,10 +1346,11 @@ def find_matching_transaction(merchant, amount, transaction_date):
     Check if a similar transaction already exists in the database (MySQL)
     Returns: (transaction_id, has_receipt, needs_receipt)
 
-    ENHANCED matching logic with scoring:
-    1. Exact amount match within date range (highest priority for subscriptions)
-    2. Fuzzy merchant name matching with multiple strategies
-    3. Scoring system to pick the best match
+    AGGRESSIVE matching logic - optimized for finding matches:
+    1. When we have date + amount + merchant: strict match (date within 5 days)
+    2. When we have amount + merchant (no date): search last 90 days
+    3. When we have just amount: look for exact amount matches in last 60 days
+    4. Merchant fuzzy matching with scoring
     """
     if not merchant and not amount:
         return None, False, False
@@ -1265,19 +1358,21 @@ def find_matching_transaction(merchant, amount, transaction_date):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Determine date range
+    # Determine date range - MORE AGGRESSIVE when no date
+    has_date = bool(transaction_date)
     if transaction_date:
         try:
             date_obj = datetime.fromisoformat(transaction_date.split('T')[0])
             # Use asymmetric window: receipts usually come AFTER the charge
-            date_min = (date_obj - timedelta(days=3)).strftime('%Y-%m-%d')
-            date_max = (date_obj + timedelta(days=10)).strftime('%Y-%m-%d')
+            date_min = (date_obj - timedelta(days=5)).strftime('%Y-%m-%d')
+            date_max = (date_obj + timedelta(days=14)).strftime('%Y-%m-%d')
         except:
-            date_min = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            has_date = False
+            date_min = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
             date_max = datetime.now().strftime('%Y-%m-%d')
     else:
-        # No date provided - search recent transactions
-        date_min = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        # No date provided - search MUCH wider window (90 days)
+        date_min = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
         date_max = datetime.now().strftime('%Y-%m-%d')
 
     # Normalize merchant name for matching
@@ -1289,7 +1384,8 @@ def find_matching_transaction(merchant, amount, transaction_date):
     best_match = None
     best_score = 0
 
-    # STRATEGY 1: Amount + Merchant + Date match (requires ALL THREE for high confidence)
+    # STRATEGY 1: Amount match with merchant verification
+    # When we have a date, require date proximity. When no date, be more lenient.
     if amount and amount > 0:
         # Allow small tolerance for rounding (within 1 cent)
         cursor.execute('''
@@ -1298,9 +1394,10 @@ def find_matching_transaction(merchant, amount, transaction_date):
             WHERE ABS(chase_amount - %s) < 0.02
               AND chase_date BETWEEN %s AND %s
               AND (receipt_file IS NULL OR receipt_file = '' OR receipt_file = 'None')
-            ORDER BY ABS(DATEDIFF(chase_date, %s)) ASC
-            LIMIT 10
-        ''', (amount, date_min, date_max, transaction_date or date_max))
+              AND deleted != 1
+            ORDER BY chase_date DESC
+            LIMIT 20
+        ''', (amount, date_min, date_max))
 
         amount_matches = cursor.fetchall()
         for match in amount_matches:
@@ -1308,14 +1405,14 @@ def find_matching_transaction(merchant, amount, transaction_date):
             mi_merchant = str(match.get('mi_merchant') or '').lower()
             match_amount = float(match['chase_amount'] or 0)
 
-            # Start with 0 - need ALL of: merchant + amount + date
-            score = 0
+            # Base score for exact amount match
+            score = 40  # Start with good base score for amount match
             has_merchant_match = False
             has_date_match = False
             days_diff = 999
 
-            # Calculate date proximity FIRST - this is required
-            if transaction_date and match.get('chase_date'):
+            # Calculate date proximity IF we have a date
+            if has_date and match.get('chase_date'):
                 try:
                     match_date = match['chase_date']
                     if isinstance(match_date, str):
@@ -1325,22 +1422,22 @@ def find_matching_transaction(merchant, amount, transaction_date):
                     else:
                         days_diff = abs((date_obj - datetime.combine(match_date, datetime.min.time())).days)
 
-                    # Date must be within 5 days to be considered a match
-                    if days_diff <= 5:
+                    # Date within range - add bonus
+                    if days_diff <= 3:
                         has_date_match = True
-                        # Closer dates get bonus points
-                        if days_diff == 0:
-                            score += 30  # Same day - strong signal
-                        elif days_diff <= 2:
-                            score += 20  # Within 2 days - good
-                        else:
-                            score += 10  # 3-5 days - acceptable
+                        score += 40  # Same/close day - strong signal
+                    elif days_diff <= 7:
+                        has_date_match = True
+                        score += 25  # Within week
+                    elif days_diff <= 14:
+                        has_date_match = True
+                        score += 10  # Within 2 weeks
                 except:
                     pass
-
-            # Skip this match if date is too far off
-            if not has_date_match:
-                continue
+            else:
+                # No date provided - don't penalize, just can't add date bonus
+                # The amount match alone + merchant match should be enough
+                pass
 
             # Check for merchant name similarity
             combined_desc = f"{match_desc} {mi_merchant}"
@@ -1348,28 +1445,31 @@ def find_matching_transaction(merchant, amount, transaction_date):
             # Direct substring match (very strong signal)
             if merchant_lower and len(merchant_lower) >= 3:
                 if merchant_lower in combined_desc:
-                    score += 80  # Strong merchant match
+                    score += 60  # Strong merchant match
                     has_merchant_match = True
                 elif any(word in combined_desc for word in merchant_words if len(word) >= 4):
-                    score += 60  # Partial merchant match
+                    score += 45  # Partial merchant match
                     has_merchant_match = True
 
             # Word overlap matching
             desc_words = set(w for w in re.split(r'[\s\.\-\_\*]+', combined_desc) if len(w) > 2 and w not in stop_words)
             common_words = merchant_words & desc_words
             if common_words:
-                score += len(common_words) * 15  # Boost word overlap score
+                score += len(common_words) * 12
                 if len(common_words) >= 1:
                     has_merchant_match = True
 
-            # Only count as valid match if BOTH merchant AND date match
-            # Amount is already filtered in SQL
+            # If we have date AND it matches AND merchant matches - very confident
             if has_merchant_match and has_date_match:
-                score += 30  # Bonus for having all three: merchant + amount + date
-            else:
-                # Missing merchant match - not a valid match even if amount/date match
-                score = 0
-                continue
+                score += 20  # Bonus for all three
+
+            # If NO date but good merchant match + exact amount - still valid
+            if has_merchant_match and not has_date and score >= 80:
+                score += 15  # Boost for good match without date
+
+            # Only require merchant match if we have merchant info to match
+            if merchant_lower and not has_merchant_match:
+                score = max(0, score - 30)  # Penalize but don't zero out
 
             if score > best_score:
                 best_score = score
@@ -2181,7 +2281,11 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
 
                 # Fallback to regex if AI fails
                 if not merchant_ai:
-                    merchant_ai, amount_ai = extract_merchant_and_amount(subject, from_email_clean, snippet)
+                    merchant_ai, amount_ai, date_extracted = extract_merchant_and_amount(subject, from_email_clean, snippet)
+                    # Use extracted date if we don't have one
+                    if date_extracted and not date_str:
+                        date_str = date_extracted
+                        print(f"      📅 Extracted date from email: {date_str}")
 
                 if merchant_ai or amount_ai:
                     print(f"      Extracted: {merchant_ai or 'Unknown'} ${amount_ai or '?'}")
@@ -2708,6 +2812,109 @@ def get_inbox_stats():
     result = cursor.fetchone()
     conn.close()
     return {'total': result['total'] or 0, 'pending': result['pending'] or 0, 'accepted': result['accepted'] or 0, 'rejected': result['rejected'] or 0, 'auto_rejected': result['auto_rejected'] or 0}
+
+
+def aggressive_rematch_all():
+    """
+    Aggressively try to rematch ALL unmatched pending receipts.
+    Uses improved merchant/amount/date extraction and more lenient matching.
+
+    Returns:
+        Dict with matching statistics
+    """
+    print("\n" + "="*60)
+    print("🔄 AGGRESSIVE RE-MATCHING ALL UNMATCHED RECEIPTS")
+    print("="*60)
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Get all pending receipts without matches
+    cursor.execute('''
+        SELECT id, subject, from_email, body_snippet, amount, merchant, receipt_date, email_date
+        FROM incoming_receipts
+        WHERE status = 'pending'
+        AND (matched_transaction_id IS NULL OR matched_transaction_id = 0)
+        ORDER BY created_at DESC
+    ''')
+    items = cursor.fetchall()
+
+    print(f"\n📥 Found {len(items)} unmatched receipts to process\n")
+
+    stats = {
+        'total': len(items),
+        'matched': 0,
+        'updated_merchant': 0,
+        'updated_amount': 0,
+        'updated_date': 0,
+        'still_unmatched': 0
+    }
+
+    for item in items:
+        item_id = item['id']
+        subject = item['subject'] or ''
+        from_email = item['from_email'] or ''
+        body_snippet = item['body_snippet'] or ''
+        current_amount = item['amount']
+        current_merchant = item['merchant']
+        current_date = item['receipt_date'] or item['email_date']
+
+        # Re-extract merchant, amount, and date with improved extraction
+        new_merchant, new_amount, new_date = extract_merchant_and_amount(subject, from_email, body_snippet)
+
+        # Use new values if better than current
+        merchant = new_merchant or current_merchant
+        amount = new_amount if new_amount and new_amount > 0 else current_amount
+        receipt_date = new_date or (str(current_date)[:10] if current_date else None)
+
+        # Track what we updated
+        updates = {}
+        if new_merchant and new_merchant != current_merchant:
+            updates['merchant'] = new_merchant
+            stats['updated_merchant'] += 1
+        if new_amount and new_amount > 0 and new_amount != current_amount:
+            updates['amount'] = new_amount
+            stats['updated_amount'] += 1
+        if new_date and new_date != str(current_date)[:10] if current_date else True:
+            updates['receipt_date'] = new_date
+            stats['updated_date'] += 1
+
+        # Update the record with better extraction
+        if updates:
+            set_clause = ', '.join(f"{k} = %s" for k in updates.keys())
+            cursor.execute(f'UPDATE incoming_receipts SET {set_clause} WHERE id = %s',
+                          list(updates.values()) + [item_id])
+
+        # Try to find a match
+        if merchant and amount and amount > 0:
+            match_id, has_receipt, needs_receipt = find_matching_transaction(merchant, float(amount), receipt_date)
+
+            if match_id:
+                cursor.execute('''
+                    UPDATE incoming_receipts
+                    SET matched_transaction_id = %s
+                    WHERE id = %s
+                ''', (match_id, item_id))
+                stats['matched'] += 1
+                print(f"   ✅ #{item_id} -> TX #{match_id}: {merchant} ${amount}")
+            else:
+                stats['still_unmatched'] += 1
+                if stats['still_unmatched'] <= 10:  # Show first 10 unmatched
+                    print(f"   ❓ #{item_id}: {merchant or 'Unknown'} ${amount or '?'} ({receipt_date or 'no date'})")
+        else:
+            stats['still_unmatched'] += 1
+
+    conn.commit()
+    conn.close()
+
+    print(f"\n📊 Results:")
+    print(f"   Matched: {stats['matched']}")
+    print(f"   Updated merchants: {stats['updated_merchant']}")
+    print(f"   Updated amounts: {stats['updated_amount']}")
+    print(f"   Updated dates: {stats['updated_date']}")
+    print(f"   Still unmatched: {stats['still_unmatched']}")
+
+    return stats
 
 
 def reprocess_pending_receipts(limit=50, skip_with_amount=True):

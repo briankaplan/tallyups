@@ -17148,6 +17148,32 @@ def reprocess_inbox():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/rematch-all", methods=["POST"])
+@login_required
+def rematch_all_inbox():
+    """
+    Aggressively re-match ALL unmatched inbox receipts with improved extraction.
+    Uses better merchant/date extraction and more lenient matching algorithm.
+    """
+    try:
+        from incoming_receipts_service import aggressive_rematch_all, get_inbox_stats
+        print("🔄 Running aggressive inbox rematch...")
+        before_stats = get_inbox_stats()
+        results = aggressive_rematch_all()
+        after_stats = get_inbox_stats()
+        return jsonify({
+            'ok': True,
+            'message': f"Rematch complete: {results['matched']} matched",
+            'results': results,
+            'before': before_stats,
+            'after': after_stats
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/bulk-reject", methods=["POST"])
 @api_key_required
 def bulk_reject_incoming_receipts():
