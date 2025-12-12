@@ -2415,9 +2415,9 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                         img_bytes = f.read()
 
                                     # Upload to R2 ONLY if it's a proper render (not text-based fallback)
-                                    # Text-based fallbacks are typically < 50KB, proper HTML renders are > 50KB
+                                    # Text-based fallbacks are typically < 20KB, simple HTML renders 25-50KB, rich renders > 50KB
                                     img_size_kb = len(img_bytes) / 1024
-                                    if img_bytes and img_size_kb >= 50:
+                                    if img_bytes and img_size_kb >= 25:
                                         try:
                                             from r2_service import upload_with_thumbnail, R2_ENABLED
                                             if R2_ENABLED:
@@ -2433,7 +2433,7 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                         except Exception as r2_err:
                                             print(f"      ⚠️  R2 upload failed: {r2_err}")
                                     elif img_bytes:
-                                        print(f"      ⚠️  Skipping R2 upload - text-based fallback detected ({img_size_kb:.1f}KB < 50KB)")
+                                        print(f"      ⚠️  Skipping R2 upload - text-based fallback detected ({img_size_kb:.1f}KB < 25KB)")
 
                                     # Try vision analysis only if we don't have merchant/amount yet
                                     if not vision_merchant and not vision_amount:
@@ -3567,7 +3567,7 @@ def regenerate_screenshot(receipt_id: int) -> dict:
             screenshot_size = os.path.getsize(screenshot_path)
             screenshot_size_kb = screenshot_size / 1024
 
-            if screenshot_size_kb < 50:
+            if screenshot_size_kb < 25:
                 print(f"   ⚠️ Screenshot too small ({screenshot_size_kb:.1f}KB) - likely text-based fallback")
                 return {'success': False, 'error': f'Screenshot too small ({screenshot_size_kb:.1f}KB) - text-based fallback'}
 
