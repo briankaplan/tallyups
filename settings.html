@@ -42,7 +42,7 @@
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       padding-top: var(--safe-top);
-      padding-bottom: calc(80px + var(--safe-bottom));
+      padding-bottom: calc(20px + var(--safe-bottom));
     }
 
     /* Header */
@@ -78,6 +78,40 @@
       height: 20px;
       color: var(--text-secondary);
     }
+
+    /* Top Navigation Links */
+    .nav-links {
+      display: none;
+      gap: 4px;
+      margin-left: auto;
+    }
+    @media (min-width: 1024px) {
+      .nav-links { display: flex; }
+    }
+    .nav-link-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-link-btn:hover {
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--text);
+    }
+    .nav-link-btn.active {
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--accent);
+      border-color: rgba(0, 255, 136, 0.2);
+    }
+    .nav-link-btn svg { width: 16px; height: 16px; }
 
     .header-title {
       font-size: 24px;
@@ -291,48 +325,6 @@
       color: var(--text-secondary);
     }
 
-    /* Bottom Navigation */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(17, 17, 17, 0.95);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: space-around;
-      padding: 8px 0;
-      padding-bottom: calc(8px + var(--safe-bottom));
-    }
-
-    .nav-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 8px 16px;
-      color: var(--text-dim);
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .nav-item:hover,
-    .nav-item.active {
-      color: var(--accent);
-    }
-
-    .nav-item svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    .nav-label {
-      font-size: 10px;
-      font-weight: 500;
-    }
-
     /* Loading states */
     .loading-text {
       color: var(--text-dim);
@@ -349,6 +341,34 @@
       </svg>
     </a>
     <h1 class="header-title">Settings</h1>
+
+    <!-- Desktop Navigation Links -->
+    <nav class="nav-links">
+      <a href="/" class="nav-link-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </a>
+      <a href="/viewer" class="nav-link-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Reconcile
+      </a>
+      <a href="/library" class="nav-link-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Library
+      </a>
+      <a href="/scanner" class="nav-link-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Scan
+      </a>
+      <a href="/incoming" class="nav-link-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+        Inbox
+      </a>
+      <a href="/reports" class="nav-link-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Reports
+      </a>
+    </nav>
   </header>
 
   <!-- Account Section -->
@@ -653,65 +673,6 @@
     <strong>Tallyups</strong> &middot; Built with care<br>
     Railway Deployment
   </div>
-
-  <!-- Bottom Navigation -->
-  <nav class="bottom-nav">
-    <a href="/" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-        <polyline points="9 22 9 12 15 12 15 22"/>
-      </svg>
-      <span class="nav-label">Home</span>
-    </a>
-    <a href="/viewer" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M9 11l3 3L22 4"/>
-        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-      </svg>
-      <span class="nav-label">Reconcile</span>
-    </a>
-    <a href="/library" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="7" height="7"/>
-        <rect x="14" y="3" width="7" height="7"/>
-        <rect x="14" y="14" width="7" height="7"/>
-        <rect x="3" y="14" width="7" height="7"/>
-      </svg>
-      <span class="nav-label">Library</span>
-    </a>
-    <a href="/scanner" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-      <span class="nav-label">Scan</span>
-    </a>
-    <a href="/incoming" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
-        <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
-      </svg>
-      <span class="nav-label">Inbox</span>
-    </a>
-    <a href="/reports" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/>
-        <line x1="16" y1="17" x2="8" y2="17"/>
-      </svg>
-      <span class="nav-label">Reports</span>
-    </a>
-    <a href="/contacts" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-        <path d="M16 3.13a4 4 0 010 7.75"/>
-      </svg>
-      <span class="nav-label">Contacts</span>
-    </a>
-  </nav>
 
   <script>
     // Load health status on page load
