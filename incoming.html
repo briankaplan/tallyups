@@ -1940,6 +1940,7 @@ th.sortable.active {
 
   <div class="controls">
     <button class="btn-ghost btn-sm" onclick="rematchAll()" title="Re-match all unmatched receipts with improved AI">🔗 Rematch All</button>
+    <button class="btn-ghost btn-sm" onclick="cleanSpam()" title="Auto-reject spam, marketing, and low-confidence items">🧹 Clean Spam</button>
     <button class="btn-ghost btn-sm" onclick="clearAndRescan()" title="Clear all pending receipts and scan fresh">⚡ Clear & Rescan</button>
     <button class="btn-primary" onclick="scanForNew()">🔄 Scan Now</button>
   </div>
@@ -2496,7 +2497,7 @@ function renderTable() {
 
   content.innerHTML = tableHTML;
   renderMobileCards(); // Render mobile cards too
-  applyFilter();
+  // Note: Don't call applyFilter() here - getSortedReceipts() already handles filtering
 }
 
 // Mobile Card Rendering
@@ -3497,7 +3498,8 @@ function filterStatus(status) {
     }
   });
 
-  applyFilter();
+  // Re-render the table with new filter applied
+  renderTable();
 }
 
 function applyFilter() {
@@ -3582,6 +3584,76 @@ async function rematchAll() {
   } catch (e) {
     console.error('Rematch error:', e);
     showToast('Error during rematch', 'error');
+  }
+}
+
+async function cleanSpam() {
+  // Spam patterns to auto-reject
+  const spamPatterns = [
+    // Marketing/promotional
+    /sale|discount|promo|offer|deal|save \d+%|limited time|exclusive|flash sale/i,
+    /black friday|cyber monday|holiday|clearance/i,
+    // Newsletters
+    /newsletter|digest|weekly update|daily update|roundup/i,
+    // Notifications
+    /notification|alert|reminder|update your|verify your|confirm your account/i,
+    // Political/news
+    /breaking news|campaign|election|donate|petition|urgent action/i,
+    // Generic junk
+    /unsubscribe|click here|act now|don't miss|hurry/i,
+    // Marketing domains (check from_email)
+    /mailchimp|sendgrid|constantcontact|hubspot|marketing\.|newsletter\./i
+  ];
+
+  // Also reject low-confidence items without amounts
+  const pendingReceipts = allReceipts.filter(r => r.status === 'pending');
+  const spamToReject = pendingReceipts.filter(r => {
+    const subject = r.subject || '';
+    const from = r.from_email || '';
+    const amount = parseFloat(r.amount) || 0;
+    const confidence = r.confidence_score || 0;
+
+    // Check spam patterns in subject or from
+    const isSpam = spamPatterns.some(p => p.test(subject) || p.test(from));
+
+    // Also reject if no amount and low confidence
+    const noAmountLowConf = amount === 0 && confidence < 50;
+
+    // Also reject if category is marketing/newsletter/junk
+    const spamCategory = ['marketing', 'newsletter', 'junk', 'notification'].includes((r.category || '').toLowerCase());
+
+    return isSpam || noAmountLowConf || spamCategory;
+  });
+
+  if (spamToReject.length === 0) {
+    showToast('No spam found to clean', 'info');
+    return;
+  }
+
+  if (!confirm(`Found ${spamToReject.length} spam/junk items to reject:\n\n- Marketing emails\n- Newsletters\n- No-amount/low-confidence items\n\nReject all of these?`)) return;
+
+  showToast(`Rejecting ${spamToReject.length} spam items...`, 'info');
+
+  try {
+    const ids = spamToReject.map(r => r.id);
+    const response = await fetch('/api/incoming/bulk-reject', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({ ids, reason: 'spam_auto_cleanup' })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      showToast(`Rejected ${data.rejected || ids.length} spam items`, 'success');
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Cleanup failed', 'error');
+    }
+  } catch (e) {
+    console.error('Cleanup error:', e);
+    showToast('Error cleaning spam', 'error');
   }
 }
 
@@ -4256,10 +4328,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 function getVisibleReceipts() {
-  return allReceipts.filter(r => {
-    if (currentFilter === 'all') return true;
-    return r.status === currentFilter;
-  });
+  // Use the same filtering logic as getSortedReceipts for consistency
+  return getSortedReceipts();
 }
 
 function navigateCards(direction) {
