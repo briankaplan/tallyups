@@ -3670,3 +3670,93 @@ def regenerate_small_screenshots(size_threshold_kb=40, limit=50) -> dict:
     print(f"   Failed: {stats['failed']}")
 
     return stats
+
+
+def backfill_ai_notes(limit=100) -> dict:
+    """
+    Generate ai_notes for receipts that are missing them.
+    Uses OpenAI to analyze email subject/body and generate expense descriptions.
+
+    Args:
+        limit: Max number to process
+
+    Returns: Stats dict
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Find receipts missing ai_notes
+    cursor.execute('''
+        SELECT id, merchant, amount, subject, from_email, body_snippet
+        FROM incoming_receipts
+        WHERE status = 'pending'
+        AND (ai_notes IS NULL OR ai_notes = '')
+        ORDER BY id DESC
+        LIMIT %s
+    ''', (limit,))
+
+    receipts = cursor.fetchall()
+    print(f"🔍 Found {len(receipts)} receipts missing ai_notes")
+
+    stats = {'processed': 0, 'updated': 0, 'failed': 0, 'skipped': 0}
+
+    for r in receipts:
+        receipt_id = r['id']
+        merchant = r['merchant'] or 'Unknown'
+        subject = r['subject'] or ''
+        from_email = r['from_email'] or ''
+        body = r['body_snippet'] or ''
+
+        try:
+            print(f"\n#{receipt_id}: {merchant} - {subject[:40]}...")
+
+            # Use OpenAI to analyze and generate notes
+            ai_merchant, ai_amount, description, is_subscription, category, ai_notes = analyze_email_with_openai(
+                subject, from_email, body
+            )
+
+            if ai_notes:
+                # Update the receipt with ai_notes (and optionally other fields if missing)
+                updates = ['ai_notes = %s']
+                params = [ai_notes]
+
+                # Also update category if we got one and current is generic
+                if category and category not in ['receipt', 'unknown']:
+                    updates.append('category = COALESCE(NULLIF(category, "receipt"), %s)')
+                    params.append(category)
+
+                # Update description if we got one and current is empty
+                if description and not r.get('description'):
+                    updates.append('description = COALESCE(description, %s)')
+                    params.append(description)
+
+                params.append(receipt_id)
+                cursor.execute(f'''
+                    UPDATE incoming_receipts
+                    SET {', '.join(updates)}
+                    WHERE id = %s
+                ''', tuple(params))
+
+                conn.commit()
+                stats['updated'] += 1
+                print(f"   ✅ ai_notes: {ai_notes}")
+            else:
+                stats['skipped'] += 1
+                print(f"   ⚠️ No ai_notes generated")
+
+            stats['processed'] += 1
+
+        except Exception as e:
+            print(f"   ❌ Error: {e}")
+            stats['failed'] += 1
+
+    conn.close()
+
+    print(f"\n{'='*50}")
+    print("📊 BACKFILL COMPLETE")
+    print(f"   Processed: {stats['processed']}")
+    print(f"   Updated: {stats['updated']}")
+    print(f"   Skipped: {stats['skipped']}")
+    print(f"   Failed: {stats['failed']}")
+
+    return stats

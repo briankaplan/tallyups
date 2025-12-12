@@ -17220,6 +17220,32 @@ def regenerate_small_images():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/backfill-ai-notes", methods=["POST"])
+@login_required
+def backfill_ai_notes_endpoint():
+    """
+    Generate ai_notes for receipts that are missing them.
+    Uses OpenAI to analyze email subject/body.
+    """
+    try:
+        from incoming_receipts_service import backfill_ai_notes
+        data = request.get_json() or {}
+        limit = data.get('limit', 50)
+
+        print(f"🔄 Backfilling ai_notes for up to {limit} receipts...")
+        results = backfill_ai_notes(limit=limit)
+
+        return jsonify({
+            'ok': True,
+            'message': f"Updated {results['updated']} of {results['processed']} receipts with ai_notes",
+            'results': results
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/bulk-reject", methods=["POST"])
 @api_key_required
 def bulk_reject_incoming_receipts():
