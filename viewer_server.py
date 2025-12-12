@@ -16893,7 +16893,10 @@ def accept_incoming_receipt():
 
         # === CRITICAL: Update in-memory DataFrame so viewer shows new transaction ===
         global df
-        if action == 'created':
+        # Ensure DataFrame is loaded before accessing it
+        ensure_df()
+
+        if df is not None and action == 'created':
             # Append new transaction to DataFrame
             new_row = {
                 '_index': transaction_id,
@@ -16918,7 +16921,7 @@ def accept_incoming_receipt():
 
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             print(f"   📊 Added transaction #{transaction_id} to in-memory DataFrame (now {len(df)} rows)")
-        elif action == 'attached':
+        elif df is not None and action == 'attached':
             # Update existing row in DataFrame
             mask = df['_index'] == matched_transaction_id
             if mask.any():
