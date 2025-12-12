@@ -35,9 +35,10 @@ except ImportError:
     ExcelExporter = None
 
 try:
-    from services.pdf_exporter import PDFExporter, get_pdf_exporter
+    from services.pdf_exporter import PDFExporter, get_pdf_exporter, HAS_REPORTLAB
 except ImportError:
     PDFExporter = None
+    HAS_REPORTLAB = False
 
 try:
     from services.report_generator import (
@@ -483,7 +484,7 @@ class TestExcelExporter:
 # PDF EXPORTER TESTS
 # =============================================================================
 
-@pytest.mark.skipif(PDFExporter is None, reason="PDFExporter not available")
+@pytest.mark.skipif(PDFExporter is None or not HAS_REPORTLAB, reason="PDFExporter or reportlab not available")
 class TestPDFExporter:
     """Test suite for PDF exporter."""
 
