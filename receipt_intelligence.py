@@ -671,6 +671,370 @@ MERCHANT_EMAIL_MAPPING = {
         'category': 'Software & Subscriptions',
         'aliases': ['BEAUTIFUL.AI']
     },
+
+    # =========================================================================
+    # ADDITIONAL MERCHANTS (from transaction history)
+    # =========================================================================
+    'CalendarBridge': {
+        'domains': ['calendarbridge.com'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (5.00, 20.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['CALENDARBRIDGE']
+    },
+    'TDS Telecom': {
+        'domains': ['tdstelecom.com'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (50.00, 200.00),
+        'category': 'Utilities',
+        'aliases': ['TDS TELECOM', 'TDS']
+    },
+    'Cima Solutions': {
+        'domains': ['cimacares.com'],
+        'patterns': ['noreply@', 'billing@', 'receipts@'],
+        'is_subscription': True,
+        'amount_range': (50.00, 200.00),
+        'category': 'Healthcare',
+        'aliases': ['CIMA SOLUTIONS', 'CIMA']
+    },
+    'Performance Lawns': {
+        'domains': ['clearent.com', 'serviceautopilot.com'],
+        'patterns': ['noreply@', 'receipts@'],
+        'is_subscription': True,
+        'amount_range': (50.00, 500.00),
+        'category': 'Services',
+        'aliases': ['PERFORMANCE LAWNS']
+    },
+    'GoDaddy': {
+        'domains': ['godaddy.com'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (10.00, 500.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['GODADDY']
+    },
+    'Paige': {
+        'domains': ['paige.com'],
+        'patterns': ['noreply@', 'orders@'],
+        'is_subscription': False,
+        'amount_range': (50.00, 1000.00),
+        'category': 'Shopping',
+        'aliases': ['PAIGE']
+    },
+    'Sonic Drive-In': {
+        'domains': ['sonicdrivein.com'],
+        'patterns': ['noreply@', 'orders@'],
+        'is_subscription': False,
+        'amount_range': (5.00, 50.00),
+        'category': 'Food & Drink',
+        'aliases': ['SONIC DRIVE-IN', 'SONIC']
+    },
+    'Speedpay/Kia Finance': {
+        'domains': ['speedpay.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': True,
+        'amount_range': (200.00, 1000.00),
+        'category': 'Auto',
+        'aliases': ['KIA FINANCE', 'KIA']
+    },
+    'AdaptHealth': {
+        'domains': ['adapthealth.com'],
+        'patterns': ['noreply@', 'autopay@'],
+        'is_subscription': True,
+        'amount_range': (20.00, 200.00),
+        'category': 'Healthcare',
+        'aliases': ['ADAPTHEALTH', 'OXYGEN & SLEEP']
+    },
+    'SuitSupply': {
+        'domains': ['service.suitsupply.com', 'suitsupply.com'],
+        'patterns': ['noreply@', 'service@'],
+        'is_subscription': False,
+        'amount_range': (100.00, 2000.00),
+        'category': 'Shopping',
+        'aliases': ['SUITSUPPLY']
+    },
+    'Adventure Park': {
+        'domains': ['myadventurepark.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (10.00, 200.00),
+        'category': 'Entertainment',
+        'aliases': ['ADVENTURE PARK']
+    },
+    'ROSTR': {
+        'domains': ['rostr.cc'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (30.00, 500.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['ROSTR']
+    },
+    'EM.co': {
+        'domains': ['em.co'],
+        'patterns': ['noreply@', 'invoices@'],
+        'is_subscription': False,
+        'amount_range': (50.00, 5000.00),
+        'category': 'Business Services',
+        'aliases': ['EMCO', 'EM.CO']
+    },
+    'FinsRule': {
+        'domains': ['finsrule.com'],
+        'patterns': ['noreply@', 'invoices@'],
+        'is_subscription': False,
+        'amount_range': (100.00, 5000.00),
+        'category': 'Business Services',
+        'aliases': ['FINSRULE']
+    },
+    'Nordstrom': {
+        'domains': ['eml.nordstrom.com', 'nordstrom.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (50.00, 2000.00),
+        'category': 'Shopping',
+        'aliases': ['NORDSTROM']
+    },
+    'Golden Nugget': {
+        'domains': ['goldennugget.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (100.00, 2000.00),
+        'category': 'Travel',
+        'aliases': ['GOLDEN NUGGET']
+    },
+    'Little Caesars': {
+        'domains': ['littlecaesars.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (5.00, 100.00),
+        'category': 'Food & Drink',
+        'aliases': ['LITTLE CAESARS']
+    },
+    'DISCO': {
+        'domains': ['payments.disco.ac', 'disco.ac'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (50.00, 200.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['DISCO']
+    },
+    'Pika': {
+        'domains': ['pika.art'],
+        'patterns': ['noreply@'],
+        'is_subscription': True,
+        'amount_range': (10.00, 100.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['PIKA']
+    },
+    'Render': {
+        'domains': ['render.com'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (0.50, 500.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['RENDER']
+    },
+    'Chick-fil-A': {
+        'domains': ['chick-fil-a.com', 'email.chick-fil-a.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (5.00, 100.00),
+        'category': 'Food & Drink',
+        'aliases': ['CHICK-FIL-A', 'CHICKFILA']
+    },
+    'Kit (ConvertKit)': {
+        'domains': ['convertkit.com'],
+        'patterns': ['billing@'],
+        'is_subscription': True,
+        'amount_range': (25.00, 500.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['KIT', 'CONVERTKIT']
+    },
+    'Pond5': {
+        'domains': ['e.pond5.com', 'pond5.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (10.00, 1000.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['POND5']
+    },
+    'Burger King': {
+        'domains': ['mail.burgerking.com', 'burgerking.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (5.00, 50.00),
+        'category': 'Food & Drink',
+        'aliases': ['BURGER KING']
+    },
+    'Incogni (Paddle)': {
+        'domains': ['paddle.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': True,
+        'amount_range': (5.00, 100.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['PADDLE', 'INCOGNI']
+    },
+    'Peppermill Casino': {
+        'domains': ['peppermillreno.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (100.00, 2000.00),
+        'category': 'Travel',
+        'aliases': ['PEPPERMILL']
+    },
+    'RetroSupply': {
+        'domains': ['t.shopifyemail.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (10.00, 200.00),
+        'category': 'Shopping',
+        'aliases': ['RETROSUPPLY']
+    },
+    'Zappos': {
+        'domains': ['zappos.com'],
+        'patterns': ['noreply@', 'cs@'],
+        'is_subscription': False,
+        'amount_range': (20.00, 500.00),
+        'category': 'Shopping',
+        'aliases': ['ZAPPOS']
+    },
+    'Red Robin': {
+        'domains': ['ziosk.com', 'redrobin.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (10.00, 100.00),
+        'category': 'Food & Drink',
+        'aliases': ['RED ROBIN']
+    },
+    'Have I Been Pwned': {
+        'domains': ['haveibeenpwned.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': True,
+        'amount_range': (3.00, 10.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['HIBP']
+    },
+    'Suno': {
+        'domains': ['suno.ai', 'suno.com'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (10.00, 150.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['SUNO']
+    },
+    'Davinci AI': {
+        'domains': ['davinci.ai'],
+        'patterns': ['noreply@'],
+        'is_subscription': True,
+        'amount_range': (10.00, 50.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['DAVINCI']
+    },
+    'Charles Tyrwhitt': {
+        'domains': ['ctshirts.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (50.00, 500.00),
+        'category': 'Shopping',
+        'aliases': ['CHARLES TYRWHITT']
+    },
+    'TeamSnap': {
+        'domains': ['email.teamsnap.com', 'teamsnap.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (0.00, 500.00),
+        'category': 'Sports & Fitness',
+        'aliases': ['TEAMSNAP']
+    },
+    'Noise New Media': {
+        'domains': ['noisenewmedia.com'],
+        'patterns': ['noreply@', 'invoices@'],
+        'is_subscription': False,
+        'amount_range': (100.00, 1000.00),
+        'category': 'Business Services',
+        'aliases': ['NOISE NEW MEDIA']
+    },
+    'Mercer & Ross': {
+        'domains': ['mercerandross.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (500.00, 10000.00),
+        'category': 'Business Services',
+        'aliases': ['MERCER AND ROSS']
+    },
+    'Chartmetric': {
+        'domains': ['chartmetric.com'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (100.00, 500.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['CHARTMETRIC']
+    },
+    'Ada AI': {
+        'domains': ['ada.ai', 'im-ada.ai'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (25.00, 100.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['ADA AI', 'ADA']
+    },
+    'Shortwave': {
+        'domains': ['shortwave.com'],
+        'patterns': ['noreply@', 'billing@'],
+        'is_subscription': True,
+        'amount_range': (5.00, 50.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['SHORTWAVE']
+    },
+    'Hugging Face': {
+        'domains': ['huggingface.co'],
+        'patterns': ['noreply@'],
+        'is_subscription': True,
+        'amount_range': (5.00, 100.00),
+        'category': 'Software & Subscriptions',
+        'aliases': ['HUGGING FACE', 'HUGGINGFACE']
+    },
+    'Inter-State Studio': {
+        'domains': ['inter-state.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (20.00, 200.00),
+        'category': 'Photography',
+        'aliases': ['INTER-STATE STUDIO']
+    },
+    'Best Buy': {
+        'domains': ['emailinfo.bestbuy.com', 'bestbuy.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (10.00, 5000.00),
+        'category': 'Shopping',
+        'aliases': ['BEST BUY', 'BESTBUY']
+    },
+    'HangTag Parking': {
+        'domains': ['hangtag.io'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (5.00, 100.00),
+        'category': 'Parking',
+        'aliases': ['HANGTAG']
+    },
+    'Popmenu': {
+        'domains': ['popmenu.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (5.00, 100.00),
+        'category': 'Food & Drink',
+        'aliases': ['POPMENU']
+    },
+    'TheraNest': {
+        'domains': ['theranest.com'],
+        'patterns': ['noreply@'],
+        'is_subscription': False,
+        'amount_range': (50.00, 500.00),
+        'category': 'Healthcare',
+        'aliases': ['THERANEST', 'SESSIONS PSYCHOLOGY']
+    },
 }
 
 # =============================================================================
@@ -678,10 +1042,10 @@ MERCHANT_EMAIL_MAPPING = {
 # =============================================================================
 
 BLOCKED_DOMAINS = {
-    # Marketing platforms
+    # Marketing platforms (but NOT convertkit.com - they send billing receipts)
     'mailchimp.com', 'sendgrid.net', 'constantcontact.com', 'mailgun.org',
     'hubspot.com', 'mailerlite.com', 'klaviyo.com', 'brevo.com',
-    'mixmax.com', 'intercom.io', 'drip.com', 'convertkit.com',
+    'mixmax.com', 'intercom.io', 'drip.com',
     'campaign-archive.com', 'list-manage.com', 'createsend.com',
 
     # Social media
