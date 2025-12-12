@@ -18260,6 +18260,59 @@ def refetch_gmail_dates():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/clear-pending", methods=["POST"])
+def clear_pending_incoming_receipts():
+    """
+    Clear all pending incoming receipts to allow a fresh rescan.
+    This deletes pending receipts from the database (not accepted/rejected ones).
+
+    Body (optional):
+    {
+        "confirm": true  // Required safety flag
+    }
+    """
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    if request.json:
+        admin_key = admin_key or request.json.get('admin_key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
+    try:
+        data = request.json or {}
+        if not data.get('confirm'):
+            return jsonify({
+                'ok': False,
+                'error': 'Must pass confirm: true to clear pending receipts'
+            }), 400
+
+        conn, db_type = get_db_connection()
+
+        # Get count first
+        cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM incoming_receipts WHERE status = 'pending'")
+        count = cursor.fetchone()[0]
+
+        # Delete pending receipts
+        db_execute(conn, db_type, "DELETE FROM incoming_receipts WHERE status = 'pending'")
+        conn.commit()
+        return_db_connection(conn)
+
+        print(f"🗑️  Cleared {count} pending incoming receipts")
+
+        return jsonify({
+            'ok': True,
+            'message': f'Cleared {count} pending incoming receipts',
+            'deleted': count
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/scan", methods=["POST"])
 def scan_incoming_receipts():
     """
@@ -18684,21 +18737,33 @@ def generate_incoming_images():
             return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     limit = int(request.json.get('limit', 50) if request.json else request.args.get('limit', 50))
+    force = request.json.get('force', False) if request.json else request.args.get('force', 'false').lower() == 'true'
 
     try:
         conn, db_type = get_db_connection()
 
-        # Find pending receipts without images
-        cursor = db_execute(conn, db_type, '''
-            SELECT id, email_id, gmail_account, subject, attachments, from_email
-            FROM incoming_receipts
-            WHERE status = 'pending'
-            AND (receipt_image_url IS NULL OR receipt_image_url = '')
-            AND email_id IS NOT NULL
-            AND gmail_account IS NOT NULL
-            ORDER BY received_date DESC
-            LIMIT %s
-        ''', (limit,))
+        # Find pending receipts - if force=true, regenerate ALL images, otherwise only missing ones
+        if force:
+            cursor = db_execute(conn, db_type, '''
+                SELECT id, email_id, gmail_account, subject, attachments, from_email
+                FROM incoming_receipts
+                WHERE status = 'pending'
+                AND email_id IS NOT NULL
+                AND gmail_account IS NOT NULL
+                ORDER BY received_date DESC
+                LIMIT %s
+            ''', (limit,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT id, email_id, gmail_account, subject, attachments, from_email
+                FROM incoming_receipts
+                WHERE status = 'pending'
+                AND (receipt_image_url IS NULL OR receipt_image_url = '')
+                AND email_id IS NOT NULL
+                AND gmail_account IS NOT NULL
+                ORDER BY received_date DESC
+                LIMIT %s
+            ''', (limit,))
         rows = cursor.fetchall()
 
         if not rows:
