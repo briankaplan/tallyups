@@ -22785,13 +22785,11 @@ def api_smart_notes_batch():
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
-    if not SMART_NOTES_SERVICE_AVAILABLE:
-        return jsonify({'ok': False, 'error': 'Smart notes service not available'}), 503
-
     data = request.get_json(force=True) or {}
     indexes = data.get("indexes", [])
     limit = min(int(data.get("limit", 50)), 200)
     skip_existing = data.get("skip_existing", True)
+    use_gemini_fallback = data.get("use_gemini_fallback", True)
 
     ensure_df()
 
@@ -22812,7 +22810,8 @@ def api_smart_notes_batch():
                     "date": row.get("Chase Date") or row.get("transaction_date") or "",
                     "category": row.get("Chase Category") or row.get("category") or "",
                     "business_type": row.get("Business Type") or "",
-                    "receipt_path": row.get("Receipt Path") or ""
+                    "receipt_path": row.get("Receipt Path") or "",
+                    "row": row  # Keep full row for fallback
                 })
     else:
         # Process transactions without AI notes
@@ -22821,6 +22820,7 @@ def api_smart_notes_batch():
                 continue
             if len(transactions) >= limit:
                 break
+            row_dict = row.to_dict()
             transactions.append({
                 "_index": row.get("_index"),
                 "merchant": row.get("Chase Description") or row.get("merchant") or "",
@@ -22828,37 +22828,88 @@ def api_smart_notes_batch():
                 "date": row.get("Chase Date") or row.get("transaction_date") or "",
                 "category": row.get("Chase Category") or row.get("category") or "",
                 "business_type": row.get("Business Type") or "",
-                "receipt_path": row.get("Receipt Path") or ""
+                "receipt_path": row.get("Receipt Path") or "",
+                "row": row_dict
             })
 
     if not transactions:
         return jsonify({"ok": True, "processed": 0, "results": []})
 
-    try:
-        service = get_smart_notes_service()
+    output = []
 
-        # Run async batch generation
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    # Try smart notes service first
+    if SMART_NOTES_SERVICE_AVAILABLE:
         try:
-            results = loop.run_until_complete(
-                service.generate_batch(transactions)
-            )
-        finally:
-            loop.close()
+            service = get_smart_notes_service()
 
-        # Process results
-        output = []
-        for tx, result in zip(transactions, results):
-            idx = tx["_index"]
-            if result.note:
-                # Save to database
-                update_row_by_index(idx, {"AI Note": result.note}, source="smart_notes_batch")
+            # Run async batch generation
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                results = loop.run_until_complete(
+                    service.generate_batch(transactions)
+                )
+            finally:
+                loop.close()
+
+            # Process results
+            for tx, result in zip(transactions, results):
+                idx = tx["_index"]
+                if result.note:
+                    # Save to database
+                    update_row_by_index(idx, {"AI Note": result.note}, source="smart_notes_batch")
+                    output.append({
+                        "_index": idx,
+                        "merchant": tx["merchant"],
+                        "note": result.note,
+                        "confidence": result.confidence,
+                        "success": True,
+                        "error": None
+                    })
+                else:
+                    output.append({
+                        "_index": idx,
+                        "merchant": tx["merchant"],
+                        "note": "",
+                        "confidence": 0,
+                        "success": False,
+                        "error": "Failed to generate note"
+                    })
+
+            return jsonify({
+                "ok": True,
+                "processed": len(output),
+                "results": output,
+                "service": "smart_notes"
+            })
+
+        except Exception as e:
+            logger.warning(f"Smart notes batch error, trying Gemini fallback: {e}")
+            if not use_gemini_fallback:
+                return jsonify({"ok": False, "error": str(e)}), 500
+
+    # Fallback to Gemini for batch note generation
+    logger.info("Using Gemini fallback for batch note generation")
+    for tx in transactions:
+        idx = tx["_index"]
+        try:
+            result = gemini_generate_ai_note(
+                tx["merchant"],
+                tx["amount"],
+                tx["date"],
+                tx["category"],
+                tx["business_type"],
+                row=tx.get("row")
+            )
+
+            note = result.get("note", "")
+            if note:
+                update_row_by_index(idx, {"AI Note": note}, source="gemini_batch")
                 output.append({
                     "_index": idx,
                     "merchant": tx["merchant"],
-                    "note": result.note,
-                    "confidence": result.confidence,
+                    "note": note,
+                    "confidence": 0.7,
                     "success": True,
                     "error": None
                 })
@@ -22869,18 +22920,25 @@ def api_smart_notes_batch():
                     "note": "",
                     "confidence": 0,
                     "success": False,
-                    "error": "Failed to generate note"
+                    "error": "Gemini failed to generate note"
                 })
 
-        return jsonify({
-            "ok": True,
-            "processed": len(output),
-            "results": output
-        })
+        except Exception as e:
+            output.append({
+                "_index": idx,
+                "merchant": tx["merchant"],
+                "note": "",
+                "confidence": 0,
+                "success": False,
+                "error": str(e)
+            })
 
-    except Exception as e:
-        logger.error(f"Smart notes batch error: {e}")
-        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({
+        "ok": True,
+        "processed": len(output),
+        "results": output,
+        "service": "gemini_fallback"
+    })
 
 
 @app.route("/api/notes/<int:tx_id>", methods=["PUT"])
