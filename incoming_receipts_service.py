@@ -3486,3 +3486,187 @@ def reprocess_pending_receipts(limit=50, skip_with_amount=True):
         print(f"   {k}: {v}")
 
     return stats
+
+
+def regenerate_screenshot(receipt_id: int) -> dict:
+    """
+    Regenerate screenshot for a specific receipt by re-fetching HTML from Gmail
+    and rendering with Playwright.
+
+    Returns: {'success': bool, 'url': str, 'error': str}
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Get receipt info
+        cursor.execute('''
+            SELECT id, email_id, gmail_account, merchant, receipt_image_url
+            FROM incoming_receipts WHERE id = %s
+        ''', (receipt_id,))
+        receipt = cursor.fetchone()
+
+        if not receipt:
+            return {'success': False, 'error': 'Receipt not found'}
+
+        email_id = receipt['email_id']
+        account = receipt['gmail_account']
+
+        if not email_id or not account:
+            return {'success': False, 'error': 'No email_id or account'}
+
+        print(f"🔄 Regenerating screenshot for #{receipt_id} ({receipt['merchant']})")
+
+        # Load Gmail service
+        service = load_gmail_service(account)
+        if not service:
+            return {'success': False, 'error': f'Cannot load Gmail for {account}'}
+
+        # Fetch email
+        msg = service.users().messages().get(userId='me', id=email_id, format='full').execute()
+        payload = msg.get('payload', {})
+
+        # Recursive HTML extraction
+        def get_html_body(payload, depth=0):
+            if depth > 10:
+                return None
+            body = payload.get('body', {})
+            if body.get('data') and payload.get('mimeType') == 'text/html':
+                return base64.urlsafe_b64decode(body['data']).decode('utf-8', errors='ignore')
+            if 'parts' in payload:
+                for part in payload['parts']:
+                    mime_type = part.get('mimeType', '')
+                    if mime_type == 'text/html':
+                        data = part.get('body', {}).get('data', '')
+                        if data:
+                            return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                    if mime_type.startswith('multipart/') or 'parts' in part:
+                        result = get_html_body(part, depth + 1)
+                        if result:
+                            return result
+            return None
+
+        html_body = get_html_body(payload)
+        if not html_body or len(html_body) < 100:
+            return {'success': False, 'error': 'No HTML content in email'}
+
+        print(f"   📄 Found HTML: {len(html_body)} chars")
+
+        # Generate screenshot
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+            screenshot_path = screenshot_html_receipt(html_body, tmp.name)
+            if not screenshot_path or not os.path.exists(screenshot_path):
+                return {'success': False, 'error': 'Screenshot generation failed'}
+
+            # Upload to R2
+            from r2_service import upload_with_thumbnail, R2_ENABLED
+            if not R2_ENABLED:
+                return {'success': False, 'error': 'R2 not enabled'}
+
+            import uuid
+            r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
+            full_url, thumb_url = upload_with_thumbnail(screenshot_path, r2_key)
+
+            if not full_url:
+                return {'success': False, 'error': 'R2 upload failed'}
+
+            print(f"   ☁️ Uploaded to: {r2_key}")
+
+            # Update database
+            cursor.execute('''
+                UPDATE incoming_receipts
+                SET receipt_image_url = %s, thumbnail_url = %s
+                WHERE id = %s
+            ''', (full_url, thumb_url, receipt_id))
+            conn.commit()
+
+            # Clean up temp file
+            try:
+                os.unlink(screenshot_path)
+            except:
+                pass
+
+            return {
+                'success': True,
+                'url': full_url,
+                'thumbnail': thumb_url
+            }
+
+    except Exception as e:
+        import traceback
+        print(f"   ❌ Error: {e}")
+        traceback.print_exc()
+        return {'success': False, 'error': str(e)}
+    finally:
+        conn.close()
+
+
+def regenerate_small_screenshots(size_threshold_kb=40, limit=50) -> dict:
+    """
+    Find and regenerate screenshots that are likely text-based (small file size).
+
+    Args:
+        size_threshold_kb: Regenerate images smaller than this (default 40KB)
+        limit: Max number to process
+
+    Returns: Stats dict
+    """
+    import requests
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT id, merchant, receipt_image_url, amount
+        FROM incoming_receipts
+        WHERE status = 'pending'
+        AND receipt_image_url IS NOT NULL
+        AND receipt_image_url != ''
+        ORDER BY id DESC
+    ''')
+
+    receipts = cursor.fetchall()
+    conn.close()
+
+    stats = {'checked': 0, 'small_found': 0, 'regenerated': 0, 'failed': 0}
+    to_regenerate = []
+
+    print(f"🔍 Checking {len(receipts)} receipts for small images...")
+
+    for r in receipts:
+        try:
+            resp = requests.head(r['receipt_image_url'], timeout=5)
+            size = int(resp.headers.get('content-length', 0))
+            stats['checked'] += 1
+
+            if size < size_threshold_kb * 1024:
+                to_regenerate.append((r['id'], r['merchant'], size))
+                stats['small_found'] += 1
+
+                if len(to_regenerate) >= limit:
+                    break
+        except:
+            pass
+
+    print(f"📊 Found {stats['small_found']} small images (<{size_threshold_kb}KB)")
+
+    for receipt_id, merchant, size in to_regenerate:
+        print(f"\n{'='*50}")
+        print(f"#{receipt_id}: {merchant} ({size/1024:.1f}KB)")
+        result = regenerate_screenshot(receipt_id)
+        if result['success']:
+            stats['regenerated'] += 1
+            print(f"   ✅ New URL: {result['url']}")
+        else:
+            stats['failed'] += 1
+            print(f"   ❌ {result['error']}")
+
+    print(f"\n{'='*50}")
+    print("📊 REGENERATION COMPLETE")
+    print(f"   Checked: {stats['checked']}")
+    print(f"   Small found: {stats['small_found']}")
+    print(f"   Regenerated: {stats['regenerated']}")
+    print(f"   Failed: {stats['failed']}")
+
+    return stats

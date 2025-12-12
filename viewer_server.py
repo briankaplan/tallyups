@@ -17176,6 +17176,47 @@ def rematch_all_inbox():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/regenerate-screenshot/<int:receipt_id>", methods=["POST"])
+@login_required
+def regenerate_single_screenshot(receipt_id):
+    """Regenerate screenshot for a specific receipt"""
+    try:
+        from incoming_receipts_service import regenerate_screenshot
+        result = regenerate_screenshot(receipt_id)
+        if result['success']:
+            return jsonify({'ok': True, 'url': result['url'], 'thumbnail': result.get('thumbnail')})
+        else:
+            return jsonify({'ok': False, 'error': result['error']}), 400
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/regenerate-small-images", methods=["POST"])
+@login_required
+def regenerate_small_images():
+    """Find and regenerate small (likely text-based) screenshots"""
+    try:
+        from incoming_receipts_service import regenerate_small_screenshots
+        data = request.get_json() or {}
+        limit = data.get('limit', 20)
+        threshold = data.get('threshold_kb', 40)
+
+        print(f"🔄 Regenerating small images (<{threshold}KB, limit {limit})")
+        results = regenerate_small_screenshots(size_threshold_kb=threshold, limit=limit)
+
+        return jsonify({
+            'ok': True,
+            'message': f"Regenerated {results['regenerated']} of {results['small_found']} small images",
+            'results': results
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/bulk-reject", methods=["POST"])
 @api_key_required
 def bulk_reject_incoming_receipts():
