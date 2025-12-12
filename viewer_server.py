@@ -14382,14 +14382,14 @@ def get_library_receipts():
         if include_incoming:
             try:
                 # Only get incoming receipts that have actual receipt files
-                # Note: incoming_receipts table uses receipt_url and file_path, not receipt_file
+                # Table uses receipt_url and receipt_image_url columns
                 inc_query = '''
                     SELECT *
                     FROM incoming_receipts
                     WHERE status IN ('accepted', 'pending')
                     AND (
                         (receipt_url IS NOT NULL AND receipt_url != '')
-                        OR (file_path IS NOT NULL AND file_path != '')
+                        OR (receipt_image_url IS NOT NULL AND receipt_image_url != '')
                     )
                 '''
                 cursor = db_execute(conn, db_type, inc_query, ())
@@ -14402,7 +14402,7 @@ def get_library_receipts():
                         receipt_source = 'scanner'
 
                     # Get the actual receipt file URL
-                    receipt_file = inc.get('receipt_file') or inc.get('receipt_url') or inc.get('file_path') or ''
+                    receipt_file = inc.get('receipt_image_url') or inc.get('receipt_url') or ''
 
                     # Skip if no actual file (extra safety check)
                     if has_image and not receipt_file:
