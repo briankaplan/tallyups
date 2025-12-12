@@ -289,6 +289,7 @@
             `<img src="${receipt.thumbnail_url || receipt.receipt_url}"
                   alt="${escapeHtml(receipt.merchant_name || 'Receipt')}"
                   loading="lazy"
+                  onload="this.classList.add('loaded')"
                   onerror="this.parentElement.classList.add('no-image'); this.remove();">` :
             `<svg class="placeholder" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
@@ -333,7 +334,8 @@
           ${receipt.thumbnail_url || receipt.receipt_url ?
             `<img src="${receipt.thumbnail_url || receipt.receipt_url}"
                   alt="${escapeHtml(receipt.merchant_name || 'Receipt')}"
-                  loading="lazy">` :
+                  loading="lazy"
+                  onload="this.classList.add('loaded')">` :
             `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
               <rect x="9" y="3" width="6" height="4" rx="1"></rect>
@@ -374,7 +376,7 @@
                  tabindex="0">
               <div class="list-thumb">
                 ${receipt.thumbnail_url || receipt.receipt_url ?
-                  `<img src="${receipt.thumbnail_url || receipt.receipt_url}" alt="" loading="lazy">` :
+                  `<img src="${receipt.thumbnail_url || receipt.receipt_url}" alt="" loading="lazy" onload="this.classList.add('loaded')">` :
                   `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
                     <rect x="9" y="3" width="6" height="4" rx="1"></rect>
