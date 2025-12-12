@@ -346,22 +346,98 @@ tr.clickable:hover { background: rgba(59,130,246,.06); }
 /* Preview Modal */
 .preview-modal {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,.9);
+  background: rgba(0,0,0,.95);
   display: none; z-index: 2000;
   padding: 20px;
   overflow-y: auto;
 }
-.preview-modal.active { display: flex; align-items: flex-start; justify-content: center; }
+.preview-modal.active { display: flex; align-items: stretch; justify-content: center; }
 
 .preview-content {
   background: var(--panel);
   border-radius: 16px;
-  max-width: 700px;
+  max-width: 1400px;
   width: 100%;
-  margin: 40px auto;
+  margin: 20px auto;
   box-shadow: 0 24px 48px rgba(0,0,0,.5);
   animation: slideUp 0.2s ease;
+  display: flex;
+  flex-direction: row;
+  min-height: calc(100vh - 40px);
 }
+
+/* Side-by-side layout */
+.preview-left {
+  flex: 0 0 55%;
+  max-width: 55%;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+  border-radius: 16px 0 0 16px;
+  overflow: hidden;
+}
+.preview-right {
+  flex: 0 0 45%;
+  max-width: 45%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Receipt image takes full left side */
+.preview-receipt-full {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: auto;
+  background: #080808;
+}
+.preview-receipt-full img {
+  max-width: 100%;
+  max-height: calc(100vh - 120px);
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: zoom-in;
+}
+.preview-receipt-full img.zoomed {
+  max-width: none;
+  max-height: none;
+  cursor: zoom-out;
+}
+.preview-receipt-placeholder {
+  text-align: center;
+  color: var(--muted);
+  padding: 40px;
+}
+.preview-receipt-placeholder svg {
+  width: 64px; height: 64px; opacity: 0.3; margin-bottom: 16px;
+}
+
+/* Mobile: stack vertically */
+@media (max-width: 1024px) {
+  .preview-content {
+    flex-direction: column;
+    max-width: 100%;
+    margin: 10px;
+    min-height: auto;
+  }
+  .preview-left {
+    flex: none;
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    max-height: 50vh;
+  }
+  .preview-right {
+    flex: none;
+    max-width: 100%;
+  }
+  .preview-receipt-full img {
+    max-height: 45vh;
+  }
+}
+
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1923,55 +1999,58 @@ th.sortable.active {
 <!-- Preview Modal -->
 <div id="preview-modal" class="preview-modal" onclick="if(event.target===this)closePreview()">
   <div class="preview-content">
-    <div class="preview-header">
-      <div class="preview-title" id="preview-subject">Email Subject</div>
-      <button class="preview-close" onclick="closePreview()">✕</button>
-    </div>
-    <div class="preview-body">
-      <div class="preview-meta">
-        <div class="preview-meta-item">
-          <div class="preview-meta-label">From</div>
-          <div class="preview-meta-value" id="preview-from">sender@email.com</div>
-        </div>
-        <div class="preview-meta-item">
-          <div class="preview-meta-label">Amount</div>
-          <div class="preview-meta-value large" id="preview-amount">$0.00</div>
-        </div>
-        <div class="preview-meta-item">
-          <div class="preview-meta-label">Merchant</div>
-          <div class="preview-meta-value" id="preview-merchant">Unknown</div>
-        </div>
-        <div class="preview-meta-item">
-          <div class="preview-meta-label">Date</div>
-          <div class="preview-meta-value" id="preview-date">Jan 1, 2025</div>
-        </div>
-      </div>
-      <div class="preview-section" id="preview-ai-section" style="display:none">
-        <div class="preview-section-title">AI Analysis</div>
-        <div class="preview-section-content" id="preview-ai-notes"></div>
-      </div>
-      <div class="preview-section" id="preview-match-section" style="display:none">
-        <div class="preview-section-title">Transaction Match</div>
-        <div class="preview-section-content" id="preview-match-status"></div>
-      </div>
-      <div class="preview-section">
-        <div class="preview-section-title">Email Body Preview</div>
-        <div class="preview-section-content" id="preview-body">Loading...</div>
-      </div>
-      <div class="preview-section" id="preview-attachments-section" style="display:none">
-        <div class="preview-section-title">Attachments</div>
-        <div class="preview-attachments" id="preview-attachments"></div>
-      </div>
-      <div class="preview-section preview-image-section" id="preview-image-section" style="display:none">
-        <div class="preview-section-title">Receipt Image</div>
-        <div class="preview-image-container" id="preview-image-container">
-          <img id="preview-receipt-image" src="" alt="Receipt preview" onclick="openFullImage(this.src)">
-        </div>
+    <!-- Left side: Large receipt image -->
+    <div class="preview-left">
+      <div class="preview-receipt-full" id="preview-image-section">
+        <img id="preview-receipt-image" src="" alt="Receipt" onclick="this.classList.toggle('zoomed')">
       </div>
     </div>
-    <div class="preview-footer">
-      <div id="preview-account-badge"></div>
-      <div class="preview-actions" id="preview-actions"></div>
+    <!-- Right side: Data and actions -->
+    <div class="preview-right">
+      <div class="preview-header">
+        <div class="preview-title" id="preview-subject">Email Subject</div>
+        <button class="preview-close" onclick="closePreview()">✕</button>
+      </div>
+      <div class="preview-body">
+        <div class="preview-meta">
+          <div class="preview-meta-item">
+            <div class="preview-meta-label">Amount</div>
+            <div class="preview-meta-value large" id="preview-amount">$0.00</div>
+          </div>
+          <div class="preview-meta-item">
+            <div class="preview-meta-label">Date</div>
+            <div class="preview-meta-value" id="preview-date">Jan 1, 2025</div>
+          </div>
+          <div class="preview-meta-item">
+            <div class="preview-meta-label">Merchant</div>
+            <div class="preview-meta-value" id="preview-merchant">Unknown</div>
+          </div>
+          <div class="preview-meta-item">
+            <div class="preview-meta-label">From</div>
+            <div class="preview-meta-value" id="preview-from">sender@email.com</div>
+          </div>
+        </div>
+        <div class="preview-section" id="preview-match-section" style="display:none">
+          <div class="preview-section-title">Transaction Match</div>
+          <div class="preview-section-content" id="preview-match-status"></div>
+        </div>
+        <div class="preview-section" id="preview-ai-section" style="display:none">
+          <div class="preview-section-title">AI Analysis</div>
+          <div class="preview-section-content" id="preview-ai-notes"></div>
+        </div>
+        <div class="preview-section" id="preview-attachments-section" style="display:none">
+          <div class="preview-section-title">Attachments</div>
+          <div class="preview-attachments" id="preview-attachments"></div>
+        </div>
+        <div class="preview-section">
+          <div class="preview-section-title">Email Body Preview</div>
+          <div class="preview-section-content" id="preview-body">Loading...</div>
+        </div>
+      </div>
+      <div class="preview-footer">
+        <div id="preview-account-badge"></div>
+        <div class="preview-actions" id="preview-actions"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -3353,6 +3432,35 @@ async function regenerateImages() {
   }
 }
 
+// Regenerate image for single receipt
+async function regenerateImage(receiptId) {
+  showToast('Generating screenshot...', 'info');
+
+  try {
+    const response = await fetch('/api/incoming/generate-images', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({ receipt_ids: [receiptId], force: true })
+    });
+
+    const data = await response.json();
+
+    if (data.ok && data.success > 0) {
+      showToast('Screenshot generated!', 'success');
+      // Refresh receipts to get new image URL
+      await loadReceipts();
+      // Re-open preview with updated data
+      showPreview(receiptId);
+    } else {
+      showToast(data.error || 'Failed to generate screenshot', 'error');
+    }
+  } catch (e) {
+    console.error('Regenerate error:', e);
+    showToast('Error generating screenshot', 'error');
+  }
+}
+
 async function clearAndRescan() {
   if (!confirm('This will DELETE all pending receipts and do a fresh scan. Continue?')) return;
   if (!confirm('Are you sure? This cannot be undone.')) return;
@@ -3619,7 +3727,7 @@ function showPreview(receiptId) {
     attachmentsSection.style.display = 'none';
   }
 
-  // Receipt Image Preview (use receipt_image_url from Gmail attachment first)
+  // Receipt Image Preview - now in side-by-side layout (left panel)
   const imageSection = document.getElementById('preview-image-section');
   const imageEl = document.getElementById('preview-receipt-image');
   const previewUrl = receipt.receipt_image_url || receipt.preview_url || receipt.r2_url;
@@ -3631,35 +3739,42 @@ function showPreview(receiptId) {
   const accountIndex = gmailAccount.includes('downhome') ? 1 : gmailAccount.includes('musiccityrodeo') ? 2 : 0;
   const gmailUrl = emailId ? `https://mail.google.com/mail/u/${accountIndex}/#all/${emailId}` : '';
 
+  // Reset image section to default state
+  imageSection.innerHTML = `<img id="preview-receipt-image" src="" alt="Receipt" onclick="this.classList.toggle('zoomed')">`;
+  const newImageEl = document.getElementById('preview-receipt-image');
+
   if (previewUrl) {
-    imageSection.style.display = 'block';
-    imageEl.src = previewUrl;
-    imageEl.onerror = () => {
-      // If image fails, show Gmail link instead
-      if (gmailUrl) {
-        imageSection.innerHTML = `
-          <div class="preview-gmail-fallback">
-            <div style="font-size:32px;margin-bottom:8px;">📧</div>
-            <div style="color:var(--muted);margin-bottom:12px;">No receipt image available</div>
-            <a href="${gmailUrl}" target="_blank" class="btn-primary" style="text-decoration:none;padding:8px 16px;border-radius:6px;">View in Gmail</a>
-          </div>
-        `;
-      } else {
-        imageSection.style.display = 'none';
-      }
+    newImageEl.src = previewUrl;
+    newImageEl.style.display = 'block';
+    newImageEl.onerror = () => {
+      // If image fails, show Gmail link or placeholder
+      imageSection.innerHTML = `
+        <div class="preview-receipt-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path d="m21 15-5-5L5 21"/>
+          </svg>
+          <div style="font-size:16px;margin-bottom:12px;">Image failed to load</div>
+          ${gmailUrl ? `<a href="${gmailUrl}" target="_blank" class="btn-primary" style="text-decoration:none;padding:10px 20px;border-radius:8px;display:inline-block;">📧 View in Gmail</a>` : ''}
+        </div>
+      `;
     };
-  } else if (gmailUrl) {
-    // No image, but we have Gmail link
-    imageSection.style.display = 'block';
+  } else {
+    // No image URL - show placeholder with Gmail link
     imageSection.innerHTML = `
-      <div class="preview-gmail-fallback">
-        <div style="font-size:32px;margin-bottom:8px;">📧</div>
-        <div style="color:var(--muted);margin-bottom:12px;">View the original email to see receipt</div>
-        <a href="${gmailUrl}" target="_blank" class="btn-primary" style="text-decoration:none;padding:8px 16px;border-radius:6px;">Open in Gmail</a>
+      <div class="preview-receipt-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="m21 15-5-5L5 21"/>
+        </svg>
+        <div style="font-size:16px;margin-bottom:8px;">No receipt image</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Screenshot not generated yet</div>
+        ${gmailUrl ? `<a href="${gmailUrl}" target="_blank" class="btn-primary" style="text-decoration:none;padding:10px 20px;border-radius:8px;display:inline-block;">📧 View Original Email</a>` : ''}
+        <button onclick="regenerateImage(${receipt.id})" class="btn-secondary" style="margin-top:12px;padding:10px 20px;border-radius:8px;display:block;margin-left:auto;margin-right:auto;">🔄 Generate Screenshot</button>
       </div>
     `;
-  } else {
-    imageSection.style.display = 'none';
   }
 
   // Account badge

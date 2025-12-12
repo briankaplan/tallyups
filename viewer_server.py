@@ -18814,12 +18814,23 @@ def generate_incoming_images():
 
     limit = int(request.json.get('limit', 50) if request.json else request.args.get('limit', 50))
     force = request.json.get('force', False) if request.json else request.args.get('force', 'false').lower() == 'true'
+    receipt_ids = request.json.get('receipt_ids', []) if request.json else []
 
     try:
         conn, db_type = get_db_connection()
 
+        # If specific receipt_ids provided, process only those
+        if receipt_ids:
+            placeholders = ','.join(['%s'] * len(receipt_ids))
+            cursor = db_execute(conn, db_type, f'''
+                SELECT id, email_id, gmail_account, subject, attachments, from_email
+                FROM incoming_receipts
+                WHERE id IN ({placeholders})
+                AND email_id IS NOT NULL
+                AND gmail_account IS NOT NULL
+            ''', tuple(receipt_ids))
         # Find pending receipts - if force=true, regenerate ALL images, otherwise only missing ones
-        if force:
+        elif force:
             cursor = db_execute(conn, db_type, '''
                 SELECT id, email_id, gmail_account, subject, attachments, from_email
                 FROM incoming_receipts
