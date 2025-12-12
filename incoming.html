@@ -1825,6 +1825,8 @@ th.sortable.active {
     <button class="btn-ghost btn-sm" onclick="clearFiltered()">🗑️ Clear Rejected</button>
     <button class="btn-ghost btn-sm" onclick="reprocessMissing()" title="Re-download receipts for accepted items that have no files">🔧 Fix Missing</button>
     <button class="btn-ghost btn-sm" onclick="fixDates()" title="Fix wrong dates on transactions from incoming receipts">📅 Fix Dates</button>
+    <button class="btn-ghost btn-sm" onclick="regenerateImages()" title="Regenerate all receipt images with proper HTML rendering">🖼️ Regen Images</button>
+    <button class="btn-ghost btn-sm" onclick="clearAndRescan()" title="Clear all pending receipts and scan fresh">⚡ Clear & Rescan</button>
     <button class="btn-primary" onclick="scanForNew()">🔄 Scan Now</button>
   </div>
 </header>
@@ -3285,6 +3287,79 @@ async function scanForNew() {
   } catch (e) {
     console.error('Scan error:', e);
     showToast('Error scanning Gmail', 'error');
+  }
+}
+
+async function regenerateImages() {
+  if (!confirm('Regenerate images for all pending receipts? This will use Playwright to capture proper HTML screenshots.')) return;
+
+  showToast('Regenerating images with proper HTML rendering...', 'info');
+
+  try {
+    const response = await fetch('/api/incoming/generate-images', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({ force: true, limit: 200 })
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      showToast(`Regenerated ${data.success} images (${data.failed} failed)`, 'success');
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Regeneration failed', 'error');
+    }
+  } catch (e) {
+    console.error('Regenerate error:', e);
+    showToast('Error regenerating images', 'error');
+  }
+}
+
+async function clearAndRescan() {
+  if (!confirm('This will DELETE all pending receipts and do a fresh scan. Continue?')) return;
+  if (!confirm('Are you sure? This cannot be undone.')) return;
+
+  showToast('Clearing pending receipts...', 'info');
+
+  try {
+    // Step 1: Clear pending receipts
+    const clearResponse = await fetch('/api/incoming/clear-pending', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({ confirm: true })
+    });
+
+    const clearData = await clearResponse.json();
+
+    if (!clearData.ok) {
+      showToast(clearData.error || 'Failed to clear', 'error');
+      return;
+    }
+
+    showToast(`Cleared ${clearData.deleted} receipts. Starting fresh scan...`, 'info');
+
+    // Step 2: Scan for new
+    const scanResponse = await fetch('/api/incoming/scan', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({})
+    });
+
+    const scanData = await scanResponse.json();
+
+    if (scanData.ok) {
+      showToast(`Fresh scan complete! Found ${scanData.results.total_new} receipts`, 'success');
+      loadReceipts();
+    } else {
+      showToast(scanData.error || 'Scan failed after clear', 'error');
+    }
+  } catch (e) {
+    console.error('Clear & rescan error:', e);
+    showToast('Error during clear & rescan', 'error');
   }
 }
 
