@@ -280,73 +280,10 @@ def convert_html_to_image(html_content: str) -> bytes:
     except Exception as e:
         print(f"      ⚠️  wkhtmltoimage fallback failed: {e}")
 
-    # Fallback to text-based rendering if all else fails
-    try:
-        from PIL import Image, ImageDraw, ImageFont
-        import re
-
-        print("      📝 Falling back to text-based rendering...")
-
-        # Extract text content from HTML
-        html_clean = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
-        html_clean = re.sub(r'<script[^>]*>.*?</script>', '', html_clean, flags=re.DOTALL | re.IGNORECASE)
-
-        # Convert common HTML entities
-        html_clean = html_clean.replace('&nbsp;', ' ')
-        html_clean = html_clean.replace('&amp;', '&')
-        html_clean = html_clean.replace('&lt;', '<')
-        html_clean = html_clean.replace('&gt;', '>')
-        html_clean = html_clean.replace('&quot;', '"')
-        html_clean = html_clean.replace('&#39;', "'")
-
-        # Convert <br> and block elements to newlines
-        html_clean = re.sub(r'<br\s*/?>', '\n', html_clean, flags=re.IGNORECASE)
-        html_clean = re.sub(r'</(?:p|div|tr|li|h[1-6])>', '\n', html_clean, flags=re.IGNORECASE)
-
-        # Remove remaining HTML tags
-        text = re.sub(r'<[^>]+>', '', html_clean)
-
-        # Clean up whitespace
-        lines = [line.strip() for line in text.split('\n') if line.strip()]
-        text = '\n'.join(lines[:100])
-
-        if len(text) < 20:
-            return None
-
-        # Create image
-        width = 800
-        padding = 40
-        line_height = 20
-        num_lines = len(text.split('\n'))
-        height = max(400, min(2000, num_lines * line_height + padding * 2))
-
-        img = Image.new('RGB', (width, height), 'white')
-        draw = ImageDraw.Draw(img)
-
-        try:
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-        except:
-            try:
-                font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
-            except:
-                font = ImageFont.load_default()
-
-        y = padding
-        for line in text.split('\n')[:100]:
-            if y > height - padding:
-                break
-            if len(line) > 90:
-                line = line[:87] + '...'
-            draw.text((padding, y), line, fill='black', font=font)
-            y += line_height
-
-        output = BytesIO()
-        img.save(output, format='JPEG', quality=85)
-        return output.getvalue()
-
-    except Exception as e:
-        print(f"      ⚠️  HTML to image failed: {e}")
-        return None
+    # NO TEXT FALLBACK - receipts must have proper HTML screenshots or attachments
+    # If we get here, Playwright and wkhtmltoimage both failed
+    print("      ❌ No browser available for HTML screenshot - receipt needs attachment or proper HTML render")
+    return None
 
 
 # Legacy imports for backwards compatibility
@@ -2414,10 +2351,9 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                     with open(screenshot_path, 'rb') as f:
                                         img_bytes = f.read()
 
-                                    # Upload to R2 ONLY if it's a proper render (not text-based fallback)
-                                    # Text-based fallbacks are typically < 20KB, simple HTML renders 25-50KB, rich renders > 50KB
+                                    # Upload to R2 - no text fallback anymore, so any image is a real render
                                     img_size_kb = len(img_bytes) / 1024
-                                    if img_bytes and img_size_kb >= 25:
+                                    if img_bytes:
                                         try:
                                             from r2_service import upload_with_thumbnail, R2_ENABLED
                                             if R2_ENABLED:
@@ -2432,8 +2368,6 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                                                         print(f"      🖼️  Thumbnail: {thumb_url}")
                                         except Exception as r2_err:
                                             print(f"      ⚠️  R2 upload failed: {r2_err}")
-                                    elif img_bytes:
-                                        print(f"      ⚠️  Skipping R2 upload - text-based fallback detected ({img_size_kb:.1f}KB < 25KB)")
 
                                     # Try vision analysis only if we don't have merchant/amount yet
                                     if not vision_merchant and not vision_amount:
@@ -3563,14 +3497,9 @@ def regenerate_screenshot(receipt_id: int) -> dict:
             if not screenshot_path or not os.path.exists(screenshot_path):
                 return {'success': False, 'error': 'Screenshot generation failed'}
 
-            # Check screenshot size - skip upload if text-based fallback
+            # No text fallback anymore - any screenshot from Playwright is valid
             screenshot_size = os.path.getsize(screenshot_path)
             screenshot_size_kb = screenshot_size / 1024
-
-            if screenshot_size_kb < 25:
-                print(f"   ⚠️ Screenshot too small ({screenshot_size_kb:.1f}KB) - likely text-based fallback")
-                return {'success': False, 'error': f'Screenshot too small ({screenshot_size_kb:.1f}KB) - text-based fallback'}
-
             print(f"   📸 Screenshot size: {screenshot_size_kb:.1f}KB")
 
             # Upload to R2
