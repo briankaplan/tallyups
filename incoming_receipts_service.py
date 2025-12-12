@@ -102,12 +102,38 @@ def convert_html_to_image(html_content: str) -> bytes:
     # Try Playwright first (best quality - actual browser rendering)
     try:
         from playwright.sync_api import sync_playwright
+        import shutil
 
         print("      📸 Using Playwright for HTML screenshot...")
 
         with sync_playwright() as p:
-            # Launch headless browser
-            browser = p.chromium.launch(headless=True)
+            # Try to launch with bundled browser first, fall back to system chromium
+            browser = None
+
+            # First try bundled Playwright browser
+            try:
+                browser = p.chromium.launch(headless=True)
+            except Exception as e:
+                print(f"      ℹ️  Bundled browser not found, trying system chromium...")
+                # Look for system chromium/chrome
+                chromium_paths = [
+                    '/usr/bin/chromium',
+                    '/usr/bin/chromium-browser',
+                    '/usr/bin/google-chrome',
+                    '/usr/bin/google-chrome-stable',
+                    shutil.which('chromium'),
+                    shutil.which('chromium-browser'),
+                    shutil.which('google-chrome'),
+                ]
+
+                for chrome_path in chromium_paths:
+                    if chrome_path and os.path.exists(chrome_path):
+                        print(f"      🔧 Using system browser: {chrome_path}")
+                        browser = p.chromium.launch(headless=True, executable_path=chrome_path)
+                        break
+
+                if not browser:
+                    raise Exception(f"No chromium browser found: {e}")
             page = browser.new_page(viewport={'width': 800, 'height': 1200})
 
             # Wrap HTML in a proper document structure with styling

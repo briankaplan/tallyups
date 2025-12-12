@@ -27,6 +27,9 @@ cryptography>=41.0.0
 PyMuPDF>=1.23.0  # Pure Python PDF processing - no external dependencies!
 pdf2image>=1.16.0  # Fallback - requires poppler (via nixpacks.toml)
 
+# Browser automation for HTML email screenshots
+playwright>=1.40.0
+
 # Utilities
 python-dotenv>=1.0.0
 requests>=2.31.0

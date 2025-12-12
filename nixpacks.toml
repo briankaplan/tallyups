@@ -2,18 +2,30 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "poppler_utils"]
+# Added chromium and dependencies for Playwright HTML email screenshots
+nixPkgs = [
+    "python311",
+    "python311Packages.pip",
+    "poppler_utils",
+    "chromium",
+    "nss",
+    "freetype",
+    "harfbuzz",
+    "libjpeg",
+    "libpng"
+]
 
 [phases.install]
 cmds = [
     "python -m venv /opt/venv",
     "/opt/venv/bin/pip install --upgrade pip",
     "/opt/venv/bin/pip install --no-cache-dir -r requirements.txt",
-    "echo 'Fresh install completed: 2025-12-03T05:05'"
+    "/opt/venv/bin/playwright install chromium --with-deps || echo 'Playwright install attempted'",
+    "echo 'Fresh install completed: 2025-12-11T12:00'"
 ]
 
 [phases.build]
-cmds = ["echo 'Build v2025.12.11 - Added generate-images endpoint'"]
+cmds = ["echo 'Build v2025.12.11 - HTML email screenshots with Playwright'"]
 
 [start]
 cmd = "/opt/venv/bin/gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
