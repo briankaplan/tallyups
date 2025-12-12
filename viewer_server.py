@@ -16188,7 +16188,7 @@ def get_incoming_receipts():
                 if db_type2 == 'mysql':
                     match_query = '''
                         SELECT id, chase_description as merchant, chase_amount as amount, chase_date as date,
-                               receipt_url, receipt_file, card, mi_merchant, chase_description
+                               receipt_url, receipt_file, mi_merchant, chase_description, business_type
                         FROM transactions
                         WHERE ABS(ABS(chase_amount) - ?) < 1.00
                         AND (receipt_url IS NULL OR receipt_url = '' OR receipt_file IS NULL OR receipt_file = '')
@@ -16198,7 +16198,7 @@ def get_incoming_receipts():
                 else:
                     match_query = '''
                         SELECT id, chase_description as merchant, chase_amount as amount, chase_date as date,
-                               receipt_url, receipt_file, card, mi_merchant, chase_description
+                               receipt_url, receipt_file, mi_merchant, chase_description, business_type
                         FROM transactions
                         WHERE ABS(ABS(chase_amount) - ?) < 1.00
                         AND (receipt_url IS NULL OR receipt_url = '' OR receipt_file IS NULL OR receipt_file = '')
@@ -16253,7 +16253,7 @@ def get_incoming_receipts():
                             'merchant': tx.get('mi_merchant') or tx.get('merchant') or tx.get('chase_description'),
                             'amount': float(tx.get('amount', 0)),
                             'date': str(tx.get('date', '')),
-                            'card': tx.get('card', ''),
+                            'business': tx.get('business_type', ''),
                             'score': score,
                             'needs_receipt': not bool(tx.get('receipt_url') or tx.get('receipt_file'))
                         })
