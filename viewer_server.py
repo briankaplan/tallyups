@@ -16418,8 +16418,10 @@ def attach_receipt_to_transaction():
         receipt = dict(receipt_row)
 
         # Get receipt file from incoming receipt
+        # IMPORTANT: Check receipt_image_url first (R2 URL from inbox scan), then receipt_url, then receipt_file
         receipt_file = receipt.get('receipt_file', '') or ''
-        receipt_url = receipt.get('receipt_url', '') or ''
+        receipt_url = receipt.get('receipt_image_url', '') or receipt.get('receipt_url', '') or ''
+        print(f"   📎 Attaching receipt: file='{receipt_file[:50] if receipt_file else 'None'}', url='{receipt_url[:50] if receipt_url else 'None'}'...")
 
         # ===== CHECK FOR REJECTION BLOCK =====
         # Prevent re-attaching a receipt that was previously detached from this transaction
@@ -16467,10 +16469,12 @@ def attach_receipt_to_transaction():
             print(f"ℹ️ Could not check rejections: {rej_error}")
 
         # Update the existing transaction with the receipt
+        # NOTE: transaction_id is actually the _index field (from matching)
         if receipt_file or receipt_url:
             db_execute(conn, db_type,
-                'UPDATE transactions SET receipt_file = ?, receipt_url = ?, ai_notes = COALESCE(ai_notes, ?) WHERE id = ?',
-                (receipt_file, receipt_url or receipt_file, receipt.get('ai_notes', ''), transaction_id))
+                'UPDATE transactions SET receipt_file = ?, receipt_url = ? WHERE _index = ?',
+                (receipt_file, receipt_url or receipt_file, transaction_id))
+            print(f"   ✅ Updated transaction #{transaction_id} with receipt")
 
         # Mark incoming receipt as accepted
         db_execute(conn, db_type,
@@ -16481,20 +16485,13 @@ def attach_receipt_to_transaction():
         return_db_connection(conn)
 
         # Auto-run OCR extraction on attached receipt (async-friendly)
+        # Note: transaction_id IS the _index (from matching logic)
         ocr_result = None
         if receipt_file and OCR_SERVICE_AVAILABLE:
             try:
                 from ocr_integration import auto_ocr_on_receipt_match
-                # Get transaction _index from id
-                conn2, _ = get_db_connection()
-                cursor2 = db_execute(conn2, db_type, 'SELECT _index FROM transactions WHERE id = ?', (transaction_id,))
-                tx_row = cursor2.fetchone()
-                return_db_connection(conn2)
-
-                if tx_row:
-                    tx_index = tx_row.get('_index')
-                    print(f"🔍 Running OCR on attached receipt for transaction {tx_index}...")
-                    ocr_result = auto_ocr_on_receipt_match(tx_index, receipt_file)
+                print(f"🔍 Running OCR on attached receipt for transaction {transaction_id}...")
+                ocr_result = auto_ocr_on_receipt_match(transaction_id, receipt_file)
             except Exception as ocr_err:
                 print(f"⚠️ OCR extraction failed (non-blocking): {ocr_err}")
 
