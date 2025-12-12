@@ -1611,6 +1611,26 @@ body {
         </button>
       </div>
       <div class="export-grid">
+        <div class="export-option selected" data-format="downhome" onclick="selectExportFormat('downhome')">
+          <div class="export-option-header">
+            <div class="export-format">
+              <div class="export-format-icon" style="background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000;">DH</div>
+              <div>
+                <div class="export-format-name">Down Home Format</div>
+                <div class="export-format-type">Accounting ready</div>
+              </div>
+            </div>
+            <div class="export-check">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+          <div class="export-desc">CSV format ready for Down Home Media accounting with receipt URLs</div>
+          <div class="export-features">
+            <span class="export-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Receipt URLs</span>
+            <span class="export-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Categories</span>
+            <span class="export-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Memo</span>
+          </div>
+        </div>
         <div class="export-option" data-format="csv" onclick="selectExportFormat('csv')">
           <div class="export-option-header">
             <div class="export-format">
@@ -1631,7 +1651,7 @@ body {
             <span class="export-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Instant</span>
           </div>
         </div>
-        <div class="export-option selected" data-format="excel" onclick="selectExportFormat('excel')">
+        <div class="export-option" data-format="excel" onclick="selectExportFormat('excel')">
           <div class="export-option-header">
             <div class="export-format">
               <div class="export-format-icon excel">XLS</div>
@@ -2124,7 +2144,7 @@ let dashboardData = null;
 let spendingChart = null;
 let categoryChart = null;
 let currentTab = 'all';
-let selectedExportFormat = 'excel';
+let selectedExportFormat = 'downhome';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -2501,11 +2521,12 @@ async function runExport() {
   btn.disabled = true;
 
   try {
-    // Build export URL based on format
-    let url = '/api/reports/export?format=' + format;
-
+    // For bulk export, we need to select reports first or export all
     // For now, redirect to the appropriate export endpoint
-    if (format === 'csv') {
+    if (format === 'downhome') {
+      // Down Home format - primary export format
+      window.location.href = '/reports/export/downhome';
+    } else if (format === 'csv') {
       window.location.href = '/reports/export/csv';
     } else if (format === 'excel') {
       window.location.href = '/reports/export/excel';
@@ -2515,6 +2536,8 @@ async function runExport() {
       window.location.href = '/reports/export/zip';
     } else if (format === 'qbo') {
       window.location.href = '/reports/export/qbo';
+    } else if (format === 'api') {
+      alert('API/Webhook Export\n\nConfigure your webhook URL in Settings to enable automatic exports.');
     } else {
       alert('Export format: ' + format + '\n\nThis will export all transactions in ' + format.toUpperCase() + ' format.');
     }
