@@ -12942,10 +12942,19 @@ def get_gmail_credentials_with_autorefresh(account_email: str):
     env_token = os.environ.get(env_key)
     if env_token:
         try:
+            # Try direct JSON first
             token_data = json.loads(env_token)
             token_source = 'env'
-        except Exception as e:
-            print(f"⚠️ Failed to parse {env_key}: {e}", flush=True)
+        except json.JSONDecodeError:
+            # Try base64 decoding (Railway stores tokens as base64)
+            try:
+                import base64
+                decoded = base64.b64decode(env_token).decode('utf-8')
+                token_data = json.loads(decoded)
+                token_source = 'env (base64)'
+                print(f"✅ Decoded base64 token for {account_email}", flush=True)
+            except Exception as e2:
+                print(f"⚠️ Failed to parse {env_key}: direct={env_token[:50]}... base64={e2}", flush=True)
 
     # Fall back to file
     if not token_data:
