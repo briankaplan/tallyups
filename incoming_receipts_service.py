@@ -286,6 +286,97 @@ def convert_html_to_image(html_content: str) -> bytes:
     return None
 
 
+def create_receipt_card(merchant: str, amount: float, date_str: str, description: str = None, from_email: str = None) -> bytes:
+    """
+    Create a nicely styled receipt card image for plain-text email receipts.
+    Used when there's no HTML content or PDF attachment to render.
+
+    Returns: JPG image bytes
+    """
+    from PIL import Image, ImageDraw, ImageFont
+
+    # Card dimensions
+    width = 600
+    height = 400
+    padding = 40
+
+    # Colors
+    bg_color = '#ffffff'
+    header_color = '#1a1a2e'
+    text_color = '#333333'
+    amount_color = '#0f4c75'
+    subtle_color = '#888888'
+
+    # Create image
+    img = Image.new('RGB', (width, height), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Try to load fonts
+    try:
+        title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+        amount_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 42)
+        body_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
+        small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+    except:
+        try:
+            title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
+            amount_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 42)
+            body_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
+            small_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 14)
+        except:
+            title_font = ImageFont.load_default()
+            amount_font = title_font
+            body_font = title_font
+            small_font = title_font
+
+    # Draw header bar
+    draw.rectangle([(0, 0), (width, 70)], fill=header_color)
+
+    # Draw "RECEIPT" text in header
+    draw.text((padding, 20), "RECEIPT", fill='#ffffff', font=title_font)
+
+    # Draw merchant name
+    y = 100
+    merchant_display = (merchant or 'Unknown Merchant').title()
+    if len(merchant_display) > 35:
+        merchant_display = merchant_display[:32] + '...'
+    draw.text((padding, y), merchant_display, fill=text_color, font=title_font)
+
+    # Draw amount
+    y = 160
+    if amount:
+        amount_str = f"${amount:,.2f}"
+    else:
+        amount_str = "Amount N/A"
+    draw.text((padding, y), amount_str, fill=amount_color, font=amount_font)
+
+    # Draw date
+    y = 230
+    if date_str:
+        draw.text((padding, y), f"Date: {date_str}", fill=text_color, font=body_font)
+        y += 30
+
+    # Draw description if provided
+    if description:
+        desc_display = description[:60] + '...' if len(description) > 60 else description
+        draw.text((padding, y), desc_display, fill=subtle_color, font=small_font)
+        y += 25
+
+    # Draw source email
+    y = height - 60
+    if from_email:
+        email_display = from_email[:50] if len(from_email) > 50 else from_email
+        draw.text((padding, y), f"From: {email_display}", fill=subtle_color, font=small_font)
+
+    # Draw bottom border
+    draw.rectangle([(0, height - 8), (width, height)], fill=header_color)
+
+    # Convert to bytes
+    output = BytesIO()
+    img.save(output, format='JPEG', quality=90)
+    return output.getvalue()
+
+
 # Legacy imports for backwards compatibility
 convert_from_bytes = None
 imgkit = None
@@ -3486,6 +3577,50 @@ def regenerate_screenshot(receipt_id: int) -> dict:
 
         html_body = get_html_body(payload)
         if not html_body or len(html_body) < 100:
+            # No HTML - create a styled receipt card from the data we have
+            print(f"   📋 No HTML content - creating receipt card")
+            try:
+                # Get more details from the receipt
+                cursor.execute('''
+                    SELECT merchant, amount, receipt_date, description, from_email
+                    FROM incoming_receipts WHERE id = %s
+                ''', (receipt_id,))
+                details = cursor.fetchone()
+
+                card_bytes = create_receipt_card(
+                    merchant=details.get('merchant'),
+                    amount=float(details.get('amount') or 0),
+                    date_str=str(details.get('receipt_date') or ''),
+                    description=details.get('description'),
+                    from_email=details.get('from_email')
+                )
+
+                if card_bytes:
+                    # Upload to R2
+                    import tempfile
+                    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                        tmp.write(card_bytes)
+                        tmp.flush()
+
+                        from r2_service import upload_with_thumbnail, R2_ENABLED
+                        if R2_ENABLED:
+                            import uuid
+                            r2_key = f"inbox/{uuid.uuid4().hex[:12]}.jpg"
+                            full_url, thumb_url = upload_with_thumbnail(tmp.name, r2_key)
+
+                            if full_url:
+                                cursor.execute('''
+                                    UPDATE incoming_receipts
+                                    SET receipt_image_url = %s, thumbnail_url = %s
+                                    WHERE id = %s
+                                ''', (full_url, thumb_url, receipt_id))
+                                conn.commit()
+                                return {'success': True, 'url': full_url, 'thumbnail': thumb_url, 'type': 'card'}
+
+                        os.unlink(tmp.name)
+            except Exception as card_err:
+                print(f"   ⚠️ Receipt card creation failed: {card_err}")
+
             return {'success': False, 'error': 'No HTML content in email'}
 
         print(f"   📄 Found HTML: {len(html_body)} chars")
