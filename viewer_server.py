@@ -16648,7 +16648,13 @@ def accept_incoming_receipt():
         source = get_col('source', 'gmail')
         receipt_files = []
 
-        if source == 'mobile_scanner':
+        # FIRST: Check if we already have a receipt_image_url from the inbox scan
+        existing_image_url = get_col('receipt_image_url')
+        if existing_image_url:
+            receipt_files = [existing_image_url]
+            print(f"   ✅ Using existing receipt image: {existing_image_url[:60]}...")
+
+        elif source == 'mobile_scanner':
             # Mobile scanner - receipt file is already stored locally
             existing_file = get_col('receipt_file')
             if existing_file:
