@@ -176,6 +176,7 @@ button:active { transform: translateY(0); }
 }
 .chip.active .chip-count { background: rgba(59,130,246,.3); }
 .chip[data-filter="pending"] .chip-count { background: rgba(59,130,246,.2); color: var(--brand); }
+.chip[data-filter="matched"] .chip-count { background: rgba(255,216,94,.15); color: var(--warn); }
 .chip[data-filter="accepted"] .chip-count { background: rgba(47,255,162,.15); color: var(--ok); }
 .chip[data-filter="rejected"] .chip-count { background: rgba(255,78,106,.1); color: var(--bad); }
 
@@ -1938,6 +1939,7 @@ th.sortable.active {
   </nav>
 
   <div class="controls">
+    <button class="btn-ghost btn-sm" onclick="rematchAll()" title="Re-match all unmatched receipts with improved AI">🔗 Rematch All</button>
     <button class="btn-ghost btn-sm" onclick="clearAndRescan()" title="Clear all pending receipts and scan fresh">⚡ Clear & Rescan</button>
     <button class="btn-primary" onclick="scanForNew()">🔄 Scan Now</button>
   </div>
@@ -1989,8 +1991,12 @@ th.sortable.active {
     <span class="chip-icon">📥</span> Inbox
     <span class="chip-count" id="chip-pending">0</span>
   </div>
-  <div class="chip" onclick="filterStatus('accepted')" data-filter="accepted">
+  <div class="chip" onclick="filterStatus('matched')" data-filter="matched">
     <span class="chip-icon">🔗</span> Matched
+    <span class="chip-count" id="chip-matched">0</span>
+  </div>
+  <div class="chip" onclick="filterStatus('accepted')" data-filter="accepted">
+    <span class="chip-icon">✓</span> Accepted
     <span class="chip-count" id="chip-accepted">0</span>
   </div>
   <div class="chip" onclick="filterStatus('rejected')" data-filter="rejected">
@@ -2220,7 +2226,13 @@ function getSortedReceipts() {
   let receipts = [...allReceipts];
 
   // Apply status filter
-  if (currentFilter !== 'all') {
+  if (currentFilter === 'matched') {
+    // Show pending receipts that have a matched transaction
+    receipts = receipts.filter(r => r.status === 'pending' && r.matched_transaction_id);
+  } else if (currentFilter === 'pending') {
+    // Show pending receipts WITHOUT a matched transaction
+    receipts = receipts.filter(r => r.status === 'pending' && !r.matched_transaction_id);
+  } else if (currentFilter !== 'all') {
     receipts = receipts.filter(r => r.status === currentFilter);
   }
 
@@ -2434,9 +2446,16 @@ function updateStats(counts) {
 
   // Update chip counts
   const chipPending = document.getElementById('chip-pending');
+  const chipMatched = document.getElementById('chip-matched');
   const chipAccepted = document.getElementById('chip-accepted');
   const chipRejected = document.getElementById('chip-rejected');
-  if (chipPending) chipPending.textContent = counts.pending || 0;
+
+  // Count matched (pending with matched_transaction_id) vs unmatched pending
+  const matchedCount = allReceipts.filter(r => r.status === 'pending' && r.matched_transaction_id).length;
+  const unmatchedPending = (counts.pending || 0) - matchedCount;
+
+  if (chipPending) chipPending.textContent = unmatchedPending || 0;
+  if (chipMatched) chipMatched.textContent = matchedCount || 0;
   if (chipAccepted) chipAccepted.textContent = counts.accepted || 0;
   if (chipRejected) chipRejected.textContent = counts.rejected || 0;
 }
@@ -2495,12 +2514,16 @@ function renderMobileCards() {
 
     if (currentFilter === 'pending') {
       emptyTitle = 'Inbox Clear';
-      emptyText = 'All receipts matched to expenses';
+      emptyText = 'All receipts have been processed';
       emptyIcon = '✨';
-    } else if (currentFilter === 'accepted') {
+    } else if (currentFilter === 'matched') {
       emptyTitle = 'No Matched Receipts';
-      emptyText = 'Match receipts from your inbox to expenses';
+      emptyText = 'Receipts with matching transactions appear here';
       emptyIcon = '🔗';
+    } else if (currentFilter === 'accepted') {
+      emptyTitle = 'No Accepted Receipts';
+      emptyText = 'Accepted receipts will appear here';
+      emptyIcon = '✓';
     } else if (currentFilter === 'rejected') {
       emptyTitle = 'Nothing Dismissed';
       emptyText = 'Dismissed receipts will appear here';
@@ -3249,10 +3272,11 @@ function renderRow(receipt) {
     const atts = typeof receipt.attachments === 'string' ? JSON.parse(receipt.attachments) : (receipt.attachments || []);
     attachmentCount = atts.length;
   } catch(e) {}
+  const hasMatch = receipt.matched_transaction_id ? 'true' : 'false';
   const attachmentBadge = attachmentCount > 0 ? `<span class="attachment-badge">📎 ${attachmentCount}</span>` : '';
 
   return `
-    <tr data-status="${receipt.status}" data-id="${receipt.id}" class="clickable" onclick="showPreview(${receipt.id})">
+    <tr data-status="${receipt.status}" data-id="${receipt.id}" data-matched="${hasMatch}" class="clickable" onclick="showPreview(${receipt.id})">
       <td>
         <div style="font-weight:500">${escapeHtml(receipt.subject)}</div>
         <div class="snippet">${escapeHtml(receipt.body_snippet || '')}</div>
@@ -3422,6 +3446,10 @@ async function quickReject(id) {
 }
 
 function filterStatus(status) {
+  // Prevent double-trigger by checking if already on this filter
+  if (currentFilter === status) {
+    return;
+  }
   currentFilter = status;
 
   // Update chip states using data-filter attribute (handles clicks on child elements)
@@ -3440,7 +3468,22 @@ function applyFilter() {
   const rows = document.querySelectorAll('tbody tr');
   rows.forEach(row => {
     const rowStatus = row.getAttribute('data-status');
-    if (currentFilter === 'all' || rowStatus === currentFilter) {
+    const hasMatch = row.getAttribute('data-matched') === 'true';
+
+    let show = false;
+    if (currentFilter === 'all') {
+      show = true;
+    } else if (currentFilter === 'matched') {
+      // Show only pending receipts that have a matched transaction
+      show = (rowStatus === 'pending' && hasMatch);
+    } else if (currentFilter === 'pending') {
+      // Show pending that are NOT matched (true inbox)
+      show = (rowStatus === 'pending' && !hasMatch);
+    } else {
+      show = (rowStatus === currentFilter);
+    }
+
+    if (show) {
       row.classList.remove('hidden');
     } else {
       row.classList.add('hidden');
@@ -3473,6 +3516,35 @@ async function scanForNew() {
   } catch (e) {
     console.error('Scan error:', e);
     showToast('Error scanning Gmail', 'error');
+  }
+}
+
+async function rematchAll() {
+  const unmatchedCount = allReceipts.filter(r => r.status === 'pending' && !r.matched_transaction_id).length;
+  if (!confirm(`Re-match ${unmatchedCount} unmatched receipts?\n\nThis will use improved AI to:\n- Extract better merchant names\n- Use email dates as fallback\n- Search wider date ranges\n- Generate receipt screenshots\n\nThis may take a few minutes.`)) return;
+
+  showToast('Re-matching all unmatched receipts...', 'info');
+
+  try {
+    const response = await fetch('/api/incoming/rematch-all', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({})
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      const results = data.results || {};
+      showToast(`Matched ${results.matched || 0} receipts! (${results.still_unmatched || 0} still unmatched)`, 'success');
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Rematch failed', 'error');
+    }
+  } catch (e) {
+    console.error('Rematch error:', e);
+    showToast('Error during rematch', 'error');
   }
 }
 
