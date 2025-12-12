@@ -10014,15 +10014,16 @@ def gemini_categorize_transaction(merchant: str, amount: float, date: str = "", 
     except Exception as e:
         print(f"⚠️ guess_attendees error: {e}")
 
-    # Get calendar context for the date
-    if date:
-        try:
-            from calendar_service import get_events_around_date, format_events_for_prompt
-            events = get_events_around_date(date, days_before=1, days_after=1)
-            if events:
-                calendar_context = f"\n- Calendar Events Near Date: {format_events_for_prompt(events[:5])}"
-        except Exception as e:
-            pass  # Calendar not available, that's ok
+    # Get calendar context for the date (disabled - tokens expired)
+    # TODO: Re-enable once calendar tokens are refreshed
+    # if date:
+    #     try:
+    #         from calendar_service import get_events_around_date, format_events_for_prompt
+    #         events = get_events_around_date(date, days_before=1, days_after=1)
+    #         if events:
+    #             calendar_context = f"\n- Calendar Events Near Date: {format_events_for_prompt(events[:5])}"
+    #     except Exception as e:
+    #         pass
 
     try:
         prompt = f"""You are an expense categorization expert for Brian Kaplan, a Nashville music industry executive.
@@ -10192,15 +10193,16 @@ def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", catego
     except Exception as e:
         pass
 
-    # Get calendar context
-    if date:
-        try:
-            from calendar_service import get_events_around_date, format_events_for_prompt
-            events = get_events_around_date(date, days_before=1, days_after=1)
-            if events:
-                calendar_context = f"\n- Calendar Events: {format_events_for_prompt(events[:5])}"
-        except Exception as e:
-            pass
+    # Get calendar context (skip - tokens expired, causes timeouts)
+    # TODO: Re-enable once calendar tokens are refreshed
+    # if date:
+    #     try:
+    #         from calendar_service import get_events_around_date, format_events_for_prompt
+    #         events = get_events_around_date(date, days_before=1, days_after=1)
+    #         if events:
+    #             calendar_context = f"\n- Calendar Events: {format_events_for_prompt(events[:5])}"
+    #     except Exception as e:
+    #         pass
 
     try:
         prompt = f"""You are Brian Kaplan's executive assistant writing expense notes for IRS tax documentation.
