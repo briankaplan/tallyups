@@ -105,6 +105,50 @@ def upload_receipt_and_get_url(local_path: Path) -> str:
         return None
 
 
+def delete_from_r2(key: str) -> bool:
+    """
+    Delete a file from R2 storage.
+
+    Args:
+        key: R2 key (path in bucket), e.g. 'receipts/incoming/filename.jpg'
+
+    Returns:
+        bool: True if deleted successfully, False otherwise
+    """
+    if not R2_ENABLED:
+        print("R2 not configured (missing credentials)")
+        return False
+
+    # Build URL
+    url = f"{R2_ENDPOINT}/{R2_BUCKET}/{key}"
+
+    try:
+        result = subprocess.run([
+            CURL_PATH, '-X', 'DELETE', url,
+            '--aws-sigv4', 'aws:amz:auto:s3',
+            '--user', f'{R2_ACCESS_KEY}:{R2_SECRET_KEY}',
+            '-s', '-w', '%{http_code}', '-o', '/dev/null'
+        ], capture_output=True, text=True, timeout=30)
+
+        http_code = result.stdout.strip()
+
+        # 204 No Content is the expected success response for DELETE
+        # 200 OK is also acceptable
+        # 404 means it was already gone, which is fine
+        if http_code in ('200', '204', '404'):
+            return True
+        else:
+            print(f"R2 delete failed - HTTP {http_code}: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        print("R2 delete timeout")
+        return False
+    except Exception as e:
+        print(f"R2 delete error: {e}")
+        return False
+
+
 def generate_thumbnail(image_path: Path, max_size: int = 300) -> Path:
     """
     Generate a thumbnail from an image file.

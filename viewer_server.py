@@ -18290,11 +18290,46 @@ def clear_pending_incoming_receipts():
 
         conn, db_type = get_db_connection()
 
-        # Get count first
+        # Get pending receipts with their R2 image URLs before deleting
+        cursor = db_execute(conn, db_type, """
+            SELECT id, receipt_image_url FROM incoming_receipts
+            WHERE status = 'pending' AND receipt_image_url IS NOT NULL AND receipt_image_url != ''
+        """)
+        receipts_with_images = cursor.fetchall()
+
+        # Get total count
         cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM incoming_receipts WHERE status = 'pending'")
         count = cursor.fetchone()[0]
 
-        # Delete pending receipts
+        # Delete R2 images
+        r2_deleted = 0
+        if receipts_with_images:
+            try:
+                from r2_service import delete_from_r2
+
+                for receipt_id, image_url in receipts_with_images:
+                    if image_url and ('r2.dev' in image_url or 'r2.cloudflarestorage.com' in image_url):
+                        # Extract R2 key from URL
+                        # URL format: https://pub-xxx.r2.dev/receipts/incoming/filename.jpg
+                        try:
+                            from urllib.parse import urlparse
+                            parsed = urlparse(image_url)
+                            # Path is /receipts/incoming/filename.jpg - remove leading slash
+                            r2_key = parsed.path.lstrip('/')
+                            if r2_key and delete_from_r2(r2_key):
+                                r2_deleted += 1
+                                print(f"      🗑️  Deleted R2: {r2_key}")
+                        except Exception as e:
+                            print(f"      ⚠️  Failed to delete R2 image for {receipt_id}: {e}")
+                            continue
+
+                print(f"🗑️  Deleted {r2_deleted} images from R2")
+            except ImportError:
+                print(f"⚠️  r2_service not available, skipping R2 cleanup")
+            except Exception as e:
+                print(f"⚠️  R2 cleanup error (continuing anyway): {e}")
+
+        # Delete pending receipts from database
         db_execute(conn, db_type, "DELETE FROM incoming_receipts WHERE status = 'pending'")
         conn.commit()
         return_db_connection(conn)
@@ -18303,8 +18338,9 @@ def clear_pending_incoming_receipts():
 
         return jsonify({
             'ok': True,
-            'message': f'Cleared {count} pending incoming receipts',
-            'deleted': count
+            'message': f'Cleared {count} pending incoming receipts, deleted {r2_deleted} R2 images',
+            'deleted': count,
+            'r2_deleted': r2_deleted
         })
 
     except Exception as e:
