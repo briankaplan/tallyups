@@ -1704,23 +1704,32 @@ def find_matching_transaction(merchant, amount, transaction_date):
 
     if best_match and best_score >= 40:  # Minimum confidence threshold
         trans_id = best_match['_index']
-        trans_amount = best_match['chase_amount']
+        trans_amount = float(best_match['chase_amount'] or 0)
         receipt_file = best_match.get('receipt_file', '')
-        has_receipt = receipt_file and str(receipt_file).strip() not in ('', 'None', 'null')
+        receipt_url = best_match.get('receipt_url', '')
+        has_receipt = (receipt_file and str(receipt_file).strip() not in ('', 'None', 'null')) or \
+                      (receipt_url and str(receipt_url).strip() not in ('', 'None', 'null'))
 
-        # Determine if this is a good match that needs a receipt
+        # STRICT amount matching - amounts MUST be close
         amount_match = False
-        if amount and trans_amount:
-            diff = abs(amount - float(trans_amount))
-            diff_pct = diff / max(float(trans_amount), 0.01) * 100
-            amount_match = diff_pct < 10 or diff < 1.00  # More lenient threshold
+        if amount and amount > 0 and trans_amount > 0:
+            diff = abs(amount - trans_amount)
+            diff_pct = diff / max(trans_amount, 0.01) * 100
+            # Allow max 5% or $1 difference (whichever is smaller for small amounts)
+            amount_match = diff < 1.00 or (diff_pct < 5 and diff < 5.00)
 
-        needs_receipt = not has_receipt and (amount_match or best_score >= 60)
+        # STRICT: Only return match if amounts match AND score is good
+        # No more matching without amount verification!
+        if not amount_match:
+            print(f"      ⚠️ Amount mismatch: Receipt ${amount:.2f} vs TX ${trans_amount:.2f} (diff: ${abs(amount - trans_amount):.2f})")
+            return None, False, False, 0
 
-        print(f"      🎯 Match found: {best_match.get('chase_description', 'Unknown')[:40]} | Score: {best_score} | Amount: ${trans_amount}")
-        return trans_id, has_receipt, needs_receipt
+        needs_receipt = not has_receipt
 
-    return None, False, False
+        print(f"      🎯 Match found: {best_match.get('chase_description', 'Unknown')[:40]} | Score: {best_score} | Amount: ${trans_amount:.2f}")
+        return trans_id, has_receipt, needs_receipt, best_score
+
+    return None, False, False, 0
 
 
 def download_gmail_attachment(service, message_id, attachment_id, filename):
@@ -2472,7 +2481,7 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                         print(f"      Category: {category}")
 
                 # Check for matching transaction
-                match_id, has_receipt, needs_receipt = find_matching_transaction(
+                match_id, has_receipt, needs_receipt, match_score = find_matching_transaction(
                     merchant_ai, amount_ai, date_str
                 )
 
@@ -2747,7 +2756,7 @@ def scan_gmail_intelligent(account_email, since_date=None, max_results=100):
                 category = result.matched_merchant.category if result.matched_merchant else 'General'
 
                 # Check for matching transaction
-                match_id, has_receipt, needs_receipt = find_matching_transaction(
+                match_id, has_receipt, needs_receipt, match_score = find_matching_transaction(
                     merchant_name, amount, date_str
                 )
 
@@ -2972,9 +2981,9 @@ def cleanup_inbox_and_rematch():
         else:
             stats['kept_valid'] += 1
             if merchant and amount:
-                match_id, has_receipt, needs_receipt = find_matching_transaction(merchant, float(amount), None)
+                match_id, has_receipt, needs_receipt, match_score = find_matching_transaction(merchant, float(amount), None)
                 if match_id and needs_receipt:
-                    cursor.execute('UPDATE incoming_receipts SET matched_transaction_id = %s WHERE id = %s', (match_id, item_id))
+                    cursor.execute('UPDATE incoming_receipts SET matched_transaction_id = %s, match_score = %s WHERE id = %s', (match_id, match_score, item_id))
                     stats['matched'] += 1
                     print(f"   ✅ Matched #{item_id} to TX #{match_id}")
     conn.commit()
@@ -3086,14 +3095,14 @@ def aggressive_rematch_all():
 
         # Try to find a match
         if merchant and amount and amount > 0:
-            match_id, has_receipt, needs_receipt = find_matching_transaction(merchant, float(amount), receipt_date)
+            match_id, has_receipt, needs_receipt, match_score = find_matching_transaction(merchant, float(amount), receipt_date)
 
-            if match_id:
+            if match_id and needs_receipt:
                 cursor.execute('''
                     UPDATE incoming_receipts
-                    SET matched_transaction_id = %s
+                    SET matched_transaction_id = %s, match_score = %s
                     WHERE id = %s
-                ''', (match_id, item_id))
+                ''', (match_id, match_score, item_id))
                 stats['matched'] += 1
                 print(f"   ✅ #{item_id} -> TX #{match_id}: {merchant} ${amount}")
             else:
