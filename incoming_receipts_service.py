@@ -2374,18 +2374,33 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
                 # Generate HTML screenshot for preview even if we don't need vision analysis
                 if not receipt_image_url:
                     # Check if we have HTML content
-                    def get_html_body(payload):
-                        """Extract HTML body from email payload"""
-                        if 'parts' in payload:
-                            for part in payload['parts']:
-                                if part.get('mimeType') == 'text/html':
-                                    data = part.get('body', {}).get('data', '')
-                                    if data:
-                                        return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
-                        # Also check direct body
+                    def get_html_body(payload, depth=0):
+                        """Extract HTML body from email payload - RECURSIVELY searches nested parts"""
+                        if depth > 10:  # Prevent infinite recursion
+                            return None
+
+                        # Check direct body first
                         body = payload.get('body', {})
                         if body.get('data') and payload.get('mimeType') == 'text/html':
                             return base64.urlsafe_b64decode(body['data']).decode('utf-8', errors='ignore')
+
+                        # Search in parts (recursively for nested multipart)
+                        if 'parts' in payload:
+                            for part in payload['parts']:
+                                mime_type = part.get('mimeType', '')
+
+                                # Direct HTML part
+                                if mime_type == 'text/html':
+                                    data = part.get('body', {}).get('data', '')
+                                    if data:
+                                        return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+
+                                # Recurse into nested multipart (multipart/alternative, multipart/related, etc.)
+                                if mime_type.startswith('multipart/') or 'parts' in part:
+                                    result = get_html_body(part, depth + 1)
+                                    if result:
+                                        return result
+
                         return None
 
                     html_body = get_html_body(msg_data.get('payload', {}))
@@ -2818,24 +2833,42 @@ def scan_gmail_intelligent(account_email, since_date=None, max_results=100):
         return []
 
 
-def _get_email_body(payload):
-    """Extract text body from email payload"""
+def _get_email_body(payload, depth=0):
+    """Extract text body from email payload - RECURSIVELY searches nested multipart"""
+    if depth > 10:
+        return ''
+
     body = ''
-    if 'parts' in payload:
-        for part in payload['parts']:
-            if part.get('mimeType') == 'text/plain':
-                data = part.get('body', {}).get('data', '')
-                if data:
-                    body = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
-                    break
-            elif part.get('mimeType') == 'text/html' and not body:
-                data = part.get('body', {}).get('data', '')
-                if data:
-                    body = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
-    else:
+
+    # Check direct body first
+    if not 'parts' in payload:
         data = payload.get('body', {}).get('data', '')
         if data:
-            body = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+            return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+        return ''
+
+    # Search in parts
+    for part in payload['parts']:
+        mime_type = part.get('mimeType', '')
+
+        # Prefer text/plain
+        if mime_type == 'text/plain':
+            data = part.get('body', {}).get('data', '')
+            if data:
+                return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+
+        # Fall back to HTML
+        elif mime_type == 'text/html' and not body:
+            data = part.get('body', {}).get('data', '')
+            if data:
+                body = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+
+        # Recurse into nested multipart
+        elif mime_type.startswith('multipart/') or 'parts' in part:
+            result = _get_email_body(part, depth + 1)
+            if result and not body:
+                body = result
+
     return body
 
 
@@ -3337,13 +3370,29 @@ def reprocess_pending_receipts(limit=50, skip_with_amount=True):
 
                 # If no attachment or no amount from attachment, try HTML body
                 if not new_amount or not new_notes:
-                    def get_html_body(payload):
+                    def get_html_body(payload, depth=0):
+                        """Extract HTML body - RECURSIVELY searches nested multipart"""
+                        if depth > 10:
+                            return None
+
+                        # Check direct body
+                        body = payload.get('body', {})
+                        if body.get('data') and payload.get('mimeType') == 'text/html':
+                            return base64.urlsafe_b64decode(body['data']).decode('utf-8', errors='ignore')
+
+                        # Search in parts recursively
                         if 'parts' in payload:
                             for part in payload['parts']:
-                                if part.get('mimeType') == 'text/html':
+                                mime_type = part.get('mimeType', '')
+                                if mime_type == 'text/html':
                                     data = part.get('body', {}).get('data', '')
                                     if data:
                                         return base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                                # Recurse into nested multipart
+                                if mime_type.startswith('multipart/') or 'parts' in part:
+                                    result = get_html_body(part, depth + 1)
+                                    if result:
+                                        return result
                         return None
 
                     html_body = get_html_body(payload)
