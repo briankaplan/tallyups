@@ -845,12 +845,15 @@ def handle_exception(error):
 
 
 # Thread-safe caching (replaces global df)
-from cache_manager import get_df_cache, get_receipt_meta_cache, DataFrameCache
+from cache_manager import get_df_cache, get_receipt_meta_cache, DataFrameCache, ThreadSafeCache
 
 # Legacy globals for backward compatibility during transition
 # These will be updated by the cache manager
 df: pd.DataFrame | None = None          # global dataframe (legacy - use get_df_cache())
 receipt_meta_cache: dict[str, dict] = {}  # filename -> meta dict (legacy - use get_receipt_meta_cache())
+
+# Library receipts cache - 60 second TTL for fast page loads
+_library_cache = ThreadSafeCache(ttl_seconds=60)
 
 
 # =============================================================================
@@ -14322,13 +14325,36 @@ def get_library_receipts():
         verification_filter = request.args.get('verification', '') or request.args.get('status', 'all')
         match_status = request.args.get('match_status', 'all')  # 'all', 'matched', 'waiting'
 
+        # Build cache key from query params for caching
+        cache_key = f"library:{source}:{search}:{date_from}:{date_to}:{amount_min}:{amount_max}:{sort_field}:{sort_order}:{has_image}:{include_incoming}:{verification_filter}:{match_status}"
+
+        # Check cache first (only for non-search, non-filtered requests for simplicity)
+        if not search and source == 'all' and not date_from and not date_to and not amount_min and not amount_max:
+            cached = _library_cache.get(cache_key)
+            if cached:
+                # Apply pagination to cached results
+                total = len(cached)
+                paginated = cached[offset:offset + limit]
+                response = jsonify({
+                    'ok': True,
+                    'receipts': paginated,
+                    'total': total,
+                    'limit': limit,
+                    'offset': offset,
+                    'cached': True
+                })
+                response.headers['Cache-Control'] = 'private, max-age=30'
+                return response
+
         conn, db_type = get_db_connection()
         all_receipts = []
 
-        # 1. Get receipts from transactions table
-        # Use SELECT * to handle varying schemas between SQLite and MySQL
+        # 1. Get receipts from transactions table - select only needed columns for speed
         tx_query = '''
-            SELECT *
+            SELECT id, _index, chase_description, chase_amount, chase_date,
+                   receipt_url, receipt_file, r2_url, thumbnail_url,
+                   source, business_type, notes, ai_notes,
+                   ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified, ocr_verification_status
             FROM transactions
             WHERE (receipt_url IS NOT NULL AND receipt_url != '')
                OR (receipt_file IS NOT NULL AND receipt_file != '')
@@ -14403,10 +14429,14 @@ def get_library_receipts():
         # 2. Get incoming receipts (accepted and pending) - only if include_incoming is true
         if include_incoming:
             try:
-                # Only get incoming receipts that have actual receipt files
-                # Table uses receipt_url and receipt_image_url columns
+                # Only get incoming receipts that have actual receipt files - select only needed columns
                 inc_query = '''
-                    SELECT *
+                    SELECT id, merchant, amount, receipt_date, received_date,
+                           receipt_url, receipt_image_url, thumbnail_url,
+                           source, status, sender, subject, from_email,
+                           transaction_id, accepted_as_transaction_id, matched_transaction_id,
+                           ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified, ocr_verification_status,
+                           business_type, notes, ai_notes, category
                     FROM incoming_receipts
                     WHERE status IN ('accepted', 'pending')
                     AND (
@@ -14645,11 +14675,15 @@ def get_library_receipts():
 
         total = len(all_receipts)
 
+        # Cache the full result set (before pagination) for simple requests
+        if not search and source == 'all' and not date_from and not date_to and not amount_min and not amount_max:
+            _library_cache.set(cache_key, all_receipts)
+
         # Apply pagination
         paginated_receipts = all_receipts[offset:offset + limit]
         has_more = (offset + limit) < total
 
-        return jsonify({
+        response = jsonify({
             'ok': True,
             'receipts': paginated_receipts,
             'total': total,
@@ -14661,6 +14695,8 @@ def get_library_receipts():
             'offset': offset,
             'limit': limit
         })
+        response.headers['Cache-Control'] = 'private, max-age=30'
+        return response
 
     except Exception as e:
         print(f"❌ Error fetching library receipts: {e}")

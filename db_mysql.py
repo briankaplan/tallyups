@@ -1107,6 +1107,17 @@ class MySQLReceiptDatabase:
                 index_migrations = [
                     ("idx_deleted", "CREATE INDEX idx_deleted ON transactions(deleted)"),
                     ("idx_submitted", "CREATE INDEX idx_submitted ON transactions(already_submitted)"),
+                    # High-impact indexes for common queries
+                    ("idx_chase_date", "CREATE INDEX idx_chase_date ON transactions(chase_date)"),
+                    ("idx_chase_description", "CREATE INDEX idx_chase_description ON transactions(chase_description(100))"),
+                    ("idx_chase_amount", "CREATE INDEX idx_chase_amount ON transactions(chase_amount)"),
+                    ("idx_r2_url", "CREATE INDEX idx_r2_url ON transactions(r2_url(200))"),
+                    ("idx_receipt_url", "CREATE INDEX idx_receipt_url ON transactions(receipt_url(200))"),
+                    ("idx_business_type", "CREATE INDEX idx_business_type ON transactions(business_type)"),
+                    ("idx_source", "CREATE INDEX idx_source ON transactions(source)"),
+                    # Composite indexes for common filter combinations
+                    ("idx_date_deleted", "CREATE INDEX idx_date_deleted ON transactions(chase_date, deleted)"),
+                    ("idx_has_receipt", "CREATE INDEX idx_has_receipt ON transactions(r2_url(50), receipt_url(50), receipt_file(50))"),
                 ]
 
                 # Get existing indexes
@@ -1203,6 +1214,34 @@ class MySQLReceiptDatabase:
                                 except Exception as e:
                                     if "Duplicate column" not in str(e):
                                         print(f"  ⚠️  incoming_receipts migration for {col_name}: {e}")
+
+                        # Add indexes for incoming_receipts
+                        incoming_index_migrations = [
+                            ("idx_inc_status", "CREATE INDEX idx_inc_status ON incoming_receipts(status)"),
+                            ("idx_inc_merchant", "CREATE INDEX idx_inc_merchant ON incoming_receipts(merchant(100))"),
+                            ("idx_inc_amount", "CREATE INDEX idx_inc_amount ON incoming_receipts(amount)"),
+                            ("idx_inc_receipt_date", "CREATE INDEX idx_inc_receipt_date ON incoming_receipts(receipt_date)"),
+                            ("idx_inc_received_date", "CREATE INDEX idx_inc_received_date ON incoming_receipts(received_date)"),
+                            ("idx_inc_gmail_account", "CREATE INDEX idx_inc_gmail_account ON incoming_receipts(gmail_account(50))"),
+                            ("idx_inc_from_email", "CREATE INDEX idx_inc_from_email ON incoming_receipts(from_email(100))"),
+                            ("idx_inc_receipt_image", "CREATE INDEX idx_inc_receipt_image ON incoming_receipts(receipt_image_url(200))"),
+                            # Composite indexes for common queries
+                            ("idx_inc_status_date", "CREATE INDEX idx_inc_status_date ON incoming_receipts(status, received_date)"),
+                            ("idx_inc_status_merchant", "CREATE INDEX idx_inc_status_merchant ON incoming_receipts(status, merchant(50))"),
+                        ]
+
+                        cursor.execute("SHOW INDEX FROM incoming_receipts")
+                        inc_existing_indexes = {row['Key_name'] for row in cursor.fetchall()}
+
+                        for idx_name, create_sql in incoming_index_migrations:
+                            if idx_name not in inc_existing_indexes:
+                                try:
+                                    cursor.execute(create_sql)
+                                    print(f"  ✅ Added incoming_receipts index: {idx_name}")
+                                except Exception as e:
+                                    if "Duplicate key name" not in str(e):
+                                        print(f"  ⚠️  Index migration for {idx_name}: {e}")
+
                 except Exception as e:
                     print(f"  ⚠️  incoming_receipts migration check: {e}")
 
