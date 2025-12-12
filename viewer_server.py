@@ -12196,30 +12196,53 @@ def reports_standalone_page(report_id):
         abort(503, "Reports require database mode")
 
     try:
-        expenses = db.get_report_expenses(report_id)
+        print(f"📄 Loading report page for: {report_id}", flush=True)
 
-        if not expenses:
-            abort(404, f"Report {report_id} not found")
-
-        # Get report metadata
-        reports = db.get_all_reports()
-        report_meta = next((r for r in reports if r["report_id"] == report_id), None)
+        # First, try to get report directly by ID
+        report_meta = db.get_report(report_id)
 
         if not report_meta:
-            abort(404, f"Report metadata not found for {report_id}")
+            # Fallback: search all reports
+            reports = db.get_all_reports()
+            print(f"📄 Available reports: {[r.get('report_id') for r in reports]}", flush=True)
+            report_meta = next((r for r in reports if r.get("report_id") == report_id), None)
 
-        report_name = report_meta.get("report_name", report_id)
+        if not report_meta:
+            print(f"📄 Report {report_id} not found in reports table", flush=True)
+            abort(404, f"Report {report_id} not found")
+
+        # Normalize field names (handle both 'report_name' and 'name', etc.)
+        report_name = report_meta.get("report_name") or report_meta.get("name") or report_id
         business_type = report_meta.get("business_type", "")
         created_at = report_meta.get("created_at", "")
+        total_from_meta = float(report_meta.get("total_amount") or 0)
+        count_from_meta = report_meta.get("expense_count") or 0
 
-        # Calculate totals
-        total_amount = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses)
-        receipt_count = sum(1 for e in expenses if e.get("receipt_file"))
+        print(f"📄 Found report metadata: {report_name} (business: {business_type})", flush=True)
+
+        # Get expenses linked to this report
+        expenses = db.get_report_expenses(report_id)
+        print(f"📄 Found {len(expenses)} expenses for report {report_id}", flush=True)
+
+        if not expenses and (total_from_meta > 0 or count_from_meta > 0):
+            # Report has metadata but expenses aren't linked - this might be a data issue
+            print(f"📄 WARNING: Report has {count_from_meta} expenses (${total_from_meta}) in metadata but none linked", flush=True)
+
+        # Calculate totals - use metadata if no expenses linked
+        if expenses:
+            total_amount = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses)
+            receipt_count = sum(1 for e in expenses if e.get("receipt_file"))
+        else:
+            total_amount = total_from_meta
+            receipt_count = 0
 
         # Get date range
         dates = [e.get("chase_date") for e in expenses if e.get("chase_date")]
         date_from = min(dates) if dates else ""
         date_to = max(dates) if dates else ""
+
+        # If no expenses, show a message
+        expense_count = len(expenses) if expenses else count_from_meta
 
         # Generate human notes for each expense
         for exp in expenses:
