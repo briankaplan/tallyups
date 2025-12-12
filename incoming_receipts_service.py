@@ -115,7 +115,7 @@ def convert_html_to_image(html_content: str) -> bytes:
                 browser = p.chromium.launch(headless=True)
             except Exception as e:
                 print(f"      ℹ️  Bundled browser not found, trying system chromium...")
-                # Look for system chromium/chrome
+                # Look for system chromium/chrome - include nix paths for Railway
                 chromium_paths = [
                     '/usr/bin/chromium',
                     '/usr/bin/chromium-browser',
@@ -126,11 +126,22 @@ def convert_html_to_image(html_content: str) -> bytes:
                     shutil.which('google-chrome'),
                 ]
 
+                # Also check nix store paths (Railway uses nixpacks)
+                import glob
+                nix_chromium = glob.glob('/nix/store/*-chromium-*/bin/chromium')
+                if nix_chromium:
+                    chromium_paths.extend(nix_chromium)
+                    print(f"      🔍 Found nix chromium: {nix_chromium}")
+
                 for chrome_path in chromium_paths:
                     if chrome_path and os.path.exists(chrome_path):
                         print(f"      🔧 Using system browser: {chrome_path}")
-                        browser = p.chromium.launch(headless=True, executable_path=chrome_path)
-                        break
+                        try:
+                            browser = p.chromium.launch(headless=True, executable_path=chrome_path)
+                            break
+                        except Exception as launch_err:
+                            print(f"      ⚠️  Failed to launch {chrome_path}: {launch_err}")
+                            continue
 
                 if not browser:
                     raise Exception(f"No chromium browser found: {e}")
@@ -197,7 +208,9 @@ def convert_html_to_image(html_content: str) -> bytes:
             return output.getvalue()
 
     except Exception as e:
+        import traceback
         print(f"      ⚠️  Playwright failed: {e}")
+        print(f"      📋 Traceback: {traceback.format_exc()}")
 
     # Fallback to text-based rendering if Playwright fails
     try:
