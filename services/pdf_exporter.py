@@ -48,16 +48,21 @@ except ImportError:
     HAS_PIL = False
 
 
-# Brand colors
-BRAND_GREEN = colors.HexColor('#00FF88')
-BRAND_GREEN_DARK = colors.HexColor('#00CC6B')
-DARK_BG = colors.HexColor('#0B0D10')
-PANEL_BG = colors.HexColor('#1A1A1A')
-TEXT_COLOR = colors.HexColor('#F0F0F0')
-MUTED_COLOR = colors.HexColor('#888888')
-SUCCESS_COLOR = colors.HexColor('#00FF88')
-WARNING_COLOR = colors.HexColor('#FFD85E')
-ERROR_COLOR = colors.HexColor('#FF4E6A')
+# Brand colors - only define if reportlab is available
+if HAS_REPORTLAB:
+    BRAND_GREEN = colors.HexColor('#00FF88')
+    BRAND_GREEN_DARK = colors.HexColor('#00CC6B')
+    DARK_BG = colors.HexColor('#0B0D10')
+    PANEL_BG = colors.HexColor('#1A1A1A')
+    TEXT_COLOR = colors.HexColor('#F0F0F0')
+    MUTED_COLOR = colors.HexColor('#888888')
+    SUCCESS_COLOR = colors.HexColor('#00FF88')
+    WARNING_COLOR = colors.HexColor('#FFD85E')
+    ERROR_COLOR = colors.HexColor('#FF4E6A')
+else:
+    # Stub values when reportlab not available
+    BRAND_GREEN = BRAND_GREEN_DARK = DARK_BG = PANEL_BG = None
+    TEXT_COLOR = MUTED_COLOR = SUCCESS_COLOR = WARNING_COLOR = ERROR_COLOR = None
 
 
 class PDFExporter:

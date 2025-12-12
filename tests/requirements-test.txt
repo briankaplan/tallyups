@@ -1,0 +1,50 @@
+# ReceiptAI Test Requirements
+# ===========================
+# Install with: pip install -r tests/requirements-test.txt
+
+# Core testing framework
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+pytest-timeout>=2.2.0
+pytest-xdist>=3.0.0  # Parallel test execution
+
+# Mocking and fixtures
+pytest-mock>=3.10.0
+responses>=0.23.0  # Mock HTTP requests
+
+# Performance testing
+pytest-benchmark>=4.0.0
+locust>=2.15.0  # Load testing
+
+# HTTP client for API tests
+requests>=2.31.0
+httpx>=0.24.0  # Async HTTP client
+
+# Image handling for tests
+Pillow>=10.0.0
+
+# Async support
+aiohttp>=3.8.0
+
+# Code quality (optional but recommended)
+flake8>=6.0.0
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.0.0
+
+# Security scanning
+bandit>=1.7.0
+safety>=2.3.0
+
+# Documentation coverage (optional)
+interrogate>=1.5.0
+
+# Property-based testing
+hypothesis>=6.82.0
+
+# Test data generation
+faker>=19.0.0
+
+# JSON schema validation
+jsonschema>=4.19.0
