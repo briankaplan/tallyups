@@ -2402,11 +2402,8 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
         <button class="btn-primary" onclick="smartSearchMissing()" title="Find missing receipts automatically using AI, Gmail, and iMessage">
           🔍 Find Receipts
         </button>
-        <button class="btn-ghost" onclick="processMerchantIntelligence()" title="Auto-categorize expenses using AI (merchant names, categories, descriptions)">
-          🏷️ Auto-Categorize
-        </button>
-        <button class="btn-ghost" onclick="batchGenerateAINotes()" title="Generate AI descriptions for transactions missing notes">
-          ✨ AI Notes
+        <button class="btn-ghost" onclick="autoProcessAll()" title="Auto-categorize AND generate AI descriptions in one step">
+          🤖 Auto-Process
         </button>
         <button class="btn-success" onclick="saveCSV()" title="Save all changes to database">
           💾 Save
@@ -3891,6 +3888,126 @@ async function undo() {
 }
 
 let batchProcessCancelled = false;
+
+// Combined Auto-Process: Categorize + AI Notes in one step
+async function autoProcessAll() {
+  const missingNotes = csvData.filter(r => !r['AI Note'] || r['AI Note'].trim() === '');
+  const noteCount = Math.min(missingNotes.length, 100);
+
+  if (!confirm(`Auto-Process ${csvData.length} transactions?\n\nStep 1: Merchant Intelligence\n- Normalize merchant names\n- Assign categories\n- Detect subscriptions\n- Match contacts from CRM\n\nStep 2: AI Notes\n- Generate ${noteCount} expense descriptions\n- Calendar context\n- Contact enrichment\n\nThis may take a few minutes.`)) {
+    return;
+  }
+
+  batchProcessCancelled = false;
+
+  // Show progress modal
+  const modal = document.getElementById('progress-modal');
+  modal.classList.add('active');
+  document.getElementById('progress-close-btn').style.display = 'none';
+  document.getElementById('progress-cancel-btn').style.display = 'block';
+  document.getElementById('progress-log').innerHTML = '<div style="color:var(--muted)">🤖 Starting Auto-Process...</div>';
+
+  try {
+    // PHASE 1: Merchant Intelligence
+    addProgressLog('\n📦 Phase 1: Merchant Intelligence...', 'ok');
+    updateProgress(0, 0, 0, 2);
+
+    const miResponse = await fetch('/process_mi', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({all: true})
+    });
+    const miResult = await miResponse.json();
+
+    if (miResult.ok) {
+      addProgressLog(`✓ ${miResult.message || 'Categorization complete'}`, 'ok');
+    } else {
+      addProgressLog(`⚠️ MI: ${miResult.message || 'Some issues'}`, 'warn');
+    }
+
+    if (batchProcessCancelled) {
+      addProgressLog('\n⚠️ Cancelled after Phase 1', 'bad');
+      return;
+    }
+
+    // Reload data after MI processing
+    await loadCSV();
+
+    // PHASE 2: AI Notes
+    addProgressLog('\n✨ Phase 2: AI Notes Generation...', 'ok');
+    updateProgress(1, 0, 50, 2);
+
+    // Find transactions still missing notes after MI
+    const stillMissingNotes = csvData.filter(r => !r['AI Note'] || r['AI Note'].trim() === '');
+    const indexes = stillMissingNotes.slice(0, 100).map(r => r._index);
+
+    if (indexes.length === 0) {
+      addProgressLog('✓ All transactions already have AI notes!', 'ok');
+    } else {
+      let processed = 0;
+      let success = 0;
+      const total = indexes.length;
+      const batchSize = 10;
+
+      addProgressLog(`Generating notes for ${total} transactions...`, 'ok');
+
+      for (let i = 0; i < indexes.length; i += batchSize) {
+        if (batchProcessCancelled) {
+          addProgressLog(`\n⚠️ Cancelled! Generated ${success} notes.`, 'bad');
+          break;
+        }
+
+        const batch = indexes.slice(i, i + batchSize);
+
+        try {
+          const res = await fetch('/api/notes/batch', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ indexes: batch, skip_existing: true })
+          });
+
+          const data = await res.json();
+
+          if (data.ok) {
+            for (const result of data.results || []) {
+              processed++;
+              const percent = 50 + Math.round((processed / total) * 50);
+              updateProgress(1 + (processed / total), success, percent, 2);
+
+              if (result.success) {
+                success++;
+                const row = csvData.find(r => r._index === result._index);
+                if (row) row['AI Note'] = result.note;
+              }
+            }
+          }
+        } catch (e) {
+          addProgressLog(`Batch error: ${e.message}`, 'bad');
+        }
+
+        if (i + batchSize < indexes.length && !batchProcessCancelled) {
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+
+      addProgressLog(`✓ Generated ${success} of ${total} AI notes`, 'ok');
+    }
+
+    // Final reload and refresh
+    addProgressLog('\n✅ Auto-Process Complete!', 'ok');
+    await loadCSV();
+    applyFilters();
+    renderTable();
+    showToast('Auto-Process complete!', '🤖');
+
+  } catch (e) {
+    addProgressLog(`\n❌ Error: ${e.message}`, 'bad');
+    showToast('Auto-Process error: ' + e.message, '❌');
+  } finally {
+    document.getElementById('progress-cancel-btn').style.display = 'none';
+    document.getElementById('progress-close-btn').style.display = 'block';
+  }
+}
 
 // Process all transactions through Merchant Intelligence
 async function processMerchantIntelligence() {
