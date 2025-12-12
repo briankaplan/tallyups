@@ -1234,6 +1234,7 @@ def extract_merchant_and_amount(subject, from_email, body_snippet):
         'starbucks': 'Starbucks',
         'chipotle': 'Chipotle',
         'sonic': 'Sonic',
+        'sonicdrivein': 'Sonic',
         'first watch': 'First Watch',
         'chick-fil-a': 'Chick-fil-A',
         'target': 'Target',
@@ -1241,9 +1242,106 @@ def extract_merchant_and_amount(subject, from_email, body_snippet):
         'costco': 'Costco',
         'home depot': 'Home Depot',
         'lowes': 'Lowes',
+        "lowe's": 'Lowes',
         'charles tyrwhitt': 'Charles Tyrwhitt',
+        'ctshirts': 'Charles Tyrwhitt',
         'kia': 'Kia',
+        'kia finance': 'Kia Finance',
+        'speedpay': 'Kia Finance',
         'cima solutions': 'Cima Solutions',
+        'midjourney': 'Midjourney',
+        'cursor': 'Cursor',
+        'github': 'GitHub',
+        'notion': 'Notion',
+        'linear': 'Linear',
+        'vercel': 'Vercel',
+        'railway': 'Railway',
+        'digitalocean': 'DigitalOcean',
+        'aws': 'AWS',
+        'google cloud': 'Google Cloud',
+        'microsoft': 'Microsoft',
+        'adobe': 'Adobe',
+        'figma': 'Figma',
+        'canva': 'Canva',
+        'dropbox': 'Dropbox',
+        'zoom': 'Zoom',
+        'slack': 'Slack',
+        'discord': 'Discord',
+        'twilio': 'Twilio',
+        'mailchimp': 'Mailchimp',
+        'squarespace': 'Squarespace',
+        'wix': 'Wix',
+        'godaddy': 'GoDaddy',
+        'namecheap': 'Namecheap',
+        'att': 'AT&T',
+        'verizon': 'Verizon',
+        't-mobile': 'T-Mobile',
+        'comcast': 'Comcast',
+        'xfinity': 'Xfinity',
+        'spectrum': 'Spectrum',
+        'cox': 'Cox',
+        'duke energy': 'Duke Energy',
+        'nashville electric': 'NES',
+        'piedmont': 'Piedmont Gas',
+    }
+
+    # Map sender domains to merchant names
+    domain_to_merchant = {
+        'apple.com': 'Apple',
+        'uber.com': 'Uber',
+        'lyft.com': 'Lyft',
+        'doordash.com': 'DoorDash',
+        'grubhub.com': 'Grubhub',
+        'postmates.com': 'Postmates',
+        'instacart.com': 'Instacart',
+        'amazon.com': 'Amazon',
+        'spotify.com': 'Spotify',
+        'netflix.com': 'Netflix',
+        'hulu.com': 'Hulu',
+        'disneyplus.com': 'Disney+',
+        'anthropic.com': 'Anthropic',
+        'openai.com': 'OpenAI',
+        'cloudflare.com': 'Cloudflare',
+        'stripe.com': 'Stripe',
+        'paypal.com': 'PayPal',
+        'venmo.com': 'Venmo',
+        'square.com': 'Square',
+        'squareup.com': 'Square',
+        'starbucks.com': 'Starbucks',
+        'chipotle.com': 'Chipotle',
+        'sonicdrivein.com': 'Sonic',
+        'firstwatch.com': 'First Watch',
+        'target.com': 'Target',
+        'walmart.com': 'Walmart',
+        'costco.com': 'Costco',
+        'homedepot.com': 'Home Depot',
+        'lowes.com': 'Lowes',
+        'ctshirts.com': 'Charles Tyrwhitt',
+        'kiafinance.com': 'Kia Finance',
+        'speedpay.com': 'Kia Finance',
+        'cimasolutions.com': 'Cima Solutions',
+        'midjourney.com': 'Midjourney',
+        'cursor.sh': 'Cursor',
+        'github.com': 'GitHub',
+        'notion.so': 'Notion',
+        'linear.app': 'Linear',
+        'vercel.com': 'Vercel',
+        'railway.app': 'Railway',
+        'digitalocean.com': 'DigitalOcean',
+        'aws.amazon.com': 'AWS',
+        'google.com': 'Google',
+        'microsoft.com': 'Microsoft',
+        'adobe.com': 'Adobe',
+        'figma.com': 'Figma',
+        'canva.com': 'Canva',
+        'dropbox.com': 'Dropbox',
+        'zoom.us': 'Zoom',
+        'slack.com': 'Slack',
+        'twilio.com': 'Twilio',
+        'mailchimp.com': 'Mailchimp',
+        'att.com': 'AT&T',
+        'verizon.com': 'Verizon',
+        't-mobile.com': 'T-Mobile',
     }
 
     # Check for known merchants in subject first
@@ -1274,16 +1372,27 @@ def extract_merchant_and_amount(subject, from_email, body_snippet):
                 if len(merchant) > 2:
                     break
 
-    # Extract from email domain (but not generic ones)
+    # Extract from email domain using domain_to_merchant mapping
     if not merchant and from_email:
-        domain = from_email.split('@')[-1] if '@' in from_email else ''
+        domain = from_email.split('@')[-1].lower() if '@' in from_email else ''
         generic_domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'me.com', 'aol.com']
-        if domain and domain not in generic_domains:
-            company = domain.split('.')[0].title()
-            # Handle some common patterns
-            company = company.replace('Noreply', '').replace('Receipt', '').replace('Invoice', '').strip()
-            if company and len(company) > 2:
-                merchant = company
+
+        # First check exact domain match
+        if domain in domain_to_merchant:
+            merchant = domain_to_merchant[domain]
+        elif domain and domain not in generic_domains:
+            # Try partial domain match (e.g., receipts.uber.com -> uber.com)
+            for d, m in domain_to_merchant.items():
+                if d in domain or domain.endswith('.' + d):
+                    merchant = m
+                    break
+
+            # Fallback: extract company from domain
+            if not merchant:
+                company = domain.split('.')[0].title()
+                company = company.replace('Noreply', '').replace('Receipt', '').replace('Invoice', '').replace('Mail', '').replace('Email', '').strip()
+                if company and len(company) > 2:
+                    merchant = company
 
     # ==========================================================
     # AMOUNT EXTRACTION
@@ -2831,7 +2940,8 @@ def aggressive_rematch_all():
 
     # Get all pending receipts without matches
     cursor.execute('''
-        SELECT id, subject, from_email, body_snippet, amount, merchant, receipt_date, email_date
+        SELECT id, subject, from_email, from_domain, body_snippet, amount, merchant,
+               receipt_date, received_date, created_at
         FROM incoming_receipts
         WHERE status = 'pending'
         AND (matched_transaction_id IS NULL OR matched_transaction_id = 0)
@@ -2854,18 +2964,39 @@ def aggressive_rematch_all():
         item_id = item['id']
         subject = item['subject'] or ''
         from_email = item['from_email'] or ''
+        from_domain = item['from_domain'] or ''
         body_snippet = item['body_snippet'] or ''
         current_amount = item['amount']
         current_merchant = item['merchant']
-        current_date = item['receipt_date'] or item['email_date']
+
+        # Use received_date (email date) as fallback
+        current_date = item['receipt_date']
+        email_date_str = item['received_date'] or ''
+
+        # Parse email date if available (format: "Fri, 15 Nov 2024 10:30:00 -0500")
+        email_date = None
+        if email_date_str:
+            try:
+                from email.utils import parsedate_to_datetime
+                email_date = parsedate_to_datetime(email_date_str).strftime('%Y-%m-%d')
+            except:
+                # Try ISO format
+                try:
+                    email_date = email_date_str[:10] if len(email_date_str) >= 10 else None
+                except:
+                    pass
 
         # Re-extract merchant, amount, and date with improved extraction
         new_merchant, new_amount, new_date = extract_merchant_and_amount(subject, from_email, body_snippet)
 
+        # IMPORTANT: Use email date as fallback when no date extracted
+        if not new_date and email_date:
+            new_date = email_date
+
         # Use new values if better than current
         merchant = new_merchant or current_merchant
         amount = new_amount if new_amount and new_amount > 0 else current_amount
-        receipt_date = new_date or (str(current_date)[:10] if current_date else None)
+        receipt_date = new_date or (str(current_date)[:10] if current_date else None) or email_date
 
         # Track what we updated
         updates = {}
