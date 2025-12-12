@@ -18838,6 +18838,15 @@ def generate_incoming_images():
         import fitz  # PyMuPDF
         import json
 
+        # Import the PROPER Playwright-based HTML screenshot function
+        try:
+            from incoming_receipts_service import convert_html_to_image as playwright_html_to_image
+            use_playwright = True
+            print("   ✅ Using Playwright for proper HTML screenshots")
+        except ImportError:
+            use_playwright = False
+            print("   ⚠️ Playwright not available, using fallback text rendering")
+
         def _get_gmail_service(account_email):
             """Get Gmail service for account"""
             creds, error = get_gmail_credentials_with_autorefresh(account_email)
@@ -18876,10 +18885,23 @@ def generate_incoming_images():
                 return None
 
         def _html_to_image(html_content):
-            """Convert HTML to image using PIL"""
+            """Convert HTML to image - uses Playwright for proper rendering when available"""
+            # Try Playwright first (proper browser-based screenshot)
+            if use_playwright:
+                try:
+                    result = playwright_html_to_image(html_content)
+                    if result:
+                        print("      📸 Playwright screenshot successful")
+                        return result
+                except Exception as e:
+                    print(f"      ⚠️ Playwright failed: {e}, trying fallback...")
+
+            # Fallback to PIL text rendering
             try:
                 from PIL import Image, ImageDraw, ImageFont
                 import re
+
+                print("      📝 Using text-based fallback rendering")
 
                 # Strip HTML tags
                 text = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
