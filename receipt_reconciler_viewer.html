@@ -9248,7 +9248,7 @@ function renderStats(stats) {
 // =============================================================================
 
 let reportPreviewData = [];
-let currentReportId = null;
+// currentReportId is declared earlier in the file
 
 async function loadReportPreview() {
   const businessType = document.getElementById('report-business-type').value;
@@ -10630,15 +10630,10 @@ if (filterSheet) {
 // REPORT PANEL FUNCTIONALITY
 // ============================================
 
-// Report state management
-let openReports = JSON.parse(localStorage.getItem('tallyups_open_reports') || '[]');
-let currentReportId = localStorage.getItem('tallyups_current_report') || null;
+// Report state management (openReports, currentReportId, reportTransactions declared earlier)
 let reportPanelVisible = false;
 let reportPanelMinimized = false;
 let reportPanelTab = 'items';
-
-// Transactions in current report (tracked by _index)
-let reportTransactions = new Map(); // reportId -> Set of transaction indices
 
 // Initialize reports from localStorage
 function initReportPanel() {
