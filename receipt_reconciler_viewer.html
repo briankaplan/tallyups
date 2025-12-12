@@ -10037,7 +10037,23 @@ async function submitCurrentReport() {
 
   const reportName = openReports.find(r => r.id === currentReportId)?.name || 'Report';
 
-  if (!confirm(`Submit "${reportName}" with ${indices.length} transactions?`)) return;
+  // Determine business type from transactions in the report
+  let businessType = 'Down Home'; // Default
+  if (indices.length > 0) {
+    const firstTx = filteredData.find(t => t._index === indices[0] || t.id === indices[0]);
+    if (firstTx) {
+      const bt = firstTx['Business Type'] || firstTx.business_type || '';
+      if (bt.toLowerCase().includes('mcr') || bt.toLowerCase().includes('rodeo') || bt.toLowerCase().includes('music city')) {
+        businessType = 'Music City Rodeo';
+      } else if (bt.toLowerCase().includes('personal')) {
+        businessType = 'Personal';
+      } else if (bt.toLowerCase().includes('em.co') || bt.toLowerCase().includes('emco')) {
+        businessType = 'EM.co';
+      }
+    }
+  }
+
+  if (!confirm(`Submit "${reportName}" (${businessType}) with ${indices.length} transactions?`)) return;
 
   try {
     showToast('Submitting report...', 'info');
@@ -10047,8 +10063,9 @@ async function submitCurrentReport() {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
-        name: reportName,
-        expenses: indices
+        report_name: reportName,
+        business_type: businessType,
+        expense_indexes: indices
       })
     });
 
