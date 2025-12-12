@@ -23803,22 +23803,23 @@ def api_reports_dashboard():
         report_count = 0
         reports_this_month = 0
         try:
+            # Query the 'reports' table (not expense_reports)
             cursor = db_execute(conn, db_type, '''
-                SELECT COUNT(*) as cnt FROM expense_reports WHERE status = 'submitted'
+                SELECT COUNT(*) as cnt FROM reports
             ''')
             row = cursor.fetchone()
             report_count = row['cnt'] if row else 0
             cursor.close()
 
             cursor = db_execute(conn, db_type, '''
-                SELECT COUNT(*) as cnt FROM expense_reports
-                WHERE status = 'submitted' AND created_at >= ?
+                SELECT COUNT(*) as cnt FROM reports
+                WHERE created_at >= ?
             ''', (current_month_start,))
             row = cursor.fetchone()
             reports_this_month = row['cnt'] if row else 0
             cursor.close()
-        except:
-            pass
+        except Exception as e:
+            print(f"Report count error: {e}")
 
         # ========== MONTHLY TREND (last 6 months) ==========
         monthly_trend = []
@@ -23911,25 +23912,29 @@ def api_reports_dashboard():
         # ========== RECENT REPORTS ==========
         recent_reports = []
         try:
+            # Query the 'reports' table (not expense_reports)
+            # Columns: report_id, report_name, business_type, expense_count, total_amount, status, submitted_at, created_at
             cursor = db_execute(conn, db_type, '''
                 SELECT
-                    er.report_id,
-                    er.name,
-                    er.status,
-                    er.total_amount,
-                    er.expense_count,
-                    er.created_at,
-                    er.submitted_at
-                FROM expense_reports er
-                ORDER BY er.created_at DESC
-                LIMIT 10
+                    report_id,
+                    report_name,
+                    business_type,
+                    status,
+                    total_amount,
+                    expense_count,
+                    created_at,
+                    submitted_at
+                FROM reports
+                ORDER BY created_at DESC
+                LIMIT 20
             ''')
 
             for row in cursor.fetchall():
                 recent_reports.append({
                     'report_id': row['report_id'],
-                    'name': row['name'],
-                    'status': row['status'],
+                    'name': row['report_name'],
+                    'business_type': row['business_type'],
+                    'status': row['status'] or 'draft',
                     'total_amount': float(row['total_amount'] or 0),
                     'expense_count': row['expense_count'] or 0,
                     'created_at': str(row['created_at']) if row['created_at'] else None,
@@ -23938,6 +23943,8 @@ def api_reports_dashboard():
             cursor.close()
         except Exception as e:
             print(f"Recent reports error: {e}")
+            import traceback
+            traceback.print_exc()
 
         return_db_connection(conn)
 
