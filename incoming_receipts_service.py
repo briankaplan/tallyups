@@ -94,18 +94,93 @@ def convert_pdf_to_image(pdf_bytes: bytes) -> bytes:
 
 def convert_html_to_image(html_content: str) -> bytes:
     """
-    Convert HTML email to image.
-    Uses simple approach: render key content as styled image.
+    Convert HTML email to image using Playwright browser rendering.
+    This captures the ACTUAL visual appearance of the email, not just text.
 
     Returns: JPG image bytes or None
     """
+    # Try Playwright first (best quality - actual browser rendering)
+    try:
+        from playwright.sync_api import sync_playwright
+
+        print("      📸 Using Playwright for HTML screenshot...")
+
+        with sync_playwright() as p:
+            # Launch headless browser
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page(viewport={'width': 800, 'height': 1200})
+
+            # Wrap HTML in a proper document structure with styling
+            wrapped_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body {{
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                        background: white;
+                        margin: 0;
+                        padding: 20px;
+                        max-width: 800px;
+                        line-height: 1.5;
+                        color: #333;
+                    }}
+                    img {{ max-width: 100%; height: auto; }}
+                    table {{ max-width: 100%; border-collapse: collapse; }}
+                    td, th {{ padding: 8px; border: 1px solid #ddd; }}
+                    a {{ color: #0066cc; }}
+                </style>
+            </head>
+            <body>
+                {html_content}
+            </body>
+            </html>
+            """
+
+            # Set content and wait for rendering
+            page.set_content(wrapped_html, wait_until='networkidle', timeout=10000)
+
+            # Wait a bit for any images/fonts to load
+            page.wait_for_timeout(500)
+
+            # Get the actual content height
+            body_height = page.evaluate('document.body.scrollHeight')
+
+            # Cap height at 3000px to avoid huge images
+            screenshot_height = min(body_height + 40, 3000)
+
+            # Take full-page screenshot
+            page.set_viewport_size({'width': 800, 'height': screenshot_height})
+            png_bytes = page.screenshot(type='png', full_page=True)
+
+            browser.close()
+
+            # Convert PNG to JPEG for smaller file size
+            from PIL import Image
+            img = Image.open(BytesIO(png_bytes))
+
+            # Ensure RGB mode (no alpha channel for JPEG)
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+
+            output = BytesIO()
+            img.save(output, format='JPEG', quality=90, optimize=True)
+
+            print(f"      ✅ Playwright screenshot: {len(output.getvalue())} bytes")
+            return output.getvalue()
+
+    except Exception as e:
+        print(f"      ⚠️  Playwright failed: {e}")
+
+    # Fallback to text-based rendering if Playwright fails
     try:
         from PIL import Image, ImageDraw, ImageFont
-
-        # Extract text content from HTML
         import re
 
-        # Remove style/script tags
+        print("      📝 Falling back to text-based rendering...")
+
+        # Extract text content from HTML
         html_clean = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
         html_clean = re.sub(r'<script[^>]*>.*?</script>', '', html_clean, flags=re.DOTALL | re.IGNORECASE)
 
@@ -126,7 +201,7 @@ def convert_html_to_image(html_content: str) -> bytes:
 
         # Clean up whitespace
         lines = [line.strip() for line in text.split('\n') if line.strip()]
-        text = '\n'.join(lines[:100])  # Limit to 100 lines
+        text = '\n'.join(lines[:100])
 
         if len(text) < 20:
             return None
@@ -135,16 +210,12 @@ def convert_html_to_image(html_content: str) -> bytes:
         width = 800
         padding = 40
         line_height = 20
-
-        # Calculate height based on content
         num_lines = len(text.split('\n'))
         height = max(400, min(2000, num_lines * line_height + padding * 2))
 
-        # Create white background
         img = Image.new('RGB', (width, height), 'white')
         draw = ImageDraw.Draw(img)
 
-        # Try to use a good font, fall back to default
         try:
             font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
         except:
@@ -153,18 +224,15 @@ def convert_html_to_image(html_content: str) -> bytes:
             except:
                 font = ImageFont.load_default()
 
-        # Draw text
         y = padding
         for line in text.split('\n')[:100]:
             if y > height - padding:
                 break
-            # Truncate long lines
             if len(line) > 90:
                 line = line[:87] + '...'
             draw.text((padding, y), line, fill='black', font=font)
             y += line_height
 
-        # Convert to JPEG bytes
         output = BytesIO()
         img.save(output, format='JPEG', quality=85)
         return output.getvalue()
@@ -759,27 +827,88 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
 
 def extract_amount_from_text(text):
     """
-    Extract dollar amount from text using regex patterns
+    Extract dollar amount from text using regex patterns.
+    ENHANCED: Better patterns, multiple strategies, and smart selection.
     Returns: float amount or None
     """
     if not text:
         return None
 
-    # Common patterns for amounts
-    patterns = [
-        r'\$\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',  # $199.00, $1,234.56
-        r'(?:total|amount|charged|price|cost):\s*\$?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',  # Total: $199.00
-        r'(?:USD|usd)\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',  # USD 199.00
-        r'(\d{1,3}(?:,\d{3})*\.\d{2})\s*(?:USD|usd)',  # 199.00 USD
+    # Normalize text
+    text = text.replace('\n', ' ').replace('\r', ' ')
+
+    # PRIORITY 1: Look for explicit total/charged/amount labels (most reliable)
+    priority_patterns = [
+        # "Total: $XX.XX" or "Total $XX.XX" or "Total Amount: $XX.XX"
+        r'(?:total|grand\s*total|order\s*total|amount\s*due|amount\s*charged|you\s*paid|payment\s*total|charge\s*total|transaction\s*amount)[\s:]*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2})',
+        # "Charged $XX.XX" or "You were charged $XX.XX"
+        r'(?:charged|billed|debited)[\s:]*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2})',
+        # "$XX.XX was charged/debited"
+        r'\$\s*(\d{1,3}(?:,\d{3})*\.\d{2})\s*(?:was\s*)?(?:charged|debited|billed)',
+        # "Payment of $XX.XX"
+        r'payment\s*(?:of|for)?\s*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2})',
+        # Amount in subject line patterns: "Your $XX.XX purchase" or "Receipt for $XX.XX"
+        r'(?:receipt|order|purchase|payment|charge)\s*(?:for|of)?\s*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2})',
     ]
 
-    for pattern in patterns:
+    for pattern in priority_patterns:
         matches = re.findall(pattern, text, re.IGNORECASE)
         if matches:
-            # Clean and convert first match
-            amount_str = matches[0].replace(',', '')
+            # Take the LAST match (usually the final total after subtotals)
+            amount_str = matches[-1].replace(',', '')
             try:
-                return float(amount_str)
+                amount = float(amount_str)
+                if 0.01 <= amount <= 50000:  # Sanity check
+                    return amount
+            except:
+                continue
+
+    # PRIORITY 2: Standard dollar amounts with context
+    context_patterns = [
+        r'\$\s*(\d{1,3}(?:,\d{3})*\.\d{2})',  # $199.00, $1,234.56
+        r'USD\s*(\d{1,3}(?:,\d{3})*\.\d{2})',  # USD 199.00
+        r'(\d{1,3}(?:,\d{3})*\.\d{2})\s*USD',  # 199.00 USD
+    ]
+
+    all_amounts = []
+    for pattern in context_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        for match in matches:
+            amount_str = match.replace(',', '')
+            try:
+                amount = float(amount_str)
+                if 0.01 <= amount <= 50000:
+                    all_amounts.append(amount)
+            except:
+                continue
+
+    if all_amounts:
+        # If we found multiple amounts, prefer:
+        # 1. The last occurrence (usually the total)
+        # 2. Unless there's a much larger amount (likely the total)
+        if len(all_amounts) == 1:
+            return all_amounts[0]
+
+        # Find the largest amount (likely the total)
+        max_amount = max(all_amounts)
+        # If the last amount is close to the max, use the last one
+        last_amount = all_amounts[-1]
+        if last_amount >= max_amount * 0.9:
+            return last_amount
+        return max_amount
+
+    # PRIORITY 3: Amounts without decimal (less reliable)
+    whole_patterns = [
+        r'(?:total|charged|amount)[\s:]*\$?\s*(\d{1,5})',  # Total: $199 or Total: 199
+    ]
+
+    for pattern in whole_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            try:
+                amount = float(matches[-1])
+                if 1 <= amount <= 50000:
+                    return amount
             except:
                 continue
 
@@ -1086,87 +1215,160 @@ def find_matching_transaction(merchant, amount, transaction_date):
     Check if a similar transaction already exists in the database (MySQL)
     Returns: (transaction_id, has_receipt, needs_receipt)
 
-    Enhanced matching logic:
-    1. First tries to match by amount + date range (strongest signal for subscriptions)
-    2. Falls back to merchant name + date range
-    3. Scores matches to pick the best one
+    ENHANCED matching logic with scoring:
+    1. Exact amount match within date range (highest priority for subscriptions)
+    2. Fuzzy merchant name matching with multiple strategies
+    3. Scoring system to pick the best match
     """
-    if not merchant:
+    if not merchant and not amount:
         return None, False, False
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Search for similar transactions within 7 days
+    # Determine date range
     if transaction_date:
         try:
             date_obj = datetime.fromisoformat(transaction_date.split('T')[0])
-            date_min = (date_obj - timedelta(days=7)).strftime('%Y-%m-%d')
-            date_max = (date_obj + timedelta(days=7)).strftime('%Y-%m-%d')
+            # Use asymmetric window: receipts usually come AFTER the charge
+            date_min = (date_obj - timedelta(days=3)).strftime('%Y-%m-%d')
+            date_max = (date_obj + timedelta(days=10)).strftime('%Y-%m-%d')
         except:
             date_min = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
             date_max = datetime.now().strftime('%Y-%m-%d')
     else:
+        # No date provided - search recent transactions
         date_min = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
         date_max = datetime.now().strftime('%Y-%m-%d')
 
-    # FIRST: Try exact amount match within date range (best for subscriptions)
+    # Normalize merchant name for matching
+    merchant_lower = (merchant or '').lower().strip()
+    # Extract key words (remove common words)
+    stop_words = {'the', 'inc', 'llc', 'ltd', 'corp', 'co', 'company', 'store', 'shop', 'online', 'www', 'com'}
+    merchant_words = set(w for w in re.split(r'[\s\.\-\_\*]+', merchant_lower) if len(w) > 2 and w not in stop_words)
+
     best_match = None
+    best_score = 0
+
+    # STRATEGY 1: Exact amount match (highest confidence for subscriptions)
     if amount and amount > 0:
+        # Allow small tolerance for rounding (within 1 cent)
         cursor.execute('''
-            SELECT _index, chase_description, chase_amount, chase_date, receipt_file
+            SELECT _index, chase_description, chase_amount, chase_date, receipt_file, mi_merchant
             FROM transactions
             WHERE ABS(chase_amount - %s) < 0.02
               AND chase_date BETWEEN %s AND %s
+              AND (receipt_file IS NULL OR receipt_file = '' OR receipt_file = 'None')
             ORDER BY ABS(DATEDIFF(chase_date, %s)) ASC
-            LIMIT 5
+            LIMIT 10
         ''', (amount, date_min, date_max, transaction_date or date_max))
 
         amount_matches = cursor.fetchall()
         for match in amount_matches:
             match_desc = str(match['chase_description'] or '').lower()
-            merchant_lower = merchant.lower()
-            # Check if merchant name is somewhat similar
-            if merchant_lower in match_desc or match_desc in merchant_lower:
-                best_match = match
-                break
-            # Check for common words
-            merchant_words = set(merchant_lower.split())
-            desc_words = set(match_desc.split())
-            if merchant_words & desc_words:  # Any common words
-                best_match = match
-                break
+            mi_merchant = str(match.get('mi_merchant') or '').lower()
+            match_amount = float(match['chase_amount'] or 0)
 
-    # SECOND: Try merchant name match if no amount match
-    if not best_match:
-        merchant_pattern = f'%{merchant}%'
-        cursor.execute('''
-            SELECT _index, chase_description, chase_amount, chase_date, receipt_file
-            FROM transactions
-            WHERE chase_description LIKE %s
-              AND chase_date BETWEEN %s AND %s
-            ORDER BY chase_date DESC
-            LIMIT 1
-        ''', (merchant_pattern, date_min, date_max))
-        best_match = cursor.fetchone()
+            score = 50  # Base score for exact amount match
+
+            # Boost score for merchant name similarity
+            combined_desc = f"{match_desc} {mi_merchant}"
+
+            # Direct substring match (very strong signal)
+            if merchant_lower and len(merchant_lower) >= 3:
+                if merchant_lower in combined_desc:
+                    score += 40
+                elif any(word in combined_desc for word in merchant_words if len(word) >= 4):
+                    score += 30
+
+            # Word overlap matching
+            desc_words = set(w for w in re.split(r'[\s\.\-\_\*]+', combined_desc) if len(w) > 2 and w not in stop_words)
+            common_words = merchant_words & desc_words
+            if common_words:
+                score += len(common_words) * 10
+
+            # Penalize if date is far from receipt date
+            if transaction_date and match.get('chase_date'):
+                try:
+                    match_date = match['chase_date']
+                    if isinstance(match_date, str):
+                        match_date = datetime.fromisoformat(match_date.split('T')[0])
+                    days_diff = abs((date_obj - match_date).days) if isinstance(match_date, datetime) else abs((date_obj - datetime.combine(match_date, datetime.min.time())).days)
+                    score -= days_diff * 2  # Penalize 2 points per day difference
+                except:
+                    pass
+
+            if score > best_score:
+                best_score = score
+                best_match = match
+
+    # STRATEGY 2: Merchant name fuzzy match (if no good amount match)
+    if best_score < 60 and merchant_lower and len(merchant_lower) >= 3:
+        # Try multiple search patterns
+        search_patterns = []
+
+        # Exact merchant name
+        search_patterns.append(f'%{merchant_lower}%')
+
+        # First significant word
+        if merchant_words:
+            primary_word = max(merchant_words, key=len) if merchant_words else None
+            if primary_word and len(primary_word) >= 4:
+                search_patterns.append(f'%{primary_word}%')
+
+        for pattern in search_patterns:
+            cursor.execute('''
+                SELECT _index, chase_description, chase_amount, chase_date, receipt_file, mi_merchant
+                FROM transactions
+                WHERE (LOWER(chase_description) LIKE %s OR LOWER(mi_merchant) LIKE %s)
+                  AND chase_date BETWEEN %s AND %s
+                  AND (receipt_file IS NULL OR receipt_file = '' OR receipt_file = 'None')
+                ORDER BY chase_date DESC
+                LIMIT 5
+            ''', (pattern, pattern, date_min, date_max))
+
+            name_matches = cursor.fetchall()
+            for match in name_matches:
+                match_amount = float(match['chase_amount'] or 0)
+                score = 30  # Base score for name match
+
+                # Boost significantly if amount also matches
+                if amount and match_amount:
+                    diff = abs(amount - match_amount)
+                    diff_pct = diff / max(match_amount, 0.01) * 100
+
+                    if diff < 0.02:  # Exact match
+                        score += 50
+                    elif diff_pct < 1:  # Within 1%
+                        score += 40
+                    elif diff_pct < 5:  # Within 5%
+                        score += 25
+                    elif diff_pct < 10:  # Within 10%
+                        score += 10
+
+                if score > best_score:
+                    best_score = score
+                    best_match = match
 
     conn.close()
 
-    if best_match:
-        # DictCursor returns dict, so access by key
+    if best_match and best_score >= 40:  # Minimum confidence threshold
         trans_id = best_match['_index']
         trans_amount = best_match['chase_amount']
         receipt_file = best_match.get('receipt_file', '')
-        has_receipt = receipt_file and str(receipt_file).strip() != ''
+        has_receipt = receipt_file and str(receipt_file).strip() not in ('', 'None', 'null')
 
-        # Check amount match (within 5% or $0.50 for small amounts)
+        # Determine if this is a good match that needs a receipt
         amount_match = False
         if amount and trans_amount:
             diff = abs(amount - float(trans_amount))
             diff_pct = diff / max(float(trans_amount), 0.01) * 100
-            amount_match = diff_pct < 5 or diff < 0.50
+            amount_match = diff_pct < 10 or diff < 1.00  # More lenient threshold
 
-        return trans_id, has_receipt, (not has_receipt and amount_match)
+        needs_receipt = not has_receipt and (amount_match or best_score >= 60)
+
+        print(f"      🎯 Match found: {best_match.get('chase_description', 'Unknown')[:40]} | Score: {best_score} | Amount: ${trans_amount}")
+        return trans_id, has_receipt, needs_receipt
 
     return None, False, False
 
