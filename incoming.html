@@ -1437,7 +1437,14 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
     font-size: 11px;
     border-radius: 8px;
   }
+  /* Show key action buttons on mobile, hide others */
   .controls .btn-ghost.btn-sm { display: none; }
+  .controls .btn-ghost.btn-sm[onclick*="cleanSpam"],
+  .controls .btn-ghost.btn-sm[onclick*="regenerateImages"] {
+    display: inline-flex;
+    font-size: 10px;
+    padding: 6px 8px;
+  }
   .controls .btn-primary {
     padding: 8px 12px;
   }
