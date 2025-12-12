@@ -28,7 +28,15 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from PIL import Image
-from pdf2image import convert_from_path
+
+# PDF to image conversion (optional - requires poppler)
+try:
+    from pdf2image import convert_from_path
+    PDF2IMAGE_AVAILABLE = True
+except ImportError:
+    PDF2IMAGE_AVAILABLE = False
+    convert_from_path = None
+    print("⚠️  pdf2image not available - PDF processing will use PyMuPDF fallback")
 
 # Import existing utilities
 try:
@@ -335,8 +343,22 @@ IMPORTANT:
         path = Path(image_path)
 
         if path.suffix.lower() == '.pdf':
-            images = convert_from_path(str(path))
-            return images[0].convert("RGB")
+            # Try pdf2image first, fall back to PyMuPDF
+            if PDF2IMAGE_AVAILABLE and convert_from_path:
+                images = convert_from_path(str(path))
+                return images[0].convert("RGB")
+            else:
+                # Fallback to PyMuPDF
+                try:
+                    import fitz  # PyMuPDF
+                    doc = fitz.open(str(path))
+                    page = doc[0]
+                    pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for quality
+                    img_data = pix.tobytes("png")
+                    doc.close()
+                    return Image.open(io.BytesIO(img_data)).convert("RGB")
+                except ImportError:
+                    raise RuntimeError("Neither pdf2image nor PyMuPDF available for PDF processing")
         else:
             return Image.open(path).convert("RGB")
 

@@ -1564,6 +1564,11 @@ def save_receipt_meta():
         print(f"📑 Saved receipt metadata for {len(receipt_meta_cache)} files to MySQL")
     except Exception as e:
         print(f"⚠️ Could not save receipt metadata: {e}")
+        # Ensure connection is returned even on error
+        try:
+            return_db_connection(conn)
+        except Exception:
+            pass
 
 
 def encode_image_base64(path: Path) -> str:
@@ -3097,7 +3102,7 @@ def debug_receipt_stats():
 @login_required
 def debug_transaction(idx):
     """Debug endpoint to test transaction lookup"""
-    result = {"idx": idx, "USE_DATABASE": USE_DATABASE, "USE_SQLITE": USE_SQLITE, "db_available": db is not None}
+    result = {"idx": idx, "USE_DATABASE": USE_DATABASE, "db_available": db is not None}
 
     if USE_DATABASE and db:
         try:
@@ -6541,7 +6546,8 @@ def atlas_contacts():
             else:
                 cursor.execute("SELECT COUNT(*) as total FROM contacts")
 
-            total = cursor.fetchone()['total']
+            result = cursor.fetchone()
+            total = result['total'] if result else 0
 
             # Format contacts for UI
             formatted = []
@@ -18299,7 +18305,8 @@ def clear_pending_incoming_receipts():
 
         # Get total count
         cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM incoming_receipts WHERE status = 'pending'")
-        count = cursor.fetchone()[0]
+        result = cursor.fetchone()
+        count = result[0] if result else 0
 
         # Delete R2 images
         r2_deleted = 0
@@ -18884,7 +18891,7 @@ def generate_incoming_images():
 
                 try:
                     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-                except:
+                except Exception:
                     font = ImageFont.load_default()
 
                 y = 40
@@ -18954,7 +18961,7 @@ def generate_incoming_images():
                 # Try attachments first
                 try:
                     attachments = json.loads(attachments_str) if attachments_str else []
-                except:
+                except (json.JSONDecodeError, TypeError):
                     attachments = []
 
                 for att in attachments:

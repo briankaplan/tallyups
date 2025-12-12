@@ -281,6 +281,41 @@
       justify-content: space-between;
     }
 
+    /* Top Navigation Links */
+    .nav-links {
+      display: none;
+      gap: 4px;
+      margin-left: auto;
+      margin-right: 16px;
+    }
+    @media (min-width: 1024px) {
+      .nav-links { display: flex; }
+    }
+    .nav-link-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-link-btn:hover {
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--text);
+    }
+    .nav-link-btn.active {
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--accent);
+      border-color: rgba(0, 255, 136, 0.2);
+    }
+    .nav-link-btn svg { width: 16px; height: 16px; }
+
     .logo {
       display: flex;
       align-items: center;
@@ -347,7 +382,7 @@
     .main {
       height: 100%;
       padding-top: calc(var(--safe-top) + 64px);
-      padding-bottom: calc(70px + var(--safe-bottom));
+      padding-bottom: calc(20px + var(--safe-bottom));
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
@@ -850,48 +885,7 @@
       flex: 1;
     }
 
-    /* Bottom Navigation */
-    .bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: calc(70px + var(--safe-bottom));
-      background: var(--bg-card);
-      border-top: 1px solid var(--border);
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-around;
-      padding-top: 10px;
-      z-index: 100;
-    }
-
-    .nav-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 10px 24px;
-      color: var(--text-dim);
-      text-decoration: none;
-      transition: color 0.2s;
-      position: relative;
-    }
-
-    .nav-item.active {
-      color: var(--accent);
-    }
-
-    .nav-item svg {
-      width: 26px;
-      height: 26px;
-    }
-
-    .nav-item span {
-      font-size: 11px;
-      font-weight: 700;
-    }
-
+    
     /* Processing Overlay */
     .processing-overlay {
       position: fixed;
@@ -2455,6 +2449,35 @@
         </div>
         Tallyups
       </div>
+
+      <!-- Desktop Navigation Links -->
+      <nav class="nav-links">
+        <a href="/" class="nav-link-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Home
+        </a>
+        <a href="/viewer" class="nav-link-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Reconcile
+        </a>
+        <a href="/library" class="nav-link-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Library
+        </a>
+        <a href="/scanner" class="nav-link-btn active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Scan
+        </a>
+        <a href="/incoming" class="nav-link-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+          Inbox
+        </a>
+        <a href="/reports" class="nav-link-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Reports
+        </a>
+      </nav>
+
       <div class="status-pill" id="status-pill">
         <span class="status-dot" id="status-dot"></span>
         <span id="status-text">Ready</span>
@@ -2728,10 +2751,10 @@
           </div>
           <div class="split-options" id="split-options">
             <div class="split-chip active" data-biz="Down Home" onclick="selectSplit(this)">
-              🏠 DH <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent(this)">
+              🏠 DH <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent('Down Home', this.value)">
             </div>
             <div class="split-chip active" data-biz="Music City Rodeo" onclick="selectSplit(this)">
-              🎸 MCR <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent(this)">
+              🎸 MCR <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent('Music City Rodeo', this.value)">
             </div>
           </div>
         </div>
@@ -2850,65 +2873,6 @@
       <div class="history-list" id="history-list"></div>
     </section>
   </main>
-
-  <!-- Bottom Navigation -->
-  <nav class="bottom-nav">
-    <a href="/" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-        <polyline points="9 22 9 12 15 12 15 22"/>
-      </svg>
-      <span>Home</span>
-    </a>
-    <a href="/viewer" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M9 11l3 3L22 4"/>
-        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-      </svg>
-      <span>Reconcile</span>
-    </a>
-    <a href="/library" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="7" height="7"/>
-        <rect x="14" y="3" width="7" height="7"/>
-        <rect x="14" y="14" width="7" height="7"/>
-        <rect x="3" y="14" width="7" height="7"/>
-      </svg>
-      <span>Library</span>
-    </a>
-    <a href="/scanner" class="nav-item active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-      <span>Scan</span>
-    </a>
-    <a href="/incoming" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
-        <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
-      </svg>
-      <span>Inbox</span>
-    </a>
-    <a href="/reports" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-        <line x1="16" y1="13" x2="8" y2="13"/>
-        <line x1="16" y1="17" x2="8" y2="17"/>
-      </svg>
-      <span>Reports</span>
-    </a>
-    <a href="/contacts" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-        <path d="M16 3.13a4 4 0 010 7.75"/>
-      </svg>
-      <span>Contacts</span>
-    </a>
-  </nav>
 
   <!-- Processing Overlay -->
   <div class="processing-overlay" id="processing-overlay">
