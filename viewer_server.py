@@ -16729,6 +16729,7 @@ def accept_incoming_receipt():
         is_subscription = get_col('is_subscription')
         subject = get_col('subject', merchant)
         notes_from_db = get_col('notes')
+        ai_notes = get_col('ai_notes')  # AI-generated notes from receipt analysis
 
         if description:
             notes.append(description)
@@ -16859,11 +16860,11 @@ def accept_incoming_receipt():
             cursor = db_execute(conn, db_type, '''
                 INSERT INTO transactions (
                     _index, chase_description, chase_amount, chase_date,
-                    business_type, review_status, notes,
+                    business_type, review_status, notes, ai_note,
                     receipt_file, receipt_url, source,
                     is_refund, is_subscription, incoming_category, from_domain, category
-                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, 'incoming_receipt', ?, ?, ?, ?, ?)
-            ''', (next_index, merchant, amount, trans_date, business_type, notes_text, receipt_file_str, receipt_url_str,
+                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, ?, 'incoming_receipt', ?, ?, ?, ?, ?)
+            ''', (next_index, merchant, amount, trans_date, business_type, notes_text, ai_notes, receipt_file_str, receipt_url_str,
                   is_refund, is_subscription, incoming_category, from_domain, incoming_category))
 
             transaction_id = next_index
@@ -16905,13 +16906,15 @@ def accept_incoming_receipt():
                 'Business Type': business_type,
                 'Review Status': 'accepted',
                 'notes': notes_text,
+                'AI Note': ai_notes or '',  # AI-generated expense description
                 'Receipt File': receipt_file_str,
                 'receipt_url': receipt_url_str,
                 'source': 'incoming_receipt',
                 'is_refund': is_refund,
                 'is_subscription': is_subscription,
                 'incoming_category': incoming_category,
-                'from_domain': from_domain
+                'from_domain': from_domain,
+                'category': incoming_category  # Also set category
             }
             # Add missing columns with empty values
             for col in df.columns:
