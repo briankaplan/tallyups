@@ -16,8 +16,11 @@ import base64
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import requests
+
+if TYPE_CHECKING:
+    from reportlab.graphics.shapes import Drawing
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +198,7 @@ class PDFExporter:
             logger.debug(f"Could not fetch receipt thumbnail: {e}")
             return None
 
-    def _create_pie_chart(self, data: List[Tuple[str, float]], title: str = "") -> Drawing:
+    def _create_pie_chart(self, data: List[Tuple[str, float]], title: str = "") -> 'Drawing':
         """Create a pie chart drawing."""
         drawing = Drawing(300, 200)
 
