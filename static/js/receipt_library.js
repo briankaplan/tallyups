@@ -37,7 +37,7 @@
 
     // Pagination for virtual scrolling
     page: 1,
-    pageSize: 50,
+    pageSize: 200,  // Increased from 50 for faster loading
     hasMore: true,
     isLoading: false,
 

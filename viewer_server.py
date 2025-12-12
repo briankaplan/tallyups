@@ -14262,7 +14262,7 @@ def get_library_receipts():
     - amount_max: maximum amount
     - sort: sort field ('date', 'amount', 'merchant')
     - order: sort order ('asc', 'desc')
-    - limit: max results (default 500)
+    - limit: max results (default 1000, increased for better performance)
     - offset: pagination offset
     - has_image: 'true' (default) to only show receipts with images, 'false' to show all
     - include_incoming: 'true' (default) to include incoming receipts, 'false' for transactions only
@@ -14298,7 +14298,7 @@ def get_library_receipts():
             sort_field = sort_param
             sort_order = request.args.get('order', 'desc')
 
-        limit = int(request.args.get('limit', 500))
+        limit = int(request.args.get('limit', 1000))  # Increased from 500 for better loading
         # Support both 'offset' and 'page' for pagination
         page = int(request.args.get('page', 1))
         offset = int(request.args.get('offset', (page - 1) * limit))

@@ -2288,7 +2288,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadReceipts() {
   try {
-    const response = await fetch('/api/incoming/receipts?status=all&limit=500', {
+    const response = await fetch('/api/incoming/receipts?status=all&limit=1000', {
       credentials: 'include'
     });
     const data = await response.json();
