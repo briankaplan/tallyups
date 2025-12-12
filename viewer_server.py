@@ -14271,21 +14271,36 @@ def get_library_receipts():
         if not USE_DATABASE or not db:
             return jsonify({'ok': False, 'error': 'Database not available'}), 500
 
-        # Parse query params
+        # Parse query params - support both old and new param names for compatibility
         source = request.args.get('source', 'all')
-        search = request.args.get('search', '').strip()
+        # Support both 'search' and 'q' for search query
+        search = request.args.get('search', '') or request.args.get('q', '')
+        search = search.strip()
         date_from = request.args.get('date_from', '')
         date_to = request.args.get('date_to', '')
         amount_min = request.args.get('amount_min', '')
         amount_max = request.args.get('amount_max', '')
-        sort_field = request.args.get('sort', 'date')
-        sort_order = request.args.get('order', 'desc')
+
+        # Handle sort - support both 'sort=date' with 'order=desc' AND 'sort=date_desc' format
+        sort_param = request.args.get('sort', 'date_desc')
+        if '_' in sort_param:
+            # New format: date_desc, amount_asc, merchant_asc
+            parts = sort_param.rsplit('_', 1)
+            sort_field = parts[0]
+            sort_order = parts[1] if len(parts) > 1 else 'desc'
+        else:
+            sort_field = sort_param
+            sort_order = request.args.get('order', 'desc')
+
         limit = int(request.args.get('limit', 500))
-        offset = int(request.args.get('offset', 0))
+        # Support both 'offset' and 'page' for pagination
+        page = int(request.args.get('page', 1))
+        offset = int(request.args.get('offset', (page - 1) * limit))
+
         has_image = request.args.get('has_image', 'true').lower() != 'false'
         include_incoming = request.args.get('include_incoming', 'true').lower() != 'false'
-        # New status filters: 'all', 'matched', 'waiting', 'verified', 'needs_review', 'mismatch', 'unverified', 'has_ocr'
-        verification_filter = request.args.get('verification', 'all')
+        # Support both 'verification' and 'status' for filter
+        verification_filter = request.args.get('verification', '') or request.args.get('status', 'all')
         match_status = request.args.get('match_status', 'all')  # 'all', 'matched', 'waiting'
 
         conn, db_type = get_db_connection()
@@ -14345,7 +14360,7 @@ def get_library_receipts():
                 'amount': float(amount or 0),
                 'date': str(date_val),
                 'receipt_url': receipt_image,
-                'thumbnail': receipt_image,
+                'thumbnail_url': tx.get('thumbnail_url') or receipt_image,
                 'source': receipt_source,
                 'business_type': tx.get('business_type') or 'Personal',
                 'notes': tx.get('notes') or '',
@@ -14455,6 +14470,9 @@ def get_library_receipts():
                     else:
                         inc_verification = 'unverified'
 
+                    # Get thumbnail or fall back to receipt image
+                    thumbnail = inc.get('thumbnail_url') or inc.get('receipt_image_url') or receipt_file
+
                     receipt = {
                         'id': f"inc_{inc.get('id')}",
                         'type': 'incoming',
@@ -14462,8 +14480,8 @@ def get_library_receipts():
                         'merchant': merchant,
                         'amount': float(inc.get('amount') or 0),
                         'date': str(receipt_date),
-                        'receipt_url': receipt_file,
-                        'thumbnail': receipt_file,
+                        'receipt_url': inc.get('receipt_image_url') or receipt_file,
+                        'thumbnail_url': thumbnail,
                         'source': receipt_source,
                         'business_type': inc.get('business_type') or 'Personal',
                         'notes': inc.get('subject') or '',
@@ -14603,12 +14621,15 @@ def get_library_receipts():
         total = len(all_receipts)
 
         # Apply pagination
-        all_receipts = all_receipts[offset:offset + limit]
+        paginated_receipts = all_receipts[offset:offset + limit]
+        has_more = (offset + limit) < total
 
         return jsonify({
             'ok': True,
-            'receipts': all_receipts,
+            'receipts': paginated_receipts,
             'total': total,
+            'has_more': has_more,
+            'page': page,
             'source_counts': source_counts,
             'verification_counts': verification_counts,
             'match_counts': match_counts,
