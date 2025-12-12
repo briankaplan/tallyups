@@ -17182,9 +17182,15 @@ def rematch_all_inbox():
 
 
 @app.route("/api/incoming/regenerate-screenshot/<int:receipt_id>", methods=["POST"])
-@login_required
 def regenerate_single_screenshot(receipt_id):
     """Regenerate screenshot for a specific receipt"""
+    # Allow admin key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
     try:
         from incoming_receipts_service import regenerate_screenshot
         result = regenerate_screenshot(receipt_id)
