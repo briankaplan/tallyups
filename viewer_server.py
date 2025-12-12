@@ -17223,9 +17223,15 @@ def regenerate_small_images():
 
 
 @app.route("/api/incoming/regenerate-missing-images", methods=["POST"])
-@login_required
 def regenerate_missing_images():
     """Find and regenerate screenshots for receipts with no image URL"""
+    # Allow admin key or session auth
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
     try:
         from incoming_receipts_service import regenerate_missing_screenshots
         data = request.get_json() or {}
