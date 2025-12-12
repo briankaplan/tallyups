@@ -3563,6 +3563,16 @@ def regenerate_screenshot(receipt_id: int) -> dict:
             if not screenshot_path or not os.path.exists(screenshot_path):
                 return {'success': False, 'error': 'Screenshot generation failed'}
 
+            # Check screenshot size - skip upload if text-based fallback
+            screenshot_size = os.path.getsize(screenshot_path)
+            screenshot_size_kb = screenshot_size / 1024
+
+            if screenshot_size_kb < 50:
+                print(f"   ⚠️ Screenshot too small ({screenshot_size_kb:.1f}KB) - likely text-based fallback")
+                return {'success': False, 'error': f'Screenshot too small ({screenshot_size_kb:.1f}KB) - text-based fallback'}
+
+            print(f"   📸 Screenshot size: {screenshot_size_kb:.1f}KB")
+
             # Upload to R2
             from r2_service import upload_with_thumbnail, R2_ENABLED
             if not R2_ENABLED:
@@ -3671,6 +3681,63 @@ def regenerate_small_screenshots(size_threshold_kb=40, limit=50) -> dict:
     print(f"   Checked: {stats['checked']}")
     print(f"   Small found: {stats['small_found']}")
     print(f"   Regenerated: {stats['regenerated']}")
+    print(f"   Failed: {stats['failed']}")
+
+    return stats
+
+
+def regenerate_missing_screenshots(limit=50) -> dict:
+    """
+    Find and regenerate screenshots for receipts that have NO image URL.
+    These were likely cleared because they were text-based fallbacks.
+
+    Args:
+        limit: Max number to process
+
+    Returns: Stats dict
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT id, merchant, email_id, gmail_account
+        FROM incoming_receipts
+        WHERE status = 'pending'
+        AND (receipt_image_url IS NULL OR receipt_image_url = '')
+        AND email_id IS NOT NULL
+        AND gmail_account IS NOT NULL
+        ORDER BY id DESC
+        LIMIT %s
+    ''', (limit,))
+
+    receipts = cursor.fetchall()
+    conn.close()
+
+    stats = {'found': len(receipts), 'regenerated': 0, 'failed': 0, 'skipped_small': 0}
+
+    print(f"🔍 Found {len(receipts)} receipts missing screenshots")
+
+    for r in receipts:
+        print(f"\n{'='*50}")
+        print(f"#{r['id']}: {r['merchant']}")
+        result = regenerate_screenshot(r['id'])
+
+        if result['success']:
+            stats['regenerated'] += 1
+            print(f"   ✅ New URL: {result['url']}")
+        else:
+            if 'too small' in result.get('error', ''):
+                stats['skipped_small'] += 1
+                print(f"   ⏭️ Skipped: {result['error']}")
+            else:
+                stats['failed'] += 1
+                print(f"   ❌ {result['error']}")
+
+    print(f"\n{'='*50}")
+    print("📊 REGENERATION COMPLETE")
+    print(f"   Found missing: {stats['found']}")
+    print(f"   Regenerated: {stats['regenerated']}")
+    print(f"   Skipped (small): {stats['skipped_small']}")
     print(f"   Failed: {stats['failed']}")
 
     return stats

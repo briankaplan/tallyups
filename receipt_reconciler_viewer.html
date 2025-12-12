@@ -2405,6 +2405,9 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
         <button class="btn-ghost" onclick="autoProcessAll()" title="Auto-categorize AND generate AI descriptions in one step">
           🤖 Auto-Process
         </button>
+        <button class="btn-ghost" onclick="generateAllNotes()" title="Generate AI notes for all transactions missing them">
+          ✨ AI Notes
+        </button>
         <button class="btn-success" onclick="saveCSV()" title="Save all changes to database">
           💾 Save
         </button>
@@ -4141,6 +4144,11 @@ async function batchGenerateAINotes() {
     document.getElementById('progress-cancel-btn').style.display = 'none';
     document.getElementById('progress-close-btn').style.display = 'block';
   }
+}
+
+// Alias for the AI Notes button
+function generateAllNotes() {
+  batchGenerateAINotes();
 }
 
 // Smart Search - Intelligent multi-source search with learning

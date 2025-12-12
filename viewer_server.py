@@ -17220,6 +17220,29 @@ def regenerate_small_images():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/regenerate-missing-images", methods=["POST"])
+@login_required
+def regenerate_missing_images():
+    """Find and regenerate screenshots for receipts with no image URL"""
+    try:
+        from incoming_receipts_service import regenerate_missing_screenshots
+        data = request.get_json() or {}
+        limit = data.get('limit', 50)
+
+        print(f"🔄 Regenerating missing screenshots (limit {limit})")
+        results = regenerate_missing_screenshots(limit=limit)
+
+        return jsonify({
+            'ok': True,
+            'message': f"Regenerated {results['regenerated']} of {results['found']} missing screenshots",
+            'results': results
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/backfill-ai-notes", methods=["POST"])
 @login_required
 def backfill_ai_notes_endpoint():
