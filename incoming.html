@@ -1025,6 +1025,46 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
 .biz-chip[data-biz="Music City Rodeo"].active { border-color: #ffd85e; color: #ffd85e; background: rgba(255,216,94,0.15); }
 .biz-chip[data-biz="EM.co"].active { border-color: #a855f7; color: #a855f7; background: rgba(168,85,247,0.15); }
 
+/* Category and Description Inputs */
+.inbox-card-extras {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.inbox-category-select {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--panel2);
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.inbox-category-select:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+.inbox-description-input {
+  flex: 2;
+  min-width: 160px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--panel2);
+  color: var(--ink);
+  font-size: 12px;
+}
+.inbox-description-input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+.inbox-description-input::placeholder {
+  color: var(--muted);
+}
+
 /* Card Footer Actions */
 .inbox-card-actions {
   display: flex;
@@ -2580,6 +2620,23 @@ function renderMobileCard(receipt) {
           <div class="biz-chip" data-biz="Music City Rodeo" onclick="event.stopPropagation();selectBizType(this)">MCR</div>
           <div class="biz-chip" data-biz="EM.co" onclick="event.stopPropagation();selectBizType(this)">EM.co</div>
         </div>
+        <div class="inbox-card-extras" data-receipt="${receipt.id}">
+          <select class="inbox-category-select" onclick="event.stopPropagation()">
+            <option value="">Category (optional)</option>
+            <option value="Meals & Entertainment">Meals & Entertainment</option>
+            <option value="Travel - Airfare">Travel - Airfare</option>
+            <option value="Travel - Hotel">Travel - Hotel</option>
+            <option value="Travel - Ground Transportation">Travel - Ground</option>
+            <option value="Software & Subscriptions">Software & Subscriptions</option>
+            <option value="Office Supplies">Office Supplies</option>
+            <option value="Professional Services">Professional Services</option>
+            <option value="Equipment & Hardware">Equipment & Hardware</option>
+            <option value="Parking & Tolls">Parking & Tolls</option>
+            <option value="Fuel & Gas">Fuel & Gas</option>
+            <option value="Miscellaneous Business Expense">Miscellaneous</option>
+          </select>
+          <input type="text" class="inbox-description-input" placeholder="Description (optional)" onclick="event.stopPropagation()" />
+        </div>
       `;
       primaryAction = `
         <button class="inbox-card-btn accept create" onclick="event.stopPropagation();mobileAccept(${receipt.id}, '${escapeHtml(merchant).replace(/'/g, "\\'")}', ${amount}, ${isRefund}, '${receiptDate}', this)">
@@ -2718,11 +2775,23 @@ function getSelectedBizType(card) {
   return activeChip ? activeChip.dataset.biz : 'Personal';
 }
 
+function getSelectedCategory(card) {
+  const select = card.querySelector('.inbox-category-select');
+  return select ? select.value : '';
+}
+
+function getDescription(card) {
+  const input = card.querySelector('.inbox-description-input');
+  return input ? input.value.trim() : '';
+}
+
 // Mobile accept with visual feedback and duplicate detection
 async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
   const card = btn.closest('.inbox-card');
   const actionsDiv = card.querySelector('.inbox-card-actions');
   const businessType = getSelectedBizType(card);
+  const category = getSelectedCategory(card);
+  const description = getDescription(card);
 
   // Show loading state
   actionsDiv.innerHTML = `
@@ -2754,11 +2823,11 @@ async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
 
       // Store pending accept data
       pendingAccept = {
-        id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType,
+        id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType, category, description,
         duplicateId: dup.id,
         callback: (forceAccept) => {
           if (forceAccept) {
-            doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType);
+            doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType, false, category, description);
           } else {
             renderMobileCards();
           }
@@ -2770,7 +2839,7 @@ async function mobileAccept(id, merchant, amount, isRefund, receiptDate, btn) {
     }
 
     // No duplicates - proceed with accept
-    await doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType);
+    await doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType, false, category, description);
 
   } catch (e) {
     console.error('Accept error:', e);
@@ -2937,7 +3006,7 @@ async function attachToExpense(receiptId, transactionId, btn) {
 }
 
 // Perform the actual accept
-async function doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType = 'Personal', forceAccept = false) {
+async function doAccept(id, merchant, amount, isRefund, transDate, card, actionsDiv, businessType = 'Personal', forceAccept = false, category = '', description = '') {
   actionsDiv.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--brand)">
       <span class="spinner"></span> Processing...
@@ -2956,7 +3025,9 @@ async function doAccept(id, merchant, amount, isRefund, transDate, card, actions
         is_refund: isRefund,
         date: transDate,
         business_type: businessType,
-        force: forceAccept
+        force: forceAccept,
+        category: category || '',
+        description: description || ''
       })
     });
 

@@ -16804,8 +16804,16 @@ def accept_incoming_receipt():
         # Extract additional fields from incoming receipt for proper mapping
         is_refund = data.get('is_refund', False) or get_col('is_refund', False)
         is_subscription = get_col('is_subscription', False)
-        incoming_category = get_col('category', '')
+        # User-provided category takes priority over incoming receipt category
+        user_category = data.get('category', '')
+        incoming_category = user_category or get_col('category', '')
+        # User-provided description for notes
+        user_description = data.get('description', '')
         from_domain = get_col('from_domain', '')
+
+        # Prepend user description to notes if provided
+        if user_description:
+            notes_text = f"{user_description} | {notes_text}" if notes_text else user_description
 
         # Separate R2 URLs from local file paths
         r2_urls = [f for f in receipt_files if f.startswith('http')]
@@ -16854,10 +16862,10 @@ def accept_incoming_receipt():
                     _index, chase_description, chase_amount, chase_date,
                     business_type, review_status, notes,
                     receipt_file, receipt_url, source,
-                    is_refund, is_subscription, incoming_category, from_domain
-                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, 'incoming_receipt', ?, ?, ?, ?)
+                    is_refund, is_subscription, incoming_category, from_domain, category
+                ) VALUES (?, ?, ?, ?, ?, 'accepted', ?, ?, ?, 'incoming_receipt', ?, ?, ?, ?, ?)
             ''', (next_index, merchant, amount, trans_date, business_type, notes_text, receipt_file_str, receipt_url_str,
-                  is_refund, is_subscription, incoming_category, from_domain))
+                  is_refund, is_subscription, incoming_category, from_domain, incoming_category))
 
             transaction_id = next_index
             action = 'created'
