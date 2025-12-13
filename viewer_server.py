@@ -12358,6 +12358,12 @@ def reports_standalone_page(report_id):
         expenses = db.get_report_expenses(report_id)
         print(f"📄 Found {len(expenses)} expenses for report {report_id}", flush=True)
 
+        # Debug: Check what fields are available for receipts
+        if expenses:
+            sample = expenses[0]
+            receipt_fields = {k: v for k, v in sample.items() if 'r2' in k.lower() or 'receipt' in k.lower() or 'url' in k.lower()}
+            print(f"📄 Receipt fields in first expense: {receipt_fields}", flush=True)
+
         if not expenses and (total_from_meta > 0 or count_from_meta > 0):
             # Report has metadata but expenses aren't linked - this might be a data issue
             print(f"📄 WARNING: Report has {count_from_meta} expenses (${total_from_meta}) in metadata but none linked", flush=True)
