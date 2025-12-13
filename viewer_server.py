@@ -14530,7 +14530,7 @@ def get_library_receipts():
         tx_query = '''
             SELECT id, _index, chase_description, chase_amount, chase_date,
                    receipt_url, receipt_file, r2_url,
-                   source, business_type, notes, ai_notes,
+                   source, business_type, notes, ai_note,
                    ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified, ocr_verification_status
             FROM transactions
             WHERE (receipt_url IS NOT NULL AND receipt_url != '')
@@ -14589,7 +14589,7 @@ def get_library_receipts():
                 'source': receipt_source,
                 'business_type': tx.get('business_type') or 'Personal',
                 'notes': tx.get('notes') or '',
-                'ai_notes': tx.get('ai_notes') or '',
+                'ai_notes': tx.get('ai_note') or '',  # Column is ai_note (singular)
                 'status': 'matched',
                 'verification_status': verification_status,
                 'created_at': str(date_val),
