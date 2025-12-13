@@ -14941,6 +14941,156 @@ def api_report_items(report_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/reports/<report_id>/diagnose", methods=["GET"])
+@login_required
+def api_report_diagnose(report_id):
+    """
+    Diagnose a report - check if it exists and what expenses are linked.
+    Returns detailed info about the report state.
+    """
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Check reports table
+        cursor.execute("SELECT * FROM reports WHERE report_id = %s", (report_id,))
+        report_in_reports = cursor.fetchone()
+
+        # Check expense_reports table (if different)
+        cursor.execute("SELECT * FROM expense_reports WHERE report_id = %s", (report_id,))
+        report_in_expense_reports = cursor.fetchone()
+
+        # Check transactions with this report_id
+        cursor.execute("""
+            SELECT _index, chase_date, chase_description, chase_amount, business_type, report_id
+            FROM transactions
+            WHERE report_id = %s
+            ORDER BY chase_date DESC
+        """, (report_id,))
+        linked_transactions = cursor.fetchall()
+
+        # Check if there are transactions that SHOULD be linked (by already_submitted flag)
+        cursor.execute("""
+            SELECT _index, chase_date, chase_description, chase_amount, business_type, report_id, already_submitted
+            FROM transactions
+            WHERE already_submitted = 'yes' OR already_submitted = %s
+            ORDER BY chase_date DESC
+            LIMIT 100
+        """, (report_id,))
+        submitted_transactions = cursor.fetchall()
+
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            'in_reports_table': dict(report_in_reports) if report_in_reports else None,
+            'in_expense_reports_table': dict(report_in_expense_reports) if report_in_expense_reports else None,
+            'linked_transactions_count': len(linked_transactions),
+            'linked_transactions': [dict(t) for t in linked_transactions[:20]],  # First 20
+            'submitted_transactions_count': len(submitted_transactions),
+            'submitted_transactions': [dict(t) for t in submitted_transactions[:20]]  # First 20
+        })
+    except Exception as e:
+        print(f"❌ API report diagnose error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/reports/<report_id>/repair", methods=["POST"])
+@login_required
+def api_report_repair(report_id):
+    """
+    Repair a report by re-linking transactions based on the report metadata.
+    This fixes cases where transactions exist but aren't linked to their report.
+    """
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        data = request.get_json() or {}
+        business_type = data.get('business_type')
+        date_from = data.get('date_from')
+        date_to = data.get('date_to')
+        transaction_ids = data.get('transaction_ids', [])
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Get report metadata
+        cursor.execute("SELECT * FROM reports WHERE report_id = %s", (report_id,))
+        report = cursor.fetchone()
+
+        if not report:
+            db.return_connection(conn)
+            return jsonify({'ok': False, 'error': f'Report {report_id} not found'}), 404
+
+        report_business_type = report.get('business_type') or business_type
+        linked_count = 0
+
+        if transaction_ids:
+            # Link specific transaction IDs
+            placeholders = ', '.join(['%s'] * len(transaction_ids))
+            cursor.execute(f"""
+                UPDATE transactions
+                SET report_id = %s, already_submitted = 'yes'
+                WHERE _index IN ({placeholders})
+            """, [report_id] + transaction_ids)
+            linked_count = cursor.rowcount
+        elif report_business_type and date_from and date_to:
+            # Link by business type and date range
+            cursor.execute("""
+                UPDATE transactions
+                SET report_id = %s, already_submitted = 'yes'
+                WHERE business_type = %s
+                AND chase_date >= %s
+                AND chase_date <= %s
+                AND (report_id IS NULL OR report_id = '')
+            """, (report_id, report_business_type, date_from, date_to))
+            linked_count = cursor.rowcount
+        else:
+            db.return_connection(conn)
+            return jsonify({
+                'ok': False,
+                'error': 'Provide either transaction_ids OR (business_type, date_from, date_to)'
+            }), 400
+
+        # Update report totals
+        cursor.execute("""
+            SELECT COUNT(*) as cnt, SUM(ABS(chase_amount)) as total
+            FROM transactions WHERE report_id = %s
+        """, (report_id,))
+        totals = cursor.fetchone()
+
+        cursor.execute("""
+            UPDATE reports
+            SET expense_count = %s, total_amount = %s
+            WHERE report_id = %s
+        """, (totals['cnt'], totals['total'] or 0, report_id))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        print(f"✅ Repaired report {report_id}: linked {linked_count} transactions", flush=True)
+
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            'linked_count': linked_count,
+            'total_expenses': totals['cnt'],
+            'total_amount': float(totals['total'] or 0)
+        })
+    except Exception as e:
+        print(f"❌ API report repair error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/transactions/<int:tx_id>/reject", methods=["POST"])
 @login_required
 def api_transaction_reject(tx_id):
