@@ -14529,7 +14529,7 @@ def get_library_receipts():
         # 1. Get receipts from transactions table - select only needed columns for speed
         tx_query = '''
             SELECT id, _index, chase_description, chase_amount, chase_date,
-                   receipt_url, receipt_file, r2_url, thumbnail_url,
+                   receipt_url, receipt_file, r2_url,
                    source, business_type, notes, ai_notes,
                    ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified, ocr_verification_status
             FROM transactions
@@ -14585,7 +14585,7 @@ def get_library_receipts():
                 'date': str(date_val),
                 'receipt_date': str(date_val),  # Alias for JS compatibility
                 'receipt_url': receipt_image,
-                'thumbnail_url': tx.get('thumbnail_url') or receipt_image,
+                'thumbnail_url': receipt_image,  # Use same URL as receipt (no thumbnail column)
                 'source': receipt_source,
                 'business_type': tx.get('business_type') or 'Personal',
                 'notes': tx.get('notes') or '',
