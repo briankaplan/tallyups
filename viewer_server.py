@@ -14877,6 +14877,7 @@ def serve_library():
 
 @app.route("/report-builder")
 @app.route("/report-builder.html")
+@app.route("/report_builder.html")
 @login_required
 def serve_report_builder():
     """Serve the Report Builder page - focused workflow for building expense reports."""
