@@ -71,9 +71,26 @@
    * Create the app header
    */
   function createHeader() {
-    // Remove any existing header
-    const existingHeader = document.querySelector('.app-header');
-    if (existingHeader) existingHeader.remove();
+    // Remove ALL existing headers to prevent duplicates
+    // This includes all known header classes used across the app
+    const headerSelectors = [
+      '.app-header',
+      'header.header',
+      'header.site-header',
+      'header.swipe-header',
+      '.header-content',
+      '.site-header-content',
+      '.nav-links',
+      '.header-nav',
+      'body > header'  // Any header directly on body
+    ];
+
+    document.querySelectorAll(headerSelectors.join(', ')).forEach(el => {
+      // Don't remove if it's inside main content areas
+      if (!el.closest('main, .main-content, .content, .page-content, .dashboard-content')) {
+        el.remove();
+      }
+    });
 
     const header = document.createElement('header');
     header.className = 'app-header';
