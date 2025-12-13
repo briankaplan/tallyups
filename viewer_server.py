@@ -19689,58 +19689,28 @@ def generate_incoming_images():
                 return None
 
         def _html_to_image(html_content):
-            """Convert HTML to image - uses Playwright for proper rendering when available"""
-            # Try Playwright first (proper browser-based screenshot)
+            """Convert HTML to image - uses Playwright for proper browser-based screenshots.
+
+            NO TEXT FALLBACK - we only want real visual screenshots, not text renders.
+            If Playwright fails, return None and skip this receipt.
+            """
+            # Only use Playwright - no text fallback
             if use_playwright:
                 try:
                     result = playwright_html_to_image(html_content)
                     if result:
                         print("      📸 Playwright screenshot successful")
                         return result
+                    else:
+                        print("      ⚠️ Playwright returned no data")
                 except Exception as e:
-                    print(f"      ⚠️ Playwright failed: {e}, trying fallback...")
+                    print(f"      ⚠️ Playwright failed: {e}")
+            else:
+                print("      ⚠️ Playwright not available - skipping HTML screenshot")
 
-            # Fallback to PIL text rendering
-            try:
-                from PIL import Image, ImageDraw, ImageFont
-                import re
-
-                print("      📝 Using text-based fallback rendering")
-
-                # Strip HTML tags
-                text = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
-                text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
-                text = text.replace('&nbsp;', ' ').replace('&amp;', '&')
-                text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
-                text = re.sub(r'</(?:p|div|tr|li)>', '\n', text, flags=re.IGNORECASE)
-                text = re.sub(r'<[^>]+>', '', text)
-
-                lines = [line.strip() for line in text.split('\n') if line.strip()]
-                text = '\n'.join(lines[:80])
-                if len(text) < 20:
-                    return None
-
-                width, height = 800, max(400, min(1600, len(lines) * 20 + 80))
-                img = Image.new('RGB', (width, height), 'white')
-                draw = ImageDraw.Draw(img)
-
-                try:
-                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
-                except Exception:
-                    font = ImageFont.load_default()
-
-                y = 40
-                for line in text.split('\n')[:80]:
-                    if y > height - 40:
-                        break
-                    draw.text((40, y), line[:90], fill='black', font=font)
-                    y += 20
-
-                output = BytesIO()
-                img.save(output, format='JPEG', quality=85)
-                return output.getvalue()
-            except Exception:
-                return None
+            # NO TEXT FALLBACK - return None to skip this receipt
+            # Text-based screenshots are not acceptable
+            return None
 
         def _get_email_html(service, message_id):
             """Get HTML body from email"""
