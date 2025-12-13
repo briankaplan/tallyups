@@ -206,11 +206,13 @@
       margin-left: 0;
       display: flex;
       flex-direction: column;
+      padding-bottom: calc(70px + var(--safe-bottom));
     }
 
     @media (min-width: 1024px) {
       .main-content {
         margin-left: var(--sidebar-width);
+        padding-bottom: 0;
       }
     }
 
@@ -541,18 +543,23 @@
       border-radius: 16px;
       overflow: hidden;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      -webkit-tap-highlight-color: transparent;
     }
 
     .receipt-card:hover {
-      border-color: var(--border-light);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--accent-dim);
+    }
+
+    .receipt-card:active {
+      transform: scale(0.98);
     }
 
     .receipt-card.selected {
       border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent-dim);
+      box-shadow: 0 0 0 2px var(--accent-dim), 0 8px 24px rgba(0, 255, 136, 0.15);
     }
 
     .receipt-thumb {
@@ -1286,46 +1293,68 @@
       bottom: 0;
       left: 0;
       right: 0;
-      height: calc(60px + var(--safe-bottom));
-      background: var(--bg-secondary);
+      background: rgba(18, 18, 26, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-around;
       align-items: flex-start;
-      padding-top: 8px;
-      z-index: 100;
+      padding: 10px 0 calc(10px + var(--safe-bottom));
+      z-index: 200;
     }
 
     @media (min-width: 1024px) {
       .bottom-nav {
         display: none;
       }
-
-      .main-content {
-        padding-bottom: 0;
-      }
     }
 
     .nav-link {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       gap: 4px;
       color: var(--text-muted);
       text-decoration: none;
       font-size: 10px;
-      font-weight: 500;
-      padding: 4px 12px;
-      transition: color 0.2s;
+      font-weight: 600;
+      padding: 6px 4px;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+    }
+
+    .nav-link:active {
+      transform: scale(0.95);
     }
 
     .nav-link.active {
       color: var(--accent);
     }
 
-    .nav-link svg {
+    .nav-link.active::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
       width: 24px;
-      height: 24px;
+      height: 3px;
+      background: var(--accent);
+      border-radius: 0 0 3px 3px;
+    }
+
+    .nav-link.active svg {
+      transform: scale(1.1);
+    }
+
+    .nav-link svg {
+      width: 22px;
+      height: 22px;
+      transition: transform 0.2s ease;
     }
 
     /* Toast Notifications */
@@ -2023,6 +2052,47 @@
       </div>
     </div>
   </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </a>
+    <a href="/viewer" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+      </svg>
+      <span>Review</span>
+    </a>
+    <a href="/library" class="nav-link active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/>
+        <rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      <span>Library</span>
+    </a>
+    <a href="/incoming" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+        <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+      </svg>
+      <span>Inbox</span>
+    </a>
+    <a href="/scanner" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span>Scan</span>
+    </a>
+  </nav>
 
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>

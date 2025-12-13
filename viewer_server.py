@@ -4235,6 +4235,72 @@ def update_transaction(tx_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route("/api/transaction/update", methods=["POST"])
+@login_required
+def update_transaction_field():
+    """
+    Update a single field on a transaction by index.
+    Used by the reconciler viewer for quick edits.
+
+    Body:
+    {
+        "index": 123,        // Transaction index (row number)
+        "field": "Notes",    // Field name to update
+        "value": "new value" // New value for the field
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'ok': False, 'error': 'No data provided'}), 400
+
+        index = data.get('index')
+        field = data.get('field')
+        value = data.get('value', '')
+
+        if index is None or not field:
+            return jsonify({'ok': False, 'error': 'Missing index or field'}), 400
+
+        # Map field names to database columns
+        field_map = {
+            'Notes': 'notes',
+            'notes': 'notes',
+            'Business Type': 'business_type',
+            'business_type': 'business_type',
+            'Category': 'category',
+            'category': 'category',
+            'ai_category': 'ai_category',
+            'ai_note': 'ai_note',
+            'Merchant': 'chase_description',
+            'merchant': 'chase_description',
+            'review_status': 'review_status'
+        }
+
+        db_field = field_map.get(field)
+        if not db_field:
+            return jsonify({'ok': False, 'error': f'Unknown field: {field}'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Update the transaction by Index
+        if db_type == 'mysql':
+            cursor.execute(f"UPDATE transactions SET {db_field} = %s WHERE `Index` = %s", (value, index))
+        else:
+            cursor.execute(f"UPDATE transactions SET {db_field} = ? WHERE `Index` = ?", (value, index))
+
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({'ok': True, 'message': f'Updated {field} for transaction {index}'})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/transactions")
 def get_transactions():
     """
@@ -18758,6 +18824,81 @@ def clear_pending_incoming_receipts():
             'ok': True,
             'message': f'Cleared {count} pending incoming receipts, deleted {r2_deleted} R2 images',
             'deleted': count,
+            'r2_deleted': r2_deleted
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/clear-rejected", methods=["POST"])
+def clear_rejected_incoming_receipts():
+    """
+    Clear all rejected incoming receipts from the database.
+    This permanently deletes rejected receipts and their R2 images.
+
+    Body (optional):
+    {
+        "confirm": true  // Required safety flag
+    }
+    """
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    if request.json:
+        admin_key = admin_key or request.json.get('admin_key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
+    try:
+        conn, db_type = get_db_connection()
+
+        # Get rejected receipts with their R2 image URLs before deleting
+        cursor = db_execute(conn, db_type, """
+            SELECT id, receipt_image_url FROM incoming_receipts
+            WHERE status = 'rejected' AND receipt_image_url IS NOT NULL AND receipt_image_url != ''
+        """)
+        receipts_with_images = cursor.fetchall()
+
+        # Get total count
+        cursor = db_execute(conn, db_type, "SELECT COUNT(*) FROM incoming_receipts WHERE status = 'rejected'")
+        result = cursor.fetchone()
+        count = result[0] if result else 0
+
+        # Delete R2 images
+        r2_deleted = 0
+        if receipts_with_images:
+            try:
+                from r2_service import delete_from_r2
+                from urllib.parse import urlparse
+
+                for receipt_id, image_url in receipts_with_images:
+                    if image_url and ('r2.dev' in image_url or 'r2.cloudflarestorage.com' in image_url):
+                        try:
+                            parsed = urlparse(image_url)
+                            r2_key = parsed.path.lstrip('/')
+                            if r2_key and delete_from_r2(r2_key):
+                                r2_deleted += 1
+                                print(f"      🗑️  Deleted R2: {r2_key}")
+                        except Exception as e:
+                            print(f"      ⚠️  Failed to delete R2 image: {e}")
+            except ImportError:
+                print("      ⚠️  R2 service not available, skipping image cleanup")
+
+        # Delete rejected receipts
+        cursor = db_execute(conn, db_type, "DELETE FROM incoming_receipts WHERE status = 'rejected'")
+        conn.commit()
+        return_db_connection(conn)
+
+        print(f"🗑️  Cleared {count} rejected incoming receipts")
+
+        return jsonify({
+            'ok': True,
+            'message': f'Cleared {count} rejected incoming receipts, deleted {r2_deleted} R2 images',
+            'count': count,
             'r2_deleted': r2_deleted
         })
 
