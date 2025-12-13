@@ -914,13 +914,18 @@ def sanitize_csv(df_in: pd.DataFrame) -> pd.DataFrame:
 def safe_json(data):
     """
     Recursively walk a structure and replace NaN/inf with None so
-    Flask/json doesn't emit invalid JS tokens.
+    Flask/json doesn't emit invalid JS tokens. Also converts datetime
+    objects to ISO format strings.
     """
     def clean(v):
         if isinstance(v, float):
             if math.isnan(v) or math.isinf(v):
                 return None
             return v
+        elif isinstance(v, datetime):
+            return v.strftime('%Y-%m-%d %H:%M:%S')
+        elif hasattr(v, 'strftime'):  # Handle date objects too
+            return v.strftime('%Y-%m-%d')
         elif isinstance(v, dict):
             return {k: clean(v2) for k, v2 in v.items()}
         elif isinstance(v, list):
@@ -9960,6 +9965,19 @@ BUSINESS_TYPES = [
     "EM.co"                # EM.co business
 ]
 
+def validate_business_type(business_type: str, allow_empty: bool = False) -> tuple:
+    """
+    Validate a business type against the allowed BUSINESS_TYPES.
+    Returns (is_valid, error_message).
+    """
+    if not business_type:
+        if allow_empty:
+            return (True, None)
+        return (False, "business_type is required")
+    if business_type not in BUSINESS_TYPES:
+        return (False, f"Invalid business_type '{business_type}'. Must be one of: {', '.join(BUSINESS_TYPES)}")
+    return (True, None)
+
 
 def gemini_categorize_transaction(merchant: str, amount: float, date: str = "", category_hint: str = "", row: dict = None) -> dict:
     """
@@ -11255,6 +11273,11 @@ def reports_submit():
 
     if not report_name or not business_type or not expense_indexes:
         abort(400, "Missing required fields (report_name, business_type, expense_indexes)")
+
+    # Validate business_type
+    is_valid, error_msg = validate_business_type(business_type)
+    if not is_valid:
+        abort(400, error_msg)
 
     try:
         report_id = db.submit_report(
@@ -14815,6 +14838,16 @@ def api_reports_create():
         status = data.get('status', 'draft')
         business_type = data.get('business_type', '')
 
+        # Validate business_type if provided
+        if business_type:
+            is_valid, error_msg = validate_business_type(business_type)
+            if not is_valid:
+                return jsonify({'ok': False, 'error': error_msg}), 400
+
+        # Validate status
+        if status not in ('draft', 'submitted'):
+            return jsonify({'ok': False, 'error': "status must be 'draft' or 'submitted'"}), 400
+
         # Generate report ID
         import uuid
         report_id = f"RPT-{uuid.uuid4().hex[:8].upper()}"
@@ -14831,7 +14864,8 @@ def api_reports_create():
 
         return jsonify({
             'ok': True,
-            'id': report_id,
+            'report_id': report_id,
+            'id': report_id,  # Keep for backwards compatibility
             'name': name,
             'status': status,
             'total': 0,
@@ -14961,15 +14995,16 @@ def api_report_items(report_id):
 
 
 @app.route("/api/reports/<report_id>/diagnose", methods=["GET"])
+@login_required
 def api_report_diagnose(report_id):
     """
     Diagnose a report - check if it exists and what expenses are linked.
     Returns detailed info about the report state.
-    NOTE: Temporarily public for debugging.
     """
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
@@ -15003,8 +15038,6 @@ def api_report_diagnose(report_id):
             """, (report_business_type,))
             unlinked_transactions = cursor.fetchall()
 
-        db.return_connection(conn)
-
         return jsonify({
             'ok': True,
             'report_id': report_id,
@@ -15019,6 +15052,9 @@ def api_report_diagnose(report_id):
         import traceback
         traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/reports/<report_id>/repair", methods=["POST"])
@@ -24124,6 +24160,8 @@ def api_reports_dashboard():
             ''')
 
             for row in cursor.fetchall():
+                created_at = row['created_at']
+                submitted_at = row['submitted_at']
                 recent_reports.append({
                     'report_id': row['report_id'],
                     'name': row['report_name'],
@@ -24131,8 +24169,8 @@ def api_reports_dashboard():
                     'status': row['status'] or 'draft',
                     'total_amount': float(row['total_amount'] or 0),
                     'expense_count': row['expense_count'] or 0,
-                    'created_at': str(row['created_at']) if row['created_at'] else None,
-                    'submitted_at': str(row['submitted_at']) if row['submitted_at'] else None
+                    'created_at': created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(created_at, 'strftime') else str(created_at) if created_at else None,
+                    'submitted_at': submitted_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(submitted_at, 'strftime') else str(submitted_at) if submitted_at else None
                 })
             cursor.close()
         except Exception as e:
@@ -24143,6 +24181,7 @@ def api_reports_dashboard():
         return_db_connection(conn)
 
         return jsonify({
+            "ok": True,
             "ytd": {
                 "total_amount": round(total_amount, 2),
                 "total_transactions": total_transactions,
