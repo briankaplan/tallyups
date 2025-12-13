@@ -11404,7 +11404,7 @@ def reports_unsubmit(report_id):
         if not report_info:
             abort(404, f"Report {report_id} not found")
 
-        report_name = report_info.get('name', report_id)
+        report_name = report_info.get('report_name', report_id)
         expense_count = report_info.get('expense_count', 0)
 
         # Use delete_report which clears report_id AND already_submitted
@@ -14808,6 +14808,7 @@ def api_reports_create():
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
     try:
         data = request.get_json() or {}
         name = data.get('name', f"Report {datetime.now().strftime('%Y-%m-%d')}")
@@ -14822,12 +14823,11 @@ def api_reports_create():
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO expense_reports (report_id, report_name, business_type, status, created_at)
+            INSERT INTO reports (report_id, report_name, business_type, status, created_at)
             VALUES (%s, %s, %s, %s, NOW())
         ''', (report_id, name, business_type, status))
 
         conn.commit()
-        db.return_connection(conn)
 
         return jsonify({
             'ok': True,
@@ -14840,6 +14840,9 @@ def api_reports_create():
     except Exception as e:
         print(f"❌ API report create error: {e}", flush=True)
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/reports/<report_id>/add", methods=["POST"])
@@ -14849,6 +14852,7 @@ def api_report_add_item(report_id):
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
     try:
         data = request.get_json() or {}
         transaction_id = data.get('transaction_id')
@@ -14867,12 +14871,14 @@ def api_report_add_item(report_id):
         ''', (report_id, transaction_id))
 
         conn.commit()
-        db.return_connection(conn)
 
         return jsonify({'ok': True, 'added': transaction_id})
     except Exception as e:
         print(f"❌ API report add error: {e}", flush=True)
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/reports/<report_id>/remove", methods=["POST"])
@@ -14882,6 +14888,7 @@ def api_report_remove_item(report_id):
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
     try:
         data = request.get_json() or {}
         transaction_id = data.get('transaction_id')
@@ -14900,12 +14907,14 @@ def api_report_remove_item(report_id):
         ''', (transaction_id, report_id))
 
         conn.commit()
-        db.return_connection(conn)
 
         return jsonify({'ok': True, 'removed': transaction_id})
     except Exception as e:
         print(f"❌ API report remove error: {e}", flush=True)
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/reports/<report_id>/items", methods=["GET"])
@@ -15022,6 +15031,7 @@ def api_report_repair(report_id):
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
     try:
         data = request.get_json() or {}
         business_type = data.get('business_type')
@@ -15037,7 +15047,6 @@ def api_report_repair(report_id):
         report = cursor.fetchone()
 
         if not report:
-            db.return_connection(conn)
             return jsonify({'ok': False, 'error': f'Report {report_id} not found'}), 404
 
         report_business_type = report.get('business_type') or business_type
@@ -15064,7 +15073,6 @@ def api_report_repair(report_id):
             """, (report_id, report_business_type, date_from, date_to))
             linked_count = cursor.rowcount
         else:
-            db.return_connection(conn)
             return jsonify({
                 'ok': False,
                 'error': 'Provide either transaction_ids OR (business_type, date_from, date_to)'
@@ -15084,7 +15092,6 @@ def api_report_repair(report_id):
         """, (totals['cnt'], totals['total'] or 0, report_id))
 
         conn.commit()
-        db.return_connection(conn)
 
         print(f"✅ Repaired report {report_id}: linked {linked_count} transactions", flush=True)
 
@@ -15100,6 +15107,9 @@ def api_report_repair(report_id):
         import traceback
         traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/transactions/<int:tx_id>/reject", methods=["POST"])
