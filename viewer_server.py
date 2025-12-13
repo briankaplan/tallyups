@@ -14959,10 +14959,6 @@ def api_report_diagnose(report_id):
         cursor.execute("SELECT * FROM reports WHERE report_id = %s", (report_id,))
         report_in_reports = cursor.fetchone()
 
-        # Check expense_reports table (if different)
-        cursor.execute("SELECT * FROM expense_reports WHERE report_id = %s", (report_id,))
-        report_in_expense_reports = cursor.fetchone()
-
         # Check transactions with this report_id
         cursor.execute("""
             SELECT _index, chase_date, chase_description, chase_amount, business_type, report_id
@@ -14972,27 +14968,32 @@ def api_report_diagnose(report_id):
         """, (report_id,))
         linked_transactions = cursor.fetchall()
 
-        # Check if there are transactions that SHOULD be linked (by already_submitted flag)
-        cursor.execute("""
-            SELECT _index, chase_date, chase_description, chase_amount, business_type, report_id, already_submitted
-            FROM transactions
-            WHERE already_submitted = 'yes' OR already_submitted = %s
-            ORDER BY chase_date DESC
-            LIMIT 100
-        """, (report_id,))
-        submitted_transactions = cursor.fetchall()
+        # Get the business type from report metadata
+        report_business_type = report_in_reports.get('business_type') if report_in_reports else None
+
+        # Check unlinked transactions of the same business type
+        unlinked_transactions = []
+        if report_business_type:
+            cursor.execute("""
+                SELECT _index, chase_date, chase_description, chase_amount, business_type, report_id, already_submitted
+                FROM transactions
+                WHERE business_type = %s
+                AND (report_id IS NULL OR report_id = '')
+                ORDER BY chase_date DESC
+                LIMIT 100
+            """, (report_business_type,))
+            unlinked_transactions = cursor.fetchall()
 
         db.return_connection(conn)
 
         return jsonify({
             'ok': True,
             'report_id': report_id,
-            'in_reports_table': dict(report_in_reports) if report_in_reports else None,
-            'in_expense_reports_table': dict(report_in_expense_reports) if report_in_expense_reports else None,
+            'report_metadata': dict(report_in_reports) if report_in_reports else None,
             'linked_transactions_count': len(linked_transactions),
-            'linked_transactions': [dict(t) for t in linked_transactions[:20]],  # First 20
-            'submitted_transactions_count': len(submitted_transactions),
-            'submitted_transactions': [dict(t) for t in submitted_transactions[:20]]  # First 20
+            'linked_transactions': [dict(t) for t in linked_transactions[:20]],
+            'unlinked_same_business_count': len(unlinked_transactions),
+            'unlinked_transactions': [dict(t) for t in unlinked_transactions[:20]]
         })
     except Exception as e:
         print(f"❌ API report diagnose error: {e}", flush=True)
