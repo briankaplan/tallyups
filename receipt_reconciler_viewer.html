@@ -4402,7 +4402,10 @@ async function updateIncomingBadge() {
 // API calls
 async function loadCSV() {
   try {
-    const res = await fetch('/api/transactions?all=true');
+    const res = await fetch('/api/transactions?all=true', { credentials: 'same-origin' });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
     const data = await res.json();
     // Handle both array format and {transactions: []} format
     csvData = Array.isArray(data) ? data : (data.transactions || []);
@@ -4411,6 +4414,7 @@ async function loadCSV() {
     updateDashboard();
     showToast(`Loaded ${csvData.length} transactions`, '📊');
   } catch (e) {
+    console.error('loadCSV error:', e);
     showToast('Failed to load CSV: ' + e.message, '❌');
   }
 }
