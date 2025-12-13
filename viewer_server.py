@@ -12582,11 +12582,19 @@ tr:hover {{
             amount = abs(float(exp.get("chase_amount", 0) or 0))
             category = exp.get("category") or exp.get("chase_category", "")
             notes = exp.get("notes", "")
-            receipt = exp.get("receipt_file", "")
+
+            # Get receipt URL - prefer R2 URL, fall back to receipt_url, then local path
+            receipt_url = exp.get("r2_url") or exp.get("R2 URL") or exp.get("receipt_url") or ""
+            receipt_file = exp.get("receipt_file") or exp.get("Receipt File") or ""
 
             receipt_link = ""
-            if receipt:
-                receipt_link = f'<a href="/reports/{report_id}/receipts/{receipt}" class="receipt-link" target="_blank">View Receipt</a>'
+            if receipt_url:
+                # Use cloud URL directly
+                receipt_link = f'<a href="{receipt_url}" class="receipt-link" target="_blank">View Receipt</a>'
+            elif receipt_file:
+                # Fall back to local path (strip any leading receipts/ to avoid double path)
+                clean_file = receipt_file.replace("receipts/", "").lstrip("/")
+                receipt_link = f'<a href="/reports/{report_id}/receipts/{clean_file}" class="receipt-link" target="_blank">View Receipt</a>'
             else:
                 receipt_link = '<span style="color:#999">No receipt</span>'
 
