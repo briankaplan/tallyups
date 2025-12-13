@@ -15179,7 +15179,7 @@ def api_report_items_batch():
 
 
 @app.route("/api/reports/<report_id>/diagnose", methods=["GET"])
-@login_required
+# Public endpoint for debugging - no login required
 def api_report_diagnose(report_id):
     """
     Diagnose a report - check if it exists and what expenses are linked.
