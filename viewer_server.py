@@ -14993,6 +14993,53 @@ def api_reports_create():
             db.return_connection(conn)
 
 
+@app.route("/api/reports/<report_id>", methods=["PATCH"])
+@login_required
+def api_report_update(report_id):
+    """Update a report (rename, change status, etc.)."""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        data = request.get_json() or {}
+        updates = []
+        params = []
+
+        if 'name' in data:
+            updates.append("report_name = %s")
+            params.append(data['name'])
+
+        if 'status' in data and data['status'] in ('draft', 'submitted'):
+            updates.append("status = %s")
+            params.append(data['status'])
+
+        if 'business_type' in data:
+            updates.append("business_type = %s")
+            params.append(data['business_type'])
+
+        if not updates:
+            return jsonify({'ok': False, 'error': 'No valid fields to update'}), 400
+
+        params.append(report_id)
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(f'''
+            UPDATE reports SET {', '.join(updates)} WHERE report_id = %s
+        ''', params)
+
+        conn.commit()
+
+        return jsonify({'ok': True, 'report_id': report_id})
+    except Exception as e:
+        print(f"❌ API report update error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
 @app.route("/api/reports/<report_id>/add", methods=["POST"])
 @login_required
 def api_report_add_item(report_id):

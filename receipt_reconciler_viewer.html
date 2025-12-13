@@ -10696,9 +10696,9 @@ function initReportPanel() {
     }
   });
 
-  // Create default report if none exist
+  // Create default report if none exist (skip prompt for auto-creation)
   if (openReports.length === 0) {
-    createNewReport();
+    createNewReport(true);
   } else {
     // Use stored current report or first report
     currentReportId = localStorage.getItem('tallyups_current_report');
@@ -10712,9 +10712,17 @@ function initReportPanel() {
 }
 
 // Create a new report
-async function createNewReport() {
+async function createNewReport(skipPrompt = false) {
   const tempId = 'report_' + Date.now();
-  const reportName = 'Report ' + (openReports.length + 1);
+  const defaultName = 'Report ' + (openReports.length + 1);
+
+  // Prompt for name unless skipPrompt is true
+  let reportName = defaultName;
+  if (!skipPrompt) {
+    const inputName = prompt('Enter report name:', defaultName);
+    if (inputName === null) return; // User cancelled
+    reportName = inputName.trim() || defaultName;
+  }
 
   // Try to create in database first
   try {
@@ -10901,6 +10909,9 @@ async function refreshDraftReports() {
         <button onclick="event.stopPropagation();continueDraftReport('${report.id}')" class="btn-success" style="flex:1;padding:8px 12px;font-size:12px">
           Continue
         </button>
+        <button onclick="event.stopPropagation();renameReport('${report.id}')" class="btn-secondary" style="padding:8px 12px;font-size:12px" title="Rename">
+          ✏️
+        </button>
         <button onclick="event.stopPropagation();viewDraftReportDetails('${report.id}')" class="btn-secondary" style="padding:8px 12px;font-size:12px">
           View
         </button>
@@ -10909,6 +10920,35 @@ async function refreshDraftReports() {
 
     grid.appendChild(card);
   });
+}
+
+// Rename a report
+async function renameReport(reportId) {
+  const report = openReports.find(r => r.id === reportId);
+  if (!report) return;
+
+  const newName = prompt('Enter new report name:', report.name);
+  if (newName === null || newName.trim() === '' || newName.trim() === report.name) return;
+
+  report.name = newName.trim();
+
+  // Try to update on server
+  try {
+    const response = await fetch(`/api/reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName.trim() })
+    });
+    if (response.ok) {
+      showToast('Report renamed', 'success');
+    }
+  } catch (e) {
+    console.log('Could not sync rename to server:', e);
+  }
+
+  saveReportsState();
+  updateReportUI();
+  renderDraftReports();
 }
 
 // Continue working on a draft report
