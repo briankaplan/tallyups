@@ -4399,8 +4399,8 @@ async function updateIncomingBadge() {
   }
 }
 
-// API calls
-async function loadCSV() {
+// API calls - load transactions from MySQL database
+async function loadTransactions() {
   try {
     const res = await fetch('/api/transactions?all=true', { credentials: 'same-origin' });
     if (!res.ok) {
@@ -4414,10 +4414,12 @@ async function loadCSV() {
     updateDashboard();
     showToast(`Loaded ${csvData.length} transactions`, '📊');
   } catch (e) {
-    console.error('loadCSV error:', e);
-    showToast('Failed to load CSV: ' + e.message, '❌');
+    console.error('loadTransactions error:', e);
+    showToast('Failed to load transactions: ' + e.message, '❌');
   }
 }
+// Backwards compatibility alias
+const loadCSV = loadTransactions;
 
 async function saveCSV() {
   // NOTE: Server auto-saves on each update_row call
