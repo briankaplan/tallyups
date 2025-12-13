@@ -4402,9 +4402,10 @@ async function updateIncomingBadge() {
 // API calls
 async function loadCSV() {
   try {
-    const res = await fetch('/api/transactions');
+    const res = await fetch('/api/transactions?all=true');
     const data = await res.json();
-    csvData = data || [];  // Server returns array directly from MySQL
+    // Handle both array format and {transactions: []} format
+    csvData = Array.isArray(data) ? data : (data.transactions || []);
     filteredData = [...csvData];
     renderTable();
     updateDashboard();
@@ -10372,14 +10373,13 @@ function checkSubscriptionReminders() {
   });
 }
 
-// Initialize notifications on load
+// Initialize notifications on load (only check if already granted, don't prompt)
 document.addEventListener('DOMContentLoaded', () => {
-  requestNotificationPermission().then(granted => {
-    if (granted) {
-      checkWeeklySummary();
-      checkSubscriptionReminders();
-    }
-  });
+  // Only use notifications if already granted - don't auto-request (requires user gesture)
+  if (Notification.permission === 'granted') {
+    checkWeeklySummary();
+    checkSubscriptionReminders();
+  }
 });
 
 // Add calendar button to stats page
