@@ -2074,7 +2074,7 @@ def logout():
 @login_required
 def index():
     """Serve the Dashboard as the main landing page."""
-    return send_from_directory(BASE_DIR, "dashboard.html")
+    return send_from_directory(BASE_DIR, "dashboard_v2.html")
 
 
 @app.route("/privacy")
@@ -2327,6 +2327,13 @@ def auth_success():
 @login_required
 def dashboard():
     """Serve the Dashboard page."""
+    return send_from_directory(BASE_DIR, "dashboard_v2.html")
+
+
+@app.route("/dashboard-legacy")
+@login_required
+def dashboard_legacy():
+    """Serve the legacy Dashboard page."""
     return send_from_directory(BASE_DIR, "dashboard.html")
 
 
