@@ -428,6 +428,37 @@ if os.environ.get('RAILWAY_ENVIRONMENT'):
 flask_request_logger(app)
 logger.info("Flask application initialized")
 
+# =============================================================================
+# REGISTER BLUEPRINTS (Modular route organization)
+# =============================================================================
+try:
+    from routes.notes import notes_bp
+    app.register_blueprint(notes_bp)
+    logger.info("Registered blueprint: notes")
+except ImportError as e:
+    logger.warning(f"Could not load notes blueprint: {e}")
+
+try:
+    from routes.incoming import incoming_bp
+    app.register_blueprint(incoming_bp)
+    logger.info("Registered blueprint: incoming")
+except ImportError as e:
+    logger.warning(f"Could not load incoming blueprint: {e}")
+
+try:
+    from routes.reports import reports_bp
+    app.register_blueprint(reports_bp)
+    logger.info("Registered blueprint: reports")
+except ImportError as e:
+    logger.warning(f"Could not load reports blueprint: {e}")
+
+try:
+    from routes.library import library_bp
+    app.register_blueprint(library_bp)
+    logger.info("Registered blueprint: library")
+except ImportError as e:
+    logger.warning(f"Could not load library blueprint: {e}")
+
 # Set up API monitoring
 try:
     from monitoring import setup_flask_monitoring, get_monitor
@@ -23414,6 +23445,9 @@ def trigger_sync_if_needed():
 
 # =============================================================================
 # SMART NOTES API (Claude-powered contextual notes)
+# NOTE: These routes have been moved to routes/notes.py blueprint.
+# The code below is kept for reference but is superseded by the blueprint.
+# TODO: Remove once blueprint is verified working in production.
 # =============================================================================
 
 @app.route("/api/notes/generate", methods=["POST"])

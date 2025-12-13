@@ -1,0 +1,569 @@
+"""
+Reports API Blueprint
+======================
+Expense report management, generation, and export.
+
+Routes:
+- GET  /api/reports - List all reports
+- POST /api/reports - Create new report
+- PATCH /api/reports/<id> - Update report
+- POST /api/reports/<id>/add - Add transaction to report
+- POST /api/reports/<id>/remove - Remove transaction from report
+- GET  /api/reports/<id>/items - Get report items
+- GET  /api/reports/stats - Report statistics
+- GET  /api/reports/dashboard - Dashboard data
+- POST /api/reports/generate - Generate report with AI notes
+- GET  /api/reports/<id>/export/<format> - Export report
+
+This blueprint handles expense report workflows.
+"""
+
+import os
+import uuid
+from datetime import datetime
+from flask import Blueprint, request, jsonify, session
+
+from logging_config import get_logger
+
+logger = get_logger("routes.reports")
+
+# Create blueprint
+reports_bp = Blueprint('reports', __name__, url_prefix='/api/reports')
+
+
+def get_dependencies():
+    """Lazy import dependencies to avoid circular imports."""
+    from viewer_server import (
+        USE_DATABASE,
+        db,
+        login_required,
+        validate_business_type,
+    )
+    return USE_DATABASE, db, login_required, validate_business_type
+
+
+def check_auth():
+    """Check if request is authenticated."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key == expected_key:
+        return True
+    if session.get('authenticated'):
+        return True
+    return False
+
+
+@reports_bp.route("", methods=["GET"])
+def api_reports_list():
+    """List all reports."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    try:
+        status_filter = request.args.get('status')
+        reports = db.get_all_reports()
+
+        result = []
+        for r in reports:
+            report_status = r.get('status') or 'draft'
+            if status_filter and report_status != status_filter:
+                continue
+
+            result.append({
+                'report_id': r.get('report_id') or r.get('id'),
+                'id': r.get('report_id') or r.get('id'),
+                'report_name': r.get('report_name') or r.get('name') or 'Untitled',
+                'name': r.get('report_name') or r.get('name') or 'Untitled',
+                'total': float(r.get('total_amount') or 0),
+                'count': r.get('expense_count') or 0,
+                'status': report_status,
+                'business_type': r.get('business_type') or '',
+                'created_at': str(r.get('created_at') or '')
+            })
+
+        return jsonify({'ok': True, 'reports': result})
+
+    except Exception as e:
+        logger.error(f"API reports list error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@reports_bp.route("", methods=["POST"])
+def api_reports_create():
+    """Create a new report."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, validate_business_type = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        data = request.get_json() or {}
+        name = data.get('name', f"Report {datetime.now().strftime('%Y-%m-%d')}")
+        status = data.get('status', 'draft')
+        business_type = data.get('business_type', '')
+
+        # Validate business_type if provided
+        if business_type:
+            is_valid, error_msg = validate_business_type(business_type)
+            if not is_valid:
+                return jsonify({'ok': False, 'error': error_msg}), 400
+
+        if status not in ('draft', 'submitted'):
+            return jsonify({'ok': False, 'error': "status must be 'draft' or 'submitted'"}), 400
+
+        report_id = f"RPT-{uuid.uuid4().hex[:8].upper()}"
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO reports (report_id, report_name, business_type, status, created_at)
+            VALUES (%s, %s, %s, %s, NOW())
+        ''', (report_id, name, business_type, status))
+
+        conn.commit()
+
+        logger.info(f"Created report {report_id}: {name}")
+
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            'id': report_id,
+            'name': name,
+            'status': status,
+            'total': 0,
+            'count': 0
+        })
+
+    except Exception as e:
+        logger.error(f"API report create error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@reports_bp.route("/<report_id>", methods=["PATCH"])
+def api_report_update(report_id):
+    """Update a report (rename, change status, etc.)."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        data = request.get_json() or {}
+        updates = []
+        params = []
+
+        if 'name' in data:
+            updates.append("report_name = %s")
+            params.append(data['name'])
+
+        if 'status' in data and data['status'] in ('draft', 'submitted'):
+            updates.append("status = %s")
+            params.append(data['status'])
+
+        if 'business_type' in data:
+            updates.append("business_type = %s")
+            params.append(data['business_type'])
+
+        if not updates:
+            return jsonify({'ok': False, 'error': 'No valid fields to update'}), 400
+
+        params.append(report_id)
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(f'''
+            UPDATE reports SET {', '.join(updates)} WHERE report_id = %s
+        ''', params)
+
+        conn.commit()
+
+        logger.info(f"Updated report {report_id}")
+
+        return jsonify({'ok': True, 'report_id': report_id})
+
+    except Exception as e:
+        logger.error(f"API report update error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@reports_bp.route("/<report_id>/add", methods=["POST"])
+def api_report_add_item(report_id):
+    """Add a transaction to a report."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        data = request.get_json() or {}
+        transaction_index = data.get('_index') or data.get('transaction_index')
+
+        if not transaction_index:
+            return jsonify({'ok': False, 'error': 'Missing transaction _index'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Update transaction to link to report
+        cursor.execute('''
+            UPDATE transactions SET report_id = %s WHERE _index = %s
+        ''', (report_id, transaction_index))
+
+        if cursor.rowcount == 0:
+            db.return_connection(conn)
+            return jsonify({'ok': False, 'error': 'Transaction not found'}), 404
+
+        conn.commit()
+
+        logger.info(f"Added transaction {transaction_index} to report {report_id}")
+
+        return jsonify({'ok': True, 'report_id': report_id, '_index': transaction_index})
+
+    except Exception as e:
+        logger.error(f"API report add item error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@reports_bp.route("/<report_id>/remove", methods=["POST"])
+def api_report_remove_item(report_id):
+    """Remove a transaction from a report."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        data = request.get_json() or {}
+        transaction_index = data.get('_index') or data.get('transaction_index')
+
+        if not transaction_index:
+            return jsonify({'ok': False, 'error': 'Missing transaction _index'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE transactions SET report_id = NULL WHERE _index = %s AND report_id = %s
+        ''', (transaction_index, report_id))
+
+        conn.commit()
+
+        logger.info(f"Removed transaction {transaction_index} from report {report_id}")
+
+        return jsonify({'ok': True, 'report_id': report_id, '_index': transaction_index})
+
+    except Exception as e:
+        logger.error(f"API report remove item error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@reports_bp.route("/<report_id>/items", methods=["GET"])
+def api_report_items(report_id):
+    """Get all transactions in a report."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT _index, chase_date, chase_description, chase_amount, chase_category,
+                   business_type, receipt_url, r2_url, ai_note, review_status
+            FROM transactions
+            WHERE report_id = %s
+            ORDER BY chase_date DESC
+        ''', (report_id,))
+
+        items = []
+        total = 0
+        for row in cursor.fetchall():
+            item = dict(row)
+            # Serialize dates
+            if item.get('chase_date') and hasattr(item['chase_date'], 'isoformat'):
+                item['chase_date'] = item['chase_date'].isoformat()
+            amount = float(item.get('chase_amount') or 0)
+            total += abs(amount)
+            items.append(item)
+
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            'items': items,
+            'count': len(items),
+            'total': total
+        })
+
+    except Exception as e:
+        logger.error(f"API report items error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@reports_bp.route("/stats", methods=["GET"])
+def api_reports_stats():
+    """Get report statistics."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Count by status
+        cursor.execute('''
+            SELECT status, COUNT(*) as count
+            FROM reports
+            GROUP BY status
+        ''')
+        status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
+
+        # Count by business type
+        cursor.execute('''
+            SELECT business_type, COUNT(*) as count, SUM(total_amount) as total
+            FROM reports
+            WHERE business_type IS NOT NULL AND business_type != ''
+            GROUP BY business_type
+        ''')
+        business_counts = {}
+        for row in cursor.fetchall():
+            business_counts[row['business_type']] = {
+                'count': row['count'],
+                'total': float(row['total'] or 0)
+            }
+
+        # Recent reports
+        cursor.execute('''
+            SELECT report_id, report_name, status, total_amount, expense_count, created_at
+            FROM reports
+            ORDER BY created_at DESC
+            LIMIT 10
+        ''')
+        recent = []
+        for row in cursor.fetchall():
+            r = dict(row)
+            if r.get('created_at') and hasattr(r['created_at'], 'isoformat'):
+                r['created_at'] = r['created_at'].isoformat()
+            recent.append(r)
+
+        return jsonify({
+            'ok': True,
+            'status_counts': status_counts,
+            'business_counts': business_counts,
+            'recent_reports': recent,
+            'total_reports': sum(status_counts.values())
+        })
+
+    except Exception as e:
+        logger.error(f"API reports stats error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@reports_bp.route("/dashboard", methods=["GET"])
+def api_reports_dashboard():
+    """Get dashboard data for reports page."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # YTD totals
+        cursor.execute('''
+            SELECT
+                COUNT(*) as total_transactions,
+                SUM(ABS(chase_amount)) as total_amount,
+                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipts
+            FROM transactions
+            WHERE YEAR(chase_date) = YEAR(NOW())
+        ''')
+        ytd = cursor.fetchone()
+
+        # By business type
+        cursor.execute('''
+            SELECT
+                business_type,
+                COUNT(*) as count,
+                SUM(ABS(chase_amount)) as total
+            FROM transactions
+            WHERE YEAR(chase_date) = YEAR(NOW())
+            AND business_type IS NOT NULL AND business_type != ''
+            GROUP BY business_type
+        ''')
+        by_business = {}
+        for row in cursor.fetchall():
+            by_business[row['business_type']] = {
+                'count': row['count'],
+                'total': float(row['total'] or 0)
+            }
+
+        # Monthly trend
+        cursor.execute('''
+            SELECT
+                DATE_FORMAT(chase_date, '%Y-%m') as month,
+                SUM(ABS(chase_amount)) as total
+            FROM transactions
+            WHERE chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+            GROUP BY DATE_FORMAT(chase_date, '%Y-%m')
+            ORDER BY month
+        ''')
+        monthly = []
+        for row in cursor.fetchall():
+            monthly.append({
+                'month': row['month'],
+                'total': float(row['total'] or 0)
+            })
+
+        # By category
+        cursor.execute('''
+            SELECT
+                chase_category as category,
+                COUNT(*) as count,
+                SUM(ABS(chase_amount)) as total
+            FROM transactions
+            WHERE YEAR(chase_date) = YEAR(NOW())
+            AND chase_category IS NOT NULL AND chase_category != ''
+            GROUP BY chase_category
+            ORDER BY total DESC
+            LIMIT 10
+        ''')
+        by_category = []
+        for row in cursor.fetchall():
+            by_category.append({
+                'category': row['category'],
+                'count': row['count'],
+                'total': float(row['total'] or 0)
+            })
+
+        return jsonify({
+            'ok': True,
+            'ytd': {
+                'total_transactions': ytd['total_transactions'] or 0,
+                'total_amount': float(ytd['total_amount'] or 0),
+                'with_receipts': ytd['with_receipts'] or 0,
+                'receipt_coverage': (ytd['with_receipts'] / ytd['total_transactions'] * 100) if ytd['total_transactions'] else 0
+            },
+            'by_business': by_business,
+            'monthly_trend': monthly,
+            'by_category': by_category
+        })
+
+    except Exception as e:
+        logger.error(f"API reports dashboard error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@reports_bp.route("/business-summary", methods=["GET"])
+def api_business_summary():
+    """Get business summary for reports."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        year = request.args.get('year', datetime.now().year)
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT
+                business_type,
+                COUNT(*) as transaction_count,
+                SUM(ABS(chase_amount)) as total_amount,
+                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                SUM(CASE WHEN review_status = 'good' THEN 1 ELSE 0 END) as reviewed
+            FROM transactions
+            WHERE YEAR(chase_date) = %s
+            GROUP BY business_type
+        ''', (year,))
+
+        summary = []
+        for row in cursor.fetchall():
+            summary.append({
+                'business_type': row['business_type'] or 'Unassigned',
+                'transaction_count': row['transaction_count'],
+                'total_amount': float(row['total_amount'] or 0),
+                'with_receipts': row['with_receipts'],
+                'reviewed': row['reviewed'],
+                'receipt_coverage': (row['with_receipts'] / row['transaction_count'] * 100) if row['transaction_count'] else 0
+            })
+
+        return jsonify({
+            'ok': True,
+            'year': year,
+            'summary': summary
+        })
+
+    except Exception as e:
+        logger.error(f"API business summary error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)

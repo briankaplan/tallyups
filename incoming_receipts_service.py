@@ -443,19 +443,41 @@ except ImportError:
     analyze_email_content = None
     get_gemini_model = None
 
-# MySQL Connection Configuration (Railway)
-MYSQL_CONFIG = {
-    'host': os.getenv('MYSQL_HOST', 'metro.proxy.rlwy.net'),
-    'port': int(os.getenv('MYSQL_PORT', 19800)),
-    'user': os.getenv('MYSQL_USER', 'root'),
-    'password': os.getenv('MYSQL_PASSWORD', 'xruqdfYXOPFlfkqAPaRCrPFqxMaXMuiL'),
-    'database': os.getenv('MYSQL_DATABASE', 'railway'),
-    'charset': 'utf8mb4',
-    'cursorclass': pymysql.cursors.DictCursor
-}
+# MySQL Connection Configuration - uses centralized db_config
+def _get_mysql_config():
+    """Get MySQL config from environment variables (no hardcoded defaults)."""
+    from urllib.parse import urlparse
+
+    mysql_url = os.getenv('MYSQL_URL')
+    if mysql_url:
+        parsed = urlparse(mysql_url)
+        return {
+            'host': parsed.hostname,
+            'port': parsed.port or 3306,
+            'user': parsed.username,
+            'password': parsed.password,
+            'database': parsed.path.lstrip('/') if parsed.path else 'railway',
+            'charset': 'utf8mb4',
+            'cursorclass': pymysql.cursors.DictCursor
+        }
+
+    # Use individual env vars (Railway sets these automatically)
+    return {
+        'host': os.getenv('MYSQLHOST'),
+        'port': int(os.getenv('MYSQLPORT', '3306')),
+        'user': os.getenv('MYSQLUSER'),
+        'password': os.getenv('MYSQLPASSWORD'),
+        'database': os.getenv('MYSQLDATABASE', 'railway'),
+        'charset': 'utf8mb4',
+        'cursorclass': pymysql.cursors.DictCursor
+    }
+
+MYSQL_CONFIG = _get_mysql_config()
 
 def get_db_connection():
     """Get MySQL database connection"""
+    if not MYSQL_CONFIG.get('host') or not MYSQL_CONFIG.get('password'):
+        raise RuntimeError("MySQL not configured - set MYSQL_URL or MYSQL* environment variables")
     return pymysql.connect(**MYSQL_CONFIG)
 
 # Cache for subscription merchants loaded from database
