@@ -12214,7 +12214,12 @@ def reports_standalone_page(report_id):
         # Normalize field names (handle both 'report_name' and 'name', etc.)
         report_name = report_meta.get("report_name") or report_meta.get("name") or report_id
         business_type = report_meta.get("business_type", "")
-        created_at = report_meta.get("created_at", "")
+        created_at_raw = report_meta.get("created_at", "")
+        # Convert datetime to string if needed
+        if hasattr(created_at_raw, 'strftime'):
+            created_at = created_at_raw.strftime('%Y-%m-%d %H:%M')
+        else:
+            created_at = str(created_at_raw) if created_at_raw else ""
         total_from_meta = float(report_meta.get("total_amount") or 0)
         count_from_meta = report_meta.get("expense_count") or 0
 
@@ -12236,10 +12241,15 @@ def reports_standalone_page(report_id):
             total_amount = total_from_meta
             receipt_count = 0
 
-        # Get date range
+        # Get date range - convert datetime objects to strings
+        def format_date(d):
+            if hasattr(d, 'strftime'):
+                return d.strftime('%Y-%m-%d')
+            return str(d) if d else ""
+
         dates = [e.get("chase_date") for e in expenses if e.get("chase_date")]
-        date_from = min(dates) if dates else ""
-        date_to = max(dates) if dates else ""
+        date_from = format_date(min(dates)) if dates else ""
+        date_to = format_date(max(dates)) if dates else ""
 
         # If no expenses, show a message
         expense_count = len(expenses) if expenses else count_from_meta
@@ -12438,7 +12448,7 @@ tr:hover {{
 
         # Add expense rows
         for exp in expenses:
-            date = exp.get("chase_date", "")
+            date = format_date(exp.get("chase_date", ""))
             desc = exp.get("chase_description", "")
             amount = abs(float(exp.get("chase_amount", 0) or 0))
             category = exp.get("category") or exp.get("chase_category", "")
