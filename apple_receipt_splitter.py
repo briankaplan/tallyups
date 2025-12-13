@@ -265,7 +265,7 @@ Extract ALL items visible on the receipt. Return only the JSON, no other text.""
             # Sum up totals by type
             if business_type == "Personal":
                 result["personal_total"] += amount
-            elif business_type in ["Down Home", "Music City Rodeo"]:
+            elif business_type in ["Down Home", "Music City Rodeo", "EM.co"]:
                 result["business_total"] += amount
             else:
                 result["needs_review"].append(line_item)
@@ -295,7 +295,7 @@ def split_apple_receipt(image_path: str) -> Dict[str, Any]:
 
     # Group items by business type
     personal_items = [i for i in analysis["line_items"] if i["business_type"] == "Personal"]
-    business_items = [i for i in analysis["line_items"] if i["business_type"] in ["Down Home", "Music City Rodeo"]]
+    business_items = [i for i in analysis["line_items"] if i["business_type"] in ["Down Home", "Music City Rodeo", "EM.co"]]
     review_items = [i for i in analysis["line_items"] if i["business_type"] in ["Review", "Split"]]
 
     if personal_items:
