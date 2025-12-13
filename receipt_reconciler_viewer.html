@@ -2697,7 +2697,16 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   border-top: 1px solid var(--edge);
   color: var(--brand);
 }
+
+/* Ensure page content has proper spacing for app shell */
+body { padding-bottom: 80px; }
+@media (max-width: 768px) {
+  header { top: 0 !important; } /* Keep existing header on mobile */
+}
 </style>
+<!-- Design System & App Shell -->
+<link rel="stylesheet" href="/static/css/design-system.css">
+<script src="/static/js/app-shell.js" defer></script>
 </head>
 <body>
 

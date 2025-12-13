@@ -914,13 +914,18 @@ def sanitize_csv(df_in: pd.DataFrame) -> pd.DataFrame:
 def safe_json(data):
     """
     Recursively walk a structure and replace NaN/inf with None so
-    Flask/json doesn't emit invalid JS tokens.
+    Flask/json doesn't emit invalid JS tokens. Also converts datetime
+    objects to ISO format strings.
     """
     def clean(v):
         if isinstance(v, float):
             if math.isnan(v) or math.isinf(v):
                 return None
             return v
+        elif isinstance(v, datetime):
+            return v.strftime('%Y-%m-%d %H:%M:%S')
+        elif hasattr(v, 'strftime'):  # Handle date objects too
+            return v.strftime('%Y-%m-%d')
         elif isinstance(v, dict):
             return {k: clean(v2) for k, v2 in v.items()}
         elif isinstance(v, list):
@@ -2069,7 +2074,7 @@ def logout():
 @login_required
 def index():
     """Serve the Dashboard as the main landing page."""
-    return send_from_directory(BASE_DIR, "dashboard.html")
+    return send_from_directory(BASE_DIR, "dashboard_v2.html")
 
 
 @app.route("/privacy")
@@ -2322,6 +2327,13 @@ def auth_success():
 @login_required
 def dashboard():
     """Serve the Dashboard page."""
+    return send_from_directory(BASE_DIR, "dashboard_v2.html")
+
+
+@app.route("/dashboard-legacy")
+@login_required
+def dashboard_legacy():
+    """Serve the legacy Dashboard page."""
     return send_from_directory(BASE_DIR, "dashboard.html")
 
 
@@ -4304,15 +4316,19 @@ def update_transaction_field():
 @app.route("/api/transactions")
 def get_transactions():
     """
-    Return all transactions as JSON from MySQL.
+    Return transactions as JSON from MySQL with pagination support.
 
     Routes:
     - /api/transactions
 
-    PURE SQL MODE: Always reads fresh from database, no caching!
-
     Query params:
     - show_submitted=true: Include submitted transactions (default: hide them)
+    - unreported=true: Only show unreported transactions
+    - page=1: Page number (1-indexed)
+    - per_page=200: Items per page (default 200, max 1000)
+    - limit: Alternative to per_page
+    - offset: Alternative to page calculation
+    - all=true: Return all records (for backward compatibility, but discouraged)
     - admin_key: API key for authentication (or use session login)
     """
     # Auth check: admin_key OR login
@@ -4327,7 +4343,15 @@ def get_transactions():
             # Check query params
             show_submitted = request.args.get('show_submitted', 'false').lower() == 'true'
             unreported_only = request.args.get('unreported', 'false').lower() == 'true'
-            limit = request.args.get('limit', type=int)
+            return_all = request.args.get('all', 'false').lower() == 'true'
+
+            # Pagination params
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', type=int) or request.args.get('limit', type=int) or 200
+            per_page = min(per_page, 1000)  # Cap at 1000
+            offset = request.args.get('offset', type=int)
+            if offset is None:
+                offset = (page - 1) * per_page
 
             # Use MySQL-specific or SQLite-specific code path
             if hasattr(db, 'use_mysql') and db.use_mysql:
@@ -4335,27 +4359,31 @@ def get_transactions():
                 conn = db.get_connection()
                 cursor = conn.cursor()  # Already uses DictCursor from get_connection()
 
-                # Build query based on filters
+                # Build WHERE clause based on filters
+                where_clauses = []
                 if unreported_only:
-                    # For mobile swipe - only unreported, non-rejected transactions
-                    query = '''
-                        SELECT * FROM transactions
-                        WHERE (report_id IS NULL OR report_id = '')
-                        AND (review_status IS NULL OR review_status != 'rejected')
-                        AND (already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')
-                        ORDER BY chase_date DESC, _index DESC
-                    '''
-                    if limit:
-                        query += f' LIMIT {int(limit)}'
-                    cursor.execute(query)
-                elif show_submitted:
-                    cursor.execute('SELECT * FROM transactions ORDER BY chase_date DESC, _index DESC')
-                else:
-                    cursor.execute('''
-                        SELECT * FROM transactions
-                        WHERE (already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')
-                        ORDER BY chase_date DESC, _index DESC
-                    ''')
+                    where_clauses.append("(report_id IS NULL OR report_id = '')")
+                    where_clauses.append("(review_status IS NULL OR review_status != 'rejected')")
+                    where_clauses.append("(already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')")
+                elif not show_submitted:
+                    where_clauses.append("(already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')")
+
+                where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+                # Get total count for pagination
+                count_query = f"SELECT COUNT(*) as total FROM transactions {where_sql}"
+                cursor.execute(count_query)
+                total_count = cursor.fetchone()['total']
+
+                # Build main query with pagination
+                query = f'''
+                    SELECT * FROM transactions
+                    {where_sql}
+                    ORDER BY chase_date DESC, _index DESC
+                '''
+                if not return_all:
+                    query += f' LIMIT {int(per_page)} OFFSET {int(offset)}'
+                cursor.execute(query)
                 rows = cursor.fetchall()
 
                 # Get rejected receipts (safely handle if table doesn't exist yet)
@@ -4423,8 +4451,24 @@ def get_transactions():
 
                 records.append(record)
 
-            print(f"📊 Loaded {len(records)} transactions from {db_type} (pure SQL mode)", flush=True)
-            return jsonify(safe_json(records))
+            print(f"📊 Loaded {len(records)}/{total_count} transactions from {db_type} (page {page})", flush=True)
+
+            # Return with pagination metadata
+            # For backward compatibility, check if client expects array or object
+            if request.args.get('format') == 'array' or return_all:
+                return jsonify(safe_json(records))
+
+            return jsonify(safe_json({
+                'transactions': records,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total_count,
+                    'total_pages': (total_count + per_page - 1) // per_page,
+                    'has_next': offset + len(records) < total_count,
+                    'has_prev': page > 1
+                }
+            }))
 
         except Exception as e:
             print(f"⚠️  Database read error, falling back to DataFrame: {e}", flush=True)
@@ -10026,6 +10070,19 @@ BUSINESS_TYPES = [
     "EM.co"                # EM.co business
 ]
 
+def validate_business_type(business_type: str, allow_empty: bool = False) -> tuple:
+    """
+    Validate a business type against the allowed BUSINESS_TYPES.
+    Returns (is_valid, error_message).
+    """
+    if not business_type:
+        if allow_empty:
+            return (True, None)
+        return (False, "business_type is required")
+    if business_type not in BUSINESS_TYPES:
+        return (False, f"Invalid business_type '{business_type}'. Must be one of: {', '.join(BUSINESS_TYPES)}")
+    return (True, None)
+
 
 def gemini_categorize_transaction(merchant: str, amount: float, date: str = "", category_hint: str = "", row: dict = None) -> dict:
     """
@@ -11322,6 +11379,11 @@ def reports_submit():
     if not report_name or not business_type or not expense_indexes:
         abort(400, "Missing required fields (report_name, business_type, expense_indexes)")
 
+    # Validate business_type
+    is_valid, error_msg = validate_business_type(business_type)
+    if not is_valid:
+        abort(400, error_msg)
+
     try:
         report_id = db.submit_report(
             report_name=report_name,
@@ -11470,7 +11532,7 @@ def reports_unsubmit(report_id):
         if not report_info:
             abort(404, f"Report {report_id} not found")
 
-        report_name = report_info.get('name', report_id)
+        report_name = report_info.get('report_name', report_id)
         expense_count = report_info.get('expense_count', 0)
 
         # Use delete_report which clears report_id AND already_submitted
@@ -14874,11 +14936,22 @@ def api_reports_create():
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
     try:
         data = request.get_json() or {}
         name = data.get('name', f"Report {datetime.now().strftime('%Y-%m-%d')}")
         status = data.get('status', 'draft')
         business_type = data.get('business_type', '')
+
+        # Validate business_type if provided
+        if business_type:
+            is_valid, error_msg = validate_business_type(business_type)
+            if not is_valid:
+                return jsonify({'ok': False, 'error': error_msg}), 400
+
+        # Validate status
+        if status not in ('draft', 'submitted'):
+            return jsonify({'ok': False, 'error': "status must be 'draft' or 'submitted'"}), 400
 
         # Generate report ID
         import uuid
@@ -14888,16 +14961,16 @@ def api_reports_create():
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO expense_reports (report_id, report_name, business_type, status, created_at)
+            INSERT INTO reports (report_id, report_name, business_type, status, created_at)
             VALUES (%s, %s, %s, %s, NOW())
         ''', (report_id, name, business_type, status))
 
         conn.commit()
-        db.return_connection(conn)
 
         return jsonify({
             'ok': True,
-            'id': report_id,
+            'report_id': report_id,
+            'id': report_id,  # Keep for backwards compatibility
             'name': name,
             'status': status,
             'total': 0,
@@ -14906,6 +14979,9 @@ def api_reports_create():
     except Exception as e:
         print(f"❌ API report create error: {e}", flush=True)
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/reports/<report_id>/add", methods=["POST"])
@@ -14915,6 +14991,7 @@ def api_report_add_item(report_id):
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
     try:
         data = request.get_json() or {}
         transaction_id = data.get('transaction_id')
@@ -14933,12 +15010,14 @@ def api_report_add_item(report_id):
         ''', (report_id, transaction_id))
 
         conn.commit()
-        db.return_connection(conn)
 
         return jsonify({'ok': True, 'added': transaction_id})
     except Exception as e:
         print(f"❌ API report add error: {e}", flush=True)
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/reports/<report_id>/remove", methods=["POST"])
@@ -14948,6 +15027,7 @@ def api_report_remove_item(report_id):
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
     try:
         data = request.get_json() or {}
         transaction_id = data.get('transaction_id')
@@ -14966,12 +15046,14 @@ def api_report_remove_item(report_id):
         ''', (transaction_id, report_id))
 
         conn.commit()
-        db.return_connection(conn)
 
         return jsonify({'ok': True, 'removed': transaction_id})
     except Exception as e:
         print(f"❌ API report remove error: {e}", flush=True)
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/reports/<report_id>/items", methods=["GET"])
@@ -15017,16 +15099,95 @@ def api_report_items(report_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-@app.route("/api/reports/<report_id>/diagnose", methods=["GET"])
-def api_report_diagnose(report_id):
+@app.route("/api/reports/items/batch", methods=["POST"])
+@login_required
+def api_report_items_batch():
     """
-    Diagnose a report - check if it exists and what expenses are linked.
-    Returns detailed info about the report state.
-    NOTE: Temporarily public for debugging.
+    Get items for multiple reports in a single request (fixes N+1 query issue).
+
+    Request body: { "report_ids": ["RPT-123", "RPT-456", ...] }
+
+    Returns: {
+        "ok": true,
+        "reports": {
+            "RPT-123": { "items": [...], "count": 5, "total": 123.45 },
+            "RPT-456": { "items": [...], "count": 3, "total": 67.89 }
+        }
+    }
     """
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
+    try:
+        data = request.get_json() or {}
+        report_ids = data.get('report_ids', [])
+
+        if not report_ids:
+            return jsonify({'ok': False, 'error': 'report_ids required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Single query to get all items for all reports
+        placeholders = ', '.join(['%s'] * len(report_ids))
+        cursor.execute(f"""
+            SELECT * FROM transactions
+            WHERE report_id IN ({placeholders})
+            ORDER BY report_id, chase_date DESC
+        """, report_ids)
+        all_expenses = cursor.fetchall()
+
+        # Group by report_id
+        reports_data = {}
+        for exp in all_expenses:
+            report_id = exp.get('report_id')
+            if report_id not in reports_data:
+                reports_data[report_id] = {'items': [], 'count': 0, 'total': 0}
+
+            item = {
+                'id': exp.get('_index'),
+                'merchant': exp.get('mi_merchant') or exp.get('chase_description', ''),
+                'amount': abs(float(exp.get('chase_amount') or 0)),
+                'date': exp.get('chase_date', ''),
+                'category': exp.get('mi_category') or exp.get('category', ''),
+                'receipt_url': exp.get('r2_url') or exp.get('receipt_file', ''),
+                'business_type': exp.get('business_type', '')
+            }
+            reports_data[report_id]['items'].append(item)
+            reports_data[report_id]['count'] += 1
+            reports_data[report_id]['total'] += item['amount']
+
+        # Round totals
+        for report_id in reports_data:
+            reports_data[report_id]['total'] = round(reports_data[report_id]['total'], 2)
+
+        # Include empty results for requested reports that had no items
+        for report_id in report_ids:
+            if report_id not in reports_data:
+                reports_data[report_id] = {'items': [], 'count': 0, 'total': 0}
+
+        return jsonify({'ok': True, 'reports': reports_data})
+
+    except Exception as e:
+        print(f"❌ API report items batch error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@app.route("/api/reports/<report_id>/diagnose", methods=["GET"])
+@login_required
+def api_report_diagnose(report_id):
+    """
+    Diagnose a report - check if it exists and what expenses are linked.
+    Returns detailed info about the report state.
+    """
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
@@ -15060,8 +15221,6 @@ def api_report_diagnose(report_id):
             """, (report_business_type,))
             unlinked_transactions = cursor.fetchall()
 
-        db.return_connection(conn)
-
         return jsonify({
             'ok': True,
             'report_id': report_id,
@@ -15076,6 +15235,9 @@ def api_report_diagnose(report_id):
         import traceback
         traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/reports/<report_id>/repair", methods=["POST"])
@@ -15088,6 +15250,7 @@ def api_report_repair(report_id):
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    conn = None
     try:
         data = request.get_json() or {}
         business_type = data.get('business_type')
@@ -15103,7 +15266,6 @@ def api_report_repair(report_id):
         report = cursor.fetchone()
 
         if not report:
-            db.return_connection(conn)
             return jsonify({'ok': False, 'error': f'Report {report_id} not found'}), 404
 
         report_business_type = report.get('business_type') or business_type
@@ -15130,7 +15292,6 @@ def api_report_repair(report_id):
             """, (report_id, report_business_type, date_from, date_to))
             linked_count = cursor.rowcount
         else:
-            db.return_connection(conn)
             return jsonify({
                 'ok': False,
                 'error': 'Provide either transaction_ids OR (business_type, date_from, date_to)'
@@ -15150,7 +15311,6 @@ def api_report_repair(report_id):
         """, (totals['cnt'], totals['total'] or 0, report_id))
 
         conn.commit()
-        db.return_connection(conn)
 
         print(f"✅ Repaired report {report_id}: linked {linked_count} transactions", flush=True)
 
@@ -15166,6 +15326,9 @@ def api_report_repair(report_id):
         import traceback
         traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
 
 
 @app.route("/api/transactions/<int:tx_id>/reject", methods=["POST"])
@@ -15999,25 +16162,25 @@ def bulk_tag_receipts():
 
         conn = db.get_connection()
         cursor = conn.cursor()
-        added = 0
 
-        for r in receipts:
-            try:
-                cursor.execute("""
-                    INSERT INTO receipt_tag_assignments (receipt_type, receipt_id, tag_id)
-                    VALUES (%s, %s, %s)
-                    ON DUPLICATE KEY UPDATE assigned_at = CURRENT_TIMESTAMP
-                """, (r['type'], r['id'], tag_id))
-                added += 1
-            except Exception:
-                pass
+        # Batch INSERT for all receipts at once (fixes N+1 query issue)
+        if receipts:
+            values = [(r['type'], r['id'], tag_id) for r in receipts]
+            # Use executemany for batch insert
+            cursor.executemany("""
+                INSERT INTO receipt_tag_assignments (receipt_type, receipt_id, tag_id)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE assigned_at = CURRENT_TIMESTAMP
+            """, values)
+            added = cursor.rowcount
 
-        # Update usage count
-        cursor.execute("UPDATE receipt_tags SET usage_count = usage_count + %s WHERE id = %s", (added, tag_id))
+            # Update usage count
+            cursor.execute("UPDATE receipt_tags SET usage_count = usage_count + %s WHERE id = %s", (len(receipts), tag_id))
+
         conn.commit()
         db.return_connection(conn)
 
-        return jsonify({'ok': True, 'tagged': added, 'message': f'Tagged {added} receipts'})
+        return jsonify({'ok': True, 'tagged': added if receipts else 0, 'message': f'Tagged {len(receipts)} receipts'})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -16041,23 +16204,23 @@ def bulk_add_to_collection():
 
         conn = db.get_connection()
         cursor = conn.cursor()
-        added = 0
 
-        for r in receipts:
-            try:
-                cursor.execute("""
-                    INSERT INTO receipt_collection_items (collection_id, receipt_type, receipt_id)
-                    VALUES (%s, %s, %s)
-                    ON DUPLICATE KEY UPDATE added_at = CURRENT_TIMESTAMP
-                """, (collection_id, r['type'], r['id']))
-                added += 1
-            except Exception:
-                pass
+        # Batch INSERT for all receipts at once (fixes N+1 query issue)
+        if receipts:
+            values = [(collection_id, r['type'], r['id']) for r in receipts]
+            cursor.executemany("""
+                INSERT INTO receipt_collection_items (collection_id, receipt_type, receipt_id)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE added_at = CURRENT_TIMESTAMP
+            """, values)
+            added = cursor.rowcount
+        else:
+            added = 0
 
         conn.commit()
         db.return_connection(conn)
 
-        return jsonify({'ok': True, 'added': added, 'message': f'Added {added} receipts to collection'})
+        return jsonify({'ok': True, 'added': added, 'message': f'Added {len(receipts)} receipts to collection'})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -24255,6 +24418,8 @@ def api_reports_dashboard():
             ''')
 
             for row in cursor.fetchall():
+                created_at = row['created_at']
+                submitted_at = row['submitted_at']
                 recent_reports.append({
                     'report_id': row['report_id'],
                     'name': row['report_name'],
@@ -24262,8 +24427,8 @@ def api_reports_dashboard():
                     'status': row['status'] or 'draft',
                     'total_amount': float(row['total_amount'] or 0),
                     'expense_count': row['expense_count'] or 0,
-                    'created_at': str(row['created_at']) if row['created_at'] else None,
-                    'submitted_at': str(row['submitted_at']) if row['submitted_at'] else None
+                    'created_at': created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(created_at, 'strftime') else str(created_at) if created_at else None,
+                    'submitted_at': submitted_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(submitted_at, 'strftime') else str(submitted_at) if submitted_at else None
                 })
             cursor.close()
         except Exception as e:
@@ -24274,6 +24439,7 @@ def api_reports_dashboard():
         return_db_connection(conn)
 
         return jsonify({
+            "ok": True,
             "ytd": {
                 "total_amount": round(total_amount, 2),
                 "total_transactions": total_transactions,
