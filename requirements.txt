@@ -3,6 +3,7 @@
 flask>=3.0.0
 flask-cors>=4.0.0
 flask-limiter>=3.5.0  # Rate limiting for security
+flask-wtf>=1.2.0  # CSRF protection
 
 # Security
 bcrypt>=4.0.0  # Secure password hashing
