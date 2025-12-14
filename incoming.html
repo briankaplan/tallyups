@@ -1441,11 +1441,15 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   /* Show key action buttons on mobile */
   .controls .btn-ghost.btn-sm { display: none; }
   .controls .btn-ghost.btn-sm[onclick*="cleanSpam"],
-  .controls .btn-ghost.btn-sm[onclick*="regenerateImages"],
   .controls .btn-ghost.btn-sm[onclick*="rematchAll"] {
     display: inline-flex;
     font-size: 10px;
     padding: 6px 8px;
+  }
+  .controls .btn-success {
+    display: inline-flex !important;
+    font-size: 11px;
+    padding: 8px 12px;
   }
   .controls .btn-primary {
     display: inline-flex !important;
@@ -1959,11 +1963,11 @@ body { padding-bottom: 80px; }
   </nav>
 
   <div class="controls">
-    <button class="btn-ghost btn-sm" onclick="rematchAll()" title="Re-match all unmatched receipts with improved AI">🔗 Rematch All</button>
-    <button class="btn-ghost btn-sm" onclick="cleanSpam()" title="Auto-reject spam, marketing, and low-confidence items">🧹 Clean Spam</button>
-    <button class="btn-ghost btn-sm" onclick="regenerateImages()" title="Re-generate screenshots for all pending receipts">🖼️ Fix Images</button>
-    <button class="btn-ghost btn-sm" onclick="clearAndRescan()" title="Clear all pending receipts and scan fresh">⚡ Clear & Rescan</button>
-    <button class="btn-primary" onclick="scanForNew()">🔄 Scan Now</button>
+    <button class="btn-ghost btn-sm" onclick="rematchAll()" title="Re-match all unmatched receipts with improved AI">🔗 Rematch</button>
+    <button class="btn-ghost btn-sm" onclick="cleanSpam()" title="Auto-reject spam, marketing, and low-confidence items">🧹 Clean</button>
+    <button class="btn-success btn-sm" onclick="regenerateImages()" title="Re-generate screenshots for all pending receipts" style="background:#00ff88;color:#000;font-weight:600;">🖼️ Fix Images</button>
+    <button class="btn-ghost btn-sm" onclick="clearAndRescan()" title="Clear all pending receipts and scan fresh">⚡ Reset</button>
+    <button class="btn-primary" onclick="scanForNew()">🔄 Scan</button>
   </div>
 </header>
 
