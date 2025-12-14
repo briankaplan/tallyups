@@ -5,8 +5,8 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.14.v1"
-APP_BUILD_TIME = "2025-12-14T04:30:00Z"
+APP_VERSION = "2025.12.14.v2"
+APP_BUILD_TIME = "2025-12-14T04:45:00Z"
 import os
 import math
 import json
@@ -4369,6 +4369,7 @@ def get_transactions():
     - /api/transactions
 
     Query params:
+    - show_in_report=true: Include transactions that are in a report (default: hide them)
     - show_submitted=true: Include submitted transactions (default: hide them)
     - unreported=true: Only show unreported transactions
     - page=1: Page number (1-indexed)
@@ -4377,6 +4378,9 @@ def get_transactions():
     - offset: Alternative to page calculation
     - all=true: Return all records (for backward compatibility, but discouraged)
     - admin_key: API key for authentication (or use session login)
+
+    Note: Transactions assigned to a report (report_id is set) are hidden by default.
+    They become visible again when removed from the report (report_id cleared).
     """
     # Auth check: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
@@ -4408,8 +4412,15 @@ def get_transactions():
 
                 # Build WHERE clause based on filters
                 where_clauses = []
-                if unreported_only:
+
+                # By default, hide transactions that are in a report (have report_id)
+                # unless show_in_report=true is passed
+                show_in_report = request.args.get('show_in_report', 'false').lower() == 'true'
+                if not show_in_report:
                     where_clauses.append("(report_id IS NULL OR report_id = '')")
+
+                if unreported_only:
+                    # unreported_only already implies no report_id, but also filter rejected
                     where_clauses.append("(review_status IS NULL OR review_status != 'rejected')")
                     where_clauses.append("(already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')")
                 elif not show_submitted:
