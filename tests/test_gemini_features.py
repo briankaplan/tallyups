@@ -5,7 +5,23 @@ Tests: OCR, Auto-description, Categorization, Matching, Reports, Tags
 """
 import os
 import sqlite3
+import pytest
 from dotenv import load_dotenv
+
+# Check if database exists
+DB_PATH = 'receipts.db'
+HAS_DATABASE = os.path.exists(DB_PATH)
+if HAS_DATABASE:
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='transactions'")
+        HAS_TRANSACTIONS_TABLE = cursor.fetchone() is not None
+        conn.close()
+    except:
+        HAS_TRANSACTIONS_TABLE = False
+else:
+    HAS_TRANSACTIONS_TABLE = False
 from services.receipt_processor_service import ReceiptProcessorService
 from services.receipt_matcher_service import ReceiptMatcherService
 from services.expense_report_service import ExpenseReportService
@@ -61,6 +77,7 @@ def test_receipt_ocr():
         print(f"   ❌ OCR Failed: {e}")
         return False
 
+@pytest.mark.skipif(not HAS_TRANSACTIONS_TABLE, reason="transactions table not available")
 def test_auto_description():
     """Test 3: Auto Description Generation"""
     print("\n" + "="*80)
@@ -144,6 +161,7 @@ Reply with ONLY the category name, nothing else."""
 
     return True
 
+@pytest.mark.skipif(not HAS_TRANSACTIONS_TABLE, reason="transactions table not available")
 def test_receipt_matching():
     """Test 5: AI-Powered Receipt Matching"""
     print("\n" + "="*80)

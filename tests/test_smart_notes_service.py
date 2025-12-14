@@ -22,6 +22,23 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Check dependencies
+try:
+    import numpy
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+
+try:
+    import pytest_asyncio
+    HAS_PYTEST_ASYNCIO = True
+except ImportError:
+    HAS_PYTEST_ASYNCIO = False
+
+# Skip entire module if dependencies not available
+if not HAS_NUMPY or not HAS_PYTEST_ASYNCIO:
+    pytest.skip("Required dependencies not installed", allow_module_level=True)
+
 from services.smart_notes_service import (
     Contact,
     CalendarEvent,

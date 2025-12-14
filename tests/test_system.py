@@ -7,6 +7,15 @@ import sys
 import pytest
 from pathlib import Path
 
+# Check if numpy is available (required by helpers.py)
+try:
+    import numpy
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+
+pytestmark = pytest.mark.skipif(not HAS_NUMPY, reason="numpy not installed")
+
 
 class TestModuleImports:
     """Test that core modules can be imported."""

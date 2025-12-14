@@ -15,6 +15,17 @@ import json
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Check if numpy is available (required by pandas)
+try:
+    import numpy
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+
+# Skip entire module if numpy not available
+if not HAS_NUMPY:
+    pytest.skip("numpy not installed", allow_module_level=True)
+
 
 # ============================================
 # Receipt Library Service Tests

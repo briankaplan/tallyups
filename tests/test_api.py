@@ -12,6 +12,17 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Check if numpy is available (required by viewer_server via pandas)
+try:
+    import numpy
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+
+# Skip entire module if numpy not available
+if not HAS_NUMPY:
+    pytest.skip("numpy not installed", allow_module_level=True)
+
 
 @pytest.fixture
 def client():
