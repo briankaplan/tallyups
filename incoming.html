@@ -3231,8 +3231,7 @@ async function quickUnreject(id) {
     const res = await fetch(`${API_BASE}/api/incoming/unreject`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'X-Admin-Key': 'tallyups-admin-2024'
+        'Content-Type': 'application/json'
       },
       credentials: 'include',
       body: JSON.stringify({ receipt_id: id })

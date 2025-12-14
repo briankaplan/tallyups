@@ -3153,7 +3153,7 @@
 
   <script>
     // Constants
-    const ADMIN_KEY = 'tallyups-admin-2024';
+    // Authentication is handled via session cookies (credentials: 'include')
 
     // State
     let contacts = [];
@@ -3307,9 +3307,10 @@
       const contactIds = Array.from(selectedContacts);
 
       try {
-        const response = await fetch('/api/atlas/contacts/bulk-update?admin_key=tallyups-admin-2024', {
+        const response = await fetch('/api/atlas/contacts/bulk-update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             contact_ids: contactIds,
             updates: { category: category || null }
@@ -4279,7 +4280,9 @@
       const list = document.getElementById('communicationsList');
 
       try {
-        const response = await fetch(`/api/atlas/contacts/${contactId}/communications?admin_key=${ADMIN_KEY}`);
+        const response = await fetch(`/api/atlas/contacts/${contactId}/communications`, {
+          credentials: 'include'
+        });
         const data = await response.json();
 
         if (!data.ok || (data.email_count === 0 && data.text_count === 0)) {
@@ -4355,8 +4358,9 @@
         const formData = new FormData();
         formData.append('photo', file);
 
-        const response = await fetch(`/api/atlas/contacts/${currentContact.id}/photo?admin_key=${ADMIN_KEY}`, {
+        const response = await fetch(`/api/atlas/contacts/${currentContact.id}/photo`, {
           method: 'POST',
+          credentials: 'include',
           body: formData
         });
 
@@ -4399,8 +4403,9 @@
       if (!confirm('Remove this contact\'s photo?')) return;
 
       try {
-        const response = await fetch(`/api/atlas/contacts/${currentContact.id}/photo?admin_key=${ADMIN_KEY}`, {
-          method: 'DELETE'
+        const response = await fetch(`/api/atlas/contacts/${currentContact.id}/photo`, {
+          method: 'DELETE',
+          credentials: 'include'
         });
 
         const data = await response.json();
