@@ -2108,6 +2108,19 @@ def index():
     return send_from_directory(BASE_DIR, "dashboard_v2.html")
 
 
+@app.route("/favicon.ico")
+def favicon():
+    """Serve favicon from static directory."""
+    return send_from_directory(os.path.join(BASE_DIR, "static"), "icon.svg", mimetype="image/svg+xml")
+
+
+@app.route("/apple-touch-icon.png")
+@app.route("/apple-touch-icon-precomposed.png")
+def apple_touch_icon():
+    """Serve apple touch icon from static directory."""
+    return send_from_directory(os.path.join(BASE_DIR, "static"), "apple-touch-icon.png", mimetype="image/png")
+
+
 @app.route("/privacy")
 def privacy_policy():
     """Serve the Privacy Policy page (public, no auth required for Google verification)."""
@@ -19678,6 +19691,91 @@ def get_incoming_stats():
     except Exception as e:
         print(f"❌ Error getting stats: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/incoming/count", methods=["GET"])
+@login_required
+def get_incoming_count():
+    """
+    Get count of pending incoming receipts.
+    Used by dashboard to show inbox badge.
+    """
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM incoming_receipts
+            WHERE status = 'pending'
+        """)
+        row = cursor.fetchone()
+        count = row['count'] if row else 0
+
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'count': count
+        })
+
+    except Exception as e:
+        print(f"❌ Error getting incoming count: {e}")
+        return jsonify({'ok': False, 'error': str(e), 'count': 0}), 500
+
+
+@app.route("/api/receipts/recent", methods=["GET"])
+@login_required
+def get_recent_receipts():
+    """
+    Get recent receipts for dashboard activity feed.
+    Returns most recently created/updated receipts.
+    """
+    try:
+        limit = request.args.get('limit', 5, type=int)
+        limit = min(limit, 50)  # Cap at 50
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get recent transactions with receipts
+        cursor.execute("""
+            SELECT
+                t.id,
+                t.merchant,
+                t.amount,
+                t.date,
+                t.receipt_url,
+                t.created_at
+            FROM transactions t
+            WHERE t.receipt_url IS NOT NULL
+            ORDER BY t.created_at DESC
+            LIMIT %s
+        """, (limit,))
+
+        receipts = []
+        for row in cursor.fetchall():
+            receipts.append({
+                'id': row['id'],
+                'merchant': row['merchant'],
+                'amount': float(row['amount']) if row['amount'] else 0,
+                'date': row['date'].isoformat() if row['date'] else None,
+                'receipt_url': row['receipt_url'],
+                'created_at': row['created_at'].isoformat() if row['created_at'] else None
+            })
+
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'receipts': receipts
+        })
+
+    except Exception as e:
+        print(f"❌ Error getting recent receipts: {e}")
+        return jsonify({'ok': False, 'error': str(e), 'receipts': []}), 500
 
 
 @app.route("/api/incoming/generate-images", methods=["POST"])
