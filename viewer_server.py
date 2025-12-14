@@ -17948,6 +17948,7 @@ def rematch_all_inbox():
 
 
 @app.route("/api/incoming/regenerate-screenshot/<int:receipt_id>", methods=["POST"])
+@csrf_exempt_route
 def regenerate_single_screenshot(receipt_id):
     """Regenerate screenshot for a specific receipt"""
     # Allow admin key or session auth
@@ -17971,6 +17972,7 @@ def regenerate_single_screenshot(receipt_id):
 
 
 @app.route("/api/incoming/regenerate-small-images", methods=["POST"])
+@csrf_exempt_route
 @login_required
 def regenerate_small_images():
     """Find and regenerate small (likely text-based) screenshots"""
@@ -17995,6 +17997,7 @@ def regenerate_small_images():
 
 
 @app.route("/api/incoming/regenerate-missing-images", methods=["POST"])
+@csrf_exempt_route
 def regenerate_missing_images():
     """Find and regenerate screenshots for receipts with no image URL"""
     # Allow admin key or session auth
@@ -18024,6 +18027,7 @@ def regenerate_missing_images():
 
 
 @app.route("/api/incoming/clear-text-screenshots", methods=["POST"])
+@csrf_exempt_route
 def clear_text_screenshots():
     """
     Clear text-based screenshots from inbox by:
