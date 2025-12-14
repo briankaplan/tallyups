@@ -5,7 +5,7 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.14.v4"
+APP_VERSION = "2025.12.14.v5"
 APP_BUILD_TIME = "2025-12-14T05:00:00Z"
 import os
 import math
@@ -17729,9 +17729,14 @@ def cleanup_inbox():
 
 
 @app.route("/api/incoming/reprocess", methods=["POST"])
-@login_required
 def reprocess_inbox():
     """Reprocess pending receipts to extract amounts from PDFs and generate AI notes."""
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
     try:
         from incoming_receipts_service import reprocess_pending_receipts, get_inbox_stats
         print("📧 Running inbox reprocess...")
