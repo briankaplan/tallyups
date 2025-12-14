@@ -17282,6 +17282,7 @@ def attach_receipt_to_transaction():
 
 
 @app.route("/api/incoming/accept", methods=["POST"])
+@csrf_exempt_route
 @api_key_required
 def accept_incoming_receipt():
     """
@@ -17775,6 +17776,7 @@ def accept_incoming_receipt():
 
 
 @app.route("/api/incoming/reject", methods=["POST"])
+@csrf_exempt_route
 @api_key_required
 def reject_incoming_receipt():
     """
@@ -18182,6 +18184,7 @@ def backfill_ai_notes_endpoint():
 
 
 @app.route("/api/incoming/bulk-reject", methods=["POST"])
+@csrf_exempt_route
 @api_key_required
 def bulk_reject_incoming_receipts():
     """
@@ -18250,6 +18253,7 @@ def bulk_reject_incoming_receipts():
 
 
 @app.route("/api/incoming/unreject", methods=["POST"])
+@csrf_exempt_route
 @api_key_required
 def unreject_incoming_receipt():
     """
