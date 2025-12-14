@@ -19431,6 +19431,7 @@ def clear_pending_incoming_receipts():
 
 
 @app.route("/api/incoming/clear-rejected", methods=["POST"])
+@csrf_exempt_route
 def clear_rejected_incoming_receipts():
     """
     Clear all rejected incoming receipts from the database.

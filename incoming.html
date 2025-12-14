@@ -1962,12 +1962,12 @@ body { padding-bottom: 80px; }
     </a>
   </nav>
 
-  <div class="controls">
-    <button class="btn-ghost btn-sm" onclick="rematchAll()" title="Re-match all unmatched receipts with improved AI">🔗 Rematch</button>
-    <button class="btn-ghost btn-sm" onclick="cleanSpam()" title="Auto-reject spam, marketing, and low-confidence items">🧹 Clean</button>
-    <button class="btn-success btn-sm" onclick="regenerateImages()" title="Re-generate screenshots for all pending receipts" style="background:#00ff88;color:#000;font-weight:600;">🖼️ Fix Images</button>
-    <button class="btn-ghost btn-sm" onclick="clearAndRescan()" title="Clear all pending receipts and scan fresh">⚡ Reset</button>
-    <button class="btn-primary" onclick="scanForNew()">🔄 Scan</button>
+  <div class="controls" style="display:flex !important; gap:8px; flex-wrap:wrap;">
+    <button class="btn-primary" onclick="scanForNew()" style="display:inline-flex !important;">🔄 Scan Now</button>
+    <button onclick="regenerateImages()" style="display:inline-flex !important; background:#00ff88; color:#000; font-weight:600; padding:8px 12px; border:none; border-radius:8px; cursor:pointer;">🖼️ Fix Images</button>
+    <button onclick="clearDismissed()" style="display:inline-flex !important; background:#ff4757; color:#fff; padding:8px 12px; border:none; border-radius:8px; cursor:pointer;">🗑️ Clear Dismissed</button>
+    <button class="btn-ghost btn-sm" onclick="rematchAll()">🔗 Rematch</button>
+    <button class="btn-ghost btn-sm" onclick="cleanSpam()">🧹 Clean</button>
   </div>
 </header>
 
@@ -3722,6 +3722,41 @@ async function cleanSpam() {
   } catch (e) {
     console.error('Cleanup error:', e);
     showToast('Error cleaning spam', 'error');
+  }
+}
+
+// Clear all dismissed/rejected receipts permanently
+async function clearDismissed() {
+  const rejectedCount = receipts.filter(r => r.status === 'rejected' || r.status === 'auto_rejected').length;
+
+  if (rejectedCount === 0) {
+    showToast('No dismissed receipts to clear', 'info');
+    return;
+  }
+
+  if (!confirm(`This will permanently delete ${rejectedCount} dismissed receipts.\n\nThis cannot be undone. Continue?`)) return;
+
+  showToast(`Clearing ${rejectedCount} dismissed receipts...`, 'info');
+
+  try {
+    const response = await fetch('/api/incoming/clear-rejected', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({})
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      showToast(`Cleared ${data.deleted || rejectedCount} dismissed receipts`, 'success');
+      loadReceipts();
+    } else {
+      showToast(data.error || 'Failed to clear dismissed', 'error');
+    }
+  } catch (e) {
+    console.error('Clear dismissed error:', e);
+    showToast('Error clearing dismissed receipts', 'error');
   }
 }
 
