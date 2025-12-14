@@ -353,8 +353,8 @@ class TestCalculateAmountScore:
 
     @pytest.mark.unit
     def test_both_zero(self):
-        """Both zero should score 0."""
-        assert calculate_amount_score(0.0, 0.0) == 0.0
+        """Both zero should be a perfect match (1.0)."""
+        assert calculate_amount_score(0.0, 0.0) == 1.0
 
 
 # =============================================================================
