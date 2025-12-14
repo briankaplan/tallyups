@@ -12,17 +12,6 @@
   // State Management
   // ============================================
 
-  // Cache buster for thumbnail URLs - ensures fresh load on session/page load
-  const cacheBuster = `cb=${Date.now()}`;
-
-  // Helper to add cache buster to thumbnail URLs for fresh loading
-  function getThumbnailUrl(url) {
-    if (!url) return '';
-    // Add cache buster to force reload (fixes cached login thumbnail issue)
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}${cacheBuster}`;
-  }
-
   const state = {
     receipts: [],
     filteredReceipts: [],
@@ -48,7 +37,7 @@
 
     // Pagination for virtual scrolling
     page: 1,
-    pageSize: 200,  // Increased from 50 for faster loading
+    pageSize: 50,
     hasMore: true,
     isLoading: false,
 
@@ -297,10 +286,9 @@
            tabindex="0">
         <div class="receipt-thumb ${receipt.thumbnail_url || receipt.receipt_url ? '' : 'no-image'}">
           ${receipt.thumbnail_url || receipt.receipt_url ?
-            `<img src="${getThumbnailUrl(receipt.thumbnail_url || receipt.receipt_url)}"
+            `<img src="${receipt.thumbnail_url || receipt.receipt_url}"
                   alt="${escapeHtml(receipt.merchant_name || 'Receipt')}"
                   loading="lazy"
-                  onload="this.classList.add('loaded')"
                   onerror="this.parentElement.classList.add('no-image'); this.remove();">` :
             `<svg class="placeholder" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
@@ -343,10 +331,9 @@
            tabindex="0">
         <div class="list-thumb">
           ${receipt.thumbnail_url || receipt.receipt_url ?
-            `<img src="${getThumbnailUrl(receipt.thumbnail_url || receipt.receipt_url)}"
+            `<img src="${receipt.thumbnail_url || receipt.receipt_url}"
                   alt="${escapeHtml(receipt.merchant_name || 'Receipt')}"
-                  loading="lazy"
-                  onload="this.classList.add('loaded')">` :
+                  loading="lazy">` :
             `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
               <rect x="9" y="3" width="6" height="4" rx="1"></rect>
@@ -387,7 +374,7 @@
                  tabindex="0">
               <div class="list-thumb">
                 ${receipt.thumbnail_url || receipt.receipt_url ?
-                  `<img src="${getThumbnailUrl(receipt.thumbnail_url || receipt.receipt_url)}" alt="" loading="lazy" onload="this.classList.add('loaded')">` :
+                  `<img src="${receipt.thumbnail_url || receipt.receipt_url}" alt="" loading="lazy">` :
                   `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
                     <rect x="9" y="3" width="6" height="4" rx="1"></rect>
@@ -525,34 +512,6 @@
       elements.detailNotesText.textContent = receipt.ai_description || receipt.ai_notes;
     } else {
       elements.detailNotes.style.display = 'none';
-    }
-
-    // Linked Transaction
-    const linkedField = document.getElementById('field-linked');
-    const linkedValue = document.getElementById('detail-linked');
-    if (receipt.transaction_id || receipt._index || receipt.matched_transaction_id) {
-      const txId = receipt.transaction_id || receipt._index || receipt.matched_transaction_id;
-      linkedField.style.display = 'flex';
-      linkedValue.innerHTML = `Transaction #${txId} <a href="/reconcile?tx=${txId}" style="margin-left:8px;color:var(--accent);">View →</a>`;
-    } else if (receipt.type === 'incoming' && receipt.status === 'accepted') {
-      linkedField.style.display = 'flex';
-      linkedValue.textContent = 'Accepted (pending match)';
-    } else {
-      linkedField.style.display = 'none';
-    }
-
-    // OCR Data
-    const ocrField = document.getElementById('field-ocr');
-    const ocrValue = document.getElementById('detail-ocr');
-    if (receipt.ocr_merchant || receipt.ocr_amount || receipt.ocr_confidence) {
-      ocrField.style.display = 'flex';
-      const parts = [];
-      if (receipt.ocr_merchant) parts.push(`Merchant: ${receipt.ocr_merchant}`);
-      if (receipt.ocr_amount) parts.push(`Amount: $${receipt.ocr_amount}`);
-      if (receipt.ocr_confidence) parts.push(`Confidence: ${Math.round(receipt.ocr_confidence * 100)}%`);
-      ocrValue.textContent = parts.join(' | ');
-    } else {
-      ocrField.style.display = 'none';
     }
 
     // Tags

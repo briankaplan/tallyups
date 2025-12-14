@@ -170,6 +170,15 @@
   function createReportTray() {
     const existingTray = document.querySelector('.report-tray');
     if (existingTray) existingTray.remove();
+    const existingBackdrop = document.querySelector('.report-tray-backdrop');
+    if (existingBackdrop) existingBackdrop.remove();
+
+    // Create backdrop for closing by clicking outside
+    const backdrop = document.createElement('div');
+    backdrop.className = 'report-tray-backdrop';
+    backdrop.id = 'report-tray-backdrop';
+    backdrop.onclick = () => TallyUps.closeReportTray();
+    document.body.appendChild(backdrop);
 
     const tray = document.createElement('div');
     tray.className = 'report-tray';
@@ -324,9 +333,11 @@
    */
   async function openReportTray() {
     const tray = document.getElementById('report-tray');
+    const backdrop = document.getElementById('report-tray-backdrop');
     if (!tray) return;
 
     tray.classList.add('open');
+    if (backdrop) backdrop.classList.add('open');
     state.reportTrayOpen = true;
 
     // Load reports
@@ -338,9 +349,11 @@
    */
   function closeReportTray() {
     const tray = document.getElementById('report-tray');
+    const backdrop = document.getElementById('report-tray-backdrop');
     if (!tray) return;
 
     tray.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
     state.reportTrayOpen = false;
   }
 

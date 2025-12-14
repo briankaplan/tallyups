@@ -16760,21 +16760,28 @@ def get_incoming_receipts():
 
         status = request.args.get('status', 'all')
         limit = int(request.args.get('limit', 500))  # Increased to show all emails including rejected
+        # By default, exclude HTML-generated text screenshots (only show real receipt images)
+        exclude_html = request.args.get('exclude_html', 'true').lower() != 'false'
 
         conn, db_type = get_db_connection()
 
         # Build query based on status filter
+        # Filter out 'html' image_source by default (text screenshots)
+        # Keep 'html_real' (proper Playwright browser screenshots)
+        html_filter = " AND (image_source IS NULL OR image_source NOT IN ('html'))" if exclude_html else ""
+
         if status == 'all':
-            query = '''
+            query = f'''
                 SELECT * FROM incoming_receipts
+                WHERE 1=1 {html_filter}
                 ORDER BY received_date DESC
                 LIMIT ?
             '''
             cursor = db_execute(conn, db_type, query, (limit,))
         else:
-            query = '''
+            query = f'''
                 SELECT * FROM incoming_receipts
-                WHERE status = ?
+                WHERE status = ? {html_filter}
                 ORDER BY received_date DESC
                 LIMIT ?
             '''
@@ -16782,8 +16789,13 @@ def get_incoming_receipts():
 
         receipts = [dict(row) for row in cursor.fetchall()]
 
-        # Get counts by status
-        cursor = db_execute(conn, db_type, 'SELECT status, COUNT(*) as count FROM incoming_receipts GROUP BY status')
+        # Get counts by status (apply same HTML filter for consistency)
+        count_query = f'''
+            SELECT status, COUNT(*) as count FROM incoming_receipts
+            WHERE 1=1 {html_filter}
+            GROUP BY status
+        '''
+        cursor = db_execute(conn, db_type, count_query, ())
         status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
 
         return_db_connection(conn)

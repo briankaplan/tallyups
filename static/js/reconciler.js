@@ -2074,6 +2074,16 @@ function updateDashboard() {
       return sum + amt;
     }, 0);
 
+  // EM.co total
+  const emcoTotal = dataToUse
+    .filter(r => r['Business Type'] === 'EM.co' || r['Business Type'] === 'EM Co')
+    .reduce((sum, r) => {
+      const amt = getAmount(r);
+      const desc = getDesc(r);
+      if (isPaymentTxn(desc)) return sum;
+      return sum + amt;
+    }, 0);
+
   // Credit Card Payments - Description contains "PAYMENT THANK YOU" (negative amounts)
   const paymentsTotal = dataToUse
     .reduce((sum, r) => {
@@ -2084,8 +2094,20 @@ function updateDashboard() {
 
   document.getElementById('down-home-total').textContent = `$${downHomeTotal.toFixed(2)}`;
   document.getElementById('mcr-total').textContent = `$${mcrTotal.toFixed(2)}`;
+  document.getElementById('emco-total').textContent = `$${emcoTotal.toFixed(2)}`;
   document.getElementById('personal-total').textContent = `$${personalTotal.toFixed(2)}`;
   document.getElementById('payments-total').textContent = `+$${paymentsTotal.toFixed(2)}`;
+
+  // Update collapsed dashboard summary
+  const totalBusiness = downHomeTotal + mcrTotal + emcoTotal;
+  const summaryEl = document.getElementById('dashboard-summary');
+  if (summaryEl) {
+    summaryEl.innerHTML = `
+      <span class="dashboard-summary-item">Business: <span class="dashboard-summary-value">$${totalBusiness.toFixed(0)}</span></span>
+      <span class="dashboard-summary-item">Personal: <span class="dashboard-summary-value">$${personalTotal.toFixed(0)}</span></span>
+      <span class="dashboard-summary-item">Payments: <span class="dashboard-summary-value">+$${paymentsTotal.toFixed(0)}</span></span>
+    `;
+  }
 
   // Update ALL filter counts (from ALL data, not filtered)
   const counts = {
@@ -2174,6 +2196,18 @@ function updateDashboard() {
   updateBadge('receipt-verified-count', counts.receiptVerified);
   updateBadge('receipt-mismatch-count', counts.receiptMismatch);
   updateBadge('receipt-error-count', counts.receiptError);
+}
+
+// Dashboard toggle - collapse/expand stats
+let dashboardExpanded = false;
+function toggleDashboard() {
+  const dashboard = document.getElementById('dashboard');
+  const arrow = document.getElementById('dashboard-arrow');
+  if (!dashboard) return;
+
+  dashboardExpanded = !dashboardExpanded;
+  dashboard.classList.toggle('expanded', dashboardExpanded);
+  if (arrow) arrow.classList.toggle('expanded', dashboardExpanded);
 }
 
 // Image controls

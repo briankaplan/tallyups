@@ -353,11 +353,71 @@ header{
 }
 .light .right{background:linear-gradient(135deg,#f8fafc,#f1f5f9)}
 
-/* Dashboard */
+/* Dashboard - Collapsible Stats Bar */
+.dashboard-container {
+  position: relative;
+  background: var(--panel);
+  border-bottom: 1px solid var(--edge);
+}
+.dashboard-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  cursor: pointer;
+  user-select: none;
+}
+.dashboard-toggle:hover {
+  background: var(--chip);
+}
+.dashboard-toggle-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dashboard-toggle-arrow {
+  transition: transform 0.2s ease;
+}
+.dashboard-toggle-arrow.expanded {
+  transform: rotate(180deg);
+}
+.dashboard-summary {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  gap: 16px;
+}
+.dashboard-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.dashboard-summary-value {
+  font-weight: 700;
+  color: var(--ink);
+}
 .dashboard{
   padding:16px 20px;background:var(--panel);
-  border-bottom:1px solid var(--edge);
   display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;
+  /* Collapsible animation */
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 20px;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+.dashboard.expanded{
+  max-height: 200px;
+  padding: 16px 20px;
+}
+/* Auto-expand on hover for quick glance */
+.dashboard-container:hover .dashboard {
+  max-height: 200px;
+  padding: 16px 20px;
 }
 .stat{
   background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.08));
@@ -2892,27 +2952,38 @@ tr.bulk-selected td { border-left-color: var(--brand) !important; }
 <div class="main">
   <!-- Left Panel -->
   <div class="left">
-    <!-- Dashboard -->
-    <div class="dashboard" id="dashboard">
-      <div class="stat">
-        <div class="stat-label">Down Home</div>
-        <div class="stat-value" id="down-home-total">$0</div>
+    <!-- Dashboard - Collapsible Stats -->
+    <div class="dashboard-container">
+      <div class="dashboard-toggle" onclick="toggleDashboard()">
+        <div class="dashboard-toggle-label">
+          <span class="dashboard-toggle-arrow" id="dashboard-arrow">▼</span>
+          <span>Stats Overview</span>
+        </div>
+        <div class="dashboard-summary" id="dashboard-summary">
+          <span class="dashboard-summary-item">Hover or click to expand</span>
+        </div>
       </div>
-      <div class="stat">
-        <div class="stat-label">Music City Rodeo</div>
-        <div class="stat-value" id="mcr-total">$0</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">EM.co</div>
-        <div class="stat-value" id="emco-total">$0</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Personal</div>
-        <div class="stat-value" id="personal-total">$0</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Credit Card Payments</div>
-        <div class="stat-value pos" id="payments-total">$0</div>
+      <div class="dashboard" id="dashboard">
+        <div class="stat">
+          <div class="stat-label">Down Home</div>
+          <div class="stat-value" id="down-home-total">$0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Music City Rodeo</div>
+          <div class="stat-value" id="mcr-total">$0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">EM.co</div>
+          <div class="stat-value" id="emco-total">$0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Personal</div>
+          <div class="stat-value" id="personal-total">$0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Credit Card Payments</div>
+          <div class="stat-value pos" id="payments-total">$0</div>
+        </div>
       </div>
     </div>
 

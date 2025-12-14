@@ -1182,6 +1182,13 @@ def init_incoming_receipts_table():
     except:
         pass  # Column already exists
 
+    # Track image source: 'attachment', 'pdf', 'html' (generated from email text)
+    try:
+        cursor.execute("ALTER TABLE incoming_receipts ADD COLUMN image_source VARCHAR(50)")
+        print("   Added image_source column")
+    except:
+        pass  # Column already exists
+
     conn.commit()
     conn.close()
 
