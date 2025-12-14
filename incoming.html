@@ -3496,6 +3496,32 @@ async function quickReject(id) {
   }
 }
 
+async function clearRejected() {
+  if (!confirm('Clear all rejected receipts? This cannot be undone.')) return;
+
+  showToast('Clearing rejected receipts...', 'info');
+
+  try {
+    const response = await fetch('/api/incoming/clear-rejected', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (data.ok) {
+      showToast(`Cleared ${data.deleted || 0} rejected receipts`, 'success');
+      loadReceipts(); // Reload to update the list
+    } else {
+      showToast(data.error || 'Failed to clear rejected', 'error');
+    }
+  } catch (e) {
+    console.error('Clear rejected error:', e);
+    showToast('Error clearing rejected receipts', 'error');
+  }
+}
+
 function filterStatus(status) {
   // Prevent double-trigger by checking if already on this filter
   if (currentFilter === status) {
