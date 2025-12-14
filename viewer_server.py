@@ -17866,13 +17866,14 @@ def clear_text_screenshots():
                 checked += 1
 
                 if size_kb > 0 and size_kb < threshold_kb:
+                    merchant_name = row['merchant'] or 'Unknown'
                     small_images.append({
                         'id': row['id'],
-                        'merchant': row['merchant'],
+                        'merchant': merchant_name,
                         'size_kb': round(size_kb, 1),
                         'url': img_url
                     })
-                    print(f"   📝 Text screenshot: #{row['id']} {row['merchant'][:30]} ({size_kb:.1f}KB)")
+                    print(f"   📝 Text screenshot: #{row['id']} {merchant_name[:30]} ({size_kb:.1f}KB)")
 
             except Exception as e:
                 # If we can't check, skip it
