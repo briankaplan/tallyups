@@ -176,7 +176,7 @@ def api_library_receipts():
             params.extend([limit, offset])
 
             cursor = db_execute(conn, db_type, f'''
-                SELECT id, received_date, receipt_date, merchant, amount, subject, sender,
+                SELECT id, received_date, receipt_date, merchant, amount, subject, from_email,
                        receipt_url, receipt_image_url, thumbnail_url, status, gmail_account,
                        ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified,
                        business_type, notes, ai_notes, category
@@ -192,10 +192,11 @@ def api_library_receipts():
                 # Use OCR data as fallback when incoming data is missing
                 merchant_val = r.get('merchant') or r.get('ocr_merchant') or ''
                 if not merchant_val or merchant_val == 'Unknown':
-                    # Try to get from sender
-                    sender = r.get('sender') or ''
-                    if sender:
-                        merchant_val = sender.split('<')[0].strip().strip('"')
+                    # Try to get from from_email
+                    from_email = r.get('from_email') or ''
+                    if from_email:
+                        # Extract name from "Name <email>" format
+                        merchant_val = from_email.split('<')[0].strip().strip('"')
                     if not merchant_val:
                         merchant_val = 'Unknown'
 
@@ -224,7 +225,7 @@ def api_library_receipts():
                     'notes': r.get('notes') or '',
                     'ai_notes': r.get('ai_notes') or '',
                     'subject': r.get('subject') or '',
-                    'sender': r.get('sender') or '',
+                    'sender': r.get('from_email') or '',  # from_email is the actual column name
                     'gmail_account': r.get('gmail_account') or '',
                     'ocr_merchant': r.get('ocr_merchant') or '',
                     'ocr_amount': float(r.get('ocr_amount') or 0) if r.get('ocr_amount') else None,
@@ -320,7 +321,7 @@ def api_library_search():
 
         # Search incoming
         cursor = db_execute(conn, db_type, '''
-            SELECT id, received_date, merchant, amount, subject, sender,
+            SELECT id, received_date, merchant, amount, subject, from_email,
                    receipt_image_url, thumbnail_url, status,
                    ocr_merchant, ocr_amount, ocr_confidence, ocr_verified
             FROM incoming_receipts
@@ -334,9 +335,9 @@ def api_library_search():
             r = dict(row)
             merchant_val = r.get('merchant') or r.get('ocr_merchant') or ''
             if not merchant_val or merchant_val == 'Unknown':
-                sender = r.get('sender') or ''
-                if sender:
-                    merchant_val = sender.split('<')[0].strip().strip('"')
+                from_email = r.get('from_email') or ''
+                if from_email:
+                    merchant_val = from_email.split('<')[0].strip().strip('"')
                 if not merchant_val:
                     merchant_val = 'Unknown'
             amount_val = r.get('amount') or r.get('ocr_amount') or 0
