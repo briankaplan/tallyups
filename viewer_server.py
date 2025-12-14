@@ -2792,6 +2792,7 @@ def dashboard_stats():
 
         # ========== BUSINESS BREAKDOWN ==========
         business_breakdown = []
+        by_business = {}  # Object format for frontend compatibility
         try:
             cursor = db_execute(conn, db_type, """
                 SELECT
@@ -2805,14 +2806,17 @@ def dashboard_stats():
                 ORDER BY total_spent DESC
             """)
             for row in cursor.fetchall():
-                business_breakdown.append({
+                biz_data = {
                     'business': row['business'],
                     'count': int(row['tx_count']),
                     'total': round(float(row['total_spent'] or 0), 2),
                     'with_receipt': int(row['has_receipt'] or 0),
                     'missing': int(row['tx_count']) - int(row['has_receipt'] or 0),
                     'receipt_pct': round((int(row['has_receipt'] or 0) / int(row['tx_count']) * 100) if row['tx_count'] else 0)
-                })
+                }
+                business_breakdown.append(biz_data)
+                # Also build object format for frontend
+                by_business[row['business']] = biz_data
             cursor.close()
         except Exception as be:
             print(f"Business breakdown error: {be}")
@@ -3016,7 +3020,9 @@ def dashboard_stats():
             "missing_receipts": int(missing_receipts),
             "verification": verification_stats,
             "business_breakdown": business_breakdown,
+            "by_business": by_business,  # Object format for frontend compatibility
             "monthly_trends": monthly_trends,
+            "monthly_trend": monthly_trends,  # Alias for frontend compatibility (singular)
             "top_merchants": top_merchants,
             "needs_attention": needs_attention,
             "mismatches": mismatches,
@@ -19949,32 +19955,27 @@ def get_recent_receipts():
         limit = min(limit, 50)  # Cap at 50
 
         conn, db_type = get_db_connection()
-        cursor = conn.cursor()
-
-        # Get recent transactions with receipts
-        cursor.execute("""
+        cursor = db_execute(conn, db_type, """
             SELECT
-                t.id,
-                t.merchant,
-                t.amount,
-                t.date,
-                t.receipt_url,
-                t.created_at
-            FROM transactions t
-            WHERE t.receipt_url IS NOT NULL
-            ORDER BY t.created_at DESC
+                _index,
+                chase_description AS merchant,
+                ABS(CAST(chase_amount AS DECIMAL(10,2))) AS amount,
+                chase_date AS date,
+                r2_url AS receipt_url
+            FROM transactions
+            WHERE r2_url IS NOT NULL AND r2_url != ''
+            ORDER BY chase_date DESC
             LIMIT %s
         """, (limit,))
 
         receipts = []
         for row in cursor.fetchall():
             receipts.append({
-                'id': row['id'],
-                'merchant': row['merchant'],
+                'id': row['_index'],
+                'merchant': row['merchant'] or 'Unknown',
                 'amount': float(row['amount']) if row['amount'] else 0,
-                'date': row['date'].isoformat() if row['date'] else None,
-                'receipt_url': row['receipt_url'],
-                'created_at': row['created_at'].isoformat() if row['created_at'] else None
+                'date': str(row['date']) if row['date'] else None,
+                'receipt_url': row['receipt_url']
             })
 
         cursor.close()
@@ -19987,6 +19988,8 @@ def get_recent_receipts():
 
     except Exception as e:
         print(f"❌ Error getting recent receipts: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'ok': False, 'error': str(e), 'receipts': []}), 500
 
 

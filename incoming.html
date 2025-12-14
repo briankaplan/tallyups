@@ -18,6 +18,14 @@
   --glow:rgba(0,255,136,.35);
 }
 
+/* Light Theme */
+:root[data-theme="light"] {
+  --bg:#f5f5f5; --panel:#ffffff; --panel2:#fafafa; --edge:#ddd;
+  --ink:#1a1a1a; --muted:#666; --brand:#00aa55;
+  --ok:#00aa55; --bad:#dc2626; --warn:#d97706;
+  --glow:rgba(0,170,85,.2);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -1969,6 +1977,12 @@ body { padding-bottom: 80px; }
     <button class="btn-ghost btn-sm" onclick="rematchAll()">🔗 Rematch</button>
     <button class="btn-ghost btn-sm" onclick="cleanSpam()">🧹 Clean</button>
   </div>
+
+  <!-- User Controls -->
+  <div class="user-controls" style="display:flex; gap:8px; margin-left:auto;">
+    <button onclick="toggleTheme()" class="btn-icon" title="Toggle Light/Dark Mode" style="background:rgba(255,255,255,0.1); border:none; width:36px; height:36px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px;" id="theme-toggle">🌙</button>
+    <a href="/logout" class="btn-icon" title="Logout" style="background:rgba(255,255,255,0.1); border:none; width:36px; height:36px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; text-decoration:none;">🚪</a>
+  </div>
 </header>
 
 <!-- Stats Dashboard -->
@@ -2235,6 +2249,28 @@ body { padding-bottom: 80px; }
 </style>
 
 <script>
+// Theme toggle functionality
+function toggleTheme() {
+  const root = document.documentElement;
+  const currentTheme = root.getAttribute('data-theme') || 'dark';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme) {
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+}
+
+// Load saved theme
+(function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  setTimeout(() => updateThemeIcon(savedTheme), 0);
+})();
+
 let allReceipts = [];
 let currentFilter = 'pending';  // Default to inbox
 let pendingAccept = null; // Store pending accept data for duplicate handling
