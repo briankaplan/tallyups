@@ -14825,7 +14825,7 @@ def get_library_receipts():
                 inc_query = '''
                     SELECT id, merchant, amount, receipt_date, received_date,
                            receipt_url, receipt_image_url, thumbnail_url,
-                           source, status, sender, subject, from_email,
+                           source, status, from_email, subject,
                            transaction_id, accepted_as_transaction_id, matched_transaction_id,
                            ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified, ocr_verification_status,
                            business_type, notes, ai_notes, category
@@ -14882,11 +14882,11 @@ def get_library_receipts():
                         if inc_ocr_merchant:
                             merchant = inc_ocr_merchant
                         else:
-                            # Try to get from sender
-                            sender = inc.get('sender') or ''
-                            if sender:
+                            # Try to get from from_email (sender)
+                            from_email = inc.get('from_email') or ''
+                            if from_email:
                                 # Clean up sender name (remove email parts)
-                                merchant = sender.split('<')[0].strip().strip('"')
+                                merchant = from_email.split('<')[0].strip().strip('"')
                             if not merchant:
                                 # Try subject line
                                 subject = inc.get('subject') or ''
