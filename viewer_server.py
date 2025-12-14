@@ -15037,8 +15037,8 @@ def api_reports_create():
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO reports (report_id, report_name, business_type, status, created_at)
-            VALUES (%s, %s, %s, %s, NOW())
+            INSERT INTO reports (report_id, report_name, business_type, status, expense_count, total_amount, created_at)
+            VALUES (%s, %s, %s, %s, 0, 0.00, NOW())
         ''', (report_id, name, business_type, status))
 
         conn.commit()
