@@ -7857,20 +7857,21 @@ def atlas_sync_status():
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Ensure sync columns exist
-        try:
-            cursor.execute("""
-                ALTER TABLE contacts
-                ADD COLUMN IF NOT EXISTS sync_status VARCHAR(20) DEFAULT 'synced',
-                ADD COLUMN IF NOT EXISTS last_synced_at DATETIME,
-                ADD COLUMN IF NOT EXISTS local_modified_at DATETIME,
-                ADD COLUMN IF NOT EXISTS google_resource_name VARCHAR(255),
-                ADD COLUMN IF NOT EXISTS google_etag VARCHAR(255)
-            """)
-            conn.commit()
-        except Exception as e:
-            # Columns may already exist
-            pass
+        # Ensure sync columns exist (MySQL compatible - check each column individually)
+        sync_columns = [
+            ("sync_status", "VARCHAR(20) DEFAULT 'synced'"),
+            ("last_synced_at", "DATETIME"),
+            ("local_modified_at", "DATETIME"),
+            ("google_resource_name", "VARCHAR(255)"),
+            ("google_etag", "VARCHAR(255)")
+        ]
+        for col_name, col_type in sync_columns:
+            try:
+                cursor.execute(f"ALTER TABLE contacts ADD COLUMN {col_name} {col_type}")
+                conn.commit()
+            except Exception:
+                # Column already exists
+                pass
 
         # Get sync statistics
         cursor.execute("""
