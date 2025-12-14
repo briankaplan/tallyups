@@ -516,6 +516,34 @@
       elements.detailNotes.style.display = 'none';
     }
 
+    // Linked Transaction
+    const linkedField = document.getElementById('field-linked');
+    const linkedValue = document.getElementById('detail-linked');
+    if (receipt.transaction_id || receipt._index || receipt.matched_transaction_id) {
+      const txId = receipt.transaction_id || receipt._index || receipt.matched_transaction_id;
+      linkedField.style.display = 'flex';
+      linkedValue.innerHTML = `Transaction #${txId} <a href="/reconcile?tx=${txId}" style="margin-left:8px;color:var(--accent);">View →</a>`;
+    } else if (receipt.type === 'incoming' && receipt.status === 'accepted') {
+      linkedField.style.display = 'flex';
+      linkedValue.textContent = 'Accepted (pending match)';
+    } else {
+      linkedField.style.display = 'none';
+    }
+
+    // OCR Data
+    const ocrField = document.getElementById('field-ocr');
+    const ocrValue = document.getElementById('detail-ocr');
+    if (receipt.ocr_merchant || receipt.ocr_amount || receipt.ocr_confidence) {
+      ocrField.style.display = 'flex';
+      const parts = [];
+      if (receipt.ocr_merchant) parts.push(`Merchant: ${receipt.ocr_merchant}`);
+      if (receipt.ocr_amount) parts.push(`Amount: $${receipt.ocr_amount}`);
+      if (receipt.ocr_confidence) parts.push(`Confidence: ${Math.round(receipt.ocr_confidence * 100)}%`);
+      ocrValue.textContent = parts.join(' | ');
+    } else {
+      ocrField.style.display = 'none';
+    }
+
     // Tags
     const tagsHtml = (receipt.tags || []).map(tag =>
       `<span class="tag">${escapeHtml(tag)}</span>`
