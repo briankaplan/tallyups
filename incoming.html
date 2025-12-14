@@ -138,6 +138,7 @@ button:active { transform: translateY(0); }
 /* Dashboard Stats */
 .dashboard {
   padding: 16px 20px; background: var(--panel);
+  padding-top: calc(64px + 16px); /* Account for fixed header from app-shell */
   border-bottom: 1px solid var(--edge);
   display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;
 }
@@ -1455,6 +1456,7 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
     padding: 10px 12px;
+    padding-top: calc(56px + 10px); /* Account for fixed header on mobile */
   }
   .stat {
     padding: 10px 12px;
