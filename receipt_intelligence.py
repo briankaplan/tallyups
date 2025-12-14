@@ -30,18 +30,39 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # =============================================================================
-# CONFIGURATION
+# CONFIGURATION - Use centralized db_config (no hardcoded credentials)
 # =============================================================================
 
-MYSQL_CONFIG = {
-    'host': os.getenv('MYSQL_HOST', 'metro.proxy.rlwy.net'),
-    'port': int(os.getenv('MYSQL_PORT', 19800)),
-    'user': os.getenv('MYSQL_USER', 'root'),
-    'password': os.getenv('MYSQL_PASSWORD', ''),
-    'database': os.getenv('MYSQL_DATABASE', 'railway'),
-    'charset': 'utf8mb4',
-    'cursorclass': pymysql.cursors.DictCursor
-}
+def _get_mysql_config():
+    """Get MySQL config from centralized db_config module."""
+    try:
+        from db_config import get_db_config
+        config = get_db_config()
+        if config:
+            config['cursorclass'] = pymysql.cursors.DictCursor
+            return config
+    except ImportError:
+        pass
+
+    # Fallback to environment variables only (NO hardcoded defaults)
+    host = os.getenv('MYSQLHOST') or os.getenv('MYSQL_HOST')
+    user = os.getenv('MYSQLUSER') or os.getenv('MYSQL_USER')
+    password = os.getenv('MYSQLPASSWORD') or os.getenv('MYSQL_PASSWORD')
+
+    if not all([host, user, password]):
+        return None
+
+    return {
+        'host': host,
+        'port': int(os.getenv('MYSQLPORT', os.getenv('MYSQL_PORT', '3306'))),
+        'user': user,
+        'password': password,
+        'database': os.getenv('MYSQLDATABASE', os.getenv('MYSQL_DATABASE', 'railway')),
+        'charset': 'utf8mb4',
+        'cursorclass': pymysql.cursors.DictCursor
+    }
+
+MYSQL_CONFIG = _get_mysql_config()
 
 
 # =============================================================================

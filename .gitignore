@@ -56,6 +56,15 @@ tokens_*.json
 *.token.json
 
 # ========================================
+# OAuth Token Pickle Files (SENSITIVE)
+# ========================================
+*.pickle
+token_*.pickle
+config/token_*.pickle
+calendar_token*.json
+calendar_tokens*.json
+
+# ========================================
 # Environment & Secrets
 # ========================================
 .env

@@ -11,6 +11,126 @@ let currentRotation = 0;
 let undoStack = [];
 const MAX_UNDO_STACK = 50;
 
+// ============================================
+// Security: HTML escaping to prevent XSS
+// ============================================
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+}
+
+// ============================================
+// Loading States and Error Handling
+// ============================================
+let activeLoaders = 0;
+let loadingOverlay = null;
+
+function createLoadingOverlay() {
+  if (loadingOverlay) return loadingOverlay;
+  loadingOverlay = document.createElement('div');
+  loadingOverlay.id = 'global-loading-overlay';
+  loadingOverlay.innerHTML = `
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading...</div>
+  `;
+  loadingOverlay.style.cssText = `
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  `;
+  const style = document.createElement('style');
+  style.textContent = `
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .loading-text {
+      color: white;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(loadingOverlay);
+  return loadingOverlay;
+}
+
+function showLoading(text = 'Loading...') {
+  activeLoaders++;
+  const overlay = createLoadingOverlay();
+  const textEl = overlay.querySelector('.loading-text');
+  if (textEl) textEl.textContent = text;
+  overlay.style.display = 'flex';
+}
+
+function hideLoading() {
+  activeLoaders = Math.max(0, activeLoaders - 1);
+  if (activeLoaders === 0 && loadingOverlay) {
+    loadingOverlay.style.display = 'none';
+  }
+}
+
+// Wrapper for fetch with loading states and error handling
+async function fetchWithLoading(url, options = {}, loadingText = 'Loading...') {
+  showLoading(loadingText);
+  try {
+    const response = await fetch(url, { credentials: 'same-origin', ...options });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`HTTP ${response.status}: ${errorText.slice(0, 100)}`);
+    }
+    return response;
+  } catch (error) {
+    // Network errors, timeouts, etc.
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      showToast('Network error - check your connection', '❌');
+    } else if (!error.message.startsWith('HTTP')) {
+      showToast(`Request failed: ${error.message}`, '❌');
+    }
+    throw error;
+  } finally {
+    hideLoading();
+  }
+}
+
+// Retry wrapper for critical operations
+async function fetchWithRetry(url, options = {}, maxRetries = 2, loadingText = 'Loading...') {
+  let lastError;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fetchWithLoading(url, options, i > 0 ? `${loadingText} (retry ${i}/${maxRetries})` : loadingText);
+    } catch (error) {
+      lastError = error;
+      if (i < maxRetries) {
+        await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Exponential backoff
+      }
+    }
+  }
+  throw lastError;
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   await loadCSV();
@@ -53,14 +173,16 @@ async function updateIncomingBadge() {
 // API calls
 async function loadCSV() {
   try {
-    const res = await fetch('/api/transactions');
+    const res = await fetchWithLoading('/api/transactions', {}, 'Loading transactions...');
     const data = await res.json();
     csvData = data || [];  // Server returns array directly from MySQL
     // Re-apply existing filters instead of resetting
     applyFilters();  // This calls renderTable() + updateDashboard() internally
     showToast(`Loaded ${csvData.length} transactions`, '📊');
   } catch (e) {
-    showToast('Failed to load CSV: ' + e.message, '❌');
+    showToast('Failed to load transactions: ' + e.message, '❌');
+    csvData = [];
+    applyFilters();
   }
 }
 
@@ -1092,8 +1214,26 @@ async function checkGmailStatus() {
 // Cached month names for performance
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+// Virtual scrolling configuration
+const VIRTUAL_SCROLL_CONFIG = {
+  rowHeight: 48,        // Approximate row height in pixels
+  bufferSize: 20,       // Extra rows to render above/below viewport
+  enabled: true,        // Enable/disable virtual scrolling
+  threshold: 50         // Only enable for datasets > this size
+};
+let virtualScrollState = { startIndex: 0, endIndex: 0 };
+
 function renderTable() {
   const tbody = document.getElementById('tbody');
+  const tableWrap = document.querySelector('.table-wrap');
+
+  // Use virtual scrolling for large datasets
+  const useVirtual = VIRTUAL_SCROLL_CONFIG.enabled && filteredData.length > VIRTUAL_SCROLL_CONFIG.threshold;
+
+  if (useVirtual && tableWrap) {
+    renderVirtualTable(tbody, tableWrap);
+    return;
+  }
 
   // Use DocumentFragment for batch DOM operations (significant performance improvement)
   const fragment = document.createDocumentFragment();
@@ -1158,17 +1298,17 @@ function renderTable() {
     const miDescription = row['MI Description'] || row['Notes'] || '';
     const isSubscription = row['MI Is Subscription'] === 1;
 
-    // Merchant cell with subscription badge
+    // Merchant cell with subscription badge (XSS-safe)
     const merchantHtml = isSubscription
-      ? `<div class="merchant-cell" title="${row['Chase Description'] || ''}">${miMerchant} <span class="sub-badge">SUB</span></div>`
-      : `<div class="merchant-cell" title="${row['Chase Description'] || ''}">${miMerchant}</div>`;
+      ? `<div class="merchant-cell" title="${escapeHtml(row['Chase Description'] || '')}">${escapeHtml(miMerchant)} <span class="sub-badge">SUB</span></div>`
+      : `<div class="merchant-cell" title="${escapeHtml(row['Chase Description'] || '')}">${escapeHtml(miMerchant)}</div>`;
 
     // Category cell
     const categoryHtml = `<span class="category-badge">${miCategory}</span>`;
 
-    // Description cell with inline editing
+    // Description cell with inline editing (XSS-safe)
     const descHtml = miDescription
-      ? `<div class="notes-cell" onclick="editNotes(event, ${rowIndex})" title="${miDescription}">${miDescription}</div>`
+      ? `<div class="notes-cell" onclick="editNotes(event, ${rowIndex})" title="${escapeHtml(miDescription)}">${escapeHtml(miDescription)}</div>`
       : `<div class="notes-cell empty" onclick="editNotes(event, ${rowIndex})">Click to add note</div>`;
 
     // Receipt indicator - check both local file and R2 URL + validation status
@@ -1180,13 +1320,13 @@ function renderTable() {
     let receiptHtml;
     if (hasReceipt) {
       if (validationStatus === 'verified') {
-        receiptHtml = `<span class="receipt-indicator verified" title="Verified: ${validationNote}">✓✓</span>`;
+        receiptHtml = `<span class="receipt-indicator verified" title="Verified: ${escapeHtml(validationNote)}">✓✓</span>`;
       } else if (validationStatus === 'mismatch') {
-        receiptHtml = `<span class="receipt-indicator mismatch" title="MISMATCH: ${validationNote}">✗</span>`;
+        receiptHtml = `<span class="receipt-indicator mismatch" title="MISMATCH: ${escapeHtml(validationNote)}">✗</span>`;
       } else if (validationStatus === 'needs_review') {
-        receiptHtml = `<span class="receipt-indicator needs-review" title="Needs Review: ${validationNote}">?</span>`;
+        receiptHtml = `<span class="receipt-indicator needs-review" title="Needs Review: ${escapeHtml(validationNote)}">?</span>`;
       } else {
-        receiptHtml = `<span class="receipt-indicator has-receipt" title="${receiptFile || r2Url}">✓</span>`;
+        receiptHtml = `<span class="receipt-indicator has-receipt" title="${escapeHtml(receiptFile || r2Url)}">✓</span>`;
       }
     } else {
       receiptHtml = `<span class="receipt-indicator no-receipt">–</span>`;
@@ -1196,8 +1336,8 @@ function renderTable() {
       <td>${dateHtml}</td>
       <td>${merchantHtml}</td>
       <td>${amtHtml}</td>
-      <td>${categoryHtml}</td>
-      <td>${row['Business Type'] || ''}</td>
+      <td>${escapeHtml(miCategory)}</td>
+      <td>${escapeHtml(row['Business Type'] || '')}</td>
       <td>${getStatusBadge(row['Review Status'], isRefund)}</td>
       <td>${receiptHtml}</td>
       <td>${descHtml}</td>
@@ -1224,6 +1364,173 @@ function renderTable() {
 
   // Also render mobile cards
   renderMobileCards();
+}
+
+// Virtual scrolling for large datasets
+function renderVirtualTable(tbody, tableWrap) {
+  const { rowHeight, bufferSize } = VIRTUAL_SCROLL_CONFIG;
+  const totalRows = filteredData.length;
+  const totalHeight = totalRows * rowHeight;
+
+  // Calculate visible range based on scroll position
+  const scrollTop = tableWrap.scrollTop || 0;
+  const viewportHeight = tableWrap.clientHeight || 500;
+
+  let startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - bufferSize);
+  let endIndex = Math.min(totalRows, Math.ceil((scrollTop + viewportHeight) / rowHeight) + bufferSize);
+
+  // Save state for scroll handler
+  virtualScrollState = { startIndex, endIndex };
+
+  const fragment = document.createDocumentFragment();
+  const selectedIndex = selectedRow ? selectedRow._index : null;
+
+  // Create top spacer for scroll position
+  if (startIndex > 0) {
+    const topSpacer = document.createElement('tr');
+    topSpacer.innerHTML = `<td colspan="8" style="height: ${startIndex * rowHeight}px; padding: 0; border: none;"></td>`;
+    topSpacer.classList.add('virtual-spacer');
+    fragment.appendChild(topSpacer);
+  }
+
+  // Render visible rows
+  for (let i = startIndex; i < endIndex; i++) {
+    const row = filteredData[i];
+    if (!row) continue;
+
+    const tr = createTableRow(row, selectedIndex);
+    fragment.appendChild(tr);
+  }
+
+  // Create bottom spacer
+  const bottomSpacerHeight = (totalRows - endIndex) * rowHeight;
+  if (bottomSpacerHeight > 0) {
+    const bottomSpacer = document.createElement('tr');
+    bottomSpacer.innerHTML = `<td colspan="8" style="height: ${bottomSpacerHeight}px; padding: 0; border: none;"></td>`;
+    bottomSpacer.classList.add('virtual-spacer');
+    fragment.appendChild(bottomSpacer);
+  }
+
+  tbody.innerHTML = '';
+  tbody.appendChild(fragment);
+
+  // Setup scroll listener (debounced)
+  if (!tableWrap._virtualScrollHandler) {
+    let scrollTimeout;
+    tableWrap._virtualScrollHandler = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const newScrollTop = tableWrap.scrollTop;
+        const newStartIndex = Math.max(0, Math.floor(newScrollTop / rowHeight) - bufferSize);
+        const newEndIndex = Math.min(totalRows, Math.ceil((newScrollTop + viewportHeight) / rowHeight) + bufferSize);
+
+        // Only re-render if visible range changed significantly
+        if (Math.abs(newStartIndex - virtualScrollState.startIndex) > bufferSize / 2 ||
+            Math.abs(newEndIndex - virtualScrollState.endIndex) > bufferSize / 2) {
+          renderVirtualTable(tbody, tableWrap);
+        }
+      }, 16); // ~60fps
+    };
+    tableWrap.addEventListener('scroll', tableWrap._virtualScrollHandler, { passive: true });
+  }
+
+  // Also render mobile cards
+  renderMobileCards();
+}
+
+// Helper function to create a single table row
+function createTableRow(row, selectedIndex) {
+  const tr = document.createElement('tr');
+  const rowIndex = row._index;
+
+  if (selectedIndex !== null && rowIndex === selectedIndex) {
+    tr.classList.add('selected');
+  }
+  if (row._newlyMatched) {
+    tr.classList.add('newly-matched');
+  }
+
+  const amt = parseFloat(row['Chase Amount'] || row['Amount'] || 0);
+  const isRefund = amt < 0 || row['Review Status'] === 'refund';
+  if (isRefund) {
+    tr.classList.add('refund-row');
+  }
+
+  // Format date
+  const dateStr = row['Chase Date'] || '';
+  let dateHtml = '';
+  if (dateStr) {
+    const parts = dateStr.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      const year = parts[0];
+      const month = MONTHS[parseInt(parts[1]) - 1] || parts[1];
+      const day = parseInt(parts[2]);
+      dateHtml = `<div class="date-cell"><span class="date-month-day">${month} ${day}</span><span class="date-year">${year}</span></div>`;
+    } else {
+      dateHtml = dateStr;
+    }
+  }
+
+  const amtClass = amt > 0 ? 'neg' : 'pos';
+  const amtSign = amt > 0 ? '-' : '+';
+  const amtHtml = `<span class="amount ${amtClass}">${amtSign}$${Math.abs(amt).toFixed(2)}</span>`;
+
+  const miMerchant = row['MI Merchant'] || row['Chase Description'] || '';
+  const miCategory = row['MI Category'] || row['Chase Category'] || '';
+  const miDescription = row['MI Description'] || row['Notes'] || '';
+  const isSubscription = row['MI Is Subscription'] === 1;
+
+  const merchantHtml = isSubscription
+    ? `<div class="merchant-cell" title="${escapeHtml(row['Chase Description'] || '')}">${escapeHtml(miMerchant)} <span class="sub-badge">SUB</span></div>`
+    : `<div class="merchant-cell" title="${escapeHtml(row['Chase Description'] || '')}">${escapeHtml(miMerchant)}</div>`;
+
+  const descHtml = miDescription
+    ? `<div class="notes-cell" onclick="editNotes(event, ${rowIndex})" title="${escapeHtml(miDescription)}">${escapeHtml(miDescription)}</div>`
+    : `<div class="notes-cell empty" onclick="editNotes(event, ${rowIndex})">Click to add note</div>`;
+
+  const receiptFile = row['Receipt File'] || '';
+  const r2Url = row['r2_url'] || row['R2 URL'] || row['receipt_url'] || '';
+  const hasReceipt = receiptFile || r2Url;
+  const validationStatus = row['receipt_validation_status'] || '';
+  const validationNote = row['receipt_validation_note'] || '';
+  let receiptHtml;
+  if (hasReceipt) {
+    if (validationStatus === 'verified') {
+      receiptHtml = `<span class="receipt-indicator verified" title="Verified: ${escapeHtml(validationNote)}">✓✓</span>`;
+    } else if (validationStatus === 'mismatch') {
+      receiptHtml = `<span class="receipt-indicator mismatch" title="MISMATCH: ${escapeHtml(validationNote)}">✗</span>`;
+    } else if (validationStatus === 'needs_review') {
+      receiptHtml = `<span class="receipt-indicator needs-review" title="Needs Review: ${escapeHtml(validationNote)}">?</span>`;
+    } else {
+      receiptHtml = `<span class="receipt-indicator has-receipt" title="${escapeHtml(receiptFile || r2Url)}">✓</span>`;
+    }
+  } else {
+    receiptHtml = `<span class="receipt-indicator no-receipt">–</span>`;
+  }
+
+  tr.innerHTML = `
+    <td>${dateHtml}</td>
+    <td>${merchantHtml}</td>
+    <td>${amtHtml}</td>
+    <td>${escapeHtml(miCategory)}</td>
+    <td>${escapeHtml(row['Business Type'] || '')}</td>
+    <td>${getStatusBadge(row['Review Status'], isRefund)}</td>
+    <td>${receiptHtml}</td>
+    <td>${descHtml}</td>
+  `;
+
+  tr.dataset.index = rowIndex;
+  tr.onclick = (e) => {
+    if (!e.target.classList.contains('notes-cell') && !e.target.classList.contains('notes-input')) {
+      if (window.innerWidth <= 1024) {
+        showMobileReceiptViewer(rowIndex);
+      } else {
+        selectRow(row);
+      }
+    }
+  };
+
+  return tr;
 }
 
 // Render mobile card view
@@ -1309,13 +1616,13 @@ function renderMobileCards() {
            data-index="${rowIndex}"
            onclick="openMobileDrawer(${rowIndex})">
         <div class="tx-card-header">
-          <div class="tx-card-merchant">${merchant}</div>
+          <div class="tx-card-merchant">${escapeHtml(merchant)}</div>
           <div class="tx-card-amount ${amtClass}">${amtDisplay}</div>
         </div>
         <div class="tx-card-body">
-          <div class="tx-card-date">${dateDisplay}</div>
-          ${category ? `<div class="tx-card-category">${category}</div>` : ''}
-          ${business ? `<div class="tx-card-business">${business}</div>` : ''}
+          <div class="tx-card-date">${escapeHtml(dateDisplay)}</div>
+          ${category ? `<div class="tx-card-category">${escapeHtml(category)}</div>` : ''}
+          ${business ? `<div class="tx-card-business">${escapeHtml(business)}</div>` : ''}
         </div>
         <div class="tx-card-footer">
           <div class="tx-card-status">
@@ -1401,7 +1708,7 @@ function openMobileDrawer(rowIndex) {
   drawer.innerHTML = `
     <div class="tx-drawer-handle"></div>
     <div class="tx-drawer-header">
-      <div class="tx-drawer-title">${merchant}</div>
+      <div class="tx-drawer-title">${escapeHtml(merchant)}</div>
       <button class="tx-drawer-close" onclick="closeMobileDrawer()">×</button>
     </div>
     <div class="tx-drawer-body">
@@ -1413,22 +1720,22 @@ function openMobileDrawer(rowIndex) {
         </div>
         <div class="tx-drawer-row">
           <div class="tx-drawer-label">Date</div>
-          <div class="tx-drawer-value">${dateDisplay}</div>
+          <div class="tx-drawer-value">${escapeHtml(dateDisplay)}</div>
         </div>
         <div class="tx-drawer-row">
           <div class="tx-drawer-label">Category</div>
-          <div class="tx-drawer-value">${category}</div>
+          <div class="tx-drawer-value">${escapeHtml(category)}</div>
         </div>
         <div class="tx-drawer-row">
           <div class="tx-drawer-label">Business</div>
-          <div class="tx-drawer-value">${business}</div>
+          <div class="tx-drawer-value">${escapeHtml(business)}</div>
         </div>
         <div class="tx-drawer-row">
           <div class="tx-drawer-label">Status</div>
-          <div class="tx-drawer-value">${status.charAt(0).toUpperCase() + status.slice(1)}</div>
+          <div class="tx-drawer-value">${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}</div>
         </div>
-        ${description ? `<div class="tx-drawer-row"><div class="tx-drawer-label">Description</div><div class="tx-drawer-value" style="font-size:13px">${description}</div></div>` : ''}
-        ${notes ? `<div class="tx-drawer-row"><div class="tx-drawer-label">Notes</div><div class="tx-drawer-value" style="font-size:13px">${notes}</div></div>` : ''}
+        ${description ? `<div class="tx-drawer-row"><div class="tx-drawer-label">Description</div><div class="tx-drawer-value" style="font-size:13px">${escapeHtml(description)}</div></div>` : ''}
+        ${notes ? `<div class="tx-drawer-row"><div class="tx-drawer-label">Notes</div><div class="tx-drawer-value" style="font-size:13px">${escapeHtml(notes)}</div></div>` : ''}
       </div>
     </div>
     <div class="tx-drawer-actions">
@@ -1694,10 +2001,13 @@ function loadReceipt() {
       maxScale: 5,
       minScale: 0.5,
       startScale: 1.2,
-      contain: 'outside'
+      contain: 'inside'
     });
 
-    wrap.addEventListener('wheel', panzoomInstance.zoomWithWheel);
+    wrap.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      panzoomInstance.zoomWithWheel(e);
+    });
   };
 
   // Error handling - try fallback if R2 URL fails
@@ -2045,7 +2355,7 @@ function updateQuickViewer() {
         maxScale: 5,
         minScale: 0.5,
         step: 0.2,
-        contain: 'outside'
+        contain: 'inside'
       });
     }, 50);
   } else {
@@ -4972,9 +5282,12 @@ function showMobileReceiptViewer(idx) {
         mobileReceiptPanzoom = Panzoom(img, {
           maxScale: 5,
           minScale: 0.5,
-          contain: 'outside'
+          contain: 'inside'
         });
-        img.parentElement.addEventListener('wheel', mobileReceiptPanzoom.zoomWithWheel);
+        img.parentElement.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          mobileReceiptPanzoom.zoomWithWheel(e);
+        });
       }
     };
   } else {
@@ -5527,3 +5840,122 @@ setTimeout(() => {
     statsHeader.parentNode.appendChild(calBtn);
   }
 }, 100);
+
+// ============================================
+// KEYBOARD SHORTCUTS INTEGRATION
+// ============================================
+// ReviewInterface adapter - bridges KeyboardHandler to existing functions
+const ReviewInterface = {
+  // Navigation
+  navigate: (delta) => navigateRow(delta),
+  navigateToIndex: (idx) => {
+    if (idx === -1) idx = filteredData.length - 1;
+    if (idx >= 0 && idx < filteredData.length) {
+      const row = filteredData[idx];
+      selectRow(row);
+      document.querySelector(`tr[data-index="${row._index}"]`)?.scrollIntoView({ block: 'center' });
+    }
+  },
+  togglePreview: (open) => {
+    if (open && selectedRow) loadReceipt();
+  },
+  closeAll: () => {
+    closeQuickViewer();
+    const modal = document.querySelector('.modal-overlay.active');
+    if (modal) modal.classList.remove('active');
+  },
+
+  // Quick actions - map to updateField
+  setReviewStatus: (status) => updateField('Review Status', status),
+  setValidationStatus: (status) => updateField('MI Validation', status),
+  detachReceipt: () => detachReceipt(),
+
+  // Business type
+  setBusinessType: (type) => updateField('Business Type', type),
+  setPersonal: () => updateField('Business Type', 'Personal'),
+
+  // AI actions
+  aiMatch: () => aiMatch(),
+  generateAINote: () => aiNote(),
+  aiCategorize: async () => {
+    if (!selectedRow) return showToast('Select a transaction first', 'warning');
+    try {
+      const resp = await fetch('/api/ai/categorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _index: selectedRow._index })
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        showToast(`Categorized: ${data.category}`, 'success');
+        await loadCSV();
+      }
+    } catch (e) {
+      showToast('AI categorization failed', 'error');
+    }
+  },
+
+  // Bulk selection (simplified for now)
+  extendSelection: (delta) => {
+    // Future: implement shift-selection
+    navigateRow(delta);
+  },
+  selectAll: () => showToast('Select all: Use Ctrl+Click', 'info'),
+  selectSameMerchant: () => showToast('Select same merchant: Coming soon', 'info'),
+  openBulkActions: () => {
+    if (typeof BulkActions !== 'undefined') {
+      window.bulkActions?.show();
+    }
+  },
+
+  // Search & Filter
+  focusSearch: () => {
+    const search = document.getElementById('search');
+    if (search) search.focus();
+  },
+  toggleFilterPanel: () => {
+    const filters = document.querySelector('.filter-controls');
+    if (filters) filters.classList.toggle('expanded');
+  },
+  quickFilter: (type, value) => {
+    if (type === 'business') {
+      const select = document.getElementById('filterBusiness');
+      if (select) {
+        select.value = value;
+        applyFilters();
+      }
+    } else if (type === 'receipt') {
+      const select = document.getElementById('filterReceipt');
+      if (select) {
+        select.value = value;
+        applyFilters();
+      }
+    } else if (type === 'status') {
+      const select = document.getElementById('filterStatus');
+      if (select) {
+        select.value = value;
+        applyFilters();
+      }
+    }
+  },
+
+  // Image controls
+  rotateImage: () => rotateImage(),
+  zoomIn: () => zoomIn(),
+  zoomOut: () => zoomOut(),
+  resetZoom: () => resetZoom(),
+
+  // System
+  openQuickViewer: () => openQuickViewer(),
+  undo: () => undo(),
+  save: () => saveCSV(),
+  exportSelected: () => showToast('Export: Use Reports page', 'info')
+};
+
+// Initialize keyboard handler after DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof KeyboardHandler !== 'undefined') {
+    window.keyboardHandler = new KeyboardHandler(ReviewInterface);
+    console.log('Keyboard shortcuts enabled. Press ? for help.');
+  }
+});

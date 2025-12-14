@@ -121,8 +121,9 @@ def reset_to_first_key():
     _configure_with_key(0)
 
 def generate_with_gemini(prompt, image=None, max_retries=2):
-    """Generate content using Gemini (used as fallback)"""
+    """Generate content using Gemini (used as fallback) with proper exponential backoff"""
     import time
+    import random
 
     model = get_model()
     if not model:
@@ -140,15 +141,27 @@ def generate_with_gemini(prompt, image=None, max_retries=2):
             is_rate_limit = any(term in error_str for term in ['quota', 'rate', '429', 'resource'])
 
             if is_rate_limit:
+                # Exponential backoff BEFORE switching keys
+                delay = min(2 ** attempt, 30) * (0.5 + random.random())
+                print(f"   ⚠️ Gemini rate limited, waiting {delay:.1f}s before retry...")
+                time.sleep(delay)
+
                 if switch_to_next_key():
                     model = get_model()
                     continue
                 else:
-                    print(f"   ❌ All Gemini keys exhausted")
+                    # All keys exhausted - longer backoff before giving up
+                    exhausted_delay = 60 + random.uniform(0, 60)
+                    print(f"   ❌ All Gemini keys exhausted, backing off {exhausted_delay:.0f}s")
+                    time.sleep(exhausted_delay)
+                    reset_to_first_key()
                     return None
 
             if attempt < max_retries - 1:
-                time.sleep(2)
+                # Exponential backoff for non-rate-limit errors
+                delay = min(2 ** attempt, 30) * (0.5 + random.random())
+                print(f"   ⚠️ Gemini error, retrying in {delay:.1f}s...")
+                time.sleep(delay)
                 continue
 
             print(f"   ❌ Gemini error: {e}")

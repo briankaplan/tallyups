@@ -1,13 +1,22 @@
 """
 Tallyups Authentication Module
-Simple password-based auth for personal use
+Secure password-based auth with bcrypt hashing and timing-safe comparisons
 """
 
 import os
 import hashlib
 import secrets
+import logging
 from functools import wraps
 from flask import session, redirect, url_for, request, jsonify
+
+# Try to import bcrypt for secure password hashing
+try:
+    import bcrypt
+    BCRYPT_AVAILABLE = True
+except ImportError:
+    BCRYPT_AVAILABLE = False
+    logging.warning("bcrypt not available - using SHA256 fallback (less secure)")
 
 # Get password from environment variable (hashed)
 # Set this in Railway: AUTH_PASSWORD_HASH=<your_bcrypt_hash>
@@ -22,34 +31,77 @@ SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 # Session timeout (seconds) - default 7 days
 SESSION_TIMEOUT = int(os.environ.get('SESSION_TIMEOUT', 60 * 60 * 24 * 7))
 
+# Check if running in production (Railway sets this)
+IS_PRODUCTION = bool(os.environ.get('RAILWAY_ENVIRONMENT'))
+
 
 def hash_password(password: str) -> str:
-    """Simple SHA256 hash for password comparison"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """
+    Hash password using bcrypt (preferred) or SHA256 fallback.
+    For new hashes, use bcrypt. SHA256 is only for legacy compatibility.
+    """
+    if BCRYPT_AVAILABLE:
+        return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    else:
+        # Fallback to SHA256 (less secure but works without bcrypt)
+        return hashlib.sha256(password.encode()).hexdigest()
+
+
+def _verify_hash(password: str, stored_hash: str) -> bool:
+    """Verify password against stored hash (bcrypt or SHA256)."""
+    if not stored_hash:
+        return False
+
+    # Try bcrypt first (hashes start with $2b$ or $2a$)
+    if BCRYPT_AVAILABLE and stored_hash.startswith('$2'):
+        try:
+            return bcrypt.checkpw(password.encode(), stored_hash.encode())
+        except (ValueError, TypeError):
+            return False
+
+    # Fallback to SHA256 comparison (timing-safe)
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    return secrets.compare_digest(password_hash, stored_hash)
 
 
 def verify_password(password: str) -> bool:
-    """Verify password against stored hash or plaintext"""
+    """
+    Verify password against stored hash or plaintext.
+    Uses timing-safe comparison to prevent timing attacks.
+    """
     if AUTH_PASSWORD_HASH:
-        return hash_password(password) == AUTH_PASSWORD_HASH
+        return _verify_hash(password, AUTH_PASSWORD_HASH)
     elif AUTH_PASSWORD:
-        return password == AUTH_PASSWORD
+        # Plaintext comparison - use timing-safe compare
+        return secrets.compare_digest(password, AUTH_PASSWORD)
     else:
-        # No password set - allow access (for local development)
+        # No password set - BLOCK in production, allow in development
+        if IS_PRODUCTION:
+            logging.error("SECURITY: No AUTH_PASSWORD configured in production!")
+            return False
+        logging.warning("No password configured - allowing access (development mode only)")
         return True
 
 
 def verify_pin(pin: str) -> bool:
-    """Verify PIN for quick mobile unlock"""
+    """
+    Verify PIN for quick mobile unlock.
+    Uses timing-safe comparison to prevent timing attacks.
+    """
     if AUTH_PIN:
-        return pin == AUTH_PIN
+        # Use constant-time comparison to prevent timing attacks
+        return secrets.compare_digest(pin, AUTH_PIN)
     return False
 
 
 def is_authenticated() -> bool:
     """Check if current session is authenticated"""
-    # No password configured = no auth required (local dev)
+    # No password configured
     if not AUTH_PASSWORD and not AUTH_PASSWORD_HASH:
+        # BLOCK in production, allow in development
+        if IS_PRODUCTION:
+            logging.error("SECURITY: No AUTH_PASSWORD configured in production!")
+            return False
         return True
     return session.get('authenticated', False)
 

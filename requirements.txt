@@ -2,6 +2,10 @@
 # Cache bust: 2025-12-03 - force fresh pip install
 flask>=3.0.0
 flask-cors>=4.0.0
+flask-limiter>=3.5.0  # Rate limiting for security
+
+# Security
+bcrypt>=4.0.0  # Secure password hashing
 
 # AI/OCR - Gemini (FREE tier!)
 google-generativeai>=0.8.0

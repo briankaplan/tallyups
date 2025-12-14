@@ -445,9 +445,19 @@ except ImportError:
 
 # MySQL Connection Configuration - uses centralized db_config
 def _get_mysql_config():
-    """Get MySQL config from environment variables (no hardcoded defaults)."""
-    from urllib.parse import urlparse
+    """Get MySQL config from centralized db_config module."""
+    # Try centralized config first
+    try:
+        from db_config import get_db_config
+        config = get_db_config()
+        if config:
+            config['cursorclass'] = pymysql.cursors.DictCursor
+            return config
+    except ImportError:
+        pass
 
+    # Fallback to parsing MYSQL_URL
+    from urllib.parse import urlparse
     mysql_url = os.getenv('MYSQL_URL')
     if mysql_url:
         parsed = urlparse(mysql_url)
@@ -462,8 +472,13 @@ def _get_mysql_config():
         }
 
     # Use individual env vars (Railway sets these automatically)
+    # NO hardcoded defaults - will fail if not configured
+    host = os.getenv('MYSQLHOST')
+    if not host:
+        return None
+
     return {
-        'host': os.getenv('MYSQLHOST'),
+        'host': host,
         'port': int(os.getenv('MYSQLPORT', '3306')),
         'user': os.getenv('MYSQLUSER'),
         'password': os.getenv('MYSQLPASSWORD'),
@@ -604,10 +619,26 @@ RECEIPT_INDICATORS = [
 ]
 
 MARKETING_PATTERNS = [
-    'unsubscribe', 'view in browser', 'shop now', 'buy now',
+    # Standard marketing CTAs
+    'unsubscribe', 'view in browser', 'shop now', 'buy now', 'order now',
     'limited time', 'sale', 'discount', 'promo', 'offer expires',
     'save now', 'deal', 'coupon', 'get % off', 'exclusive offer',
-    'newsletter', 'follow us', 'join us'
+    'newsletter', 'follow us', 'join us', 'connect with us',
+    # Social proof / urgency
+    'don\'t miss', 'hurry', 'act now', 'last chance', 'ending soon',
+    'while supplies last', 'selling fast', 'almost gone', 'only x left',
+    # Email marketing footers
+    'manage preferences', 'email preferences', 'update preferences',
+    'view online', 'view as webpage', 'add us to your contacts',
+    'privacy policy', 'terms of service', 'sent to you because',
+    # Social media
+    'facebook', 'twitter', 'instagram', 'linkedin', 'tiktok', 'youtube',
+    # Promotional language
+    'free shipping', 'free gift', 'bonus', 'reward', 'extra savings',
+    'members only', 'vip access', 'early access', 'sneak peek',
+    # Retail spam
+    'new arrivals', 'trending now', 'best sellers', 'top picks',
+    'curated for you', 'hand-picked', 'just for you', 'personalized',
 ]
 
 # Personal subscription & service receipts (INCLUDE these) - HIGH CONFIDENCE
@@ -658,106 +689,417 @@ VENDOR_INVOICE_PATTERNS = [
 
 # Notification patterns (EXCLUDE unless has amount/receipt)
 NOTIFICATION_PATTERNS = [
-    'payment failed', 'payment declined', 'card declined',
+    # Payment issues (not actual receipts)
+    'payment failed', 'payment declined', 'card declined', 'card expired',
+    'payment method', 'update payment', 'add payment', 'payment issue',
+    'billing issue', 'billing problem', 'card on file', 'update your card',
+    # Subscription lifecycle (not receipts)
     'subscription will renew', 'subscription expiring', 'trial ending',
-    'upcoming charge', 'upcoming payment', 'reminder:',
-    'action required', 'verify your', 'confirm your',
-    'activate your', 'welcome to', 'getting started',
-    'introducing', 'new feature', 'update available'
+    'trial expired', 'trial period', 'free trial', 'start your trial',
+    'cancel anytime', 'cancel subscription', 'subscription cancelled',
+    'membership expiring', 'renew your', 'auto-renew',
+    # Future charges (not current receipts)
+    'upcoming charge', 'upcoming payment', 'scheduled payment',
+    'will be charged', 'will be billed', 'next billing date',
+    # Action required (not receipts)
+    'action required', 'action needed', 'verify your', 'confirm your',
+    'activate your', 'complete your', 'finish setting up',
+    'one more step', 'almost there', 'just one more',
+    # Onboarding (not receipts)
+    'welcome to', 'getting started', 'quick start', 'setup guide',
+    'introducing', 'new feature', 'update available', 'what\'s new',
+    # Security alerts (not receipts)
+    'security alert', 'unusual activity', 'new sign-in', 'new device',
+    'password reset', 'password changed', 'two-factor', '2fa',
+    'verify identity', 'confirm identity', 'suspicious activity',
+    # Status updates (not receipts)
+    'status update', 'in progress', 'processing', 'pending',
+    'under review', 'being reviewed', 'we\'re working on',
 ]
 
 # Co-worker/internal communication patterns (EXCLUDE these)
 COWORKER_PATTERNS = [
-    'scott siman', 'siman',  # Specific people
-    'netsuite', 'quickbooks', 'internal app', 'app update',  # Business apps
-    'meeting', 'call scheduled', 'zoom meeting', 'calendar invite',  # Meetings
-    'please review', 'fyi', 'heads up', 're:', 'fwd:',  # Internal comms
-    'hive', 'hive.com', 'keep using',  # Hive project management spam
+    # Specific people at work
+    'scott siman', 'siman', 'em.co', 'emco',
+    # Business/accounting software
+    'netsuite', 'quickbooks', 'xero', 'freshbooks', 'wave accounting',
+    'internal app', 'app update', 'platform update',
+    # Project management / collaboration
+    'hive', 'hive.com', 'keep using', 'asana', 'monday.com', 'basecamp',
+    'trello', 'jira', 'confluence', 'notion workspace',
+    # Meetings and calendar
+    'meeting', 'call scheduled', 'zoom meeting', 'calendar invite',
+    'teams meeting', 'google meet', 'webex', 'scheduled call',
+    'join the meeting', 'meeting reminder', 'meeting in',
+    # Internal communications
+    'please review', 'fyi', 'heads up', 're:', 'fwd:', 'forwarded:',
+    'as discussed', 'per our conversation', 'following up',
+    'checking in', 'touch base', 'sync up', 'quick question',
+    # HR / Admin
+    'time off', 'pto request', 'vacation request', 'expense report',
+    'reimbursement request', 'approval needed', 'needs your approval',
+    # Internal announcements
+    'team update', 'company update', 'all hands', 'town hall',
+    'org change', 'new hire', 'welcome aboard',
 ]
 
 # Spam/marketing sender domains to auto-reject
 SPAM_SENDER_DOMAINS = [
-    # Email marketing platforms
+    # === EMAIL MARKETING PLATFORMS ===
     'mailchimp.com', 'sendgrid.net', 'constantcontact.com', 'mailgun.org',
-    'hubspot.com', 'mailerlite.com', 'klaviyo.com', 'brevo.com',
-    'mixmax.com', 'intercom.io', 'drip.com', 'convertkit.com',
-    # Subdomain prefixes that indicate marketing (but NOT blocking amazon.com itself)
-    'marketing.', 'promo.',
-    'advertising.amazon.com',  # Only promotional Amazon subdomain, NOT order emails
-    # Expensify (reports, not receipts)
-    'expensify.com', 'expensifymail.com',
-    # Political/news spam
-    'conservativeinstitute', 'forbesbreak', 'dailywire',
-    # School/community newsletters
-    'wilsonk12tn.us', 'k12.com', 'schoolmessenger.com',
-    # Dental/medical marketing
-    'smilegeneration.com', 'smile.direct',
-    # Credit card marketing (NOT statements/receipts)
-    'synchronyfinancial.com', 'synchrony.com',
-    # Newsletter platforms
-    'substack.com', 'beehiiv.com', 'ghost.io',
+    'hubspot.com', 'mailerlite.com', 'klaviyo.com', 'brevo.com', 'sendinblue.com',
+    'mixmax.com', 'intercom.io', 'drip.com', 'convertkit.com', 'getresponse.com',
+    'activecampaign.com', 'aweber.com', 'campaignmonitor.com', 'emma.com',
+    'sailthru.com', 'sparkpost.com', 'postmarkapp.com', 'customer.io',
+    'iterable.com', 'responsys.com', 'exacttarget.com', 'eloqua.com',
+    'marketo.com', 'pardot.com', 'autopilot.com', 'keap.com', 'infusionsoft.com',
+    'moosend.com', 'omnisend.com', 'sendfox.com', 'benchmark.email',
+    'mailjet.com', 'mailersend.com', 'pepipost.com', 'socketlabs.com',
+
+    # === NEWSLETTER PLATFORMS ===
+    'substack.com', 'beehiiv.com', 'ghost.io', 'buttondown.email',
+    'revue.co', 'tinyletter.com', 'emailoctopus.com', 'mailpoet.com',
+
+    # === MARKETING SUBDOMAINS ===
+    'marketing.', 'promo.', 'news.', 'newsletter.', 'updates.',
+    'offers.', 'deals.', 'campaigns.', 'email.', 'mail.',
+    'advertising.amazon.com',  # Only promotional Amazon subdomain
+
+    # === EXPENSIFY / EXPENSE REPORTS ===
+    'expensify.com', 'expensifymail.com', 'concur.com', 'sap-concur.com',
+    'certify.com', 'expensepoint.com', 'abacus.com',
+
+    # === POLITICAL / NEWS SPAM ===
+    'conservativeinstitute', 'forbesbreak', 'dailywire', 'newsmax',
+    'breitbart', 'thefederalist', 'pjmedia', 'townhall.com',
+    'theblaze.com', 'dailycaller', 'westernjournal', 'epoch',
+    'patriot', 'freedomworks', 'heritage.org', 'prageru',
+    # Left-leaning spam too
+    'moveon.org', 'dailykos', 'motherjones', 'thinkprogress',
+    'huffpost', 'salon.com', 'vox.com', 'slate.com',
+    # General news digests
+    'morning brew', 'morningbrew', 'axios.com', 'theskim', 'skimm.com',
+    'themorningbrew', 'hustle.co', 'thehustle',
+
+    # === SCHOOL / COMMUNITY ===
+    'wilsonk12tn.us', 'k12.com', 'schoolmessenger.com', 'smore.com',
+    'peachjar.com', 'parentlink.net', 'bloomz.com', 'classdojo.com',
+    '.edu',  # Educational institutions
+    'pta', 'ptsa', 'booster',
+
+    # === MEDICAL / DENTAL MARKETING ===
+    'smilegeneration.com', 'smile.direct', 'smiledirectclub',
+    'healthgrades.com', 'zocdoc.com', 'patientpop.com',
+    'solutionreach.com', 'lighthouse360.com', 'demandforce.com',
+
+    # === CREDIT CARD / BANK MARKETING ===
+    'synchronyfinancial.com', 'synchrony.com', 'comenity.net',
+    'creditcards.com', 'nerdwallet.com', 'creditkarma.com',
+    'bankrate.com', 'lendingtree.com', 'sofi.com', 'upstart.com',
+    'upgrade.com', 'avant.com', 'prosper.com', 'lendingclub.com',
+
+    # === REAL ESTATE / HOME SPAM ===
+    'realtor.com', 'zillow.com', 'redfin.com', 'trulia.com',
+    'homeadvisor.com', 'angi.com', 'angieslist.com', 'thumbtack.com',
+    'porch.com', 'houzz.com',
+
+    # === JOB / CAREER SPAM ===
+    'linkedin.com', 'indeed.com', 'glassdoor.com', 'monster.com',
+    'careerbuilder.com', 'ziprecruiter.com', 'dice.com', 'hired.com',
+
+    # === SURVEY / FEEDBACK ===
+    'surveymonkey.com', 'typeform.com', 'qualtrics.com', 'medallia.com',
+    'getfeedback.com', 'delighted.com', 'asknicely.com',
+
+    # === SOCIAL MEDIA ===
+    'facebookmail.com', 'facebook.com', 'twitter.com', 'x.com',
+    'instagram.com', 'tiktok.com', 'pinterest.com', 'snapchat.com',
+
+    # === DATING / SOCIAL ===
+    'match.com', 'tinder.com', 'bumble.com', 'hinge.co', 'okcupid.com',
+    'nextdoor.com', 'meetup.com',
+
+    # === MISC SPAM SOURCES ===
+    'groupon.com', 'livingsocial.com', 'retailmenot.com', 'slickdeals.net',
+    'woot.com', 'dealnews.com', 'bensbargains.com',
+    # Crypto spam
+    'coinbase.com', 'binance.com', 'crypto.com', 'kraken.com',
+    # Gambling
+    'draftkings', 'fanduel', 'betmgm', 'caesars', 'barstool',
+    # Insurance marketing
+    'geico.com', 'progressive.com', 'statefarm.com', 'allstate.com',
+    'policygenius.com', 'lemonade.com', 'hippo.com',
+    # Car dealer spam
+    'carvana.com', 'carmax.com', 'autotrader.com', 'cars.com',
+    'truecar.com', 'kbb.com',
+    # Charity / nonprofit
+    'gofundme.com', 'kickstarter.com', 'indiegogo.com', 'patreon.com',
+    # Webinar spam
+    'gotowebinar.com', 'webinarjam.com', 'demio.com', 'livestorm.com',
+    # Fitness marketing
+    'myfitnesspal.com', 'fitbit.com', 'peloton.com', 'orangetheory.com',
+    # Pet spam
+    'chewy.com', 'petco.com', 'petsmart.com', 'barkbox.com',
 ]
 
 # Subject patterns that ALWAYS indicate spam (auto-reject regardless of sender)
 SPAM_SUBJECT_PATTERNS = [
-    # Amazon promotional garbage
+    # === AMAZON PROMOTIONAL GARBAGE ===
     'we found something you might like', "today's big deal", 'new deals just dropped',
     'your deals are here', 'deals for you', 'recommended for you', 'based on your',
     'you might also like', 'customers who bought', 'frequently bought together',
-    # Amazon shipping (not receipts)
+    'inspired by your', 'picked for you', 'top picks for you',
+    'save on', 'deal of the day', 'lightning deal', 'price drop',
+    'items in your cart', 'still interested', 'don\'t forget',
+
+    # === SHIPPING NOTIFICATIONS (not receipts) ===
     'shipped:', 'arriving:', 'delivered:', 'out for delivery',
     'your package', 'tracking number', 'shipment notification',
-    # Expensify internal
-    'expenses to review', 'expense report', 'please review',
-    # Political/news spam
-    'trump announces', 'americans could see', 'breaking:', 'alert:',
-    'you won\'t believe', 'shocking:', 'urgent:',
-    # Hotel/loyalty
-    'hilton honors', 'marriott bonvoy', 'points expiring', 'redeem your points',
-    # Black Friday / Sale spam
-    'black friday', 'cyber monday', 'flash sale', 'limited time only',
-    'last chance', 'ending soon', 'don\'t miss out', 'exclusive access',
-    # Internal business (not receipts)
+    'package tracking', 'delivery update', 'track your order',
+    'en route', 'on its way', 'almost there', 'left the warehouse',
+    'usps', 'ups', 'fedex', 'carrier', 'delivery attempted',
+
+    # === EXPENSIFY / EXPENSE REPORTS ===
+    'expenses to review', 'expense report', 'please review expenses',
+    'pending approval', 'needs your approval', 'awaiting approval',
+
+    # === POLITICAL / NEWS SPAM ===
+    'trump announces', 'biden announces', 'americans could see', 'breaking:',
+    'alert:', 'you won\'t believe', 'shocking:', 'urgent:', 'must read',
+    'developing:', 'just in:', 'exclusive:', 'bombshell:',
+    'republicans', 'democrats', 'congress', 'election', 'poll results',
+    'white house', 'washington', 'capitol hill', 'senate', 'house of',
+
+    # === LOYALTY / REWARDS SPAM ===
+    'hilton honors', 'marriott bonvoy', 'ihg rewards', 'wyndham rewards',
+    'points expiring', 'redeem your points', 'bonus points', 'earn points',
+    'miles expiring', 'redeem your miles', 'reward status', 'elite status',
+    'tier qualifying', 'free night', 'anniversary night',
+
+    # === SALE / PROMOTIONAL SPAM ===
+    'black friday', 'cyber monday', 'prime day', 'flash sale',
+    'limited time only', 'last chance', 'ending soon', 'ends tonight',
+    'don\'t miss out', 'exclusive access', 'early access', 'vip access',
+    'members only', 'subscriber exclusive', 'special offer',
+    '% off', 'save up to', 'clearance', 'closeout', 'warehouse sale',
+    'buy one get one', 'bogo', 'free shipping', 'free gift',
+
+    # === INTERNAL BUSINESS (not receipts) ===
     'closing binder', 'hat order', 'tm nda', 'rdo consulting',
-    'please review $', 'wire transfer', 'ach payment',
-    # Generic marketing
-    'weekly digest', 'monthly newsletter', 'featured products',
-    'new arrivals', 'just in', 'back in stock',
-    # School/Community Updates
-    'community update', 'back to school', 'graduation date',
-    # Credit card marketing
+    'please review $', 'wire transfer', 'ach payment', 'bank transfer',
+    'wiring instructions', 'payment instructions', 'routing number',
+
+    # === GENERIC MARKETING ===
+    'weekly digest', 'monthly newsletter', 'daily digest', 'weekly roundup',
+    'featured products', 'new arrivals', 'just in', 'back in stock',
+    'trending now', 'best sellers', 'most popular', 'customer favorites',
+    'what\'s new', 'fresh picks', 'season\'s best', 'holiday guide',
+
+    # === SCHOOL / COMMUNITY ===
+    'community update', 'back to school', 'graduation date', 'school news',
+    'parent newsletter', 'classroom update', 'pta meeting', 'ptsa',
+    'booster club', 'sports signup', 'volunteer needed',
+
+    # === CREDIT CARD / FINANCIAL MARKETING ===
     'preapproved', 'pre-approved', 'you\'re preapproved', 'credit increase',
-    'congratulations!', 'you qualify',
-    # Dental/Medical marketing
-    'smile for', 'dental', 'check-up reminder',
-    # Lawn/service invoices (B2B) - NOT personal receipts
-    'invoice: auto-charge', 'auto-charge notice',
-    # Generic non-receipt patterns
-    'account payment',  # Generic vague subject
+    'congratulations!', 'you qualify', 'you\'ve been selected',
+    'credit limit increase', 'balance transfer', 'low apr',
+    'refinance', 'consolidate', 'debt relief',
+
+    # === MEDICAL / DENTAL MARKETING ===
+    'smile for', 'dental appointment', 'check-up reminder', 'annual exam',
+    'time for your', 'schedule your', 'book your appointment',
+    'health screening', 'wellness check', 'preventive care',
+
+    # === SERVICE INVOICES (B2B, not personal) ===
+    'invoice: auto-charge', 'auto-charge notice', 'recurring invoice',
+    'service invoice', 'professional services', 'consulting services',
+    'maintenance invoice', 'support invoice', 'retainer invoice',
+
+    # === GENERIC NON-RECEIPT PATTERNS ===
+    'account payment', 'payment notification', 'payment reminder',
+    'account update', 'account notice', 'account information',
+    'important update', 'important notice', 'important information',
+    'action required', 'action needed', 'response required',
+
+    # === SURVEY / FEEDBACK REQUESTS ===
+    'how did we do', 'rate your', 'share your feedback',
+    'take our survey', 'quick survey', 'customer survey',
+    'we want to hear', 'tell us about', 'your opinion matters',
+
+    # === SOCIAL MEDIA NOTIFICATIONS ===
+    'new follower', 'new connection', 'liked your', 'commented on',
+    'mentioned you', 'tagged you', 'shared your', 'retweeted',
+    'someone viewed', 'profile views', 'who\'s viewed',
+
+    # === WEBINAR / EVENT SPAM ===
+    'webinar:', 'register now', 'save your seat', 'limited seats',
+    'virtual event', 'live event', 'upcoming event', 'event reminder',
+    'conference', 'summit', 'workshop', 'masterclass',
+
+    # === JOB / CAREER SPAM ===
+    'job alert', 'new jobs', 'jobs for you', 'career opportunity',
+    'hiring now', 'we\'re hiring', 'job match', 'recommended jobs',
+    'profile views', 'recruiters viewed', 'who\'s hiring',
+
+    # === REAL ESTATE SPAM ===
+    'new listing', 'price reduced', 'open house', 'homes for sale',
+    'mortgage rates', 'home value', 'property alert',
+
+    # === CRYPTO / INVESTMENT SPAM ===
+    'bitcoin', 'crypto', 'blockchain', 'nft', 'web3',
+    'investment opportunity', 'market alert', 'stock alert',
+    'forex', 'trading signal',
+
+    # === GAMBLING / BETTING SPAM ===
+    'free bet', 'bonus bet', 'betting odds', 'fantasy sports',
+    'daily fantasy', 'sportsbook',
+
+    # === SUBSCRIPTION LIFECYCLE (not receipts) ===
+    'your subscription', 'subscription update', 'membership update',
+    'plan update', 'account status', 'renewal reminder',
+    'trial expiring', 'trial ending', 'free trial',
+
+    # === MISC SPAM PATTERNS ===
+    'just for you', 'especially for you', 'hand-picked', 'curated',
+    'don\'t miss', 'hurry', 'act now', 'offer ends',
+    'one day only', 'today only', 'this weekend only',
+    'sneak peek', 'first look', 'preview', 'coming soon',
 ]
 
 # Sender patterns that indicate spam (from_email or from_name matches)
 SPAM_SENDER_PATTERNS = [
-    'amazon.com',  # Amazon promotional - receipts come from auto-confirm@amazon.com with specific subjects
-    'dealer-pay', 'dealerpay',
-    'online order',  # Generic "online order" senders are usually spam
+    # Amazon promotional (receipts come from auto-confirm@amazon.com with specific subjects)
+    'amazon.com',
+    # Dealer/auto spam
+    'dealer-pay', 'dealerpay', 'dealer-service', 'dealership',
+    # Generic spam sender names
+    'online order', 'customer service', 'do not reply', 'no-reply',
+
+    # === MARKETING EMAIL PREFIXES ===
     'marketing@', 'newsletter@', 'promo@', 'offers@', 'deals@',
+    'promotions@', 'updates@', 'news@', 'digest@', 'weekly@',
+    'daily@', 'monthly@', 'notifications@', 'alerts@', 'info@',
+    'hello@', 'hi@', 'team@', 'support@',  # Often marketing, not receipts
+
+    # === NOREPLY PATTERNS (usually marketing) ===
+    'noreply@', 'no-reply@', 'donotreply@', 'do-not-reply@',
+    'mailer-daemon', 'postmaster@',
+
+    # === BULK SENDER PATTERNS ===
+    'bulk@', 'mass@', 'blast@', 'campaign@', 'broadcast@',
+    'email@', 'mail@', 'send@', 'delivery@',
+
+    # === SPECIFIC SPAM SENDERS ===
+    'amazon advertising', 'amazon marketing', 'prime savings',
+    'credit card services', 'customer rewards', 'member services',
+    'loyalty program', 'rewards program', 'points program',
+
+    # === SOCIAL MEDIA SENDER NAMES ===
+    'facebook', 'twitter', 'instagram', 'linkedin', 'pinterest',
+    'tiktok', 'snapchat', 'youtube', 'reddit', 'discord',
+
+    # === NEWS/MEDIA SENDERS ===
+    'cnn', 'fox news', 'msnbc', 'nbc news', 'abc news', 'cbs news',
+    'washington post', 'new york times', 'wall street journal',
+    'usa today', 'huffington post', 'buzzfeed', 'vice',
+
+    # === POLITICAL SENDERS ===
+    'republican', 'democrat', 'gop', 'dnc', 'rnc',
+    'campaign', 'pac', 'super pac', 'action committee',
+    'vote', 'election', 'ballot',
+
+    # === CHARITY/NONPROFIT SENDERS ===
+    'foundation', 'charity', 'donate', 'donation', 'giving',
+    'nonprofit', 'non-profit', 'cause', 'fundraising',
+
+    # === MISC SPAM SENDERS ===
+    'survey', 'feedback', 'research', 'study',
+    'webinar', 'seminar', 'conference', 'summit',
+    'job alert', 'career', 'opportunity', 'hiring',
 ]
 
 # Exception patterns: if subject contains these AND sender is in spam list, ALLOW it
+# These are strong indicators of actual receipts that override spam detection
 RECEIPT_EXCEPTION_PATTERNS = [
+    # Order confirmations
     'order confirmed', 'order confirmation', 'your order has been placed',
+    'order #', 'order number', 'confirmation #', 'confirmation number',
     'your amazon.com order', 'digital order', 'your order of',
-    'payment received', 'payment confirmation', 'receipt for',
-    'invoice', 'billing statement',
+    # Payment confirmations
+    'payment received', 'payment confirmation', 'payment successful',
+    'payment complete', 'transaction complete', 'charge confirmed',
+    # Receipt keywords
+    'receipt for', 'your receipt', 'purchase receipt', 'transaction receipt',
+    'e-receipt', 'electronic receipt',
+    # Invoice keywords (actual invoices, not reminders)
+    'invoice #', 'invoice number', 'billing statement',
+    # Subscription confirmations
+    'subscription confirmed', 'membership confirmed', 'renewal confirmation',
+    'successfully renewed', 'successfully charged',
+    # Specific service receipts
+    'ride with uber', 'trip with lyft', 'your doordash order',
+    'spotify receipt', 'netflix receipt', 'apple receipt',
 ]
 
-# Artist/contract patterns (EXCLUDE these)
+# Artist/contract patterns (EXCLUDE these - business contracts, not receipts)
 CONTRACT_PATTERNS = [
+    # Music industry
     'artist agreement', 'talent agreement', 'artist contract',
     'performance agreement', 'booking agreement', 'rider',
     'settlement sheet', 'tour', 'show date', 'venue',
-    'contract', 'agreement', 'terms', 'signature required'
+    'recording contract', 'publishing deal', 'sync license',
+    'mechanical license', 'master license', 'distribution agreement',
+    # General contracts
+    'contract', 'agreement', 'terms', 'signature required',
+    'sign here', 'initial here', 'e-sign', 'esign',
+    # DocuSign / contract platforms
+    'docusign', 'hellosign', 'adobe sign', 'pandadoc',
+    'please sign', 'awaiting signature', 'signature request',
+    # Legal
+    'legal agreement', 'nda', 'non-disclosure', 'confidentiality',
+    'employment agreement', 'contractor agreement', 'sow',
+    'statement of work', 'msa', 'master service agreement',
+    # Proposals
+    'proposal', 'estimate', 'quote', 'quotation', 'bid',
+]
+
+# Body-based spam patterns (checked in body_snippet for auto-rejection)
+SPAM_BODY_PATTERNS = [
+    # Unsubscribe footer variations
+    'click here to unsubscribe', 'unsubscribe from this list',
+    'manage your preferences', 'update your email preferences',
+    'you are receiving this email because', 'you received this email because',
+    'sent to you by', 'this email was sent to',
+
+    # Email marketing footers
+    'view this email in your browser', 'view in browser',
+    'add us to your address book', 'add to contacts',
+    'forward to a friend', 'share with friends',
+    'privacy policy', 'terms of use', 'terms and conditions',
+
+    # Marketing CTAs
+    'shop now', 'buy now', 'order now', 'get started',
+    'learn more', 'read more', 'see more', 'view more',
+    'claim your', 'redeem your', 'activate your offer',
+
+    # Social media footers
+    'follow us on', 'connect with us', 'join us on',
+    'like us on facebook', 'follow us on twitter',
+    'find us on instagram', 'connect on linkedin',
+
+    # Promotional language
+    'limited time offer', 'exclusive deal', 'special promotion',
+    'don\'t miss out', 'act now', 'hurry', 'ends soon',
+    'while supplies last', 'first come first served',
+
+    # Marketing legal
+    'this is an advertisement', 'this is a promotional email',
+    'promotional communication', 'marketing message',
+    'you can opt out', 'to stop receiving', 'to opt out',
+
+    # Physical address footers (CAN-SPAM requirement = marketing email)
+    'our mailing address is', 'our address:',
 ]
 
 def init_incoming_receipts_table():
@@ -934,6 +1276,13 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
         print(f"      ✗ Rejected: Marketing email ({marketing_count} patterns)")
         return 0
 
+    # 10. Body-based spam patterns (marketing footers, CTAs, etc.)
+    if not has_receipt_exception:
+        body_spam_count = sum(1 for p in SPAM_BODY_PATTERNS if p in body_lower)
+        if body_spam_count >= 3:  # Multiple marketing indicators in body
+            print(f"      ✗ Rejected: Body spam patterns ({body_spam_count} found)")
+            return 0
+
     # === POSITIVE SIGNALS ===
 
     # CHECK DATABASE: Known subscription merchants get HIGHEST priority
@@ -971,12 +1320,20 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
     # Marketing patterns (but not auto-reject)
     score -= marketing_count * 5
 
+    # Body spam patterns (if less than auto-reject threshold)
+    body_spam_count = sum(1 for p in SPAM_BODY_PATTERNS if p in body_lower)
+    score -= body_spam_count * 3
+
     # Newsletter/digest
     if 'newsletter' in subject_lower or 'digest' in subject_lower:
         score -= 15
 
     # Unsubscribe link
     if 'unsubscribe' in body_lower:
+        score -= 10
+
+    # Multiple "view in browser" or footer patterns
+    if body_lower.count('view') > 2 or body_lower.count('click') > 3:
         score -= 10
 
     # Clamp to 0-100

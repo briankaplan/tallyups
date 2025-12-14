@@ -466,6 +466,28 @@ def load_gmail_service(token_path: Path):
             scopes=token_data.get("scopes", [])
         )
 
+        # Auto-refresh if token is expired
+        if creds.expired and creds.refresh_token:
+            try:
+                from google.auth.transport.requests import Request
+                creds.refresh(Request())
+                print(f"   ✅ Refreshed Gmail token for {token_path.stem}")
+                # Save the refreshed token
+                updated_token_data = {
+                    "token": creds.token,
+                    "refresh_token": creds.refresh_token,
+                    "token_uri": creds.token_uri,
+                    "client_id": creds.client_id,
+                    "client_secret": creds.client_secret,
+                    "scopes": list(creds.scopes) if creds.scopes else token_data.get("scopes", []),
+                    "expiry": creds.expiry.isoformat() if creds.expiry else None
+                }
+                with token_path.open("w") as f:
+                    json.dump(updated_token_data, f, indent=2)
+            except Exception as refresh_err:
+                print(f"   ⚠️ Token refresh failed for {token_path.stem}: {refresh_err}")
+                # Continue with expired token - might still work briefly
+
         service = build("gmail", "v1", credentials=creds)
         return service
     except Exception as e:

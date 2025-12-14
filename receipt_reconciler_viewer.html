@@ -2703,10 +2703,119 @@ body { padding-bottom: 80px; }
 @media (max-width: 768px) {
   header { top: 0 !important; } /* Keep existing header on mobile */
 }
+
+/* ============================================
+   BULK ACTIONS MODAL STYLES
+   ============================================ */
+.bulk-modal { display: none; position: fixed; inset: 0; z-index: 9999; }
+.bulk-modal.visible { display: block; }
+.bulk-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(4px); }
+.bulk-content {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: var(--panel); border-radius: 16px; width: 90%; max-width: 600px;
+  max-height: 80vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,.5);
+}
+.bulk-header {
+  display: flex; align-items: center; gap: 12px; padding: 20px 24px;
+  border-bottom: 1px solid var(--edge); position: sticky; top: 0; background: var(--panel);
+}
+.bulk-header h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.bulk-count { margin-left: auto; color: var(--brand); font-size: 14px; font-weight: 500; }
+.bulk-close {
+  background: none; border: none; font-size: 24px; color: var(--muted);
+  cursor: pointer; padding: 4px 8px; line-height: 1;
+}
+.bulk-close:hover { color: var(--ink); }
+.bulk-body { padding: 24px; }
+.bulk-section { margin-bottom: 24px; }
+.bulk-section h3 { margin: 0 0 12px; font-size: 14px; color: var(--muted); font-weight: 500; }
+.bulk-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.bulk-btn {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px;
+  color: var(--ink); cursor: pointer; font-size: 13px; transition: all .15s;
+}
+.bulk-btn:hover { border-color: var(--brand); background: var(--chipOn); }
+.bulk-btn.success { color: var(--ok); }
+.bulk-btn.danger { color: var(--bad); }
+.bulk-btn.primary { background: var(--brand); color: #000; border-color: var(--brand); }
+.bulk-btn.primary:hover { opacity: .9; }
+.btn-icon { font-size: 16px; }
+.bulk-category-select { display: flex; gap: 8px; align-items: center; }
+.bulk-category-select select {
+  flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--edge);
+  background: var(--panel2); color: var(--ink); font-size: 13px;
+}
+.danger-zone { border-top: 1px solid var(--bad); padding-top: 20px; margin-top: 20px; }
+.bulk-footer {
+  padding: 16px 24px; border-top: 1px solid var(--edge);
+  display: flex; justify-content: flex-end;
+}
+.bulk-cancel {
+  padding: 10px 20px; border-radius: 8px; border: 1px solid var(--edge);
+  background: var(--panel2); color: var(--ink); cursor: pointer;
+}
+.bulk-cancel:hover { border-color: var(--muted); }
+
+/* Bulk Progress Overlay */
+.bulk-progress { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.8); }
+.bulk-progress.visible { display: flex; align-items: center; justify-content: center; }
+.progress-content {
+  background: var(--panel); padding: 32px; border-radius: 16px;
+  width: 90%; max-width: 400px; text-align: center;
+}
+.progress-header { display: flex; justify-content: space-between; margin-bottom: 16px; }
+.progress-title { font-weight: 600; }
+.progress-count { color: var(--muted); }
+.progress-bar {
+  height: 8px; background: var(--edge); border-radius: 4px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--brand); transition: width .2s ease-out;
+}
+.progress-status { margin-top: 12px; color: var(--warn); font-size: 13px; min-height: 20px; }
+.progress-cancel {
+  margin-top: 16px; padding: 8px 24px; border-radius: 8px;
+  border: 1px solid var(--edge); background: var(--panel2);
+  color: var(--ink); cursor: pointer;
+}
+
+/* Keyboard Help Modal */
+.keyboard-help-modal { display: none; position: fixed; inset: 0; z-index: 9998; }
+.keyboard-help-modal.visible { display: block; }
+.help-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.7); }
+.help-content {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: var(--panel); border-radius: 16px; width: 90%; max-width: 800px;
+  max-height: 80vh; overflow-y: auto;
+}
+.help-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 24px; border-bottom: 1px solid var(--edge);
+}
+.help-header h2 { margin: 0; font-size: 18px; }
+.help-close { background: none; border: none; font-size: 24px; color: var(--muted); cursor: pointer; }
+.help-body { padding: 24px; }
+.shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
+.shortcut-category h3 { font-size: 13px; color: var(--brand); margin: 0 0 12px; }
+.shortcut-list { display: flex; flex-direction: column; gap: 6px; }
+.shortcut-item { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.shortcut-item kbd {
+  background: var(--panel2); border: 1px solid var(--edge); border-radius: 4px;
+  padding: 2px 8px; font-family: monospace; min-width: 40px; text-align: center;
+}
+.help-footer { padding: 16px 24px; border-top: 1px solid var(--edge); text-align: center; color: var(--muted); font-size: 13px; }
+
+/* Bulk Selection */
+tr.bulk-selected { background: var(--chipOn) !important; }
+tr.bulk-selected td { border-left-color: var(--brand) !important; }
+.has-selection { background: var(--brand) !important; color: #000 !important; border-radius: 6px; }
 </style>
 <!-- Design System & App Shell -->
 <link rel="stylesheet" href="/static/css/design-system.css">
 <script src="/static/js/app-shell.js" defer></script>
+<script src="/static/js/keyboard.js" defer></script>
+<script src="/static/js/bulk-actions.js" defer></script>
 </head>
 <body>
 
@@ -2768,6 +2877,7 @@ body { padding-bottom: 80px; }
   </nav>
 
   <div class="controls">
+    <button class="btn-ghost icon-btn" id="bulk-actions-btn" onclick="openBulkActionsFromHeader()" title="Bulk Actions (Ctrl+Shift+A)">📦</button>
     <button class="btn-ghost icon-btn" onclick="toggleHotkeyMenu()" title="Keyboard Shortcuts (?)">⌨️</button>
     <button class="btn-ghost icon-btn" onclick="toggleSettings()" title="Settings">⚙️</button>
     <button class="btn-ghost icon-btn" onclick="toggleTheme()" title="Toggle Theme">🎨</button>
@@ -10400,6 +10510,189 @@ setTimeout(() => {
     statsHeader.parentNode.appendChild(calBtn);
   }
 }, 100);
+
+// ============================================
+// KEYBOARD SHORTCUTS INTEGRATION
+// ============================================
+// ReviewInterface adapter - bridges KeyboardHandler to existing functions
+const ReviewInterface = {
+  // Navigation
+  navigate: (delta) => navigateRow(delta),
+  navigateToIndex: (idx) => {
+    if (idx === -1) idx = filteredData.length - 1;
+    if (idx >= 0 && idx < filteredData.length) {
+      const row = filteredData[idx];
+      selectRow(row);
+      document.querySelector(`tr[data-index="${row._index}"]`)?.scrollIntoView({ block: 'center' });
+    }
+  },
+  togglePreview: (open) => {
+    if (open && selectedRow) loadReceipt();
+  },
+  closeAll: () => {
+    closeQuickViewer();
+    const modal = document.querySelector('.modal-overlay.active');
+    if (modal) modal.classList.remove('active');
+  },
+
+  // Quick actions - map to updateField
+  setReviewStatus: (status) => updateField('Review Status', status),
+  setValidationStatus: (status) => updateField('MI Validation', status),
+  detachReceipt: () => detachReceipt(),
+
+  // Business type
+  setBusinessType: (type) => updateField('Business Type', type),
+  setPersonal: () => updateField('Business Type', 'Personal'),
+
+  // AI actions
+  aiMatch: () => aiMatch(),
+  generateAINote: () => aiNote(),
+  aiCategorize: async () => {
+    if (!selectedRow) return showToast('Select a transaction first', 'warning');
+    try {
+      const resp = await fetch('/api/ai/categorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _index: selectedRow._index })
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        showToast(`Categorized: ${data.category}`, 'success');
+        await loadCSV();
+      }
+    } catch (e) {
+      showToast('AI categorization failed', 'error');
+    }
+  },
+
+  // Bulk selection
+  extendSelection: (delta) => navigateRow(delta),
+  selectAll: () => showToast('Select all: Use Ctrl+Click', 'info'),
+  selectSameMerchant: () => showToast('Select same merchant: Coming soon', 'info'),
+  openBulkActions: () => {
+    if (typeof BulkActions !== 'undefined') {
+      window.bulkActions?.show();
+    }
+  },
+
+  // Search & Filter
+  focusSearch: () => {
+    const search = document.getElementById('search');
+    if (search) search.focus();
+  },
+  toggleFilterPanel: () => {
+    const filters = document.querySelector('.filter-controls');
+    if (filters) filters.classList.toggle('expanded');
+  },
+  quickFilter: (type, value) => {
+    if (type === 'business') {
+      const select = document.getElementById('filterBusiness');
+      if (select) { select.value = value; applyFilters(); }
+    } else if (type === 'receipt') {
+      const select = document.getElementById('filterReceipt');
+      if (select) { select.value = value; applyFilters(); }
+    } else if (type === 'status') {
+      const select = document.getElementById('filterStatus');
+      if (select) { select.value = value; applyFilters(); }
+    }
+  },
+
+  // Image controls
+  rotateImage: () => rotateImage(),
+  zoomIn: () => zoomIn(),
+  zoomOut: () => zoomOut(),
+  resetZoom: () => resetZoom(),
+
+  // System
+  openQuickViewer: () => openQuickViewer(),
+  undo: () => undo(),
+  save: () => saveCSV(),
+  exportSelected: () => showToast('Export: Use Reports page', 'info'),
+
+  // Methods needed by BulkActions
+  showToast: (message, icon) => showToast(message, icon === '✅' ? 'success' : icon === '❌' ? 'error' : 'info'),
+  getFilteredTransactions: () => filteredData,
+  getAllTransactions: () => csvData,
+  refresh: () => { renderTable(); updateDashboard(); }
+};
+
+// Initialize keyboard handler
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof KeyboardHandler !== 'undefined') {
+    window.keyboardHandler = new KeyboardHandler(ReviewInterface);
+    console.log('Keyboard shortcuts enabled. Press ? for help.');
+  }
+
+  // Initialize bulk actions
+  if (typeof BulkActions !== 'undefined') {
+    window.bulkActions = new BulkActions(ReviewInterface);
+  }
+});
+
+// Open bulk actions from header button
+function openBulkActionsFromHeader() {
+  if (!window.bulkActions) {
+    showToast('Bulk actions not loaded', 'error');
+    return;
+  }
+
+  // If we have a selected row, add it to the selection
+  if (selectedRow && selectedRow._index !== undefined) {
+    window.bulkActions.select(selectedRow._index);
+  }
+
+  // Open the modal
+  if (window.bulkActions.selectedIds.size === 0) {
+    showToast('Select transactions first (click rows, then Ctrl+Click for multi-select)', 'info');
+    return;
+  }
+
+  window.bulkActions.open();
+}
+
+// Add Ctrl+Click multi-selection to table rows
+document.addEventListener('click', (e) => {
+  const row = e.target.closest('tr[data-index]');
+  if (!row) return;
+
+  const index = parseInt(row.dataset.index);
+  if (isNaN(index)) return;
+
+  // Ctrl/Cmd + Click for multi-select
+  if ((e.ctrlKey || e.metaKey) && window.bulkActions) {
+    e.preventDefault();
+    window.bulkActions.toggle(index);
+
+    // Visual feedback
+    row.classList.toggle('bulk-selected', window.bulkActions.selectedIds.has(index));
+
+    // Update bulk actions button
+    const count = window.bulkActions.selectedIds.size;
+    const btn = document.getElementById('bulk-actions-btn');
+    if (btn) {
+      btn.textContent = count > 0 ? `📦 ${count}` : '📦';
+      btn.classList.toggle('has-selection', count > 0);
+    }
+  }
+});
+
+// Listen for bulk selection changes
+document.addEventListener('bulkSelectionChanged', (e) => {
+  const { selectedIds } = e.detail;
+
+  // Update row highlighting
+  document.querySelectorAll('tr[data-index]').forEach(row => {
+    const index = parseInt(row.dataset.index);
+    row.classList.toggle('bulk-selected', selectedIds.includes(index));
+  });
+
+  // Update button
+  const btn = document.getElementById('bulk-actions-btn');
+  if (btn) {
+    btn.textContent = selectedIds.length > 0 ? `📦 ${selectedIds.length}` : '📦';
+    btn.classList.toggle('has-selection', selectedIds.length > 0);
+  }
+});
 </script>
 
 <!-- Mobile Filter Sheet (iOS-style bottom sheet) -->

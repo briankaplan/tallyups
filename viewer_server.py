@@ -47,7 +47,16 @@ except ImportError:
     CSRF_AVAILABLE = False
     CSRFProtect = None
     generate_csrf = None
-    print("⚠️ Flask-WTF not installed. CSRF protection disabled. Install with: pip install Flask-WTF")
+    # SECURITY: Fail loudly in production, only allow bypass in development
+    if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('PRODUCTION'):
+        raise ImportError(
+            "CRITICAL: Flask-WTF is required for CSRF protection in production. "
+            "Install with: pip install Flask-WTF"
+        )
+    elif not os.environ.get('DISABLE_CSRF_CHECK'):
+        print("⚠️ SECURITY WARNING: Flask-WTF not installed. CSRF protection disabled.")
+        print("   Install with: pip install Flask-WTF")
+        print("   Set DISABLE_CSRF_CHECK=1 to suppress this warning in development.")
 import pandas as pd
 
 from dotenv import load_dotenv
@@ -424,9 +433,75 @@ app = Flask(__name__)
 if os.environ.get('RAILWAY_ENVIRONMENT'):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
+# =============================================================================
+# RATE LIMITING (Security: prevent brute force attacks)
+# =============================================================================
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"],  # Global defaults
+        storage_uri="memory://",  # Use Redis in production for multi-worker
+    )
+    RATE_LIMITER_AVAILABLE = True
+    logger.info("Rate limiting enabled")
+except ImportError as e:
+    logger.warning(f"flask-limiter not available: {e}")
+    RATE_LIMITER_AVAILABLE = False
+    limiter = None
+
+def rate_limit(*args, **kwargs):
+    """Decorator factory that applies rate limiting if available, otherwise no-op."""
+    def decorator(f):
+        if RATE_LIMITER_AVAILABLE and limiter:
+            return limiter.limit(*args, **kwargs)(f)
+        return f
+    return decorator
+
 # Add structured request logging
 flask_request_logger(app)
 logger.info("Flask application initialized")
+
+# =============================================================================
+# SECURITY HEADERS (Prevent common web attacks)
+# =============================================================================
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses."""
+    # Prevent clickjacking
+    response.headers['X-Frame-Options'] = 'DENY'
+    # Prevent MIME type sniffing
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    # Enable XSS filter (legacy browsers)
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    # Enforce HTTPS (only in production)
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    # Content Security Policy - restrict script sources
+    # Allow inline scripts for legacy compat, but block external untrusted sources
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https: blob:; "
+        "connect-src 'self' https://*.cloudflare.com https://*.r2.cloudflarestorage.com; "
+        "frame-ancestors 'none';"
+    )
+    # Prevent browsers from caching sensitive pages
+    if request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+    # Referrer policy
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    # Permissions policy (disable unnecessary browser features)
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=(self)'
+    return response
+
+logger.info("Security headers middleware enabled")
 
 # =============================================================================
 # REGISTER BLUEPRINTS (Modular route organization)
@@ -2008,6 +2083,7 @@ def find_best_receipt(row: dict) -> dict | None:
 
 @csrf_exempt_route
 @app.route("/login", methods=["GET", "POST"])
+@rate_limit("5 per minute")  # Prevent brute force password attacks
 def login():
     """Login page with password authentication."""
     error = None
@@ -2021,12 +2097,14 @@ def login():
             return redirect(next_url)
         else:
             error = "Invalid password"
+            logger.warning(f"Failed login attempt from {request.remote_addr}")
 
     return render_template_string(LOGIN_PAGE_HTML, error=error, has_pin=bool(AUTH_PIN))
 
 
 @csrf_exempt_route
 @app.route("/login/pin", methods=["GET", "POST"])
+@rate_limit("10 per minute")  # Prevent brute force PIN attacks
 def login_pin():
     """PIN entry page for quick mobile unlock."""
     next_url = request.args.get('next', '/')
@@ -2039,6 +2117,7 @@ def login_pin():
             session.permanent = True
             return jsonify({"success": True})
         else:
+            logger.warning(f"Failed PIN attempt from {request.remote_addr}")
             return jsonify({"error": "Invalid PIN"}), 401
 
     return render_template_string(PIN_PAGE_HTML, next_url=next_url)
@@ -2046,6 +2125,7 @@ def login_pin():
 
 @csrf_exempt_route
 @app.route("/login/biometric", methods=["POST"])
+@rate_limit("20 per minute")  # More lenient for biometric (user-initiated)
 def login_biometric():
     """Biometric (Face ID/Touch ID) authentication via WebAuthn."""
     data = request.get_json() or {}
@@ -3627,6 +3707,55 @@ def ocr_cache_stats():
     return jsonify(get_cache_stats())
 
 
+@app.route("/api/ocr/cache-cleanup", methods=["POST"])
+def ocr_cache_cleanup():
+    """
+    Run cache cleanup/eviction operations.
+    Auth: admin_key required.
+
+    Body params (optional):
+    - max_age_days: Evict entries older than X days (default: 90)
+    - max_entries: Keep only X most recent entries (default: 10000)
+    - min_confidence: Evict entries with confidence below X (default: 0.3)
+    """
+    # Admin auth required
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        return jsonify({'error': 'Admin authentication required'}), 401
+
+    if not OCR_SERVICE_AVAILABLE:
+        return jsonify({"error": "OCR service not available"}), 503
+
+    from receipt_ocr_service import get_ocr_cache
+    cache = get_ocr_cache()
+    if not cache:
+        return jsonify({"error": "Cache not initialized"}), 503
+
+    # Get cleanup parameters from request
+    data = request.get_json() or {}
+    max_age_days = data.get('max_age_days', 90)
+    max_entries = data.get('max_entries', 10000)
+    min_confidence = data.get('min_confidence', 0.3)
+
+    # Run cleanup
+    result = cache.cleanup(
+        max_age_days=max_age_days,
+        max_entries=max_entries,
+        min_confidence=min_confidence
+    )
+
+    # Get updated stats
+    stats = cache.get_stats()
+
+    return jsonify({
+        "status": "ok",
+        "evicted": result,
+        "total_evicted": sum(result.values()),
+        "remaining": stats.get("count", 0)
+    })
+
+
 @app.route("/api/ocr/extract-for-transaction/<int:tx_index>", methods=["POST"])
 def ocr_extract_for_transaction(tx_index):
     """
@@ -4320,7 +4449,9 @@ def update_transaction_field():
         if index is None or not field:
             return jsonify({'ok': False, 'error': 'Missing index or field'}), 400
 
-        # Map field names to database columns
+        # SECURITY: Whitelist of allowed field names to prevent SQL injection
+        # Only these exact column names can be updated via this API
+        # The db_field is taken from this map, NOT from user input
         field_map = {
             'Notes': 'notes',
             'notes': 'notes',
@@ -4337,12 +4468,19 @@ def update_transaction_field():
 
         db_field = field_map.get(field)
         if not db_field:
+            logger.warning(f"Rejected unknown field update attempt: {field}")
             return jsonify({'ok': False, 'error': f'Unknown field: {field}'}), 400
+
+        # Validate index is an integer to prevent injection
+        try:
+            index = int(index)
+        except (ValueError, TypeError):
+            return jsonify({'ok': False, 'error': 'Invalid index'}), 400
 
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Update the transaction by Index
+        # SECURITY: db_field is from whitelist above, value/index are parameterized
         if db_type == 'mysql':
             cursor.execute(f"UPDATE transactions SET {db_field} = %s WHERE `Index` = %s", (value, index))
         else:
@@ -4982,6 +5120,7 @@ def ai_match():
 
 
 @app.route("/ai_note", methods=["POST"])
+@login_required
 def ai_note():
     """
     AI Note Generation endpoint
@@ -10923,6 +11062,7 @@ def upload_receipt_new():
 
 
 @app.route("/detach_receipt", methods=["POST"])
+@login_required
 def detach_receipt():
     """
     Body: { "_index": int } or { "transaction_id": int }
@@ -11072,6 +11212,7 @@ def detach_receipt():
 
 
 @app.route("/add_manual_expense", methods=["POST"])
+@login_required
 def add_manual_expense():
     """
     Add a manual expense entry.
@@ -11352,6 +11493,7 @@ def bulk_import_transactions():
 # =============================================================================
 
 @app.route("/reports/preview", methods=["POST"])
+@login_required
 def reports_preview():
     """
     Preview expenses that match report filters.
@@ -11413,6 +11555,7 @@ def reports_preview():
 
 
 @app.route("/reports/submit", methods=["POST"])
+@login_required
 def reports_submit():
     """
     Submit a report and archive selected expenses.
@@ -11542,6 +11685,7 @@ def reports_get(report_id):
 
 
 @app.route("/reports/<report_id>/delete", methods=["DELETE", "POST"])
+@login_required
 def reports_delete(report_id):
     """
     Delete/unsubmit a report and return expenses to available pool.
@@ -24252,6 +24396,7 @@ def api_smart_notes_status():
 # =============================================================================
 
 @app.route("/api/bulk/update", methods=["POST"])
+@login_required
 def api_bulk_update():
     """
     Bulk update multiple transactions at once.

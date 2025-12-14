@@ -541,19 +541,51 @@ class MySQLReceiptDatabase:
         """Cleanup - pool is global so don't close it here"""
         pass
 
+    # Track legacy connection for cleanup
+    _legacy_conn = None
+    _legacy_conn_lock = threading.Lock()
+
     @property
     def conn(self):
         """
         Legacy compatibility property that returns a pooled connection.
 
         WARNING: This is for backwards compatibility with methods not yet
-        migrated to use pooled_connection() context manager. The connection
-        is automatically returned to the pool when the request completes.
+        migrated to use pooled_connection() context manager.
+        IMPORTANT: This now tracks the connection and returns it to pool on cleanup.
         New code should use pooled_connection() context manager instead.
         """
         if not self._pool:
             return None
-        return self._pool.get_connection()
+
+        with self._legacy_conn_lock:
+            # Return existing connection if valid
+            if self._legacy_conn is not None:
+                try:
+                    self._legacy_conn.ping(reconnect=True)
+                    return self._legacy_conn
+                except Exception:
+                    # Connection dead, will get new one
+                    try:
+                        self._pool.return_connection(self._legacy_conn, discard=True)
+                    except:
+                        pass
+                    self._legacy_conn = None
+
+            # Get new connection from pool
+            self._legacy_conn = self._pool.get_connection()
+            return self._legacy_conn
+
+    def return_legacy_connection(self):
+        """Explicitly return the legacy connection to the pool."""
+        with self._legacy_conn_lock:
+            if self._legacy_conn is not None:
+                try:
+                    self._pool.return_connection(self._legacy_conn)
+                except Exception as e:
+                    logger.warning(f"Failed to return legacy connection: {e}")
+                finally:
+                    self._legacy_conn = None
 
     def get_connection(self):
         """
@@ -1228,6 +1260,12 @@ class MySQLReceiptDatabase:
                             # Composite indexes for common queries
                             ("idx_inc_status_date", "CREATE INDEX idx_inc_status_date ON incoming_receipts(status, received_date)"),
                             ("idx_inc_status_merchant", "CREATE INDEX idx_inc_status_merchant ON incoming_receipts(status, merchant(50))"),
+                            # Match performance indexes
+                            ("idx_inc_match_type", "CREATE INDEX idx_inc_match_type ON incoming_receipts(match_type)"),
+                            ("idx_inc_matched_tx", "CREATE INDEX idx_inc_matched_tx ON incoming_receipts(matched_transaction_id)"),
+                            ("idx_inc_accepted_tx", "CREATE INDEX idx_inc_accepted_tx ON incoming_receipts(accepted_as_transaction_id)"),
+                            ("idx_inc_ocr_confidence", "CREATE INDEX idx_inc_ocr_confidence ON incoming_receipts(ocr_confidence)"),
+                            ("idx_inc_is_refund", "CREATE INDEX idx_inc_is_refund ON incoming_receipts(is_refund)"),
                         ]
 
                         cursor.execute("SHOW INDEX FROM incoming_receipts")
@@ -1773,8 +1811,21 @@ class MySQLReceiptDatabase:
             cursor.close()
             return result
 
+    # SECURITY: Whitelist of allowed columns for dynamic SQL updates
+    # This prevents SQL injection via column names
+    ALLOWED_UPDATE_COLUMNS = frozenset({
+        'chase_date', 'chase_description', 'chase_amount', 'chase_category',
+        'chase_type', 'receipt_file', 'business_type', 'notes', 'ai_note',
+        'ai_confidence', 'ai_receipt_merchant', 'ai_receipt_date', 'ai_receipt_total',
+        'review_status', 'category', 'report_id', 'source', 'r2_url', 'receipt_url',
+        'mi_merchant', 'mi_category', 'mi_description', 'mi_confidence',
+        'mi_is_subscription', 'mi_subscription_name', 'mi_processed_at',
+        'is_refund', 'already_submitted', 'deleted', 'deleted_by_user',
+        'receipt_validation_status', 'receipt_validation_note'
+    })
+
     def update_transaction(self, index: int, patch: Dict[str, Any]) -> bool:
-        """Update transaction with patch data"""
+        """Update transaction with patch data (SQL injection safe)"""
         if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
@@ -1810,6 +1861,10 @@ class MySQLReceiptDatabase:
             db_col = column_map.get(key, key.lower().replace(' ', '_'))
             if db_col == '_index':
                 continue
+            # SECURITY: Only allow whitelisted columns
+            if db_col not in self.ALLOWED_UPDATE_COLUMNS:
+                logger.warning(f"SECURITY: Rejected update to non-allowed column: {db_col}")
+                continue
             set_clauses.append(f"{db_col} = %s")
             values.append(value)
 
@@ -1822,9 +1877,12 @@ class MySQLReceiptDatabase:
         try:
             with self._pool.connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute(sql, values)
-                # Commit is handled by context manager
-                return cursor.rowcount > 0
+                try:
+                    cursor.execute(sql, values)
+                    # Commit is handled by context manager
+                    return cursor.rowcount > 0
+                finally:
+                    cursor.close()
         except Exception as e:
             logger.error(f"Update failed: {e}")
             return False
@@ -1880,8 +1938,11 @@ class MySQLReceiptDatabase:
 
         with self._pool.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM receipt_metadata WHERE filename = %s", (filename,))
-            return cursor.fetchone()
+            try:
+                cursor.execute("SELECT * FROM receipt_metadata WHERE filename = %s", (filename,))
+                return cursor.fetchone()
+            finally:
+                cursor.close()
 
     def cache_receipt_metadata(
         self,
@@ -1908,8 +1969,11 @@ class MySQLReceiptDatabase:
         try:
             with self._pool.connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute(sql, (filename, merchant, date, amount, raw_text))
-                # Commit is handled by context manager
+                try:
+                    cursor.execute(sql, (filename, merchant, date, amount, raw_text))
+                    # Commit is handled by context manager
+                finally:
+                    cursor.close()
             return True
         except Exception as e:
             logger.error(f"Cache failed for {filename}: {e}")
@@ -1922,8 +1986,11 @@ class MySQLReceiptDatabase:
 
         with self._pool.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM receipt_metadata ORDER BY filename")
-            return cursor.fetchall()
+            try:
+                cursor.execute("SELECT * FROM receipt_metadata ORDER BY filename")
+                return cursor.fetchall()
+            finally:
+                cursor.close()
 
     def get_analytics(self) -> Dict[str, Any]:
         """Get analytics/stats from database"""
@@ -1932,47 +1999,49 @@ class MySQLReceiptDatabase:
 
         with self._pool.connection() as conn:
             cursor = conn.cursor()
+            try:
+                cursor.execute("SELECT COUNT(*) as count FROM transactions")
+                total = cursor.fetchone()['count']
 
-            cursor.execute("SELECT COUNT(*) as count FROM transactions")
-            total = cursor.fetchone()['count']
+                cursor.execute("""
+                    SELECT COUNT(*) as count FROM transactions
+                    WHERE receipt_file IS NOT NULL AND receipt_file != ''
+                """)
+                with_receipts = cursor.fetchone()['count']
 
-            cursor.execute("""
-                SELECT COUNT(*) as count FROM transactions
-                WHERE receipt_file IS NOT NULL AND receipt_file != ''
-            """)
-            with_receipts = cursor.fetchone()['count']
+                cursor.execute("""
+                    SELECT business_type, COUNT(*) as count
+                    FROM transactions
+                    WHERE business_type IS NOT NULL AND business_type != ''
+                    GROUP BY business_type
+                    ORDER BY count DESC
+                """)
+                by_business = {row['business_type']: row['count'] for row in cursor.fetchall()}
 
-            cursor.execute("""
-                SELECT business_type, COUNT(*) as count
-                FROM transactions
-                WHERE business_type IS NOT NULL AND business_type != ''
-                GROUP BY business_type
-                ORDER BY count DESC
-            """)
-            by_business = {row['business_type']: row['count'] for row in cursor.fetchall()}
+                cursor.execute("""
+                    SELECT COUNT(*) as count FROM transactions
+                    WHERE ai_confidence > 0
+                """)
+                ai_matched = cursor.fetchone()['count']
 
-            cursor.execute("""
-                SELECT COUNT(*) as count FROM transactions
-                WHERE ai_confidence > 0
-            """)
-            ai_matched = cursor.fetchone()['count']
+                cursor.execute("""
+                    SELECT review_status, COUNT(*) as count
+                    FROM transactions
+                    WHERE review_status IS NOT NULL AND review_status != ''
+                    GROUP BY review_status
+                """)
+                by_status = {row['review_status']: row['count'] for row in cursor.fetchall()}
 
-            cursor.execute("""
-                SELECT review_status, COUNT(*) as count
-                FROM transactions
-                WHERE review_status IS NOT NULL AND review_status != ''
-                GROUP BY review_status
-            """)
-            by_status = {row['review_status']: row['count'] for row in cursor.fetchall()}
-
-            return {
-                'total_transactions': total,
-                'with_receipts': with_receipts,
-                'without_receipts': total - with_receipts,
-                'by_business_type': by_business,
-                'ai_matched': ai_matched,
-                'by_review_status': by_status
-            }
+                return {
+                    'total_transactions': total,
+                    'with_receipts': with_receipts,
+                    'without_receipts': total - with_receipts,
+                    'by_business_type': by_business,
+                    'ai_matched': ai_matched,
+                    'by_review_status': by_status
+                }
+            finally:
+                cursor.close()
 
     def export_to_csv(self, output_path: str) -> bool:
         """Export database to CSV format"""
@@ -1995,15 +2064,18 @@ class MySQLReceiptDatabase:
 
         with self._pool.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT * FROM transactions
-                WHERE (receipt_file IS NULL OR receipt_file = '')
-                AND chase_date IS NOT NULL
-                AND chase_description IS NOT NULL
-                ORDER BY chase_date DESC
-                LIMIT %s
-            """, (limit,))
-            return cursor.fetchall()
+            try:
+                cursor.execute("""
+                    SELECT * FROM transactions
+                    WHERE (receipt_file IS NULL OR receipt_file = '')
+                    AND chase_date IS NOT NULL
+                    AND chase_description IS NOT NULL
+                    ORDER BY chase_date DESC
+                    LIMIT %s
+                """, (limit,))
+                return cursor.fetchall()
+            finally:
+                cursor.close()
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get detailed statistics for dashboard"""
@@ -2012,54 +2084,57 @@ class MySQLReceiptDatabase:
 
         with self._pool.connection() as conn:
             cursor = conn.cursor()
-            stats = {}
+            try:
+                stats = {}
 
-            cursor.execute("""
-                SELECT
-                    business_type,
-                    SUM(ABS(chase_amount)) as total,
-                    COUNT(*) as count
-                FROM transactions
-                WHERE business_type IS NOT NULL
-                GROUP BY business_type
-                ORDER BY total DESC
-            """)
-            stats['spending_by_business'] = [
-                {'business': row['business_type'], 'total': float(row['total']), 'count': row['count']}
-                for row in cursor.fetchall()
-            ]
+                cursor.execute("""
+                    SELECT
+                        business_type,
+                        SUM(ABS(chase_amount)) as total,
+                        COUNT(*) as count
+                    FROM transactions
+                    WHERE business_type IS NOT NULL
+                    GROUP BY business_type
+                    ORDER BY total DESC
+                """)
+                stats['spending_by_business'] = [
+                    {'business': row['business_type'], 'total': float(row['total']), 'count': row['count']}
+                    for row in cursor.fetchall()
+                ]
 
-            cursor.execute("""
-                SELECT
-                    DATE_FORMAT(chase_date, '%Y-%m') as month,
-                    SUM(ABS(chase_amount)) as total
-                FROM transactions
-                WHERE chase_date IS NOT NULL
-                GROUP BY month
-                ORDER BY month DESC
-                LIMIT 12
-            """)
-            stats['monthly_spending'] = [
-                {'month': row['month'], 'total': float(row['total'])}
-                for row in cursor.fetchall()
-            ]
+                cursor.execute("""
+                    SELECT
+                        DATE_FORMAT(chase_date, '%Y-%m') as month,
+                        SUM(ABS(chase_amount)) as total
+                    FROM transactions
+                    WHERE chase_date IS NOT NULL
+                    GROUP BY month
+                    ORDER BY month DESC
+                    LIMIT 12
+                """)
+                stats['monthly_spending'] = [
+                    {'month': row['month'], 'total': float(row['total'])}
+                    for row in cursor.fetchall()
+                ]
 
-            cursor.execute("""
-                SELECT
-                    COUNT(*) as total,
-                    SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as matched
-                FROM transactions
-            """)
-            row = cursor.fetchone()
-            total = row['total']
-            matched = row['matched']
-            stats['match_rate'] = {
-                'total': total,
-                'matched': matched,
-                'percentage': round((matched / total * 100), 1) if total > 0 else 0
-            }
+                cursor.execute("""
+                    SELECT
+                        COUNT(*) as total,
+                        SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as matched
+                    FROM transactions
+                """)
+                row = cursor.fetchone()
+                total = row['total']
+                matched = row['matched']
+                stats['match_rate'] = {
+                    'total': total,
+                    'matched': matched,
+                    'percentage': round((matched / total * 100), 1) if total > 0 else 0
+                }
 
-            return stats
+                return stats
+            finally:
+                cursor.close()
 
     def get_reportable_expenses(
         self,

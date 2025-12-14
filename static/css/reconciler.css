@@ -2054,3 +2054,120 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   background: var(--ok);
   color: #000;
 }
+
+/* ============================================
+   MOBILE TOUCH TARGET FIXES (Apple HIG: 44x44px minimum)
+   ============================================ */
+@media (max-width: 768px) {
+  /* Ensure all interactive elements meet minimum touch target size */
+  button, .btn, .icon-btn, .chip, .nav-item {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Toolbar buttons */
+  .toolbar button, .toolbar .btn {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  /* Icon buttons */
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+  
+  /* Filter chips */
+  .chip {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  /* Table row touch targets */
+  tbody tr {
+    min-height: 52px;
+  }
+  th, td {
+    padding: 12px 10px;
+  }
+  
+  /* Quick viewer navigation */
+  .quick-nav-btn {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+  
+  /* Modal action buttons */
+  .modal-footer button, .modal-footer .btn {
+    min-height: 48px;
+    padding: 12px 24px;
+    font-size: 15px;
+  }
+  
+  /* Settings toggles */
+  .toggle-switch {
+    min-width: 50px;
+    min-height: 30px;
+  }
+  
+  /* Input fields */
+  input, select, textarea {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+  
+  /* Bottom nav items */
+  .bottom-nav-item {
+    min-height: 60px;
+    padding: 8px 12px;
+  }
+  
+  /* Swipe action buttons */
+  .swipe-action {
+    width: 80px;
+    min-height: 52px;
+  }
+  
+  /* Touch feedback */
+  button:active, .btn:active, .chip:active, .icon-btn:active {
+    transform: scale(0.96);
+    opacity: 0.9;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 380px) {
+  .toolbar button, .toolbar .btn {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  
+  .chip {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Improve touch scrolling */
+@media (pointer: coarse) {
+  .table-wrap, .toolbar, .filters, .modal-body {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Larger hit areas for row selection */
+  tbody tr {
+    cursor: pointer;
+  }
+  
+  /* Prevent accidental text selection on touch */
+  button, .btn, .chip, .icon-btn, .nav-item, tbody tr {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}

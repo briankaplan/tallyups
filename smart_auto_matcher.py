@@ -253,9 +253,27 @@ def calculate_amount_score(receipt_amount: float, transaction_amount: float) -> 
     """
     Calculate how well amounts match.
     Returns 0.0 to 1.0
+
+    SECURITY: Handles refund detection - prevents matching a purchase to a refund.
     """
+    # Handle edge cases
+    if receipt_amount == 0 and transaction_amount == 0:
+        return 1.0  # Both zero = exact match
+
     if receipt_amount == 0 or transaction_amount == 0:
         return 0.0
+
+    # REFUND DETECTION: Check for sign mismatch
+    # A positive receipt (purchase) should not match a negative transaction (refund)
+    # and vice versa
+    receipt_is_positive = receipt_amount > 0
+    transaction_is_positive = transaction_amount > 0
+    if receipt_is_positive != transaction_is_positive:
+        return 0.0  # One is refund, one is purchase - cannot match
+
+    # Work with absolute values from here
+    receipt_amount = abs(receipt_amount)
+    transaction_amount = abs(transaction_amount)
 
     diff = abs(receipt_amount - transaction_amount)
 
@@ -268,13 +286,17 @@ def calculate_amount_score(receipt_amount: float, transaction_amount: float) -> 
         return 0.95
 
     # Check for tip variance (restaurant)
-    if transaction_amount > receipt_amount:
+    if transaction_amount > receipt_amount and receipt_amount > 0:
         tip_ratio = (transaction_amount - receipt_amount) / receipt_amount
         if 0.10 <= tip_ratio <= AMOUNT_TIP_VARIANCE:
             return 0.90  # Likely includes tip
 
     # Percentage difference
-    pct_diff = diff / max(receipt_amount, transaction_amount)
+    max_amount = max(receipt_amount, transaction_amount)
+    if max_amount > 0:
+        pct_diff = diff / max_amount
+    else:
+        return 0.0
 
     if pct_diff <= 0.02:  # 2%
         return 0.90

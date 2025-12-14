@@ -237,6 +237,113 @@ class OCRCache:
             if conn:
                 self.db.return_connection(conn)
 
+    def evict_old_entries(self, max_age_days: int = 90) -> int:
+        """
+        Evict cache entries older than max_age_days.
+        Returns number of entries deleted.
+        """
+        if not self.db:
+            return 0
+
+        conn = None
+        try:
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM ocr_cache
+                WHERE created_at < DATE_SUB(NOW(), INTERVAL %s DAY)
+            """, (max_age_days,))
+            deleted = cursor.rowcount
+            conn.commit()
+            if deleted > 0:
+                print(f"🗑️ Cache eviction: Removed {deleted} entries older than {max_age_days} days")
+            return deleted
+        except Exception as e:
+            print(f"⚠️ Cache eviction error: {e}")
+            return 0
+        finally:
+            if conn:
+                self.db.return_connection(conn)
+
+    def evict_by_size(self, max_entries: int = 10000) -> int:
+        """
+        Keep only the most recent max_entries in cache (LRU-style).
+        Returns number of entries deleted.
+        """
+        if not self.db:
+            return 0
+
+        conn = None
+        try:
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+
+            # Get current count
+            cursor.execute("SELECT COUNT(*) as cnt FROM ocr_cache")
+            row = cursor.fetchone()
+            current_count = row['cnt'] if row else 0
+
+            if current_count <= max_entries:
+                return 0
+
+            # Delete oldest entries
+            to_delete = current_count - max_entries
+            cursor.execute("""
+                DELETE FROM ocr_cache
+                ORDER BY created_at ASC
+                LIMIT %s
+            """, (to_delete,))
+            deleted = cursor.rowcount
+            conn.commit()
+            if deleted > 0:
+                print(f"🗑️ Cache size limit: Removed {deleted} oldest entries (limit: {max_entries})")
+            return deleted
+        except Exception as e:
+            print(f"⚠️ Cache size eviction error: {e}")
+            return 0
+        finally:
+            if conn:
+                self.db.return_connection(conn)
+
+    def evict_low_confidence(self, min_confidence: float = 0.3) -> int:
+        """
+        Evict entries with low confidence scores (likely garbage results).
+        Returns number of entries deleted.
+        """
+        if not self.db:
+            return 0
+
+        conn = None
+        try:
+            conn = self.db.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM ocr_cache
+                WHERE confidence < %s AND confidence > 0
+            """, (min_confidence,))
+            deleted = cursor.rowcount
+            conn.commit()
+            if deleted > 0:
+                print(f"🗑️ Cache quality: Removed {deleted} low-confidence entries (< {min_confidence})")
+            return deleted
+        except Exception as e:
+            print(f"⚠️ Cache confidence eviction error: {e}")
+            return 0
+        finally:
+            if conn:
+                self.db.return_connection(conn)
+
+    def cleanup(self, max_age_days: int = 90, max_entries: int = 10000, min_confidence: float = 0.3) -> Dict[str, int]:
+        """
+        Run all cache cleanup operations.
+        Returns dict with counts of entries removed by each method.
+        """
+        return {
+            "old_entries": self.evict_old_entries(max_age_days),
+            "size_limit": self.evict_by_size(max_entries),
+            "low_confidence": self.evict_low_confidence(min_confidence)
+        }
+
 
 # Global cache instance with thread-safe initialization
 _ocr_cache = None
@@ -253,9 +360,72 @@ def get_ocr_cache() -> OCRCache:
     return _ocr_cache
 
 
+class CircuitBreaker:
+    """
+    Circuit breaker pattern to prevent repeated calls to failing OCR providers.
+    When a provider fails repeatedly, the circuit "opens" and skips that provider.
+    """
+
+    def __init__(self, failure_threshold: int = 5, timeout_seconds: int = 300):
+        """
+        Args:
+            failure_threshold: Number of failures before opening circuit
+            timeout_seconds: Seconds to wait before trying again (default 5 min)
+        """
+        self.failure_threshold = failure_threshold
+        self.timeout_seconds = timeout_seconds
+        self.failures = {}  # provider -> failure count
+        self.last_failure_time = {}  # provider -> timestamp
+        self._lock = threading.Lock()
+
+    def is_open(self, provider: str) -> bool:
+        """Check if circuit is open (provider should be skipped)."""
+        with self._lock:
+            if provider not in self.failures:
+                return False
+
+            # Check if timeout has elapsed (circuit half-open)
+            if provider in self.last_failure_time:
+                elapsed = time.time() - self.last_failure_time[provider]
+                if elapsed > self.timeout_seconds:
+                    # Reset and try again
+                    self.failures[provider] = 0
+                    return False
+
+            return self.failures[provider] >= self.failure_threshold
+
+    def record_failure(self, provider: str):
+        """Record a failure for a provider."""
+        with self._lock:
+            self.failures[provider] = self.failures.get(provider, 0) + 1
+            self.last_failure_time[provider] = time.time()
+            if self.failures[provider] >= self.failure_threshold:
+                print(f"⚠️ Circuit OPEN for {provider} after {self.failures[provider]} failures")
+
+    def record_success(self, provider: str):
+        """Record a success (resets failure count)."""
+        with self._lock:
+            self.failures[provider] = 0
+            if provider in self.last_failure_time:
+                del self.last_failure_time[provider]
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get circuit breaker status for all providers."""
+        with self._lock:
+            return {
+                provider: {
+                    'failures': self.failures.get(provider, 0),
+                    'is_open': self.is_open(provider),
+                    'last_failure': self.last_failure_time.get(provider)
+                }
+                for provider in ['openai', 'gemini', 'ollama']
+            }
+
+
 class ReceiptOCRService:
     """
     Production-ready receipt OCR with Mindee-quality extraction.
+    Now includes circuit breaker pattern to prevent hammering failing providers.
 
     Usage:
         service = ReceiptOCRService()
@@ -321,6 +491,7 @@ IMPORTANT:
         self.prefer_local = prefer_local
         self.use_cache = use_cache
         self.cache = get_ocr_cache() if use_cache else None
+        self.circuit_breaker = CircuitBreaker(failure_threshold=5, timeout_seconds=300)
         self._validate_services()
 
     def _validate_services(self):
@@ -418,26 +589,42 @@ IMPORTANT:
         return None
 
     def _extract_with_ollama(self, image: Image.Image) -> Optional[Dict[str, Any]]:
-        """Extract using local Ollama Llama Vision"""
+        """Extract using local Ollama Llama Vision with timeout protection"""
         if not self.ollama_ready:
             return None
+
+        import signal
+
+        def timeout_handler(signum, frame):
+            raise TimeoutError("Ollama extraction timed out after 30s")
 
         try:
             img_base64 = self._image_to_base64(image)
 
-            response = ollama.chat(
-                model='llama3.2-vision',
-                messages=[{
-                    'role': 'user',
-                    'content': self.EXTRACTION_PROMPT,
-                    'images': [img_base64]
-                }],
-                options={'temperature': 0}
-            )
+            # Set 30 second timeout to prevent hanging
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(30)
+
+            try:
+                response = ollama.chat(
+                    model='llama3.2-vision',
+                    messages=[{
+                        'role': 'user',
+                        'content': self.EXTRACTION_PROMPT,
+                        'images': [img_base64]
+                    }],
+                    options={'temperature': 0}
+                )
+            finally:
+                signal.alarm(0)  # Cancel alarm
+                signal.signal(signal.SIGALRM, old_handler)  # Restore handler
 
             result = response['message']['content']
             return self._parse_json_response(result, "ollama")
 
+        except TimeoutError as e:
+            print(f"⚠️  Ollama timeout: {e}")
+            return None
         except Exception as e:
             print(f"⚠️  Ollama extraction error: {e}")
 
@@ -636,6 +823,7 @@ IMPORTANT:
     def extract_from_image(self, image: Image.Image) -> Dict[str, Any]:
         """
         Extract receipt data from PIL Image.
+        Uses circuit breaker pattern to skip failing providers.
 
         Args:
             image: PIL Image object
@@ -645,21 +833,42 @@ IMPORTANT:
         """
         result = None
 
-        # Try extraction methods in order: OpenAI (primary) > Gemini (fallback) > Ollama (local fallback)
-        if self.prefer_local and self.ollama_ready:
-            result = self._extract_with_ollama(image)
-            if not result and self.openai_ready:
-                result = self._extract_with_openai(image)
-            if not result and self.gemini_ready:
-                result = self._extract_with_gemini(image)
+        # Define provider order based on preference
+        if self.prefer_local:
+            providers = [
+                ('ollama', self.ollama_ready, self._extract_with_ollama),
+                ('openai', self.openai_ready, self._extract_with_openai),
+                ('gemini', self.gemini_ready, self._extract_with_gemini),
+            ]
         else:
             # OpenAI is now the primary provider (faster, more reliable)
-            if self.openai_ready:
-                result = self._extract_with_openai(image)
-            if not result and self.gemini_ready:
-                result = self._extract_with_gemini(image)
-            if not result and self.ollama_ready:
-                result = self._extract_with_ollama(image)
+            providers = [
+                ('openai', self.openai_ready, self._extract_with_openai),
+                ('gemini', self.gemini_ready, self._extract_with_gemini),
+                ('ollama', self.ollama_ready, self._extract_with_ollama),
+            ]
+
+        # Try each provider with circuit breaker protection
+        for provider_name, is_ready, extract_method in providers:
+            if not is_ready:
+                continue
+
+            # Skip if circuit is open (provider failing too often)
+            if self.circuit_breaker.is_open(provider_name):
+                print(f"⚡ Skipping {provider_name} (circuit open)")
+                continue
+
+            try:
+                result = extract_method(image)
+                if result and result.get('confidence', 0) > 0.3:
+                    self.circuit_breaker.record_success(provider_name)
+                    return result
+                else:
+                    # Low confidence counts as failure
+                    self.circuit_breaker.record_failure(provider_name)
+            except Exception as e:
+                print(f"⚠️ {provider_name} extraction failed: {e}")
+                self.circuit_breaker.record_failure(provider_name)
 
         # Return empty result if extraction failed
         if not result:
