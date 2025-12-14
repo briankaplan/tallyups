@@ -120,7 +120,15 @@ class ExcelExporter:
         """Auto-adjust column widths based on content."""
         for col in ws.columns:
             max_length = 0
-            column = col[0].column_letter
+            # Handle MergedCell objects that don't have column_letter attribute
+            column = None
+            for cell in col:
+                if hasattr(cell, 'column_letter'):
+                    column = cell.column_letter
+                    break
+
+            if column is None:
+                continue  # Skip if we can't determine the column
 
             for cell in col:
                 try:

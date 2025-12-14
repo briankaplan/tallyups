@@ -116,6 +116,7 @@ def create_mock_report(
 
     # Create summary
     total = sum(float(tx.amount) for tx in transactions)
+    matched = sum(1 for tx in transactions if tx.has_receipt)
     report.summary = Mock()
     report.summary.total_transactions = len(transactions)
     report.summary.total_amount = Decimal(str(total))
@@ -124,6 +125,12 @@ def create_mock_report(
     report.summary.smallest_transaction = min(tx.amount for tx in transactions) if transactions else Decimal("0")
     report.summary.match_rate = 80.0 if transactions else 0.0
     report.summary.receipt_rate = 70.0 if transactions else 0.0
+    report.summary.matched_count = matched
+    report.summary.unmatched_count = len(transactions) - matched
+    report.summary.receipt_count = matched
+    report.summary.no_receipt_count = len(transactions) - matched
+    report.summary.receipts_attached = matched
+    report.summary.receipts_missing = len(transactions) - matched
 
     # Category breakdown
     report.summary.by_category = [
@@ -134,9 +141,12 @@ def create_mock_report(
 
     # Vendor breakdown
     report.summary.by_vendor = [
-        Mock(vendor="Anthropic", total=Decimal("200.00"), count=4, is_recurring=True, average=Decimal("50.00")),
-        Mock(vendor="Uber", total=Decimal("150.00"), count=3, is_recurring=False, average=Decimal("50.00")),
-        Mock(vendor="Starbucks", total=Decimal("50.00"), count=2, is_recurring=False, average=Decimal("25.00")),
+        Mock(vendor="Anthropic", total=Decimal("200.00"), count=4, is_recurring=True, average=Decimal("50.00"),
+             first_transaction=datetime(2024, 1, 1), last_transaction=datetime(2024, 1, 15), categories=["Software & Subscriptions"]),
+        Mock(vendor="Uber", total=Decimal("150.00"), count=3, is_recurring=False, average=Decimal("50.00"),
+             first_transaction=datetime(2024, 1, 5), last_transaction=datetime(2024, 1, 20), categories=["Travel - Transportation"]),
+        Mock(vendor="Starbucks", total=Decimal("50.00"), count=2, is_recurring=False, average=Decimal("25.00"),
+             first_transaction=datetime(2024, 1, 10), last_transaction=datetime(2024, 1, 25), categories=["Travel - Meals"]),
     ]
 
     # Monthly trends
