@@ -17802,6 +17802,127 @@ def regenerate_missing_images():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/incoming/clear-text-screenshots", methods=["POST"])
+def clear_text_screenshots():
+    """
+    Clear text-based screenshots from inbox by:
+    1. Finding small images (<40KB) which are likely text renders
+    2. Setting receipt_image_url and thumbnail_url to NULL
+    3. Then call regenerate-missing-images to regenerate with Playwright
+
+    This is a two-step process:
+    - First clears the bad URLs so regenerate-missing-images can find them
+    - Then regenerates with proper Playwright browser screenshots
+    """
+    # Allow admin key or session auth
+    admin_key = request.json.get('admin_key') if request.json else request.args.get('admin_key')
+    admin_key = admin_key or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not expected_key or admin_key != expected_key:
+        if not session.get('authenticated') and not session.get('logged_in'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    try:
+        import requests as http_requests
+
+        data = request.get_json() or {}
+        threshold_kb = data.get('threshold_kb', 50)  # Images smaller than this are likely text
+        limit = data.get('limit', 200)
+        regenerate = data.get('regenerate', True)  # Auto-regenerate after clearing
+
+        conn, db_type = get_db_connection()
+
+        # Step 1: Find small images that are likely text screenshots
+        cursor = db_execute(conn, db_type, '''
+            SELECT id, merchant, receipt_image_url, thumbnail_url
+            FROM incoming_receipts
+            WHERE status = 'pending'
+            AND receipt_image_url IS NOT NULL
+            AND receipt_image_url != ''
+            ORDER BY id DESC
+            LIMIT %s
+        ''', (limit * 2,))  # Get more since we'll filter by size
+
+        rows = cursor.fetchall()
+        cleared = 0
+        checked = 0
+        small_images = []
+
+        print(f"🔍 Checking {len(rows)} inbox images for text-based screenshots (<{threshold_kb}KB)...")
+
+        for row in rows:
+            if checked >= limit:
+                break
+
+            img_url = row['receipt_image_url']
+            if not img_url:
+                continue
+
+            try:
+                # Check image size via HEAD request
+                resp = http_requests.head(img_url, timeout=5)
+                size_bytes = int(resp.headers.get('content-length', 0))
+                size_kb = size_bytes / 1024
+                checked += 1
+
+                if size_kb > 0 and size_kb < threshold_kb:
+                    small_images.append({
+                        'id': row['id'],
+                        'merchant': row['merchant'],
+                        'size_kb': round(size_kb, 1),
+                        'url': img_url
+                    })
+                    print(f"   📝 Text screenshot: #{row['id']} {row['merchant'][:30]} ({size_kb:.1f}KB)")
+
+            except Exception as e:
+                # If we can't check, skip it
+                continue
+
+        print(f"📊 Found {len(small_images)} small/text-based screenshots")
+
+        # Step 2: Clear the URLs for small images
+        if small_images:
+            ids_to_clear = [img['id'] for img in small_images]
+            placeholders = ','.join(['%s'] * len(ids_to_clear))
+
+            db_execute(conn, db_type, f'''
+                UPDATE incoming_receipts
+                SET receipt_image_url = NULL, thumbnail_url = NULL
+                WHERE id IN ({placeholders})
+            ''', tuple(ids_to_clear))
+            conn.commit()
+            cleared = len(ids_to_clear)
+            print(f"✅ Cleared {cleared} text-based screenshot URLs")
+
+        return_db_connection(conn)
+
+        # Step 3: Optionally regenerate with Playwright
+        regenerated = 0
+        if regenerate and cleared > 0:
+            print(f"🔄 Now regenerating {cleared} images with Playwright...")
+            try:
+                from incoming_receipts_service import regenerate_missing_screenshots
+                regen_results = regenerate_missing_screenshots(limit=cleared)
+                regenerated = regen_results.get('regenerated', 0)
+                print(f"✅ Regenerated {regenerated} images with Playwright")
+            except Exception as regen_err:
+                print(f"⚠️ Regeneration error: {regen_err}")
+
+        return jsonify({
+            'ok': True,
+            'message': f"Cleared {cleared} text screenshots, regenerated {regenerated}",
+            'checked': checked,
+            'cleared': cleared,
+            'regenerated': regenerated,
+            'small_images': small_images[:20]  # First 20 for reference
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/incoming/backfill-ai-notes", methods=["POST"])
 @login_required
 def backfill_ai_notes_endpoint():

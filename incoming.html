@@ -3690,29 +3690,34 @@ async function cleanSpam() {
 }
 
 async function regenerateImages() {
-  if (!confirm('Regenerate images for all pending receipts? This will use Playwright to capture proper HTML screenshots.')) return;
+  if (!confirm('This will:\n1. Find and clear text-based screenshots (<50KB)\n2. Regenerate them with proper Playwright browser screenshots\n\nContinue?')) return;
 
-  showToast('Regenerating images with proper HTML rendering...', 'info');
+  showToast('Step 1: Finding and clearing text screenshots...', 'info');
 
   try {
-    const response = await fetch('/api/incoming/generate-images', {
+    // First, clear text-based screenshots and regenerate with Playwright
+    const response = await fetch('/api/incoming/clear-text-screenshots', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       credentials: 'include',
-      body: JSON.stringify({ force: true, limit: 200 })
+      body: JSON.stringify({ threshold_kb: 50, limit: 200, regenerate: true })
     });
 
     const data = await response.json();
 
     if (data.ok) {
-      showToast(`Regenerated ${data.success} images (${data.failed} failed)`, 'success');
+      if (data.cleared > 0) {
+        showToast(`Cleared ${data.cleared} text screenshots, regenerated ${data.regenerated} with Playwright`, 'success');
+      } else {
+        showToast('No text-based screenshots found to clear', 'info');
+      }
       loadReceipts();
     } else {
-      showToast(data.error || 'Regeneration failed', 'error');
+      showToast(data.error || 'Failed to clear text screenshots', 'error');
     }
   } catch (e) {
     console.error('Regenerate error:', e);
-    showToast('Error regenerating images', 'error');
+    showToast('Error fixing images', 'error');
   }
 }
 
