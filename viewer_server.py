@@ -14827,7 +14827,7 @@ def get_library_receipts():
                            receipt_url, receipt_image_url, thumbnail_url,
                            source, status, from_email, subject,
                            transaction_id, accepted_as_transaction_id, matched_transaction_id,
-                           ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified, ocr_verification_status,
+                           ocr_merchant, ocr_amount, ocr_date, ocr_confidence,
                            business_type, notes, ai_notes, category
                     FROM incoming_receipts
                     WHERE status IN ('accepted', 'pending')
