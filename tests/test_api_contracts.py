@@ -261,14 +261,14 @@ class TestAIEndpointContracts:
     """Test AI endpoint contracts."""
 
     @pytest.mark.integration
-    @pytest.mark.skip(reason="classify_business_type function moved to business_classifier module")
     def test_ai_categorize_response_structure(self, authenticated_client, mock_db):
         """AI categorize returns expected structure."""
-        with patch('viewer_server.classify_business_type') as mock_classify:
-            mock_classify.return_value = {
-                'business_type': 'down_home',
-                'confidence': 0.95,
-                'signals': []
+        with patch('viewer_server.gemini_categorize_transaction') as mock_categorize:
+            mock_categorize.return_value = {
+                'category': 'Software & Subscriptions',
+                'business_type': 'Down Home',
+                'confidence': 95,
+                'reasoning': 'AI API subscription service'
             }
 
             response = authenticated_client.post(
@@ -280,14 +280,19 @@ class TestAIEndpointContracts:
                 }
             )
 
+            # Endpoint requires auth - accept 200 or 401
             if response.status_code == 200:
                 data = response.get_json()
                 assert isinstance(data, dict)
+                assert 'ok' in data
                 # Should have business_type in response
-                if 'business_type' in data:
+                if data.get('ok') and 'business_type' in data:
                     assert data['business_type'] in [
-                        'down_home', 'music_city_rodeo', 'em_co', 'personal', None
+                        'Down Home', 'Music City Rodeo', 'EM Co', 'Personal', None
                     ]
+            else:
+                # 401 is acceptable if not authenticated
+                assert response.status_code in [401, 400]
 
     @pytest.mark.integration
     def test_ai_note_response_structure(self, authenticated_client, mock_db):
@@ -400,7 +405,6 @@ class TestUploadEndpointContracts:
     """Test upload endpoint contracts."""
 
     @pytest.mark.integration
-    @pytest.mark.skip(reason="save_uploaded_receipt function API changed")
     def test_mobile_upload_accepts_multipart(self, authenticated_client, mock_db):
         """Mobile upload accepts multipart form data."""
         from io import BytesIO
@@ -413,8 +417,15 @@ class TestUploadEndpointContracts:
             b'\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82'
         )
 
-        with patch('viewer_server.save_uploaded_receipt') as mock_save:
-            mock_save.return_value = {'success': True, 'filename': 'test.png'}
+        with patch('viewer_server.validate_upload_file') as mock_validate, \
+             patch('viewer_server.extract_receipt') as mock_ocr:
+            mock_validate.return_value = (True, None)
+            mock_ocr.return_value = {
+                'merchant': 'Test Store',
+                'amount': 25.00,
+                'date': '2025-01-15',
+                'confidence': 0.95
+            }
 
             response = authenticated_client.post(
                 '/mobile-upload',
@@ -422,7 +433,7 @@ class TestUploadEndpointContracts:
                 content_type='multipart/form-data'
             )
 
-            # Should accept the upload
+            # Should accept the upload or require auth
             assert response.status_code in [200, 302, 400, 401, 500]
 
 

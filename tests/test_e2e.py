@@ -379,7 +379,6 @@ class TestReportGenerationFlow:
             pytest.skip("ExcelExporter not available")
 
     @pytest.mark.e2e
-    @pytest.mark.skip(reason="Test uses Mock objects incompatible with exporter implementations")
     def test_multi_format_export(self, tmp_path):
         """
         Full flow: User exports report in multiple formats
@@ -389,7 +388,7 @@ class TestReportGenerationFlow:
         2. User exports to CSV, Excel, PDF
         3. All formats are valid
         """
-        # Create mock report
+        # Create mock report with all required attributes
         mock_report = Mock()
         mock_report.report_name = "Test Report"
         mock_report.report_id = "RPT-001"
@@ -402,8 +401,16 @@ class TestReportGenerationFlow:
         mock_report.summary.total_transactions = 0
         mock_report.summary.total_amount = Decimal("0")
         mock_report.summary.average_transaction = Decimal("0")
-        mock_report.summary.match_rate = 0
-        mock_report.summary.receipt_rate = 0
+        mock_report.summary.largest_transaction = Decimal("0")
+        mock_report.summary.smallest_transaction = Decimal("0")
+        mock_report.summary.match_rate = 0.0
+        mock_report.summary.receipt_rate = 0.0
+        mock_report.summary.matched_count = 0
+        mock_report.summary.unmatched_count = 0
+        mock_report.summary.receipt_count = 0
+        mock_report.summary.no_receipt_count = 0
+        mock_report.summary.receipts_attached = 0
+        mock_report.summary.receipts_missing = 0
         mock_report.summary.by_category = []
         mock_report.summary.by_vendor = []
         mock_report.summary.monthly_trends = []
@@ -501,7 +508,6 @@ class TestSettingsFlow:
     """Test settings and configuration workflows."""
 
     @pytest.mark.e2e
-    @pytest.mark.skip(reason="ScheduledReportService API has changed - needs update")
     def test_scheduled_report_setup(self, tmp_path):
         """
         Full flow: User sets up scheduled weekly report
@@ -522,11 +528,9 @@ class TestSettingsFlow:
         except ImportError:
             pytest.skip("scheduled_reports not available")
 
-        try:
-            service = ScheduledReportService(data_dir=str(tmp_path))
-        except TypeError:
-            # Try without data_dir if the API doesn't support it
-            service = ScheduledReportService()
+        # Use config_path parameter (not data_dir)
+        config_path = tmp_path / "scheduled_reports.json"
+        service = ScheduledReportService(config_path=config_path)
 
         # User configures schedule
         schedule = ScheduledReport(
@@ -543,7 +547,8 @@ class TestSettingsFlow:
             enabled=True,
         )
 
-        service.add_schedule(schedule)
+        # Use create_schedule (not add_schedule)
+        service.create_schedule(schedule)
 
         # Verify saved
         saved = service.get_schedule("sched_001")
