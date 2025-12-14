@@ -96,12 +96,12 @@ def api_library_receipts():
             params = []
 
             if search:
-                where_clauses.append("(chase_description LIKE %s OR ai_note LIKE %s)")
-                params.extend([f'%{search}%', f'%{search}%'])
+                where_clauses.append("(chase_description LIKE %s OR ai_note LIKE %s OR ocr_merchant LIKE %s)")
+                params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
 
             if merchant:
-                where_clauses.append("chase_description LIKE %s")
-                params.append(f'%{merchant}%')
+                where_clauses.append("(chase_description LIKE %s OR ocr_merchant LIKE %s)")
+                params.extend([f'%{merchant}%', f'%{merchant}%'])
 
             if date_from:
                 where_clauses.append("chase_date >= %s")
@@ -116,7 +116,8 @@ def api_library_receipts():
 
             cursor = db_execute(conn, db_type, f'''
                 SELECT _index, chase_date, chase_description, chase_amount,
-                       receipt_url, r2_url, ai_note, business_type, review_status
+                       receipt_url, r2_url, ai_note, business_type, review_status,
+                       ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified
                 FROM transactions
                 WHERE {where_sql}
                 ORDER BY chase_date DESC
@@ -125,11 +126,38 @@ def api_library_receipts():
 
             for row in cursor.fetchall():
                 r = dict(row)
-                r['source'] = 'transaction'
-                r['id'] = r['_index']
-                if r.get('chase_date') and hasattr(r['chase_date'], 'isoformat'):
-                    r['chase_date'] = r['chase_date'].isoformat()
-                receipts.append(r)
+                # Map to proper field names for frontend
+                # Use OCR data as fallback when transaction data is missing
+                merchant_val = r.get('chase_description') or r.get('ocr_merchant') or 'Unknown'
+                amount_val = r.get('chase_amount') or r.get('ocr_amount') or 0
+                date_val = r.get('chase_date')
+                if date_val and hasattr(date_val, 'isoformat'):
+                    date_val = date_val.isoformat()
+                receipt_url = r.get('r2_url') or r.get('receipt_url') or ''
+
+                receipts.append({
+                    'id': f"tx_{r['_index']}",
+                    'uuid': f"tx_{r['_index']}",
+                    'type': 'transaction',
+                    'transaction_id': r['_index'],
+                    '_index': r['_index'],
+                    'merchant': merchant_val,
+                    'merchant_name': merchant_val,
+                    'amount': float(amount_val) if amount_val else 0,
+                    'date': str(date_val) if date_val else '',
+                    'receipt_date': str(date_val) if date_val else '',
+                    'receipt_url': receipt_url,
+                    'thumbnail_url': receipt_url,  # Use same URL for thumbnail
+                    'source': 'transaction',
+                    'business_type': r.get('business_type') or 'Personal',
+                    'notes': '',
+                    'ai_notes': r.get('ai_note') or '',
+                    'status': 'matched',
+                    'ocr_merchant': r.get('ocr_merchant') or '',
+                    'ocr_amount': float(r.get('ocr_amount') or 0) if r.get('ocr_amount') else None,
+                    'ocr_confidence': float(r.get('ocr_confidence') or 0) if r.get('ocr_confidence') else 0,
+                    'ocr_verified': bool(r.get('ocr_verified')),
+                })
 
         # Query incoming receipts
         if source in ('incoming', 'all'):
@@ -137,19 +165,21 @@ def api_library_receipts():
             params = []
 
             if search:
-                where_clauses.append("(merchant LIKE %s OR subject LIKE %s)")
-                params.extend([f'%{search}%', f'%{search}%'])
+                where_clauses.append("(merchant LIKE %s OR subject LIKE %s OR ocr_merchant LIKE %s)")
+                params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
 
             if merchant:
-                where_clauses.append("merchant LIKE %s")
-                params.append(f'%{merchant}%')
+                where_clauses.append("(merchant LIKE %s OR ocr_merchant LIKE %s)")
+                params.extend([f'%{merchant}%', f'%{merchant}%'])
 
             where_sql = " AND ".join(where_clauses)
             params.extend([limit, offset])
 
             cursor = db_execute(conn, db_type, f'''
-                SELECT id, received_date, merchant, amount, subject,
-                       receipt_image_url, status, gmail_account
+                SELECT id, received_date, receipt_date, merchant, amount, subject, sender,
+                       receipt_url, receipt_image_url, thumbnail_url, status, gmail_account,
+                       ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified,
+                       business_type, notes, ai_notes, category
                 FROM incoming_receipts
                 WHERE {where_sql}
                 ORDER BY received_date DESC
@@ -158,10 +188,50 @@ def api_library_receipts():
 
             for row in cursor.fetchall():
                 r = dict(row)
-                r['source'] = 'incoming'
-                if r.get('received_date') and hasattr(r['received_date'], 'isoformat'):
-                    r['received_date'] = r['received_date'].isoformat()
-                receipts.append(r)
+                # Map to proper field names for frontend
+                # Use OCR data as fallback when incoming data is missing
+                merchant_val = r.get('merchant') or r.get('ocr_merchant') or ''
+                if not merchant_val or merchant_val == 'Unknown':
+                    # Try to get from sender
+                    sender = r.get('sender') or ''
+                    if sender:
+                        merchant_val = sender.split('<')[0].strip().strip('"')
+                    if not merchant_val:
+                        merchant_val = 'Unknown'
+
+                amount_val = r.get('amount') or r.get('ocr_amount') or 0
+                date_val = r.get('received_date') or r.get('receipt_date')
+                if date_val and hasattr(date_val, 'isoformat'):
+                    date_val = date_val.isoformat()
+                receipt_url = r.get('receipt_image_url') or r.get('receipt_url') or ''
+                thumbnail = r.get('thumbnail_url') or receipt_url
+
+                receipts.append({
+                    'id': f"inc_{r['id']}",
+                    'uuid': f"inc_{r['id']}",
+                    'type': 'incoming',
+                    'incoming_id': r['id'],
+                    'merchant': merchant_val,
+                    'merchant_name': merchant_val,
+                    'amount': float(amount_val) if amount_val else 0,
+                    'date': str(date_val) if date_val else '',
+                    'receipt_date': str(date_val) if date_val else '',
+                    'receipt_url': receipt_url,
+                    'thumbnail_url': thumbnail,
+                    'source': 'incoming',
+                    'status': r.get('status') or 'pending',
+                    'business_type': r.get('business_type') or 'Personal',
+                    'notes': r.get('notes') or '',
+                    'ai_notes': r.get('ai_notes') or '',
+                    'subject': r.get('subject') or '',
+                    'sender': r.get('sender') or '',
+                    'gmail_account': r.get('gmail_account') or '',
+                    'ocr_merchant': r.get('ocr_merchant') or '',
+                    'ocr_amount': float(r.get('ocr_amount') or 0) if r.get('ocr_amount') else None,
+                    'ocr_confidence': float(r.get('ocr_confidence') or 0) if r.get('ocr_confidence') else 0,
+                    'ocr_verified': bool(r.get('ocr_verified')),
+                    'category': r.get('category') or '',
+                })
 
         return_db_connection(conn)
 
@@ -212,38 +282,86 @@ def api_library_search():
         # Search transactions
         cursor = db_execute(conn, db_type, '''
             SELECT _index, chase_date, chase_description, chase_amount,
-                   receipt_url, r2_url, ai_note, business_type
+                   receipt_url, r2_url, ai_note, business_type,
+                   ocr_merchant, ocr_amount, ocr_confidence, ocr_verified
             FROM transactions
-            WHERE (chase_description LIKE %s OR ai_note LIKE %s)
+            WHERE (chase_description LIKE %s OR ai_note LIKE %s OR ocr_merchant LIKE %s)
             AND receipt_url IS NOT NULL AND receipt_url != ''
             ORDER BY chase_date DESC
             LIMIT %s
-        ''', (search_term, search_term, limit))
+        ''', (search_term, search_term, search_term, limit))
 
         for row in cursor.fetchall():
             r = dict(row)
-            r['source'] = 'transaction'
-            r['id'] = r['_index']
-            if r.get('chase_date') and hasattr(r['chase_date'], 'isoformat'):
-                r['chase_date'] = r['chase_date'].isoformat()
-            results.append(r)
+            merchant_val = r.get('chase_description') or r.get('ocr_merchant') or 'Unknown'
+            amount_val = r.get('chase_amount') or r.get('ocr_amount') or 0
+            date_val = r.get('chase_date')
+            if date_val and hasattr(date_val, 'isoformat'):
+                date_val = date_val.isoformat()
+            receipt_url = r.get('r2_url') or r.get('receipt_url') or ''
+
+            results.append({
+                'id': f"tx_{r['_index']}",
+                'uuid': f"tx_{r['_index']}",
+                'type': 'transaction',
+                'transaction_id': r['_index'],
+                '_index': r['_index'],
+                'merchant': merchant_val,
+                'merchant_name': merchant_val,
+                'amount': float(amount_val) if amount_val else 0,
+                'date': str(date_val) if date_val else '',
+                'receipt_date': str(date_val) if date_val else '',
+                'receipt_url': receipt_url,
+                'thumbnail_url': receipt_url,
+                'source': 'transaction',
+                'business_type': r.get('business_type') or 'Personal',
+                'ai_notes': r.get('ai_note') or '',
+            })
 
         # Search incoming
         cursor = db_execute(conn, db_type, '''
-            SELECT id, received_date, merchant, amount, subject, receipt_image_url, status
+            SELECT id, received_date, merchant, amount, subject, sender,
+                   receipt_image_url, thumbnail_url, status,
+                   ocr_merchant, ocr_amount, ocr_confidence, ocr_verified
             FROM incoming_receipts
-            WHERE (merchant LIKE %s OR subject LIKE %s)
+            WHERE (merchant LIKE %s OR subject LIKE %s OR ocr_merchant LIKE %s)
             AND receipt_image_url IS NOT NULL
             ORDER BY received_date DESC
             LIMIT %s
-        ''', (search_term, search_term, limit))
+        ''', (search_term, search_term, search_term, limit))
 
         for row in cursor.fetchall():
             r = dict(row)
-            r['source'] = 'incoming'
-            if r.get('received_date') and hasattr(r['received_date'], 'isoformat'):
-                r['received_date'] = r['received_date'].isoformat()
-            results.append(r)
+            merchant_val = r.get('merchant') or r.get('ocr_merchant') or ''
+            if not merchant_val or merchant_val == 'Unknown':
+                sender = r.get('sender') or ''
+                if sender:
+                    merchant_val = sender.split('<')[0].strip().strip('"')
+                if not merchant_val:
+                    merchant_val = 'Unknown'
+            amount_val = r.get('amount') or r.get('ocr_amount') or 0
+            date_val = r.get('received_date')
+            if date_val and hasattr(date_val, 'isoformat'):
+                date_val = date_val.isoformat()
+            receipt_url = r.get('receipt_image_url') or ''
+            thumbnail = r.get('thumbnail_url') or receipt_url
+
+            results.append({
+                'id': f"inc_{r['id']}",
+                'uuid': f"inc_{r['id']}",
+                'type': 'incoming',
+                'incoming_id': r['id'],
+                'merchant': merchant_val,
+                'merchant_name': merchant_val,
+                'amount': float(amount_val) if amount_val else 0,
+                'date': str(date_val) if date_val else '',
+                'receipt_date': str(date_val) if date_val else '',
+                'receipt_url': receipt_url,
+                'thumbnail_url': thumbnail,
+                'source': 'incoming',
+                'status': r.get('status') or 'pending',
+                'subject': r.get('subject') or '',
+            })
 
         return_db_connection(conn)
 
