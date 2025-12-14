@@ -117,7 +117,7 @@ def api_library_receipts():
             cursor = db_execute(conn, db_type, f'''
                 SELECT _index, chase_date, chase_description, chase_amount,
                        receipt_url, r2_url, ai_note, business_type, review_status,
-                       ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified
+                       ai_receipt_merchant, ai_receipt_total, ai_confidence
                 FROM transactions
                 WHERE {where_sql}
                 ORDER BY chase_date DESC
@@ -127,9 +127,9 @@ def api_library_receipts():
             for row in cursor.fetchall():
                 r = dict(row)
                 # Map to proper field names for frontend
-                # Use OCR data as fallback when transaction data is missing
-                merchant_val = r.get('chase_description') or r.get('ocr_merchant') or 'Unknown'
-                amount_val = r.get('chase_amount') or r.get('ocr_amount') or 0
+                # Use AI data as fallback when transaction data is missing
+                merchant_val = r.get('chase_description') or r.get('ai_receipt_merchant') or 'Unknown'
+                amount_val = r.get('chase_amount') or r.get('ai_receipt_total') or 0
                 date_val = r.get('chase_date')
                 if date_val and hasattr(date_val, 'isoformat'):
                     date_val = date_val.isoformat()
@@ -153,10 +153,9 @@ def api_library_receipts():
                     'notes': '',
                     'ai_notes': r.get('ai_note') or '',
                     'status': 'matched',
-                    'ocr_merchant': r.get('ocr_merchant') or '',
-                    'ocr_amount': float(r.get('ocr_amount') or 0) if r.get('ocr_amount') else None,
-                    'ocr_confidence': float(r.get('ocr_confidence') or 0) if r.get('ocr_confidence') else 0,
-                    'ocr_verified': bool(r.get('ocr_verified')),
+                    'ocr_merchant': r.get('ai_receipt_merchant') or '',
+                    'ocr_amount': float(r.get('ai_receipt_total') or 0) if r.get('ai_receipt_total') else None,
+                    'ocr_confidence': float(r.get('ai_confidence') or 0) if r.get('ai_confidence') else 0,
                 })
 
         # Query incoming receipts
@@ -178,7 +177,7 @@ def api_library_receipts():
             cursor = db_execute(conn, db_type, f'''
                 SELECT id, received_date, receipt_date, merchant, amount, subject, from_email,
                        receipt_url, receipt_image_url, thumbnail_url, status, gmail_account,
-                       ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified,
+                       ocr_merchant, ocr_amount, ocr_date, ocr_confidence,
                        business_type, notes, ai_notes, category
                 FROM incoming_receipts
                 WHERE {where_sql}
@@ -230,7 +229,6 @@ def api_library_receipts():
                     'ocr_merchant': r.get('ocr_merchant') or '',
                     'ocr_amount': float(r.get('ocr_amount') or 0) if r.get('ocr_amount') else None,
                     'ocr_confidence': float(r.get('ocr_confidence') or 0) if r.get('ocr_confidence') else 0,
-                    'ocr_verified': bool(r.get('ocr_verified')),
                     'category': r.get('category') or '',
                 })
 
@@ -284,9 +282,9 @@ def api_library_search():
         cursor = db_execute(conn, db_type, '''
             SELECT _index, chase_date, chase_description, chase_amount,
                    receipt_url, r2_url, ai_note, business_type,
-                   ocr_merchant, ocr_amount, ocr_confidence, ocr_verified
+                   ai_receipt_merchant, ai_receipt_total, ai_confidence
             FROM transactions
-            WHERE (chase_description LIKE %s OR ai_note LIKE %s OR ocr_merchant LIKE %s)
+            WHERE (chase_description LIKE %s OR ai_note LIKE %s OR ai_receipt_merchant LIKE %s)
             AND receipt_url IS NOT NULL AND receipt_url != ''
             ORDER BY chase_date DESC
             LIMIT %s
@@ -294,8 +292,8 @@ def api_library_search():
 
         for row in cursor.fetchall():
             r = dict(row)
-            merchant_val = r.get('chase_description') or r.get('ocr_merchant') or 'Unknown'
-            amount_val = r.get('chase_amount') or r.get('ocr_amount') or 0
+            merchant_val = r.get('chase_description') or r.get('ai_receipt_merchant') or 'Unknown'
+            amount_val = r.get('chase_amount') or r.get('ai_receipt_total') or 0
             date_val = r.get('chase_date')
             if date_val and hasattr(date_val, 'isoformat'):
                 date_val = date_val.isoformat()
@@ -323,7 +321,7 @@ def api_library_search():
         cursor = db_execute(conn, db_type, '''
             SELECT id, received_date, merchant, amount, subject, from_email,
                    receipt_image_url, thumbnail_url, status,
-                   ocr_merchant, ocr_amount, ocr_confidence, ocr_verified
+                   ocr_merchant, ocr_amount, ocr_confidence
             FROM incoming_receipts
             WHERE (merchant LIKE %s OR subject LIKE %s OR ocr_merchant LIKE %s)
             AND receipt_image_url IS NOT NULL
