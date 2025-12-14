@@ -178,7 +178,7 @@ def api_library_receipts():
                 SELECT id, received_date, receipt_date, merchant, amount, subject, from_email,
                        receipt_url, receipt_image_url, thumbnail_url, status, gmail_account,
                        ocr_merchant, ocr_amount, ocr_date, ocr_confidence,
-                       business_type, notes, ai_notes, category
+                       ai_notes, category
                 FROM incoming_receipts
                 WHERE {where_sql}
                 ORDER BY received_date DESC
@@ -220,8 +220,8 @@ def api_library_receipts():
                     'thumbnail_url': thumbnail,
                     'source': 'incoming',
                     'status': r.get('status') or 'pending',
-                    'business_type': r.get('business_type') or 'Personal',
-                    'notes': r.get('notes') or '',
+                    'business_type': 'Personal',  # Not in production DB
+                    'notes': '',
                     'ai_notes': r.get('ai_notes') or '',
                     'subject': r.get('subject') or '',
                     'sender': r.get('from_email') or '',  # from_email is the actual column name
