@@ -2928,6 +2928,8 @@ def dashboard_stats():
         return jsonify({
             "total_receipts": int(total_matched),
             "pending": int(pending),
+            "inbox_count": int(pending),  # Alias for frontend compatibility
+            "pending_review": int(pending),  # Another alias for frontend
             "month_total": round(month_total, 2),
             "match_rate": int(match_rate),
             "total_transactions": int(total_transactions),
@@ -14905,12 +14907,32 @@ def get_library_receipts():
         paginated_receipts = all_receipts[offset:offset + limit]
         has_more = (offset + limit) < total
 
+        # Build unified counts object for frontend compatibility
+        counts = {
+            'total': total,
+            'favorites': 0,  # TODO: Count from receipt_favorites table
+            'recent': sum(1 for r in all_receipts if r.get('is_recent')),
+            'needs_review': verification_counts.get('needs_review', 0),
+            'duplicates': 0,  # TODO: Implement duplicate detection
+            'verified': verification_counts.get('verified', 0),
+            'matched': match_counts.get('matched', 0),
+            'processing': 0,
+            'gmail': source_counts.get('gmail', 0),
+            'scanner': source_counts.get('scanner', 0),
+            'upload': source_counts.get('manual', 0) + source_counts.get('upload', 0),
+            'down_home': source_counts.get('down_home', 0),
+            'mcr': source_counts.get('mcr', 0),
+            'personal': source_counts.get('personal', 0),
+            'ceo': source_counts.get('ceo', 0)
+        }
+
         response = jsonify({
             'ok': True,
             'receipts': paginated_receipts,
             'total': total,
             'has_more': has_more,
             'page': page,
+            'counts': counts,  # Unified counts for sidebar
             'source_counts': source_counts,
             'verification_counts': verification_counts,
             'match_counts': match_counts,
