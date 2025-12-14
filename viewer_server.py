@@ -5,7 +5,7 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.14.v3"
+APP_VERSION = "2025.12.14.v4"
 APP_BUILD_TIME = "2025-12-14T05:00:00Z"
 import os
 import math
@@ -10121,13 +10121,12 @@ EXPENSE_CATEGORIES = [
 
 # Business types for Brian's companies
 BUSINESS_TYPES = [
-    "Down Home",           # Music/Entertainment business
-    "Music City Rodeo",    # Event business
+    "Down Home",           # Music/Entertainment business (artist management, publishing)
+    "Music City Rodeo",    # Event business (concerts, rodeos)
     "EM.co",               # EM.co business
     "Personal",            # Personal expenses
     "Compass RE",          # Real estate
     "1099 Contractor",     # Freelance work
-    "EM.co"                # EM.co business
 ]
 
 def validate_business_type(business_type: str, allow_empty: bool = False) -> tuple:
@@ -10200,16 +10199,16 @@ def gemini_categorize_transaction(merchant: str, amount: float, date: str = "", 
     except Exception as e:
         print(f"⚠️ guess_attendees error: {e}")
 
-    # Get calendar context for the date (disabled - tokens expired)
-    # TODO: Re-enable once calendar tokens are refreshed
-    # if date:
-    #     try:
-    #         from calendar_service import get_events_around_date, format_events_for_prompt
-    #         events = get_events_around_date(date, days_before=1, days_after=1)
-    #         if events:
-    #             calendar_context = f"\n- Calendar Events Near Date: {format_events_for_prompt(events[:5])}"
-    #     except Exception as e:
-    #         pass
+    # Get calendar context for the date (re-enabled with graceful error handling)
+    if date:
+        try:
+            from calendar_service import get_events_around_date, format_events_for_prompt
+            events = get_events_around_date(date, days_before=0, days_after=0)
+            if events:
+                calendar_context = f"\n- Calendar Events on Date: {format_events_for_prompt(events[:3])}"
+        except Exception as e:
+            # Silently skip if calendar unavailable (tokens expired, etc.)
+            pass
 
     try:
         prompt = f"""You are an expense categorization expert for Brian Kaplan, a Nashville music industry executive.
@@ -10379,16 +10378,16 @@ def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", catego
     except Exception as e:
         pass
 
-    # Get calendar context (skip - tokens expired, causes timeouts)
-    # TODO: Re-enable once calendar tokens are refreshed
-    # if date:
-    #     try:
-    #         from calendar_service import get_events_around_date, format_events_for_prompt
-    #         events = get_events_around_date(date, days_before=1, days_after=1)
-    #         if events:
-    #             calendar_context = f"\n- Calendar Events: {format_events_for_prompt(events[:5])}"
-    #     except Exception as e:
-    #         pass
+    # Get calendar context (re-enabled with graceful error handling)
+    if date:
+        try:
+            from calendar_service import get_events_around_date, format_events_for_prompt
+            events = get_events_around_date(date, days_before=0, days_after=0)
+            if events:
+                calendar_context = f"\n- Calendar Events: {format_events_for_prompt(events[:3])}"
+        except Exception as e:
+            # Silently skip if calendar unavailable (tokens expired, etc.)
+            pass
 
     try:
         prompt = f"""You are Brian Kaplan's executive assistant writing expense notes for IRS tax documentation.
