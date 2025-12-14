@@ -14751,15 +14751,29 @@ def get_library_receipts():
             receipt_image = tx.get('r2_url') or tx.get('receipt_url') or tx.get('receipt_file')
 
             # Handle both SQLite (merchant, amount, date) and MySQL (chase_description, chase_amount, chase_date)
-            merchant = tx.get('chase_description') or tx.get('merchant') or tx.get('description') or 'Unknown'
-            amount = tx.get('chase_amount') or tx.get('amount') or 0
+            # Use OCR data as fallback when transaction data is missing
+            ocr_merchant = tx.get('ocr_merchant') or ''
+            ocr_amount = tx.get('ocr_amount')
+            ocr_date = tx.get('ocr_date') or ''
+
+            # Primary: transaction data, Fallback: OCR data
+            merchant = tx.get('chase_description') or tx.get('merchant') or tx.get('description') or ''
+            if not merchant or merchant == 'Unknown':
+                merchant = ocr_merchant or 'Unknown'
+
+            amount = tx.get('chase_amount') or tx.get('amount')
+            if not amount or amount == 0:
+                amount = ocr_amount or 0
+
             date_val = tx.get('chase_date') or tx.get('date') or ''
+            if not date_val and ocr_date:
+                date_val = ocr_date
 
             # Determine verification status based on OCR data
             ocr_verified = tx.get('ocr_verified', False)
             ocr_confidence = float(tx.get('ocr_confidence') or 0)
             ocr_verification_status = tx.get('ocr_verification_status') or ''
-            has_ocr = bool(tx.get('ocr_merchant') or tx.get('ocr_amount'))
+            has_ocr = bool(ocr_merchant or ocr_amount)
 
             # Calculate match status: matched (has receipt linked to transaction)
             # verification_status: verified (OCR confirmed), mismatch, needs_review, unverified
@@ -14858,32 +14872,44 @@ def get_library_receipts():
                         if found_tx:
                             continue  # Skip duplicate
 
-                    # Extract merchant intelligently
+                    # Extract merchant intelligently with OCR fallback
+                    inc_ocr_merchant = inc.get('ocr_merchant') or ''
+                    inc_ocr_amount = inc.get('ocr_amount')
+
                     merchant = inc.get('merchant') or ''
                     if not merchant or merchant == 'Unknown':
-                        # Try to get from sender
-                        sender = inc.get('sender') or ''
-                        if sender:
-                            # Clean up sender name (remove email parts)
-                            merchant = sender.split('<')[0].strip().strip('"')
-                        if not merchant:
-                            # Try subject line
-                            subject = inc.get('subject') or ''
-                            if 'receipt' in subject.lower():
-                                # Extract merchant from subject like "Your receipt from Merchant"
-                                import re
-                                match = re.search(r'(?:receipt|order|payment).*?(?:from|for)\s+([^#\d]+)', subject, re.I)
-                                if match:
-                                    merchant = match.group(1).strip()
+                        # Try OCR first
+                        if inc_ocr_merchant:
+                            merchant = inc_ocr_merchant
+                        else:
+                            # Try to get from sender
+                            sender = inc.get('sender') or ''
+                            if sender:
+                                # Clean up sender name (remove email parts)
+                                merchant = sender.split('<')[0].strip().strip('"')
+                            if not merchant:
+                                # Try subject line
+                                subject = inc.get('subject') or ''
+                                if 'receipt' in subject.lower():
+                                    # Extract merchant from subject like "Your receipt from Merchant"
+                                    import re
+                                    match = re.search(r'(?:receipt|order|payment).*?(?:from|for)\s+([^#\d]+)', subject, re.I)
+                                    if match:
+                                        merchant = match.group(1).strip()
 
                     if not merchant:
                         merchant = 'Unknown'
+
+                    # Get amount with OCR fallback
+                    inc_amount = inc.get('amount')
+                    if not inc_amount or inc_amount == 0:
+                        inc_amount = inc_ocr_amount or 0
 
                     # Determine verification status for incoming receipts
                     inc_ocr_verified = inc.get('ocr_verified', False)
                     inc_ocr_confidence = float(inc.get('ocr_confidence') or 0)
                     inc_ocr_status = inc.get('ocr_verification_status') or ''
-                    inc_has_ocr = bool(inc.get('ocr_merchant') or inc.get('ocr_amount'))
+                    inc_has_ocr = bool(inc_ocr_merchant or inc_ocr_amount)
                     inc_status = inc.get('status') or 'pending'
 
                     # Verification status for incoming receipts
@@ -14910,7 +14936,7 @@ def get_library_receipts():
                         'incoming_id': inc.get('id'),
                         'merchant': merchant,
                         'merchant_name': merchant,  # Alias for JS compatibility
-                        'amount': float(inc.get('amount') or 0),
+                        'amount': float(inc_amount or 0),
                         'date': str(receipt_date),
                         'receipt_date': str(receipt_date),  # Alias for JS compatibility
                         'receipt_url': inc.get('receipt_image_url') or receipt_file,
