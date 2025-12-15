@@ -9,7 +9,9 @@
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <title>Tallyups - Settings</title>
+  <link rel="stylesheet" href="/static/css/design-system.css">
   <link rel="stylesheet" href="/static/tallyups-design.css">
+  <script src="/static/js/app-shell.js" defer></script>
   <style>
     :root {
       /* Blue-tinted dark theme */
@@ -37,8 +39,8 @@
       color: var(--text);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
-      padding-top: var(--safe-top);
-      padding-bottom: calc(20px + var(--safe-bottom));
+      padding-top: calc(60px + var(--safe-top)); /* Space for app-shell header */
+      padding-bottom: calc(100px + var(--safe-bottom)); /* Space for bottom nav */
     }
 
     /* Header */

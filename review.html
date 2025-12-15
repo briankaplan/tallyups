@@ -11,7 +11,12 @@
     <!-- Panzoom for image zoom/pan -->
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <script src="/static/js/app-shell.js" defer></script>
-    <style>body { padding-bottom: 80px; }</style>
+    <style>
+        body {
+            padding-top: calc(var(--header-height, 64px) + env(safe-area-inset-top, 0px));
+            padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+        }
+    </style>
 </head>
 <body>
     <div class="review-container">
@@ -69,13 +74,13 @@
                             <th class="col-select">
                                 <input type="checkbox" id="select-all" title="Select all visible" />
                             </th>
-                            <th class="col-date" data-sort="Chase Date">Date ↕</th>
-                            <th class="col-merchant" data-sort="Chase Description">Merchant ↕</th>
-                            <th class="col-amount" data-sort="Chase Amount">Amount ↕</th>
+                            <th class="col-date" data-sort="chase_date">Date</th>
+                            <th class="col-merchant" data-sort="chase_description">Merchant</th>
+                            <th class="col-amount" data-sort="chase_amount">Amount</th>
                             <th class="col-receipt">Receipt</th>
-                            <th class="col-confidence" data-sort="AI Confidence">Match</th>
-                            <th class="col-business" data-sort="Business Type">Type</th>
-                            <th class="col-status" data-sort="Review Status">Status</th>
+                            <th class="col-confidence" data-sort="ai_confidence">Match</th>
+                            <th class="col-business" data-sort="business_type">Type</th>
+                            <th class="col-status" data-sort="review_status">Status</th>
                             <th class="col-actions">Actions</th>
                         </tr>
                     </thead>
@@ -183,6 +188,9 @@
     </div>
 
     <!-- Load JavaScript modules -->
+    <link rel="stylesheet" href="/static/css/error-handler.css">
+    <script src="/static/js/error-handler.js"></script>
+    <script src="/static/js/image-utils.js"></script>
     <script src="/static/js/filters.js"></script>
     <script src="/static/js/keyboard.js"></script>
     <script src="/static/js/preview.js"></script>

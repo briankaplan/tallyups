@@ -9,6 +9,7 @@
   // Navigation items configuration
   const NAV_ITEMS = [
     { id: 'home', label: 'Home', icon: '🏠', href: '/', paths: ['/', '/dashboard'] },
+    { id: 'swipe', label: 'Swipe', icon: '👆', href: '/mobile-swipe', paths: ['/mobile-swipe', '/mobile_swipe'] },
     { id: 'reconcile', label: 'Reconcile', icon: '🔄', href: '/viewer', paths: ['/viewer', '/reconcile'] },
     { id: 'library', label: 'Library', icon: '📚', href: '/library', paths: ['/library'] },
     { id: 'scan', label: 'Scan', icon: '📸', href: '/scanner', paths: ['/scanner', '/mobile_scanner'] },

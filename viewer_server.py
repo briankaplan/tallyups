@@ -13557,11 +13557,106 @@ GMAIL_ACCOUNTS = {
 GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 
+# =============================================================================
+# GMAIL TOKEN DATABASE PERSISTENCE
+# =============================================================================
+
+def ensure_oauth_tokens_table():
+    """Create oauth_tokens table if it doesn't exist."""
+    if not USE_DATABASE:
+        return False
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = db_execute(conn, db_type, '''
+            CREATE TABLE IF NOT EXISTS oauth_tokens (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                account_email VARCHAR(255) NOT NULL UNIQUE,
+                token_data JSON NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_email (account_email)
+            )
+        ''')
+        conn.commit()
+        return_db_connection(conn)
+        print("✅ oauth_tokens table ready", flush=True)
+        return True
+    except Exception as e:
+        print(f"⚠️ Could not create oauth_tokens table: {e}", flush=True)
+        return False
+
+
+def load_token_from_db(account_email: str) -> dict:
+    """Load Gmail token from database."""
+    if not USE_DATABASE:
+        return None
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = db_execute(conn, db_type,
+            'SELECT token_data FROM oauth_tokens WHERE account_email = %s',
+            (account_email,)
+        )
+        row = cursor.fetchone()
+        return_db_connection(conn)
+
+        if row and row.get('token_data'):
+            import json
+            token_data = row['token_data']
+            # Handle if it's already a dict or needs parsing
+            if isinstance(token_data, str):
+                return json.loads(token_data)
+            return token_data
+        return None
+    except Exception as e:
+        print(f"⚠️ Error loading token from DB for {account_email}: {e}", flush=True)
+        return None
+
+
+def save_token_to_db(account_email: str, token_data: dict) -> bool:
+    """Save Gmail token to database (upsert)."""
+    if not USE_DATABASE:
+        return False
+
+    try:
+        import json
+        conn, db_type = get_db_connection()
+
+        # MySQL upsert using INSERT ... ON DUPLICATE KEY UPDATE
+        token_json = json.dumps(token_data)
+        cursor = db_execute(conn, db_type, '''
+            INSERT INTO oauth_tokens (account_email, token_data)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE token_data = VALUES(token_data), updated_at = NOW()
+        ''', (account_email, token_json))
+
+        conn.commit()
+        return_db_connection(conn)
+        print(f"✅ Token saved to DB for {account_email}", flush=True)
+        return True
+    except Exception as e:
+        print(f"⚠️ Error saving token to DB for {account_email}: {e}", flush=True)
+        return False
+
+
+# Initialize oauth_tokens table on startup
+try:
+    ensure_oauth_tokens_table()
+except Exception as e:
+    print(f"⚠️ Could not initialize oauth_tokens table: {e}", flush=True)
+
+
 def get_gmail_credentials_with_autorefresh(account_email: str):
     """
     Load Gmail credentials for an account and automatically refresh if expired.
 
-    Uses google-auth library to handle token refresh via refresh_token.
+    Token loading priority:
+    1. Database (persists across deployments)
+    2. Environment variable
+    3. Local file
+
+    Auto-refreshes expired tokens and persists them back to DB.
     Returns (credentials, error) tuple.
     """
     import json
@@ -13579,28 +13674,41 @@ def get_gmail_credentials_with_autorefresh(account_email: str):
     account = GMAIL_ACCOUNTS[account_email]
     env_key = f"GMAIL_TOKEN_{account_email.replace('@', '_').replace('.', '_').upper()}"
 
-    # Try to load token from env var first
+    # Token loading priority: Database > Environment > File
     token_data = None
     token_source = None
 
-    env_token = os.environ.get(env_key)
-    if env_token:
-        try:
-            # Try direct JSON first
-            token_data = json.loads(env_token)
-            token_source = 'env'
-        except json.JSONDecodeError:
-            # Try base64 decoding (Railway stores tokens as base64)
-            try:
-                import base64
-                decoded = base64.b64decode(env_token).decode('utf-8')
-                token_data = json.loads(decoded)
-                token_source = 'env (base64)'
-                print(f"✅ Decoded base64 token for {account_email}", flush=True)
-            except Exception as e2:
-                print(f"⚠️ Failed to parse {env_key}: direct={env_token[:50]}... base64={e2}", flush=True)
+    # 1. Try database first (persists across deployments, auto-updated on refresh)
+    db_token = load_token_from_db(account_email)
+    if db_token and db_token.get('refresh_token'):
+        token_data = db_token
+        token_source = 'database'
+        print(f"✅ Loaded token from DB for {account_email}", flush=True)
 
-    # Fall back to file
+    # 2. Fall back to environment variable
+    if not token_data:
+        env_token = os.environ.get(env_key)
+        if env_token:
+            try:
+                # Try direct JSON first
+                token_data = json.loads(env_token)
+                token_source = 'env'
+            except json.JSONDecodeError:
+                # Try base64 decoding (Railway stores tokens as base64)
+                try:
+                    import base64
+                    decoded = base64.b64decode(env_token).decode('utf-8')
+                    token_data = json.loads(decoded)
+                    token_source = 'env (base64)'
+                    print(f"✅ Decoded base64 token for {account_email}", flush=True)
+                except Exception as e2:
+                    print(f"⚠️ Failed to parse {env_key}: direct={env_token[:50]}... base64={e2}", flush=True)
+
+            # If we got token from env and it has refresh_token, save to DB for persistence
+            if token_data and token_data.get('refresh_token'):
+                save_token_to_db(account_email, token_data)
+
+    # 3. Fall back to file
     if not token_data:
         from pathlib import Path
         token_dirs = [
@@ -13615,6 +13723,9 @@ def get_gmail_credentials_with_autorefresh(account_email: str):
                     with open(candidate, 'r') as f:
                         token_data = json.load(f)
                         token_source = str(candidate)
+                        # Save to DB for persistence
+                        if token_data.get('refresh_token'):
+                            save_token_to_db(account_email, token_data)
                         break
                 except (json.JSONDecodeError, OSError):
                     pass
@@ -13661,9 +13772,24 @@ def get_gmail_credentials_with_autorefresh(account_email: str):
             creds.refresh(Request())
             print(f"✅ Gmail token refreshed for {account_email}", flush=True)
 
-            # Note: On Railway, we can't save back to env vars automatically
-            # The refreshed token is valid for this session
-            # Could persist to database if needed
+            # PERSIST refreshed token to database (survives deployments!)
+            try:
+                from datetime import datetime, timedelta
+                refreshed_token_data = {
+                    'token': creds.token,
+                    'refresh_token': creds.refresh_token,
+                    'token_uri': token_uri,
+                    'client_id': client_id,
+                    'client_secret': client_secret,
+                    'scopes': list(creds.scopes) if creds.scopes else GMAIL_SCOPES,
+                    'expiry': creds.expiry.isoformat() if creds.expiry else (datetime.now() + timedelta(hours=1)).isoformat()
+                }
+                if save_token_to_db(account_email, refreshed_token_data):
+                    print(f"✅ Refreshed token persisted to DB for {account_email}", flush=True)
+                else:
+                    print(f"⚠️ Could not persist refreshed token to DB for {account_email}", flush=True)
+            except Exception as persist_err:
+                print(f"⚠️ Error persisting refreshed token: {persist_err}", flush=True)
 
         return creds, None
 
@@ -13973,7 +14099,18 @@ def gmail_oauth_callback():
             expiry = datetime.now() + timedelta(seconds=token_data['expires_in'])
             token_data['expiry'] = expiry.isoformat()
 
-        # Save token to file
+        # Add client credentials for auto-refresh (important for persistence)
+        token_data['client_id'] = client_info['client_id']
+        token_data['client_secret'] = client_info['client_secret']
+        token_data['token_uri'] = 'https://oauth2.googleapis.com/token'
+
+        # SAVE TOKEN TO DATABASE FIRST (primary persistence, survives deployments)
+        if save_token_to_db(account_email, token_data):
+            print(f"✅ Token saved to DATABASE for {account_email} - will auto-refresh forever!", flush=True)
+        else:
+            print(f"⚠️ Could not save token to database for {account_email}", flush=True)
+
+        # Save token to file (backup)
         account_info = GMAIL_ACCOUNTS.get(account_email, {})
         token_file = account_info.get('token_file', f'tokens_{account_email.replace("@", "_").replace(".", "_")}.json')
 

@@ -8,6 +8,8 @@
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  <script src="/static/js/app-shell.js" defer></script>
   <title>ATLAS - Contact Intelligence</title>
   <style>
     * {
@@ -43,8 +45,8 @@
       color: var(--text);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
-      padding-top: var(--safe-top);
-      padding-bottom: calc(20px + var(--safe-bottom));
+      padding-top: calc(60px + var(--safe-top)); /* Space for app-shell header */
+      padding-bottom: calc(100px + var(--safe-bottom)); /* Space for bottom nav */
     }
 
     /* Header */

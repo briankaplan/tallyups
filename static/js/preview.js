@@ -2,6 +2,7 @@
  * Receipt Preview Panel
  * =====================
  * Fast, feature-rich receipt preview with zoom/pan, OCR data, and AI notes.
+ * Uses ImageUtils for unified image handling and fallbacks.
  */
 
 class ReceiptPreview {
@@ -330,7 +331,12 @@ class ReceiptPreview {
     }
 
     getReceiptUrl(transaction) {
-        // Priority: r2_url > R2 URL > receipt_url > Receipt File
+        // Use unified ImageUtils if available, otherwise fallback to inline logic
+        if (typeof ImageUtils !== 'undefined') {
+            return ImageUtils.getReceiptUrl(transaction);
+        }
+
+        // Fallback: Priority: r2_url > R2 URL > receipt_url > Receipt File
         if (transaction.r2_url) {
             return transaction.r2_url;
         }
@@ -368,7 +374,20 @@ class ReceiptPreview {
         this.isLoading = false;
         this.imageLoaded = false;
 
-        // Try local fallback
+        // Use ImageUtils fallback chain if available
+        if (typeof ImageUtils !== 'undefined' && this.currentTransaction) {
+            const fallbacks = ImageUtils.buildFallbackChain(this.currentTransaction);
+            const currentUrl = this.image.src;
+            const currentIndex = fallbacks.findIndex(url => currentUrl.includes(url) || url.includes(new URL(currentUrl).pathname));
+
+            if (currentIndex !== -1 && currentIndex < fallbacks.length - 1) {
+                console.warn(`Image load failed: ${currentUrl}, trying fallback...`);
+                this.image.src = fallbacks[currentIndex + 1];
+                return;
+            }
+        }
+
+        // Legacy fallback: try local file
         if (this.currentTransaction?.['Receipt File'] && this.image.src.includes('r2')) {
             this.image.src = `/receipts/${this.currentTransaction['Receipt File']}`;
             return;

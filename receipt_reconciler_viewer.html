@@ -246,7 +246,8 @@ button:focus .kbd-hint {
 html,body{
   height:100%;margin:0;background:var(--bg);color:var(--ink);
   font:13px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial;
-  padding-bottom: calc(60px + var(--safe-bottom));
+  padding-top: calc(var(--header-height, 64px) + var(--safe-top));
+  padding-bottom: calc(100px + var(--safe-bottom));
 }
 
 /* Buttons */
@@ -2875,6 +2876,7 @@ tr.bulk-selected td { border-left-color: var(--brand) !important; }
 </style>
 <!-- Design System & App Shell -->
 <link rel="stylesheet" href="/static/css/design-system.css">
+<script src="/static/js/image-utils.js"></script>
 <script src="/static/js/app-shell.js" defer></script>
 <script src="/static/js/keyboard.js" defer></script>
 <script src="/static/js/bulk-actions.js" defer></script>
