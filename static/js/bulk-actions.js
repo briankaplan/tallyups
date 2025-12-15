@@ -439,25 +439,38 @@ class BulkActions {
     }
 
     async bulkDetachReceipts(transactions) {
-        const confirm = window.confirm(`Detach receipts from ${transactions.length} transactions?`);
-        if (!confirm) return;
+        const doDetach = async () => {
+            await this.processWithProgress(
+                transactions,
+                'Detaching Receipts',
+                async (tx) => {
+                    await this.updateTransaction(tx._index, {
+                        'Receipt File': '',
+                        'r2_url': '',
+                        'receipt_url': '',
+                        'Review Status': ''
+                    });
+                    tx['Receipt File'] = '';
+                    tx['r2_url'] = '';
+                    tx['receipt_url'] = '';
+                    tx['Review Status'] = '';
+                }
+            );
+        };
 
-        await this.processWithProgress(
-            transactions,
-            'Detaching Receipts',
-            async (tx) => {
-                await this.updateTransaction(tx._index, {
-                    'Receipt File': '',
-                    'r2_url': '',
-                    'receipt_url': '',
-                    'Review Status': ''
-                });
-                tx['Receipt File'] = '';
-                tx['r2_url'] = '';
-                tx['receipt_url'] = '';
-                tx['Review Status'] = '';
+        // Use ErrorHandler confirmation if available
+        if (typeof ErrorHandler !== 'undefined') {
+            ErrorHandler.confirm(
+                `Are you sure you want to detach receipts from ${transactions.length} transactions? This cannot be undone.`,
+                doDetach,
+                { title: 'Bulk Detach Receipts', confirmText: 'Detach All', danger: true }
+            );
+        } else {
+            // Fallback to native confirm
+            if (window.confirm(`Detach receipts from ${transactions.length} transactions?`)) {
+                await doDetach();
             }
-        );
+        }
     }
 
     // Progress system

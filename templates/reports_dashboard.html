@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Reports Dashboard - Tallyups</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<link rel="stylesheet" href="/static/css/design-system.css">
+<script src="/static/js/app-shell.js" defer></script>
 <style>
 :root {
   --bg: #000000;
@@ -88,7 +90,7 @@ body {
 .main {
   margin-top: calc(60px + var(--safe-top));
   padding: 24px;
-  padding-bottom: calc(24px + var(--safe-bottom));
+  padding-bottom: calc(100px + var(--safe-bottom)); /* Extra space for bottom nav */
   max-width: 1400px;
   margin-left: auto;
   margin-right: auto;

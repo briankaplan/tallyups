@@ -108,14 +108,29 @@
   --transition-normal: 250ms ease;
   --transition-slow: 400ms ease;
 
-  /* Z-Index Scale */
+  /* Z-Index Scale
+   * ================
+   * Layer stacking order (higher = on top):
+   *
+   * 10001 - Confirmation modals (error-handler.css)
+   * 10000 - Toast notifications (ALWAYS on top)
+   * 9999  - Full-screen image viewers, critical modals
+   * 9000  - Report tray (slide-up panel)
+   * 8999  - Report tray backdrop
+   * 800   - App header & bottom navigation
+   * 500   - Popovers, tooltips
+   * 400   - Page-level modals
+   * 300   - Modal backdrops
+   * 200   - Sticky headers within pages
+   * 100   - Dropdowns
+   */
   --z-dropdown: 100;
   --z-sticky: 200;
   --z-modal-backdrop: 300;
   --z-modal: 400;
   --z-popover: 500;
   --z-tooltip: 600;
-  --z-toast: 700;
+  --z-toast: 10000;
   --z-nav: 800;
 
   /* Layout */
@@ -841,7 +856,7 @@ a:hover {
   border-top: var(--border-width) solid var(--border-color);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: var(--shadow-xl);
-  z-index: var(--z-modal);
+  z-index: 9000; /* Above nav (800), below page modals (9999), below toasts (10000) */
   transform: translateY(100%);
   pointer-events: none;  /* Don't block interaction when closed */
   visibility: hidden;    /* Fully hide when closed */
@@ -859,7 +874,7 @@ a:hover {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: calc(var(--z-modal) - 1);
+  z-index: 8999; /* Just below report tray */
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--transition-normal), visibility var(--transition-normal);
@@ -1115,10 +1130,15 @@ a:hover {
   position: fixed;
   top: calc(var(--header-height) + var(--space-4));
   right: var(--space-4);
-  z-index: var(--z-toast);
+  z-index: 10000; /* Must be above modals (9999) and everything else */
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  pointer-events: none; /* Allow clicks through container */
+}
+
+.toast-container > * {
+  pointer-events: auto; /* But toasts themselves are clickable */
 }
 
 .toast {

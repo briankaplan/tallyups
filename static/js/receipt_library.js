@@ -18,9 +18,22 @@
   // Helper to add cache buster to thumbnail URLs for fresh loading
   function getThumbnailUrl(url) {
     if (!url) return '';
+    // Use ImageUtils if available for URL fixing
+    if (typeof ImageUtils !== 'undefined') {
+      url = ImageUtils.fixUrl(url);
+    }
     // Add cache buster to force reload (fixes cached login thumbnail issue)
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}${cacheBuster}`;
+  }
+
+  // Helper to get receipt URL from receipt object using ImageUtils
+  function getReceiptImageUrl(receipt) {
+    if (typeof ImageUtils !== 'undefined') {
+      return ImageUtils.getReceiptUrl(receipt);
+    }
+    // Fallback
+    return receipt.receipt_url || receipt.r2_url || receipt.thumbnail_url || '';
   }
 
   const state = {

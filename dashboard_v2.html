@@ -27,6 +27,12 @@
       --brand-glow: rgba(0,170,85,.1);
     }
 
+    /* Body padding for app shell */
+    body {
+      padding-top: calc(var(--header-height, 64px) + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    }
+
     /* Dashboard-specific styles */
     .dashboard {
       padding: var(--space-4);

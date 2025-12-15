@@ -569,6 +569,10 @@ def api_smart_notes_status():
         "learning_stats": {...}
     }
     """
+    # Security fix: Add authentication check
+    if not check_auth():
+        return jsonify({'error': 'Authentication required'}), 401
+
     (SMART_NOTES_SERVICE_AVAILABLE, get_smart_notes_service,
      _, _, _, _, _) = get_dependencies()
 

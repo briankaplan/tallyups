@@ -41,6 +41,10 @@ class TransactionReviewInterface {
             buffer: 5,
         };
 
+        // Sorting state
+        this.sortColumn = 'chase_date';
+        this.sortDirection = 'desc';
+
         // Performance tracking
         this.metrics = {
             lastRenderTime: 0,
@@ -123,6 +127,14 @@ class TransactionReviewInterface {
         window.addEventListener('resize', () => {
             this.debounce('resize', () => this.recalculateVirtualScroll(), 100);
         });
+
+        // Table header sorting
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                this.sortBy(th.dataset.sort);
+            });
+            th.style.cursor = 'pointer';
+        });
     }
 
     // Data loading
@@ -154,6 +166,8 @@ class TransactionReviewInterface {
         const startTime = performance.now();
 
         this.filteredTransactions = this.filter.apply(this.transactions);
+        // Apply sorting after filtering
+        this.filteredTransactions = this.sortTransactions(this.filteredTransactions);
         this.renderTable();
         this.updateStats();
 
@@ -169,6 +183,91 @@ class TransactionReviewInterface {
 
     onFilterChanged() {
         this.applyFilters();
+    }
+
+    // Sorting
+    sortBy(column) {
+        // Toggle direction if same column, else default to desc for dates/amounts, asc for text
+        if (this.sortColumn === column) {
+            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortColumn = column;
+            // Default direction based on column type
+            this.sortDirection = ['chase_date', 'chase_amount', 'ai_confidence'].includes(column) ? 'desc' : 'asc';
+        }
+
+        // Update header indicators
+        this.updateSortIndicators();
+
+        // Re-apply filters (which includes sorting)
+        this.applyFilters();
+
+        this.showToast(`Sorted by ${this.getColumnLabel(column)} (${this.sortDirection})`, '↕️');
+    }
+
+    updateSortIndicators() {
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.dataset.sort === this.sortColumn) {
+                th.classList.add(`sort-${this.sortDirection}`);
+            }
+        });
+    }
+
+    getColumnLabel(column) {
+        const labels = {
+            'chase_date': 'Date',
+            'chase_description': 'Merchant',
+            'chase_amount': 'Amount',
+            'business_type': 'Business',
+            'review_status': 'Status',
+            'ai_confidence': 'Confidence'
+        };
+        return labels[column] || column;
+    }
+
+    sortTransactions(transactions) {
+        const col = this.sortColumn;
+        const dir = this.sortDirection === 'asc' ? 1 : -1;
+
+        return [...transactions].sort((a, b) => {
+            let valA, valB;
+
+            // Map column names to actual field names
+            switch (col) {
+                case 'chase_date':
+                    valA = new Date(a['Chase Date'] || a.transaction_date || 0);
+                    valB = new Date(b['Chase Date'] || b.transaction_date || 0);
+                    break;
+                case 'chase_description':
+                    valA = (a['mi_merchant'] || a['Chase Description'] || '').toLowerCase();
+                    valB = (b['mi_merchant'] || b['Chase Description'] || '').toLowerCase();
+                    break;
+                case 'chase_amount':
+                    valA = parseFloat(a['Chase Amount'] || a.amount || 0);
+                    valB = parseFloat(b['Chase Amount'] || b.amount || 0);
+                    break;
+                case 'business_type':
+                    valA = (a['Business Type'] || '').toLowerCase();
+                    valB = (b['Business Type'] || '').toLowerCase();
+                    break;
+                case 'review_status':
+                    valA = (a['Review Status'] || '').toLowerCase();
+                    valB = (b['Review Status'] || '').toLowerCase();
+                    break;
+                case 'ai_confidence':
+                    valA = parseFloat(a['AI Confidence'] || a.ai_confidence || 0);
+                    valB = parseFloat(b['AI Confidence'] || b.ai_confidence || 0);
+                    break;
+                default:
+                    valA = a[col] || '';
+                    valB = b[col] || '';
+            }
+
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
     }
 
     // Rendering with virtual scroll
@@ -481,6 +580,27 @@ class TransactionReviewInterface {
         return td;
     }
 
+    // AI operation state tracking
+    aiOperationInProgress = false;
+
+    setAILoading(loading, operation = '') {
+        this.aiOperationInProgress = loading;
+        document.body.classList.toggle('ai-loading', loading);
+
+        // Disable/enable AI action buttons
+        document.querySelectorAll('[data-ai-action]').forEach(btn => {
+            btn.disabled = loading;
+            if (loading) {
+                btn.dataset.originalText = btn.textContent;
+                if (btn.dataset.aiAction === operation) {
+                    btn.innerHTML = '<span class="spinner-inline"></span> Working...';
+                }
+            } else if (btn.dataset.originalText) {
+                btn.textContent = btn.dataset.originalText;
+            }
+        });
+    }
+
     // AI actions
     async aiMatch() {
         if (!this.selectedTransaction) {
@@ -488,7 +608,13 @@ class TransactionReviewInterface {
             return;
         }
 
-        this.showToast('Finding receipt...', '🔍');
+        if (this.aiOperationInProgress) {
+            this.showToast('AI operation in progress...', '⏳');
+            return;
+        }
+
+        this.setAILoading(true, 'match');
+        this.showToast('Finding receipt...', '🔍', 10000);
 
         try {
             const res = await fetch('/ai_match', {
@@ -507,7 +633,9 @@ class TransactionReviewInterface {
                 this.showToast(data.message || 'No receipt found', '❌');
             }
         } catch (e) {
-            this.showToast('AI Match failed', '❌');
+            this.showToast('AI Match failed: ' + e.message, '❌');
+        } finally {
+            this.setAILoading(false);
         }
     }
 
@@ -517,7 +645,13 @@ class TransactionReviewInterface {
             return;
         }
 
-        this.showToast('Generating note...', '✍️');
+        if (this.aiOperationInProgress) {
+            this.showToast('AI operation in progress...', '⏳');
+            return;
+        }
+
+        this.setAILoading(true, 'note');
+        this.showToast('Generating note...', '✍️', 10000);
 
         try {
             const res = await fetch('/api/notes/generate', {
@@ -535,7 +669,9 @@ class TransactionReviewInterface {
                 this.showToast(data.error || 'Generation failed', '❌');
             }
         } catch (e) {
-            this.showToast('Note generation failed', '❌');
+            this.showToast('Note generation failed: ' + e.message, '❌');
+        } finally {
+            this.setAILoading(false);
         }
     }
 
@@ -545,7 +681,13 @@ class TransactionReviewInterface {
             return;
         }
 
-        this.showToast('Categorizing...', '🏷️');
+        if (this.aiOperationInProgress) {
+            this.showToast('AI operation in progress...', '⏳');
+            return;
+        }
+
+        this.setAILoading(true, 'categorize');
+        this.showToast('Categorizing...', '🏷️', 10000);
 
         try {
             const res = await fetch('/api/ai/categorize', {
@@ -560,15 +702,35 @@ class TransactionReviewInterface {
                 if (data.business_type) this.selectedTransaction['Business Type'] = data.business_type;
                 this.updateRowInPlace(this.selectedTransaction);
                 this.showToast('Categorized', '✅');
+            } else {
+                this.showToast(data.error || 'Categorization failed', '❌');
             }
         } catch (e) {
-            this.showToast('Categorization failed', '❌');
+            this.showToast('Categorization failed: ' + e.message, '❌');
+        } finally {
+            this.setAILoading(false);
         }
     }
 
     detachReceipt() {
         if (!this.selectedTransaction) return;
 
+        // Use ErrorHandler confirmation if available
+        if (typeof ErrorHandler !== 'undefined') {
+            ErrorHandler.confirm(
+                'Are you sure you want to detach this receipt? This cannot be undone.',
+                () => this._doDetachReceipt(),
+                { title: 'Detach Receipt', confirmText: 'Detach', danger: true }
+            );
+        } else {
+            // Fallback to native confirm
+            if (confirm('Are you sure you want to detach this receipt?')) {
+                this._doDetachReceipt();
+            }
+        }
+    }
+
+    _doDetachReceipt() {
         this.updateField('Receipt File', '');
         this.updateField('r2_url', '');
         this.updateField('Review Status', '');
