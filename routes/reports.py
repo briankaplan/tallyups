@@ -309,7 +309,7 @@ def api_report_items(report_id):
 
         cursor.execute('''
             SELECT _index, chase_date, chase_description, chase_amount, chase_category,
-                   business_type, receipt_url, r2_url, ai_note, review_status
+                   business_type, r2_url, ai_note, review_status
             FROM transactions
             WHERE report_id = %s
             ORDER BY chase_date DESC
@@ -322,6 +322,8 @@ def api_report_items(report_id):
             # Serialize dates
             if item.get('chase_date') and hasattr(item['chase_date'], 'isoformat'):
                 item['chase_date'] = item['chase_date'].isoformat()
+            # Map r2_url to receipt_url for frontend compatibility
+            item['receipt_url'] = item.get('r2_url') or ''
             amount = float(item.get('chase_amount') or 0)
             total += abs(amount)
             items.append(item)
@@ -431,7 +433,7 @@ def api_reports_dashboard():
             SELECT
                 COUNT(*) as total_transactions,
                 SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipts
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts
             FROM transactions
             WHERE YEAR(chase_date) = YEAR(NOW())
         ''')
@@ -537,7 +539,7 @@ def api_business_summary():
                 business_type,
                 COUNT(*) as transaction_count,
                 SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts,
                 SUM(CASE WHEN review_status = 'good' THEN 1 ELSE 0 END) as reviewed
             FROM transactions
             WHERE YEAR(chase_date) = %s
@@ -598,7 +600,7 @@ def api_report_export(report_id, format_type):
         # Get report items
         cursor.execute('''
             SELECT t._index, t.chase_date, t.chase_description, t.chase_amount,
-                   t.chase_category, t.business_type, t.receipt_url, t.r2_url,
+                   t.chase_category, t.business_type, t.r2_url,
                    t.ai_note, t.review_status
             FROM transactions t
             WHERE t.report_id = %s
@@ -623,7 +625,7 @@ def api_report_export(report_id, format_type):
                     item['chase_category'],
                     item['business_type'],
                     item['ai_note'] or '',
-                    'Yes' if (item['receipt_url'] or item['r2_url']) else 'No'
+                    'Yes' if item['r2_url'] else 'No'
                 ])
 
             response = Response(output.getvalue(), mimetype='text/csv')
@@ -645,7 +647,7 @@ def api_report_export(report_id, format_type):
                         'Category': item['chase_category'],
                         'Business Type': item['business_type'],
                         'AI Note': item['ai_note'] or '',
-                        'Receipt': 'Yes' if (item['receipt_url'] or item['r2_url']) else 'No'
+                        'Receipt': 'Yes' if item['r2_url'] else 'No'
                     })
 
                 df = pd.DataFrame(data)

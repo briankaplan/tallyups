@@ -92,8 +92,8 @@ def api_library_receipts():
 
         # Query transactions with receipts
         if source in ('transaction', 'all'):
-            # Check either receipt_url OR r2_url for receipts
-            where_clauses = ["((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))"]
+            # Use r2_url as the canonical receipt image URL
+            where_clauses = ["(r2_url IS NOT NULL AND r2_url != '')"]
             params = []
 
             if search:
@@ -117,7 +117,7 @@ def api_library_receipts():
 
             cursor = db_execute(conn, db_type, f'''
                 SELECT _index, chase_date, chase_description, chase_amount,
-                       receipt_url, r2_url, ai_note, business_type, review_status,
+                       r2_url, ai_note, business_type, review_status,
                        ai_receipt_merchant, ai_receipt_total, ai_confidence
                 FROM transactions
                 WHERE {where_sql}
@@ -128,13 +128,12 @@ def api_library_receipts():
             for row in cursor.fetchall():
                 r = dict(row)
                 # Map to proper field names for frontend
-                # Use AI data as fallback when transaction data is missing
                 merchant_val = r.get('chase_description') or r.get('ai_receipt_merchant') or 'Unknown'
                 amount_val = r.get('chase_amount') or r.get('ai_receipt_total') or 0
                 date_val = r.get('chase_date')
                 if date_val and hasattr(date_val, 'isoformat'):
                     date_val = date_val.isoformat()
-                receipt_url = r.get('r2_url') or r.get('receipt_url') or ''
+                image_url = r.get('r2_url') or ''
 
                 receipts.append({
                     'id': f"tx_{r['_index']}",
@@ -147,8 +146,8 @@ def api_library_receipts():
                     'amount': float(amount_val) if amount_val else 0,
                     'date': str(date_val) if date_val else '',
                     'receipt_date': str(date_val) if date_val else '',
-                    'receipt_url': receipt_url,
-                    'thumbnail_url': receipt_url,  # Use same URL for thumbnail
+                    'receipt_url': image_url,  # Frontend expects this field name
+                    'thumbnail_url': image_url,
                     'source': 'transaction',
                     'business_type': r.get('business_type') or 'Personal',
                     'notes': '',
@@ -282,11 +281,11 @@ def api_library_search():
         # Search transactions
         cursor = db_execute(conn, db_type, '''
             SELECT _index, chase_date, chase_description, chase_amount,
-                   receipt_url, r2_url, ai_note, business_type,
+                   r2_url, ai_note, business_type,
                    ai_receipt_merchant, ai_receipt_total, ai_confidence
             FROM transactions
             WHERE (chase_description LIKE %s OR ai_note LIKE %s OR ai_receipt_merchant LIKE %s)
-            AND ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
+            AND (r2_url IS NOT NULL AND r2_url != '')
             ORDER BY chase_date DESC
             LIMIT %s
         ''', (search_term, search_term, search_term, limit))
@@ -298,7 +297,7 @@ def api_library_search():
             date_val = r.get('chase_date')
             if date_val and hasattr(date_val, 'isoformat'):
                 date_val = date_val.isoformat()
-            receipt_url = r.get('r2_url') or r.get('receipt_url') or ''
+            image_url = r.get('r2_url') or ''
 
             results.append({
                 'id': f"tx_{r['_index']}",
@@ -311,8 +310,8 @@ def api_library_search():
                 'amount': float(amount_val) if amount_val else 0,
                 'date': str(date_val) if date_val else '',
                 'receipt_date': str(date_val) if date_val else '',
-                'receipt_url': receipt_url,
-                'thumbnail_url': receipt_url,
+                'receipt_url': image_url,
+                'thumbnail_url': image_url,
                 'source': 'transaction',
                 'business_type': r.get('business_type') or 'Personal',
                 'ai_notes': r.get('ai_note') or '',
@@ -394,17 +393,17 @@ def api_library_counts():
     try:
         conn, db_type = get_db_connection()
 
-        # Transaction receipts - check either receipt_url OR r2_url
+        # Transaction receipts - use r2_url as canonical source
         cursor = db_execute(conn, db_type, '''
             SELECT COUNT(*) as count FROM transactions
-            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
+            WHERE r2_url IS NOT NULL AND r2_url != ''
         ''')
         transaction_count = cursor.fetchone()['count']
 
         # By business type
         cursor = db_execute(conn, db_type, '''
             SELECT business_type, COUNT(*) as count FROM transactions
-            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
+            WHERE r2_url IS NOT NULL AND r2_url != ''
             GROUP BY business_type
         ''')
         business_counts = {}
@@ -472,10 +471,10 @@ def api_library_stats():
     try:
         conn, db_type = get_db_connection()
 
-        # Total receipts - check either receipt_url OR r2_url
+        # Total receipts - use r2_url as canonical source
         cursor = db_execute(conn, db_type, '''
             SELECT COUNT(*) as count FROM transactions
-            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
+            WHERE r2_url IS NOT NULL AND r2_url != ''
         ''')
         total_receipts = cursor.fetchone()['count']
 
@@ -483,7 +482,7 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT business_type, COUNT(*) as count
             FROM transactions
-            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
+            WHERE r2_url IS NOT NULL AND r2_url != ''
             AND business_type IS NOT NULL AND business_type != ''
             GROUP BY business_type
         ''')
@@ -493,7 +492,7 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT DATE_FORMAT(chase_date, '%Y-%m') as month, COUNT(*) as count
             FROM transactions
-            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
+            WHERE r2_url IS NOT NULL AND r2_url != ''
             AND chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
             GROUP BY DATE_FORMAT(chase_date, '%Y-%m')
             ORDER BY month
@@ -504,7 +503,7 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT chase_description as merchant, COUNT(*) as count
             FROM transactions
-            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
+            WHERE r2_url IS NOT NULL AND r2_url != ''
             GROUP BY chase_description
             ORDER BY count DESC
             LIMIT 10

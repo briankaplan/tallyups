@@ -2594,11 +2594,11 @@ def health_check():
                     "transaction_count": tx_count
                 }
 
-                # Get receipt stats
+                # Get receipt stats - use r2_url as canonical receipt image source
                 receipt_result = db.execute_query("""
                     SELECT
                         COUNT(*) as total,
-                        SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                        SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts,
                         SUM(CASE WHEN deleted = 1 THEN 1 ELSE 0 END) as deleted
                     FROM transactions
                 """)
@@ -2721,11 +2721,10 @@ def dashboard_stats():
         })
 
     try:
-        # Total receipts with r2_url OR receipt_url (matched) - count both sources
+        # Total receipts with r2_url (canonical receipt image source)
         cursor = db_execute(conn, db_type, """
             SELECT COUNT(*) AS cnt FROM transactions
-            WHERE (receipt_url IS NOT NULL AND receipt_url != '')
-               OR (r2_url IS NOT NULL AND r2_url != '')
+            WHERE r2_url IS NOT NULL AND r2_url != ''
         """)
         row = cursor.fetchone()
         total_matched = row['cnt'] if row else 0
@@ -3203,12 +3202,12 @@ def debug_receipt_stats():
         return jsonify({'error': 'Database not available'}), 500
 
     try:
-        # Get receipt stats
+        # Get receipt stats - r2_url is canonical receipt image source
         stats = db.execute_query("""
             SELECT
                 COUNT(*) as total,
-                SUM(CASE WHEN (receipt_url IS NULL OR receipt_url = '') AND (receipt_file IS NULL OR receipt_file = '') THEN 1 ELSE 0 END) as missing_receipt,
-                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as has_receipt_url,
+                SUM(CASE WHEN (r2_url IS NULL OR r2_url = '') AND (receipt_file IS NULL OR receipt_file = '') THEN 1 ELSE 0 END) as missing_receipt,
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as has_receipt_url,
                 SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as has_receipt_file,
                 SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as has_r2_url
             FROM transactions
@@ -3224,11 +3223,11 @@ def debug_receipt_stats():
             deleted_result = db.execute_query("SELECT COUNT(*) as cnt FROM transactions WHERE deleted = 1")
             deleted_count = deleted_result[0]['cnt'] if deleted_result else 0
 
-        # Get sample missing receipts
+        # Get sample missing receipts - r2_url is canonical
         sample_missing = db.execute_query("""
             SELECT _index, chase_date, chase_description, chase_amount, business_type
             FROM transactions
-            WHERE (receipt_url IS NULL OR receipt_url = '')
+            WHERE (r2_url IS NULL OR r2_url = '')
               AND (receipt_file IS NULL OR receipt_file = '')
             LIMIT 20
         """)
@@ -4566,12 +4565,12 @@ def attach_receipt_to_transaction():
             return_db_connection(conn)
             return jsonify({'ok': False, 'error': 'Receipt has no image URL'}), 400
 
-        # Update the transaction with the receipt
+        # Update the transaction with the receipt - r2_url is canonical
         cursor.execute('''
             UPDATE transactions
-            SET receipt_url = %s, r2_url = %s
+            SET r2_url = %s
             WHERE _index = %s
-        ''', (receipt_url, receipt_url, transaction_index))
+        ''', (receipt_url, transaction_index))
 
         # Mark the incoming receipt as matched
         cursor.execute('''
@@ -10333,13 +10332,13 @@ def upload_receipt():
             # Continue with original HEIC file if conversion fails
 
     # Upload to R2 storage and get public URL
-    receipt_url = None
+    r2_url = None
     if R2_ENABLED and upload_to_r2:
         try:
             success, result = upload_to_r2(dest)
             if success:
-                receipt_url = result
-                print(f"☁️  Uploaded to R2: {receipt_url}", flush=True)
+                r2_url = result
+                print(f"☁️  Uploaded to R2: {r2_url}", flush=True)
             else:
                 print(f"⚠️  R2 upload failed: {result}", flush=True)
         except Exception as e:
@@ -10347,11 +10346,11 @@ def upload_receipt():
 
     # Use update_row_by_index to properly update SQLite + DataFrame + CSV
     update_data = {"Receipt File": filename}
-    if receipt_url:
-        update_data["receipt_url"] = receipt_url
+    if r2_url:
+        update_data["r2_url"] = r2_url
     update_row_by_index(idx, update_data, source="upload_receipt")
 
-    return jsonify(safe_json({"ok": True, "filename": filename, "receipt_url": receipt_url}))
+    return jsonify(safe_json({"ok": True, "filename": filename, "receipt_url": r2_url}))
 
 
 def gemini_ocr_extract(image_path: str | Path) -> dict:
@@ -11042,13 +11041,13 @@ def upload_receipt_auto():
             temp_path.rename(final_path)
 
             # Upload to R2 storage
-            receipt_url = None
+            r2_url = None
             if R2_ENABLED and upload_to_r2:
                 try:
                     success, result = upload_to_r2(final_path)
                     if success:
-                        receipt_url = result
-                        print(f"☁️  Uploaded to R2: {receipt_url}", flush=True)
+                        r2_url = result
+                        print(f"☁️  Uploaded to R2: {r2_url}", flush=True)
                     else:
                         print(f"⚠️  R2 upload failed: {result}", flush=True)
                 except Exception as e:
@@ -11063,8 +11062,8 @@ def upload_receipt_auto():
                 "ai_receipt_total": ocr_data.get("total"),
                 "ai_receipt_date": ocr_data.get("date")
             }
-            if receipt_url:
-                update_data["receipt_url"] = receipt_url
+            if r2_url:
+                update_data["r2_url"] = r2_url
             update_row_by_index(idx, update_data, source="smart_upload")
 
             print(f"✅ Auto-matched to transaction {idx} ({confidence}%)", flush=True)
@@ -11088,13 +11087,13 @@ def upload_receipt_auto():
             temp_path.rename(pending_path)
 
             # Upload to R2 even for pending receipts
-            receipt_url = None
+            r2_url_pending = None
             if R2_ENABLED and upload_to_r2:
                 try:
                     success, result = upload_to_r2(pending_path)
                     if success:
-                        receipt_url = result
-                        print(f"☁️  Uploaded pending to R2: {receipt_url}", flush=True)
+                        r2_url_pending = result
+                        print(f"☁️  Uploaded pending to R2: {r2_url_pending}", flush=True)
                 except Exception as e:
                     print(f"⚠️  R2 upload error: {e}", flush=True)
 
@@ -11108,7 +11107,7 @@ def upload_receipt_auto():
                 "transaction": match["row"],
                 "confidence": confidence,
                 "filename": pending_filename,
-                "receipt_url": receipt_url,
+                "receipt_url": r2_url_pending,
                 "message": f"Found possible match ({confidence}% confidence). Receipt saved - verify and attach manually."
             }))
 
