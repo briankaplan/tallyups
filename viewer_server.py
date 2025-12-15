@@ -12831,10 +12831,15 @@ def reports_standalone_page(report_id):
 
         # Calculate totals - use metadata if no expenses linked
         if expenses:
-            total_amount = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses)
-            receipt_count = sum(1 for e in expenses if e.get("receipt_file"))
+            # Separate charges (positive in DB) from refunds (negative in DB)
+            total_charges = sum(float(e.get("chase_amount", 0) or 0) for e in expenses if float(e.get("chase_amount", 0) or 0) > 0)
+            total_refunds = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses if float(e.get("chase_amount", 0) or 0) < 0)
+            net_total = total_charges - total_refunds  # Net amount spent
+            receipt_count = sum(1 for e in expenses if e.get("receipt_file") or e.get("r2_url"))
         else:
-            total_amount = total_from_meta
+            total_charges = total_from_meta
+            total_refunds = 0
+            net_total = total_from_meta
             receipt_count = 0
 
         # Get date range - convert datetime objects to strings
@@ -13010,15 +13015,23 @@ tr:hover {{
 
 <div class="stats">
   <div class="stat-card">
-    <div class="stat-label">Total Amount</div>
-    <div class="stat-value">${total_amount:,.2f}</div>
+    <div class="stat-label">Total Charges</div>
+    <div class="stat-value" style="color:#ff6b6b">-${total_charges:,.2f}</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Expenses</div>
+    <div class="stat-label">Refunds/Credits</div>
+    <div class="stat-value" style="color:#00ff88">+${total_refunds:,.2f}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Net Total</div>
+    <div class="stat-value">-${net_total:,.2f}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Transactions</div>
     <div class="stat-value">{len(expenses)}</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Receipts</div>
+    <div class="stat-label">With Receipts</div>
     <div class="stat-value">{receipt_count}</div>
   </div>
 </div>
