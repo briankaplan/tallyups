@@ -3246,6 +3246,96 @@ def debug_receipt_stats():
         return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 
+@app.route("/api/admin/restore-transactions", methods=["POST"])
+def admin_restore_transactions():
+    """
+    Emergency restore endpoint to import transactions from CSV data.
+    Requires ADMIN_API_KEY for authentication.
+
+    POST body should be JSON with:
+    - transactions: array of transaction objects
+    - clear_first: boolean (optional, default false) - truncate table first
+    """
+    # Require admin key
+    admin_key = request.headers.get('X-Admin-Key') or request.args.get('admin_key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not admin_key or admin_key != expected_key:
+        return jsonify({'error': 'Admin authentication required'}), 401
+
+    if not USE_DATABASE or not db:
+        return jsonify({'error': 'Database not available'}), 500
+
+    try:
+        data = request.get_json()
+        if not data or 'transactions' not in data:
+            return jsonify({'error': 'Missing transactions data'}), 400
+
+        transactions = data['transactions']
+        clear_first = data.get('clear_first', False)
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Get existing columns
+        cursor.execute("SHOW COLUMNS FROM transactions")
+        db_columns = set(row['Field'] for row in cursor.fetchall())
+
+        if clear_first:
+            cursor.execute("TRUNCATE TABLE transactions")
+            print("🗑️ Truncated transactions table")
+
+        imported = 0
+        failed = 0
+        errors = []
+
+        for i, tx in enumerate(transactions):
+            try:
+                # Filter to only columns that exist in DB
+                filtered = {k: (v if v not in ('', None) else None)
+                           for k, v in tx.items() if k in db_columns}
+
+                if not filtered:
+                    continue
+
+                columns = list(filtered.keys())
+                values = list(filtered.values())
+                placeholders = ', '.join(['%s'] * len(columns))
+                col_names = ', '.join(columns)
+
+                sql = f"INSERT INTO transactions ({col_names}) VALUES ({placeholders})"
+                cursor.execute(sql, values)
+                imported += 1
+
+                if imported % 100 == 0:
+                    conn.commit()
+
+            except Exception as e:
+                failed += 1
+                if len(errors) < 5:
+                    errors.append(f"Row {i}: {str(e)[:100]}")
+
+        conn.commit()
+
+        # Get final count
+        cursor.execute("SELECT COUNT(*) as cnt FROM transactions")
+        final_count = cursor.fetchone()['cnt']
+
+        cursor.close()
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'imported': imported,
+            'failed': failed,
+            'total_in_db': final_count,
+            'errors': errors
+        })
+
+    except Exception as e:
+        import traceback
+        return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
 @app.route("/api/debug/transaction/<int:idx>")
 @login_required
 def debug_transaction(idx):
