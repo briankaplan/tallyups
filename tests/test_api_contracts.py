@@ -31,7 +31,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from viewer_server import app
     FLASK_AVAILABLE = True
-except ImportError:
+except (ImportError, RuntimeError):
+    # RuntimeError raised when MySQL not available
     FLASK_AVAILABLE = False
     app = None
 

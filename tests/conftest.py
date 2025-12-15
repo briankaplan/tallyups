@@ -681,8 +681,9 @@ def app():
         flask_app.config['TESTING'] = True
         flask_app.config['WTF_CSRF_ENABLED'] = False
         return flask_app
-    except ImportError:
-        pytest.skip("Flask app not available")
+    except (ImportError, RuntimeError):
+        # RuntimeError raised when MySQL not available in CI
+        pytest.skip("Flask app not available (MySQL required)")
 
 
 @pytest.fixture

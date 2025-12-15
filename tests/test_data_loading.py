@@ -2,13 +2,21 @@
 """
 Data Loading Verification Script
 Tests that CSV data loads correctly through the /csv endpoint
+
+This is a manual integration test - run directly, not via pytest.
 """
 import sys
 import json
 from pathlib import Path
 
+import pytest
+
+# Skip this entire module during pytest collection
+pytestmark = pytest.mark.skip(reason="Manual integration test - run directly with python")
+
 # Add current directory to path
 sys.path.insert(0, str(Path(__file__).parent))
+
 
 def test_csv_loading():
     """Test CSV loading and data integrity"""
@@ -117,6 +125,7 @@ def test_csv_loading():
     print("="*60)
     return True
 
+
 def test_endpoint_format():
     """Test that /csv endpoint format matches UI expectations"""
     print("\n🌐 Testing /csv Endpoint Format...\n")
@@ -163,7 +172,9 @@ def test_endpoint_format():
         traceback.print_exc()
         return False
 
-if __name__ == "__main__":
+
+def run_all_tests():
+    """Run all data loading tests."""
     print("="*60)
     print("📊 RECEIPTAI DATA LOADING TEST SUITE")
     print("="*60 + "\n")
@@ -189,4 +200,9 @@ if __name__ == "__main__":
         print("❌ SOME TESTS FAILED - Review errors above")
     print("="*60)
 
+    return success
+
+
+if __name__ == '__main__':
+    success = run_all_tests()
     sys.exit(0 if success else 1)
