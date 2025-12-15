@@ -27,13 +27,13 @@
     return `${url}${separator}${cacheBuster}`;
   }
 
-  // Helper to get receipt URL from receipt object using ImageUtils
+  // Helper to get receipt URL from receipt object using ImageUtils (prioritizes r2_url)
   function getReceiptImageUrl(receipt) {
     if (typeof ImageUtils !== 'undefined') {
       return ImageUtils.getReceiptUrl(receipt);
     }
-    // Fallback
-    return receipt.receipt_url || receipt.r2_url || receipt.thumbnail_url || '';
+    // Fallback - prioritize r2_url over receipt_url
+    return receipt.r2_url || receipt.thumbnail_url || receipt.receipt_url || receipt.receipt_image_url || '';
   }
 
   const state = {
@@ -308,9 +308,9 @@
            data-index="${index}"
            onclick="handleReceiptClick(event, ${index})"
            tabindex="0">
-        <div class="receipt-thumb ${receipt.thumbnail_url || receipt.receipt_url ? '' : 'no-image'}">
-          ${receipt.thumbnail_url || receipt.receipt_url ?
-            `<img src="${getThumbnailUrl(receipt.thumbnail_url || receipt.receipt_url)}"
+        <div class="receipt-thumb ${getReceiptImageUrl(receipt) ? '' : 'no-image'}">
+          ${getReceiptImageUrl(receipt) ?
+            `<img src="${getThumbnailUrl(getReceiptImageUrl(receipt))}"
                   alt="${escapeHtml(receipt.merchant_name || 'Receipt')}"
                   loading="lazy"
                   onload="this.classList.add('loaded')"
@@ -355,8 +355,8 @@
            onclick="handleReceiptClick(event, ${index})"
            tabindex="0">
         <div class="list-thumb">
-          ${receipt.thumbnail_url || receipt.receipt_url ?
-            `<img src="${getThumbnailUrl(receipt.thumbnail_url || receipt.receipt_url)}"
+          ${getReceiptImageUrl(receipt) ?
+            `<img src="${getThumbnailUrl(getReceiptImageUrl(receipt))}"
                   alt="${escapeHtml(receipt.merchant_name || 'Receipt')}"
                   loading="lazy"
                   onload="this.classList.add('loaded')">` :
@@ -399,8 +399,8 @@
                  onclick="handleReceiptClick(event, ${receipts.indexOf(receipt)})"
                  tabindex="0">
               <div class="list-thumb">
-                ${receipt.thumbnail_url || receipt.receipt_url ?
-                  `<img src="${getThumbnailUrl(receipt.thumbnail_url || receipt.receipt_url)}" alt="" loading="lazy" onload="this.classList.add('loaded')">` :
+                ${getReceiptImageUrl(receipt) ?
+                  `<img src="${getThumbnailUrl(getReceiptImageUrl(receipt))}" alt="" loading="lazy" onload="this.classList.add('loaded')">` :
                   `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
                     <rect x="9" y="3" width="6" height="4" rx="1"></rect>
@@ -522,10 +522,11 @@
     elements.detailBusiness.textContent = formatBusinessType(receipt.business_type);
     elements.detailStatus.textContent = formatStatus(receipt.status);
 
-    // Handle image
-    if (receipt.receipt_url) {
+    // Handle image - prioritize r2_url
+    const imageUrl = getReceiptImageUrl(receipt);
+    if (imageUrl) {
       elements.detailImage.classList.remove('no-image');
-      elements.detailImg.src = receipt.receipt_url;
+      elements.detailImg.src = imageUrl;
       elements.detailImg.style.display = 'block';
     } else {
       elements.detailImage.classList.add('no-image');
@@ -1105,8 +1106,9 @@
         break;
 
       case 'd':
-        if (state.currentReceipt && state.currentReceipt.receipt_url) {
-          window.open(state.currentReceipt.receipt_url, '_blank');
+        if (state.currentReceipt) {
+          const url = getReceiptImageUrl(state.currentReceipt);
+          if (url) window.open(url, '_blank');
         }
         break;
 
@@ -1190,8 +1192,9 @@
       }
     });
     $('detail-download')?.addEventListener('click', () => {
-      if (state.currentReceipt?.receipt_url) {
-        window.open(state.currentReceipt.receipt_url, '_blank');
+      if (state.currentReceipt) {
+        const url = getReceiptImageUrl(state.currentReceipt);
+        if (url) window.open(url, '_blank');
       }
     });
     $('detail-share')?.addEventListener('click', () => {
@@ -1199,7 +1202,7 @@
         navigator.share({
           title: `Receipt - ${state.currentReceipt.merchant_name}`,
           text: `${state.currentReceipt.merchant_name}: ${formatCurrency(state.currentReceipt.amount)}`,
-          url: state.currentReceipt.receipt_url || window.location.href
+          url: getReceiptImageUrl(state.currentReceipt) || window.location.href
         }).catch(() => {});
       }
     });
