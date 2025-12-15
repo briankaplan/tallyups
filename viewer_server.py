@@ -491,10 +491,11 @@ def add_security_headers(response):
         "connect-src 'self' https://*.cloudflare.com https://*.r2.cloudflarestorage.com; "
         "frame-ancestors 'none';"
     )
-    # Prevent browsers from caching sensitive pages
-    if request.path.startswith('/api/'):
+    # Prevent browsers from caching sensitive pages and HTML
+    if request.path.startswith('/api/') or request.path in ('/', '/library', '/reports', '/contacts', '/viewer', '/incoming'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
     # Referrer policy
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     # Permissions policy (disable unnecessary browser features)
