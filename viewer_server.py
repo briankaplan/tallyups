@@ -4429,6 +4429,83 @@ def update_transaction(tx_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route("/api/transactions/attach-receipt", methods=["POST"])
+@login_required
+def attach_receipt_to_transaction():
+    """
+    Attach a receipt from incoming_receipts to a transaction.
+
+    Body:
+    {
+        "transaction_index": 123,     // Transaction _index to attach receipt to
+        "incoming_receipt_id": 456    // ID of incoming_receipt to use
+    }
+
+    This copies the receipt_image_url from incoming_receipts to the transaction's
+    receipt_url and r2_url fields, and marks the incoming_receipt as matched.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'ok': False, 'error': 'No data provided'}), 400
+
+        transaction_index = data.get('transaction_index')
+        incoming_receipt_id = data.get('incoming_receipt_id')
+
+        if not transaction_index or not incoming_receipt_id:
+            return jsonify({'ok': False, 'error': 'Missing transaction_index or incoming_receipt_id'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get the incoming receipt's image URL
+        cursor.execute('''
+            SELECT receipt_image_url, ocr_merchant, ocr_amount, ocr_date
+            FROM incoming_receipts WHERE id = %s
+        ''', (incoming_receipt_id,))
+        receipt = cursor.fetchone()
+
+        if not receipt:
+            cursor.close()
+            return_db_connection(conn)
+            return jsonify({'ok': False, 'error': 'Incoming receipt not found'}), 404
+
+        receipt_url = receipt.get('receipt_image_url')
+        if not receipt_url:
+            cursor.close()
+            return_db_connection(conn)
+            return jsonify({'ok': False, 'error': 'Receipt has no image URL'}), 400
+
+        # Update the transaction with the receipt
+        cursor.execute('''
+            UPDATE transactions
+            SET receipt_url = %s, r2_url = %s
+            WHERE _index = %s
+        ''', (receipt_url, receipt_url, transaction_index))
+
+        # Mark the incoming receipt as matched
+        cursor.execute('''
+            UPDATE incoming_receipts
+            SET status = 'matched', matched_transaction_id = %s
+            WHERE id = %s
+        ''', (transaction_index, incoming_receipt_id))
+
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'receipt_url': receipt_url,
+            'message': f'Receipt attached to transaction {transaction_index}'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/transaction/update", methods=["POST"])
 @login_required
 def update_transaction_field():
@@ -25259,6 +25336,19 @@ def api_report_export(report_id, export_format):
 def reports_dashboard_page():
     """Serve the reports dashboard page."""
     template_path = Path(__file__).parent / "templates" / "reports_dashboard.html"
+
+    if template_path.exists():
+        return send_file(template_path)
+
+    # Fallback - redirect to report builder
+    return redirect("/reports")
+
+
+@app.route("/reports/<report_id>/detail", methods=["GET"])
+@login_required
+def report_detail_page(report_id):
+    """Serve the report detail page with inline editing and AI notes."""
+    template_path = Path(__file__).parent / "templates" / "report_detail.html"
 
     if template_path.exists():
         return send_file(template_path)

@@ -567,3 +567,107 @@ def api_business_summary():
     finally:
         if conn:
             db.return_connection(conn)
+
+
+@reports_bp.route("/<report_id>/export/<format_type>", methods=["GET"])
+def api_report_export(report_id, format_type):
+    """Export a report in the specified format (excel, csv, pdf)."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Get report info
+        cursor.execute('''
+            SELECT report_id, report_name, business_type, status
+            FROM reports WHERE report_id = %s
+        ''', (report_id,))
+        report = cursor.fetchone()
+
+        if not report:
+            return jsonify({'ok': False, 'error': 'Report not found'}), 404
+
+        # Get report items
+        cursor.execute('''
+            SELECT t._index, t.chase_date, t.chase_description, t.chase_amount,
+                   t.chase_category, t.business_type, t.receipt_url, t.r2_url,
+                   t.ai_note, t.review_status
+            FROM transactions t
+            WHERE t.report_id = %s
+            ORDER BY t.chase_date DESC
+        ''', (report_id,))
+        items = cursor.fetchall()
+
+        if format_type == 'csv':
+            import csv
+            from io import StringIO
+            from flask import Response
+
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerow(['Date', 'Description', 'Amount', 'Category', 'Business Type', 'AI Note', 'Receipt'])
+
+            for item in items:
+                writer.writerow([
+                    item['chase_date'],
+                    item['chase_description'],
+                    abs(float(item['chase_amount'] or 0)),
+                    item['chase_category'],
+                    item['business_type'],
+                    item['ai_note'] or '',
+                    'Yes' if (item['receipt_url'] or item['r2_url']) else 'No'
+                ])
+
+            response = Response(output.getvalue(), mimetype='text/csv')
+            response.headers['Content-Disposition'] = f'attachment; filename="{report["report_name"] or report_id}.csv"'
+            return response
+
+        elif format_type == 'excel':
+            try:
+                import pandas as pd
+                from io import BytesIO
+                from flask import send_file
+
+                data = []
+                for item in items:
+                    data.append({
+                        'Date': item['chase_date'],
+                        'Description': item['chase_description'],
+                        'Amount': abs(float(item['chase_amount'] or 0)),
+                        'Category': item['chase_category'],
+                        'Business Type': item['business_type'],
+                        'AI Note': item['ai_note'] or '',
+                        'Receipt': 'Yes' if (item['receipt_url'] or item['r2_url']) else 'No'
+                    })
+
+                df = pd.DataFrame(data)
+                output = BytesIO()
+                df.to_excel(output, index=False, engine='openpyxl')
+                output.seek(0)
+
+                return send_file(
+                    output,
+                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    as_attachment=True,
+                    download_name=f'{report["report_name"] or report_id}.xlsx'
+                )
+            except ImportError:
+                return jsonify({'ok': False, 'error': 'Excel export requires pandas and openpyxl'}), 500
+
+        else:
+            return jsonify({'ok': False, 'error': f'Unsupported format: {format_type}'}), 400
+
+    except Exception as e:
+        logger.error(f"API report export error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)

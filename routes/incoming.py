@@ -589,3 +589,151 @@ def unreject_receipt():
     except Exception as e:
         logger.error(f"Error unrejecting receipt: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@incoming_bp.route("/pending", methods=["GET"])
+def get_pending_receipts():
+    """
+    Get unmatched receipts that can be attached to transactions.
+
+    Query params:
+    - limit: Max results (default 50)
+    - offset: Pagination offset
+    """
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, get_db_connection, return_db_connection, db_execute, _ = get_dependencies()
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        limit = request.args.get('limit', 50, type=int)
+        offset = request.args.get('offset', 0, type=int)
+
+        conn, db_type = get_db_connection()
+
+        # Get pending receipts with images
+        cursor = db_execute(conn, db_type, '''
+            SELECT id, subject, from_email, received_date, amount,
+                   merchant, receipt_image_url, ocr_merchant, ocr_amount, ocr_date
+            FROM incoming_receipts
+            WHERE status = 'pending'
+            AND receipt_image_url IS NOT NULL
+            AND receipt_image_url != ''
+            ORDER BY received_date DESC
+            LIMIT %s OFFSET %s
+        ''', (limit, offset))
+
+        receipts = cursor.fetchall()
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'receipts': receipts,
+            'count': len(receipts)
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting pending receipts: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@incoming_bp.route("/match-candidates", methods=["GET"])
+def get_match_candidates():
+    """
+    Find incoming receipts that might match a given transaction.
+
+    Query params:
+    - amount: Transaction amount to match
+    - date: Transaction date (YYYY-MM-DD)
+    - description: Transaction description (for merchant matching)
+    """
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, get_db_connection, return_db_connection, db_execute, _ = get_dependencies()
+
+    try:
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
+
+        amount = request.args.get('amount', type=float)
+        date_str = request.args.get('date', '')
+        description = request.args.get('description', '').lower()
+
+        if not amount:
+            return jsonify({'ok': False, 'error': 'Amount is required'}), 400
+
+        conn, db_type = get_db_connection()
+
+        # Get pending receipts with images
+        cursor = db_execute(conn, db_type, '''
+            SELECT id, subject, from_email, received_date, amount,
+                   merchant, receipt_image_url, ocr_merchant, ocr_amount, ocr_date
+            FROM incoming_receipts
+            WHERE status = 'pending'
+            AND receipt_image_url IS NOT NULL
+            AND receipt_image_url != ''
+        ''')
+
+        all_receipts = cursor.fetchall()
+        return_db_connection(conn)
+
+        # Score each receipt for match quality
+        scored = []
+        for r in all_receipts:
+            score = 0
+            receipt_amount = r.get('ocr_amount') or r.get('amount')
+
+            # Amount matching (most important)
+            if receipt_amount:
+                diff = abs(float(receipt_amount) - amount)
+                if diff < 0.01:  # Exact match
+                    score += 50
+                elif diff < 1.00:  # Within $1
+                    score += 40
+                elif diff < 5.00:  # Within $5
+                    score += 20
+                elif diff < 10.00:  # Within $10
+                    score += 10
+
+            # Date matching
+            if date_str:
+                receipt_date = r.get('ocr_date') or r.get('received_date')
+                if receipt_date:
+                    receipt_date_str = str(receipt_date)[:10]
+                    if receipt_date_str == date_str:
+                        score += 30
+                    elif abs((datetime.strptime(receipt_date_str, '%Y-%m-%d') -
+                              datetime.strptime(date_str[:10], '%Y-%m-%d')).days) <= 3:
+                        score += 15
+
+            # Merchant matching
+            receipt_merchant = (r.get('ocr_merchant') or r.get('merchant') or
+                               r.get('subject') or '').lower()
+            if description and receipt_merchant:
+                # Check for common words
+                desc_words = set(description.split())
+                merch_words = set(receipt_merchant.split())
+                common = desc_words & merch_words
+                if common:
+                    score += 10 * len(common)
+
+            if score > 0:
+                r['match_score'] = score
+                scored.append(r)
+
+        # Sort by score descending
+        scored.sort(key=lambda x: x.get('match_score', 0), reverse=True)
+
+        return jsonify({
+            'ok': True,
+            'receipts': scored[:20],  # Top 20 matches
+            'count': len(scored)
+        })
+
+    except Exception as e:
+        logger.error(f"Error finding match candidates: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
