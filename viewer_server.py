@@ -10560,6 +10560,7 @@ def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", catego
     merchant_context = ""
     attendees_context = ""
     calendar_context = ""
+    ocr_context = ""
 
     # Create a row dict for context lookups if not provided
     if row is None:
@@ -10574,6 +10575,78 @@ def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", catego
             "category": category,
             "Business Type": business_type
         }
+
+    # Get OCR context from transaction or linked receipt (for specific product details)
+    try:
+        tx_index = row.get('_index') or row.get('id')
+        if tx_index:
+            conn = get_mysql_connection()
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+            # First check if transaction has direct OCR data
+            cursor.execute('''
+                SELECT ocr_merchant, ocr_line_items FROM transactions WHERE _index = %s
+            ''', (tx_index,))
+            tx_ocr = cursor.fetchone()
+
+            if tx_ocr and tx_ocr.get('ocr_line_items'):
+                items = tx_ocr['ocr_line_items']
+                if isinstance(items, str):
+                    items = json.loads(items)
+                if items:
+                    item_names = [i.get('name', i.get('description', '')) for i in items[:5] if isinstance(i, dict)]
+                    if item_names:
+                        ocr_context = f"\n- Receipt OCR (actual items purchased): {', '.join(item_names)}"
+
+            # If no direct OCR, check linked receipt in incoming_receipts
+            if not ocr_context:
+                cursor.execute('''
+                    SELECT ocr_merchant, ocr_line_items, subject
+                    FROM incoming_receipts
+                    WHERE matched_transaction_id = %s AND ocr_merchant IS NOT NULL
+                    LIMIT 1
+                ''', (tx_index,))
+                linked_receipt = cursor.fetchone()
+
+                if linked_receipt:
+                    if linked_receipt.get('ocr_line_items'):
+                        items = linked_receipt['ocr_line_items']
+                        if isinstance(items, str):
+                            items = json.loads(items)
+                        if items:
+                            item_names = [i.get('name', i.get('description', '')) for i in items[:5] if isinstance(i, dict)]
+                            if item_names:
+                                ocr_context = f"\n- Receipt OCR (actual items): {', '.join(item_names)}"
+                    elif linked_receipt.get('ocr_merchant'):
+                        ocr_context = f"\n- Receipt shows merchant: {linked_receipt['ocr_merchant']}"
+
+            conn.close()
+    except Exception as e:
+        # Silently skip OCR context if unavailable
+        pass
+
+    # Parse Venmo/Zelle recipient name from description
+    payment_recipient_context = ""
+    try:
+        import re
+        desc_lower = merchant.lower()
+        # Match patterns like "Venmo You paid John Smith" or "Zelle to John Smith"
+        patterns = [
+            r'you paid ([a-z\s]+?)(?:\s*\$|\s+for|$)',
+            r'payment to ([a-z\s]+)',
+            r'venmo.*?to ([a-z\s]+)',
+            r'zelle.*?to ([a-z\s]+)',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, desc_lower)
+            if match:
+                name = match.group(1).strip()
+                name = ' '.join(word.capitalize() for word in name.split())
+                if len(name) > 2 and name not in ['You', 'Me', 'The', 'A']:
+                    payment_recipient_context = f"\n- Payment recipient: {name}"
+                    break
+    except Exception:
+        pass
 
     # Get merchant hint from contacts_engine
     try:
@@ -10620,7 +10693,7 @@ TRANSACTION:
 - Amount: ${amount:.2f}
 - Date: {date}
 - Category: {category or "Unknown"}
-- Business: {business_type or "Down Home"}{merchant_context}{attendees_context}{calendar_context}
+- Business: {business_type or "Down Home"}{merchant_context}{attendees_context}{calendar_context}{ocr_context}{payment_recipient_context}
 
 BRIAN'S KEY CONTACTS (use when relevant):
 - Down Home Team: Jason Ross (GM), Tim Staples, Joel Bergvall, Kevin Sabbe, Andrew Cohen
@@ -10635,17 +10708,20 @@ KNOWN VENUES:
 
 CRITICAL REQUIREMENTS - Your note MUST:
 1. Be SPECIFIC enough to satisfy an IRS auditor asking "What was this for?"
-2. Name WHO was there when known (from calendar/attendees context)
-3. State WHAT was discussed or the PURPOSE (artist deals, release strategy, contracts, etc.)
-4. For travel: specify DESTINATION and REASON (event name, meeting purpose)
-5. For subscriptions: explain SPECIFIC business use (not just "for business")
-6. NEVER use vague phrases like "business expense", "client meeting", or "various business purposes"
+2. If Receipt OCR data is provided, USE THE ACTUAL PRODUCT NAMES (e.g., "USB-C to MagSafe 3 Cable" not "Apple purchase")
+3. Name WHO was there when known (from calendar/attendees context)
+4. State WHAT was discussed or the PURPOSE (artist deals, release strategy, contracts, etc.)
+5. For travel: specify DESTINATION and REASON (event name, meeting purpose)
+6. For subscriptions: explain SPECIFIC business use (not just "for business")
+7. For payments to people (Venmo/Zelle): include the recipient name and purpose
+8. NEVER use vague phrases like "business expense", "client meeting", or "various business purposes"
 
 EXCELLENT NOTES (be this specific):
+- "USB-C to MagSafe 3 Cable (2m) for MacBook Pro charging - artist production travel gear"
 - "Artist development dinner at Soho House with Jason Ross - discussed Morgan Wade European tour logistics and Q1 release schedule"
 - "Delta flight to Los Angeles for Grammy week: artist showcase at The Troubadour and UMG label meetings"
 - "Claude AI monthly subscription - used for contract draft review, press release writing, and tour routing analysis"
-- "Uber to BNA airport for Las Vegas NFR production meetings with venue coordinators"
+- "Venmo payment to Brandon Schaffner for taxi/rideshare during Las Vegas NFR production trip"
 - "Team lunch at 12 South Taproom with Joel Bergvall and Kevin Sabbe - Q4 budget review and artist roster planning"
 
 BAD NOTES (NEVER write these - too vague):
