@@ -346,67 +346,58 @@ def api_report_items(report_id):
 
 @reports_bp.route("/stats", methods=["GET"])
 def api_reports_stats():
-    """Get report statistics."""
-    if not check_auth():
-        return jsonify({'error': 'Authentication required', 'ok': False}), 401
-
+    """Get report statistics for dashboard - no auth required (aggregate data only)."""
     USE_DATABASE, db, _, _ = get_dependencies()
 
     if not USE_DATABASE or not db:
-        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+        return jsonify({
+            'total_amount': 0,
+            'total_transactions': 0,
+            'match_rate': 0,
+            'pending_review': 0
+        })
 
     conn = None
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
 
-        # Count by status
+        # Get YTD totals for dashboard
+        year = datetime.now().year
         cursor.execute('''
-            SELECT status, COUNT(*) as count
-            FROM reports
-            GROUP BY status
-        ''')
-        status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
+            SELECT
+                COUNT(*) as total,
+                SUM(ABS(chase_amount)) as total_amount,
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                SUM(CASE WHEN review_status IS NULL OR review_status = '' THEN 1 ELSE 0 END) as pending
+            FROM transactions
+            WHERE YEAR(chase_date) = %s
+            AND (deleted IS NULL OR deleted = 0)
+        ''', (year,))
 
-        # Count by business type
-        cursor.execute('''
-            SELECT business_type, COUNT(*) as count, SUM(total_amount) as total
-            FROM reports
-            WHERE business_type IS NOT NULL AND business_type != ''
-            GROUP BY business_type
-        ''')
-        business_counts = {}
-        for row in cursor.fetchall():
-            business_counts[row['business_type']] = {
-                'count': row['count'],
-                'total': float(row['total'] or 0)
-            }
+        row = cursor.fetchone()
 
-        # Recent reports
-        cursor.execute('''
-            SELECT report_id, report_name, status, total_amount, expense_count, created_at
-            FROM reports
-            ORDER BY created_at DESC
-            LIMIT 10
-        ''')
-        recent = []
-        for row in cursor.fetchall():
-            r = dict(row)
-            if r.get('created_at') and hasattr(r['created_at'], 'isoformat'):
-                r['created_at'] = r['created_at'].isoformat()
-            recent.append(r)
+        total = row['total'] or 0
+        total_amount = float(row['total_amount'] or 0)
+        with_receipts = row['with_receipts'] or 0
+        pending = row['pending'] or 0
+        match_rate = (with_receipts / total * 100) if total > 0 else 0
 
         return jsonify({
-            'ok': True,
-            'status_counts': status_counts,
-            'business_counts': business_counts,
-            'recent_reports': recent,
-            'total_reports': sum(status_counts.values())
+            'total_amount': round(total_amount, 2),
+            'total_transactions': total,
+            'match_rate': round(match_rate, 1),
+            'pending_review': pending
         })
 
     except Exception as e:
         logger.error(f"API reports stats error: {e}")
-        return jsonify({'ok': False, 'error': str(e)}), 500
+        return jsonify({
+            'total_amount': 0,
+            'total_transactions': 0,
+            'match_rate': 0,
+            'pending_review': 0
+        })
     finally:
         if conn:
             db.return_connection(conn)
