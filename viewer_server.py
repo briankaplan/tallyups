@@ -21150,12 +21150,20 @@ def rematch_missing_receipts():
     business_type = data.get('business_type')
     limit = min(int(data.get('limit', 50)), 100)
 
-    # R2 config from environment
-    R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID', '0e5e0352d7e86c3ad2950c3c6a7f2192')
-    R2_ACCESS_KEY = os.environ.get('R2_ACCESS_KEY_ID', '95db0c86dbb6d49fb1a1a9cfce31546d')
-    R2_SECRET_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '1fb14eec34e2eac2f4ee89d3d64eea41ba7a7a430839bdabe46a2f3dd51dde23')
-    R2_BUCKET = os.environ.get('R2_BUCKET', 'tallyups-receipts')
-    R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL', 'https://pub-f0fa143240d4452e836320be0bac6138.r2.dev')
+    # R2 config - use centralized config
+    try:
+        from config.r2_config import R2Config
+        R2_ACCOUNT_ID = R2Config.ACCOUNT_ID
+        R2_ACCESS_KEY = R2Config.ACCESS_KEY_ID
+        R2_SECRET_KEY = R2Config.SECRET_ACCESS_KEY
+        R2_BUCKET = R2Config.BUCKET_NAME
+        R2_PUBLIC_URL = R2Config.PUBLIC_URL
+    except ImportError:
+        R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID', '33950783df90825d4b885322a8ea2f2f')
+        R2_ACCESS_KEY = os.environ.get('R2_ACCESS_KEY_ID', '')
+        R2_SECRET_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '')
+        R2_BUCKET = os.environ.get('R2_BUCKET_NAME', 'bkreceipts')
+        R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
 
     GEMINI_KEYS = [
         os.environ.get('GEMINI_API_KEY_1', os.environ.get('GEMINI_API_KEY', '')),

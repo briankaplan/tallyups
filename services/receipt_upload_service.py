@@ -28,12 +28,21 @@ except ImportError:
     SELENIUM_AVAILABLE = False
     print("⚠️  Selenium not available - HTML receipt conversion disabled")
 
-# R2 Configuration
-R2_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID', '33950783df90825d4b885322a8ea2f2f')
-R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '38c091312371e3c552fdf21b31096fc3')
-R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', 'bdd5443df55080d8f173d89071c3c7397b27dde92a8cf0095ff6808b9d347bb1')
-R2_BUCKET_NAME = 'second-brain-receipts'
-R2_PUBLIC_URL = 'https://pub-946b7d51aa2c4a0fb92c1ba15bf5c520.r2.dev'
+# R2 Configuration - Use centralized config
+try:
+    from config.r2_config import R2Config
+    R2_ACCOUNT_ID = R2Config.ACCOUNT_ID
+    R2_ACCESS_KEY_ID = R2Config.ACCESS_KEY_ID
+    R2_SECRET_ACCESS_KEY = R2Config.SECRET_ACCESS_KEY
+    R2_BUCKET_NAME = R2Config.BUCKET_NAME
+    R2_PUBLIC_URL = R2Config.PUBLIC_URL
+except ImportError:
+    # Fallback to environment variables with CORRECT defaults
+    R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', '33950783df90825d4b885322a8ea2f2f')
+    R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '')
+    R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
+    R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'bkreceipts')  # CORRECT bucket
+    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
 
 
 class ReceiptUploadService:

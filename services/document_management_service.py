@@ -226,8 +226,13 @@ No explanation, just the category name."""
                 ContentType=self._get_content_type(file_ext)
             )
 
-            # Build public URL
-            r2_url = f"https://pub-946b7d51aa2c4a0fb92c1ba15bf5c520.r2.dev/{r2_key}"
+            # Build public URL using centralized config
+            try:
+                from config.r2_config import R2Config
+                r2_url = R2Config.get_public_url(r2_key)
+            except ImportError:
+                r2_public = os.environ.get('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+                r2_url = f"{r2_public}/{r2_key}"
 
             # Store metadata
             doc_metadata = {
@@ -434,11 +439,19 @@ def get_document_service(anthropic_client=None):
     global _document_service
 
     if _document_service is None:
-        # Get R2 credentials from environment
-        r2_bucket = os.environ.get('R2_BUCKET_NAME', 'second-brain-receipts')
-        r2_access_key = os.environ.get('R2_ACCESS_KEY_ID')
-        r2_secret_key = os.environ.get('R2_SECRET_ACCESS_KEY')
-        r2_endpoint = os.environ.get('R2_ENDPOINT_URL', 'https://c0d39f0e4ee63bcdc0bbd1dc5a9f70c8.r2.cloudflarestorage.com')
+        # Get R2 credentials from centralized config (SINGLE SOURCE OF TRUTH)
+        try:
+            from config.r2_config import R2Config
+            r2_bucket = R2Config.BUCKET_NAME
+            r2_access_key = R2Config.ACCESS_KEY_ID
+            r2_secret_key = R2Config.SECRET_ACCESS_KEY
+            r2_endpoint = R2Config.ENDPOINT_URL
+        except ImportError:
+            # Fallback with CORRECT defaults
+            r2_bucket = os.environ.get('R2_BUCKET_NAME', 'bkreceipts')
+            r2_access_key = os.environ.get('R2_ACCESS_KEY_ID')
+            r2_secret_key = os.environ.get('R2_SECRET_ACCESS_KEY')
+            r2_endpoint = os.environ.get('R2_ENDPOINT_URL', 'https://33950783df90825d4b885322a8ea2f2f.r2.cloudflarestorage.com')
 
         _document_service = DocumentManagementService(
             r2_bucket_name=r2_bucket,
