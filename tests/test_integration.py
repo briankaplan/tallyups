@@ -170,8 +170,8 @@ class TestAPIEndpoints:
             app.config['TESTING'] = True
             app.config['WTF_CSRF_ENABLED'] = False
             return app
-        except ImportError:
-            pytest.skip("viewer_server not available")
+        except (ImportError, RuntimeError):
+            pytest.skip("viewer_server not available (MySQL required)")
 
     @pytest.mark.integration
     def test_health_endpoint(self, mock_app):

@@ -31,7 +31,11 @@ def client():
     os.environ['FLASK_ENV'] = 'testing'
     os.environ['SECRET_KEY'] = 'test-secret-key'
 
-    from viewer_server import app
+    try:
+        from viewer_server import app
+    except RuntimeError:
+        pytest.skip("Flask app not available (MySQL required)")
+
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
 

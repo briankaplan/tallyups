@@ -102,8 +102,8 @@ class TestAINoteGeneration:
             # Check if /ai_note route exists
             rules = [rule.rule for rule in app.url_map.iter_rules()]
             assert '/ai_note' in rules or '/api/ai/note' in rules
-        except ImportError:
-            pytest.skip("viewer_server not available")
+        except (ImportError, RuntimeError):
+            pytest.skip("viewer_server not available (MySQL required)")
 
     @pytest.mark.unit
     def test_orchestrator_ai_generate_note_function(self, mock_transaction):
@@ -141,7 +141,7 @@ class TestAINoteGeneration:
         try:
             from viewer_server import gemini_generate_ai_note
             assert callable(gemini_generate_ai_note)
-        except ImportError:
+        except (ImportError, RuntimeError):
             pytest.skip("gemini_generate_ai_note not available")
 
 
@@ -169,7 +169,7 @@ class TestAICategorization:
         try:
             from viewer_server import gemini_categorize_transaction
             assert callable(gemini_categorize_transaction)
-        except ImportError:
+        except (ImportError, RuntimeError):
             pytest.skip("gemini_categorize_transaction not available")
 
     @pytest.mark.unit
@@ -185,7 +185,7 @@ class TestAICategorization:
 
         try:
             from viewer_server import gemini_categorize_transaction
-        except ImportError:
+        except (ImportError, RuntimeError):
             pytest.skip("Function not available")
 
         result = mock_categorize('ANTHROPIC', 20.00, '2024-01-15', '')
@@ -197,7 +197,7 @@ class TestAICategorization:
         """Keyword-based categorization should work as fallback."""
         try:
             from viewer_server import gemini_categorize_transaction
-        except ImportError:
+        except (ImportError, RuntimeError):
             pytest.skip("Function not available")
 
         # The function should handle cases even without API
@@ -328,8 +328,8 @@ class TestOpenAIAPIEndpoints:
                 with client.session_transaction() as sess:
                     sess['authenticated'] = True
                 yield client
-        except ImportError:
-            pytest.skip("viewer_server not available")
+        except (ImportError, RuntimeError):
+            pytest.skip("viewer_server not available (MySQL required)")
 
     @pytest.mark.integration
     def test_ai_note_endpoint_requires_index(self, client):
@@ -386,7 +386,7 @@ class TestGeminiFallback:
         try:
             from viewer_server import gemini_categorize_transaction
             assert callable(gemini_categorize_transaction)
-        except ImportError:
+        except (ImportError, RuntimeError):
             pytest.skip("gemini_categorize_transaction not available")
 
     @pytest.mark.unit
@@ -395,7 +395,7 @@ class TestGeminiFallback:
         try:
             from viewer_server import gemini_generate_ai_note
             assert callable(gemini_generate_ai_note)
-        except ImportError:
+        except (ImportError, RuntimeError):
             pytest.skip("gemini_generate_ai_note not available")
 
 
