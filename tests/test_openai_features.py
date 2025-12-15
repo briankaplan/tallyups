@@ -116,8 +116,7 @@ class TestAINoteGeneration:
             pytest.skip("orchestrator not available (requires OPENAI_API_KEY)")
 
     @pytest.mark.unit
-    @patch('orchestrator.client')
-    def test_ai_generate_note_with_mock(self, mock_client, mock_transaction):
+    def test_ai_generate_note_with_mock(self, mock_transaction):
         """ai_generate_note should return a string note."""
         try:
             from orchestrator import ai_generate_note
@@ -128,13 +127,14 @@ class TestAINoteGeneration:
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = "AI subscription for development tools"
-        mock_client.chat.completions.create.return_value = mock_response
 
-        with patch('orchestrator.merchant_hint_for_row', return_value="AI company"):
-            with patch('orchestrator.guess_attendees_for_row', return_value=[]):
-                note = ai_generate_note(mock_transaction)
-                # Should return something (even if empty when mocked)
-                assert note is not None or note == ""
+        with patch('orchestrator.client') as mock_client:
+            mock_client.chat.completions.create.return_value = mock_response
+            with patch('orchestrator.merchant_hint_for_row', return_value="AI company"):
+                with patch('orchestrator.guess_attendees_for_row', return_value=[]):
+                    note = ai_generate_note(mock_transaction)
+                    # Should return something (even if empty when mocked)
+                    assert note is not None or note == ""
 
     @pytest.mark.unit
     def test_gemini_ai_note_fallback(self, mock_transaction):
@@ -174,24 +174,25 @@ class TestAICategorization:
             pytest.skip("gemini_categorize_transaction not available")
 
     @pytest.mark.unit
-    @patch('viewer_server.gemini_categorize_transaction')
-    def test_categorize_ai_subscription(self, mock_categorize):
+    def test_categorize_ai_subscription(self):
         """AI subscription should categorize correctly."""
-        mock_categorize.return_value = {
-            'category': 'Software & Subscriptions',
-            'business_type': 'Down Home',
-            'confidence': 95,
-            'reasoning': 'AI API subscription service'
-        }
-
         try:
             from viewer_server import gemini_categorize_transaction
         except (ImportError, RuntimeError):
-            pytest.skip("Function not available")
+            pytest.skip("Function not available (MySQL required)")
 
-        result = mock_categorize('ANTHROPIC', 20.00, '2024-01-15', '')
-        assert result['category'] == 'Software & Subscriptions'
-        assert result['confidence'] >= 90
+        # Test with mock since we don't have actual API in CI
+        with patch('viewer_server.gemini_categorize_transaction') as mock_categorize:
+            mock_categorize.return_value = {
+                'category': 'Software & Subscriptions',
+                'business_type': 'Down Home',
+                'confidence': 95,
+                'reasoning': 'AI API subscription service'
+            }
+
+            result = mock_categorize('ANTHROPIC', 20.00, '2024-01-15', '')
+            assert result['category'] == 'Software & Subscriptions'
+            assert result['confidence'] >= 90
 
     @pytest.mark.unit
     def test_keyword_based_categorization(self):
