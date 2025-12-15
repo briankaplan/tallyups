@@ -92,7 +92,8 @@ def api_library_receipts():
 
         # Query transactions with receipts
         if source in ('transaction', 'all'):
-            where_clauses = ["(receipt_url IS NOT NULL AND receipt_url != '')"]
+            # Check either receipt_url OR r2_url for receipts
+            where_clauses = ["((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))"]
             params = []
 
             if search:
@@ -285,7 +286,7 @@ def api_library_search():
                    ai_receipt_merchant, ai_receipt_total, ai_confidence
             FROM transactions
             WHERE (chase_description LIKE %s OR ai_note LIKE %s OR ai_receipt_merchant LIKE %s)
-            AND receipt_url IS NOT NULL AND receipt_url != ''
+            AND ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
             ORDER BY chase_date DESC
             LIMIT %s
         ''', (search_term, search_term, search_term, limit))
@@ -380,7 +381,7 @@ def api_library_search():
 
 @library_bp.route("/counts", methods=["GET"])
 def api_library_counts():
-    """Get receipt counts by source and status."""
+    """Get receipt counts by source, status, and business type."""
     if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
@@ -393,12 +394,23 @@ def api_library_counts():
     try:
         conn, db_type = get_db_connection()
 
-        # Transaction receipts
+        # Transaction receipts - check either receipt_url OR r2_url
         cursor = db_execute(conn, db_type, '''
             SELECT COUNT(*) as count FROM transactions
-            WHERE receipt_url IS NOT NULL AND receipt_url != ''
+            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
         ''')
         transaction_count = cursor.fetchone()['count']
+
+        # By business type
+        cursor = db_execute(conn, db_type, '''
+            SELECT business_type, COUNT(*) as count FROM transactions
+            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
+            GROUP BY business_type
+        ''')
+        business_counts = {}
+        for row in cursor.fetchall():
+            bt = row['business_type'] or 'unknown'
+            business_counts[bt] = row['count']
 
         # Incoming receipts by status
         cursor = db_execute(conn, db_type, '''
@@ -408,13 +420,34 @@ def api_library_counts():
         ''')
         incoming_counts = {row['status']: row['count'] for row in cursor.fetchall()}
 
+        # Total incoming
+        total_incoming = sum(incoming_counts.values())
+
         return_db_connection(conn)
 
         return jsonify({
             'ok': True,
             'transaction_receipts': transaction_count,
             'incoming_receipts': incoming_counts,
-            'total': transaction_count + sum(incoming_counts.values())
+            'total': transaction_count + total_incoming,
+            'counts': {
+                'total': transaction_count + total_incoming,
+                'all': transaction_count + total_incoming,
+                'down_home': business_counts.get('Down Home', 0),
+                'mcr': business_counts.get('Music City Rodeo', 0),
+                'personal': business_counts.get('Personal', 0),
+                'ceo': business_counts.get('CEO', 0),
+                'favorites': 0,
+                'recent': transaction_count,
+                'needs_review': incoming_counts.get('needs_review', 0),
+                'verified': incoming_counts.get('verified', 0) + incoming_counts.get('matched', 0),
+                'matched': transaction_count,
+                'processing': incoming_counts.get('processing', 0),
+                'duplicates': incoming_counts.get('duplicate', 0),
+                'gmail': total_incoming,
+                'scanner': 0,
+                'upload': 0
+            }
         })
 
     except Exception as e:
@@ -439,10 +472,10 @@ def api_library_stats():
     try:
         conn, db_type = get_db_connection()
 
-        # Total receipts
+        # Total receipts - check either receipt_url OR r2_url
         cursor = db_execute(conn, db_type, '''
             SELECT COUNT(*) as count FROM transactions
-            WHERE receipt_url IS NOT NULL AND receipt_url != ''
+            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
         ''')
         total_receipts = cursor.fetchone()['count']
 
@@ -450,7 +483,7 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT business_type, COUNT(*) as count
             FROM transactions
-            WHERE receipt_url IS NOT NULL AND receipt_url != ''
+            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
             AND business_type IS NOT NULL AND business_type != ''
             GROUP BY business_type
         ''')
@@ -460,7 +493,7 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT DATE_FORMAT(chase_date, '%Y-%m') as month, COUNT(*) as count
             FROM transactions
-            WHERE receipt_url IS NOT NULL AND receipt_url != ''
+            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
             AND chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
             GROUP BY DATE_FORMAT(chase_date, '%Y-%m')
             ORDER BY month
@@ -471,21 +504,50 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT chase_description as merchant, COUNT(*) as count
             FROM transactions
-            WHERE receipt_url IS NOT NULL AND receipt_url != ''
+            WHERE ((receipt_url IS NOT NULL AND receipt_url != '') OR (r2_url IS NOT NULL AND r2_url != ''))
             GROUP BY chase_description
             ORDER BY count DESC
             LIMIT 10
         ''')
         top_merchants = [{row['merchant']: row['count']} for row in cursor.fetchall()]
 
+        # Incoming receipts count
+        cursor = db_execute(conn, db_type, '''
+            SELECT COUNT(*) as count FROM incoming_receipts
+            WHERE receipt_image_url IS NOT NULL
+        ''')
+        incoming_count = cursor.fetchone()['count']
+
         return_db_connection(conn)
+
+        # Build counts object for frontend
+        total = total_receipts + incoming_count
+        counts = {
+            'total': total,
+            'all': total,
+            'down_home': by_business.get('Down Home', 0),
+            'mcr': by_business.get('Music City Rodeo', 0),
+            'personal': by_business.get('Personal', 0),
+            'ceo': by_business.get('CEO', 0),
+            'favorites': 0,
+            'recent': total_receipts,
+            'needs_review': 0,
+            'verified': total_receipts,
+            'matched': total_receipts,
+            'processing': 0,
+            'duplicates': 0,
+            'gmail': incoming_count,
+            'scanner': 0,
+            'upload': 0
+        }
 
         return jsonify({
             'ok': True,
             'total_receipts': total_receipts,
             'by_business': by_business,
             'by_month': by_month,
-            'top_merchants': top_merchants
+            'top_merchants': top_merchants,
+            'counts': counts
         })
 
     except Exception as e:
