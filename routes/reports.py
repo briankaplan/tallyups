@@ -486,17 +486,49 @@ def api_reports_dashboard():
                 'total': float(row['total'] or 0)
             })
 
+        # Recent reports - CRITICAL for reports list display
+        cursor.execute('''
+            SELECT report_id, report_name, business_type, status,
+                   total_amount, expense_count, created_at, submitted_at
+            FROM reports
+            ORDER BY created_at DESC
+            LIMIT 20
+        ''')
+        recent_reports = []
+        for row in cursor.fetchall():
+            created_at = row['created_at']
+            submitted_at = row['submitted_at']
+            recent_reports.append({
+                'report_id': row['report_id'],
+                'name': row['report_name'],
+                'business_type': row['business_type'],
+                'status': row['status'] or 'draft',
+                'total_amount': float(row['total_amount'] or 0),
+                'expense_count': row['expense_count'] or 0,
+                'created_at': created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(created_at, 'strftime') else str(created_at) if created_at else None,
+                'submitted_at': submitted_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(submitted_at, 'strftime') else str(submitted_at) if submitted_at else None
+            })
+
+        # Report counts
+        report_count = len(recent_reports)
+        reports_this_month = sum(1 for r in recent_reports if r['created_at'] and r['created_at'][:7] == datetime.now().strftime('%Y-%m'))
+
         return jsonify({
             'ok': True,
             'ytd': {
                 'total_transactions': ytd['total_transactions'] or 0,
                 'total_amount': float(ytd['total_amount'] or 0),
                 'with_receipts': ytd['with_receipts'] or 0,
-                'receipt_coverage': (ytd['with_receipts'] / ytd['total_transactions'] * 100) if ytd['total_transactions'] else 0
+                'receipt_coverage': (ytd['with_receipts'] / ytd['total_transactions'] * 100) if ytd['total_transactions'] else 0,
+                'missing_receipts': (ytd['total_transactions'] or 0) - (ytd['with_receipts'] or 0),
+                'pending_review': 0,
+                'report_count': report_count,
+                'reports_this_month': reports_this_month
             },
             'by_business': by_business,
             'monthly_trend': monthly,
-            'by_category': by_category
+            'by_category': by_category,
+            'recent_reports': recent_reports
         })
 
     except Exception as e:

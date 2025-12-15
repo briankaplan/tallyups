@@ -14987,15 +14987,15 @@ def get_library_receipts():
         all_receipts = []
 
         # 1. Get receipts from transactions table - select only needed columns for speed
+        # Note: receipt_url column was dropped - use r2_url as canonical source
         tx_query = '''
             SELECT id, _index, chase_description, chase_amount, chase_date,
-                   receipt_url, receipt_file, r2_url,
+                   receipt_file, r2_url,
                    source, business_type, notes, ai_note,
                    ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified, ocr_verification_status
             FROM transactions
-            WHERE (receipt_url IS NOT NULL AND receipt_url != '')
+            WHERE (r2_url IS NOT NULL AND r2_url != '')
                OR (receipt_file IS NOT NULL AND receipt_file != '')
-               OR (r2_url IS NOT NULL AND r2_url != '')
         '''
         cursor = db_execute(conn, db_type, tx_query, ())
         tx_rows = cursor.fetchall()
@@ -15006,8 +15006,8 @@ def get_library_receipts():
             if receipt_source == 'mobile_scanner' or receipt_source == 'mobile_scanner_pwa':
                 receipt_source = 'scanner'
 
-            # Use r2_url first, then receipt_url, then receipt_file
-            receipt_image = tx.get('r2_url') or tx.get('receipt_url') or tx.get('receipt_file')
+            # Use r2_url first, then receipt_file (receipt_url column was dropped)
+            receipt_image = tx.get('r2_url') or tx.get('receipt_file')
 
             # Handle both SQLite (merchant, amount, date) and MySQL (chase_description, chase_amount, chase_date)
             # Use OCR data as fallback when transaction data is missing
