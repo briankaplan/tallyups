@@ -17331,7 +17331,7 @@ def check_duplicate_transaction():
 
 @app.route("/api/incoming/attach-to-transaction", methods=["POST"])
 @login_required
-def attach_receipt_to_transaction():
+def attach_incoming_receipt_to_transaction():
     """
     Attach an incoming receipt to an existing transaction (for duplicates).
 
