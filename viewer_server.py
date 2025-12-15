@@ -13430,17 +13430,24 @@ def gmail_status():
         token_data = None
         token_source = None
 
-        # First check environment variable (for Railway persistence)
-        env_key = f"GMAIL_TOKEN_{account['email'].replace('@', '_').replace('.', '_').upper()}"
-        env_token = os.environ.get(env_key)
-        if env_token:
-            try:
-                token_data = json.loads(env_token)
-                token_source = 'env'
-            except (json.JSONDecodeError, ValueError):
-                pass
+        # 1. First check DATABASE (primary storage, survives deployments)
+        db_token = load_token_from_db(account['email'])
+        if db_token and db_token.get('refresh_token'):
+            token_data = db_token
+            token_source = 'database'
 
-        # If not in env, try to find token in any of the directories
+        # 2. Fall back to environment variable
+        if not token_data:
+            env_key = f"GMAIL_TOKEN_{account['email'].replace('@', '_').replace('.', '_').upper()}"
+            env_token = os.environ.get(env_key)
+            if env_token:
+                try:
+                    token_data = json.loads(env_token)
+                    token_source = 'env'
+                except (json.JSONDecodeError, ValueError):
+                    pass
+
+        # 3. If not in env, try to find token in any of the directories
         if not token_data:
             for token_dir in TOKEN_DIRS:
                 candidate = token_dir / account['token_file']
