@@ -5,7 +5,7 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.14.v6"
+APP_VERSION = "2025.12.14.v7"
 APP_BUILD_TIME = "2025-12-14T19:16:00Z"
 import os
 import math
@@ -11631,7 +11631,17 @@ def reports_list():
 
 @app.route("/reports/<report_id>", methods=["GET"])
 def reports_get(report_id):
-    """Get expenses for a specific report with metadata"""
+    """Get expenses for a specific report with metadata.
+
+    If accessed from a browser (Accept: text/html), redirects to the page view.
+    Otherwise returns JSON API response.
+    """
+    # Check if this is a browser request vs API request
+    accept_header = request.headers.get('Accept', '')
+    if 'text/html' in accept_header and 'application/json' not in accept_header:
+        # Browser request - redirect to the page view
+        return redirect(f'/reports/{report_id}/page')
+
     if not USE_DATABASE or not db:
         abort(503, "Reports require database mode")
 
