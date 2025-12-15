@@ -12976,8 +12976,13 @@ tr:hover {{
 }}
 .amount {{
   font-weight: 700;
-  color: #00ff88;
   font-size: 15px;
+}}
+.amount.charge {{
+  color: #ff6b6b;
+}}
+.amount.refund {{
+  color: #00ff88;
 }}
 .receipt-link {{
   color: #00ff88;
@@ -13046,7 +13051,20 @@ tr:hover {{
         for exp in expenses:
             date = format_date(exp.get("chase_date", ""))
             desc = exp.get("chase_description", "")
-            amount = abs(float(exp.get("chase_amount", 0) or 0))
+            raw_amount = float(exp.get("chase_amount", 0) or 0)
+            # Display convention: charges (positive in DB) shown as negative, refunds (negative in DB) shown as positive
+            # This matches bank statement convention where money out = negative
+            if raw_amount > 0:
+                # Charge - show as negative (money out)
+                amount_str = f"-${raw_amount:,.2f}"
+                amount_class = "charge"
+            elif raw_amount < 0:
+                # Refund/payment - show as positive (money in)
+                amount_str = f"+${abs(raw_amount):,.2f}"
+                amount_class = "refund"
+            else:
+                amount_str = "$0.00"
+                amount_class = ""
             category = exp.get("category") or exp.get("chase_category", "")
             notes = exp.get("notes", "")
 
@@ -13069,7 +13087,7 @@ tr:hover {{
       <tr>
         <td>{date}</td>
         <td>{desc}</td>
-        <td class="amount">${amount:,.2f}</td>
+        <td class="amount {amount_class}">{amount_str}</td>
         <td>{category}</td>
         <td class="notes">{notes}</td>
         <td>{receipt_link}</td>
