@@ -574,8 +574,10 @@
     ).join('');
     elements.detailTags.innerHTML = tagsHtml + '<span class="tag add-tag">+ Add tag</span>';
 
-    // Show modal
+    // Show modal and backdrop
     elements.detailModal.classList.add('visible');
+    const backdrop = document.getElementById('detail-backdrop');
+    if (backdrop) backdrop.classList.add('visible');
     document.body.style.overflow = 'hidden';
 
     // Update URL without reload
@@ -584,6 +586,8 @@
 
   function closeDetailModal() {
     elements.detailModal.classList.remove('visible');
+    const backdrop = document.getElementById('detail-backdrop');
+    if (backdrop) backdrop.classList.remove('visible');
     document.body.style.overflow = '';
     state.currentReceipt = null;
     state.currentIndex = -1;
@@ -591,6 +595,9 @@
     // Update URL
     history.pushState({}, '', '/library');
   }
+
+  // Expose as global function for onclick handlers
+  window.closeDetailPanel = closeDetailModal;
 
   function navigateReceipt(direction) {
     const newIndex = state.currentIndex + direction;

@@ -491,10 +491,11 @@ def add_security_headers(response):
         "connect-src 'self' https://*.cloudflare.com https://*.r2.cloudflarestorage.com; "
         "frame-ancestors 'none';"
     )
-    # Prevent browsers from caching sensitive pages
-    if request.path.startswith('/api/'):
+    # Prevent browsers from caching sensitive pages and HTML
+    if request.path.startswith('/api/') or request.path in ('/', '/library', '/reports', '/contacts', '/viewer', '/incoming'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
     # Referrer policy
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     # Permissions policy (disable unnecessary browser features)
@@ -2594,11 +2595,11 @@ def health_check():
                     "transaction_count": tx_count
                 }
 
-                # Get receipt stats
+                # Get receipt stats - use r2_url as canonical receipt image source
                 receipt_result = db.execute_query("""
                     SELECT
                         COUNT(*) as total,
-                        SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                        SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts,
                         SUM(CASE WHEN deleted = 1 THEN 1 ELSE 0 END) as deleted
                     FROM transactions
                 """)
@@ -2721,11 +2722,10 @@ def dashboard_stats():
         })
 
     try:
-        # Total receipts with r2_url OR receipt_url (matched) - count both sources
+        # Total receipts with r2_url (canonical receipt image source)
         cursor = db_execute(conn, db_type, """
             SELECT COUNT(*) AS cnt FROM transactions
-            WHERE (receipt_url IS NOT NULL AND receipt_url != '')
-               OR (r2_url IS NOT NULL AND r2_url != '')
+            WHERE r2_url IS NOT NULL AND r2_url != ''
         """)
         row = cursor.fetchone()
         total_matched = row['cnt'] if row else 0
@@ -3203,12 +3203,12 @@ def debug_receipt_stats():
         return jsonify({'error': 'Database not available'}), 500
 
     try:
-        # Get receipt stats
+        # Get receipt stats - r2_url is canonical receipt image source
         stats = db.execute_query("""
             SELECT
                 COUNT(*) as total,
-                SUM(CASE WHEN (receipt_url IS NULL OR receipt_url = '') AND (receipt_file IS NULL OR receipt_file = '') THEN 1 ELSE 0 END) as missing_receipt,
-                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as has_receipt_url,
+                SUM(CASE WHEN (r2_url IS NULL OR r2_url = '') AND (receipt_file IS NULL OR receipt_file = '') THEN 1 ELSE 0 END) as missing_receipt,
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as has_receipt_url,
                 SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as has_receipt_file,
                 SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as has_r2_url
             FROM transactions
@@ -3224,11 +3224,11 @@ def debug_receipt_stats():
             deleted_result = db.execute_query("SELECT COUNT(*) as cnt FROM transactions WHERE deleted = 1")
             deleted_count = deleted_result[0]['cnt'] if deleted_result else 0
 
-        # Get sample missing receipts
+        # Get sample missing receipts - r2_url is canonical
         sample_missing = db.execute_query("""
             SELECT _index, chase_date, chase_description, chase_amount, business_type
             FROM transactions
-            WHERE (receipt_url IS NULL OR receipt_url = '')
+            WHERE (r2_url IS NULL OR r2_url = '')
               AND (receipt_file IS NULL OR receipt_file = '')
             LIMIT 20
         """)
@@ -4566,12 +4566,12 @@ def attach_receipt_to_transaction():
             return_db_connection(conn)
             return jsonify({'ok': False, 'error': 'Receipt has no image URL'}), 400
 
-        # Update the transaction with the receipt
+        # Update the transaction with the receipt - r2_url is canonical
         cursor.execute('''
             UPDATE transactions
-            SET receipt_url = %s, r2_url = %s
+            SET r2_url = %s
             WHERE _index = %s
-        ''', (receipt_url, receipt_url, transaction_index))
+        ''', (receipt_url, transaction_index))
 
         # Mark the incoming receipt as matched
         cursor.execute('''
@@ -10333,13 +10333,13 @@ def upload_receipt():
             # Continue with original HEIC file if conversion fails
 
     # Upload to R2 storage and get public URL
-    receipt_url = None
+    r2_url = None
     if R2_ENABLED and upload_to_r2:
         try:
             success, result = upload_to_r2(dest)
             if success:
-                receipt_url = result
-                print(f"☁️  Uploaded to R2: {receipt_url}", flush=True)
+                r2_url = result
+                print(f"☁️  Uploaded to R2: {r2_url}", flush=True)
             else:
                 print(f"⚠️  R2 upload failed: {result}", flush=True)
         except Exception as e:
@@ -10347,11 +10347,11 @@ def upload_receipt():
 
     # Use update_row_by_index to properly update SQLite + DataFrame + CSV
     update_data = {"Receipt File": filename}
-    if receipt_url:
-        update_data["receipt_url"] = receipt_url
+    if r2_url:
+        update_data["r2_url"] = r2_url
     update_row_by_index(idx, update_data, source="upload_receipt")
 
-    return jsonify(safe_json({"ok": True, "filename": filename, "receipt_url": receipt_url}))
+    return jsonify(safe_json({"ok": True, "filename": filename, "receipt_url": r2_url}))
 
 
 def gemini_ocr_extract(image_path: str | Path) -> dict:
@@ -11042,13 +11042,13 @@ def upload_receipt_auto():
             temp_path.rename(final_path)
 
             # Upload to R2 storage
-            receipt_url = None
+            r2_url = None
             if R2_ENABLED and upload_to_r2:
                 try:
                     success, result = upload_to_r2(final_path)
                     if success:
-                        receipt_url = result
-                        print(f"☁️  Uploaded to R2: {receipt_url}", flush=True)
+                        r2_url = result
+                        print(f"☁️  Uploaded to R2: {r2_url}", flush=True)
                     else:
                         print(f"⚠️  R2 upload failed: {result}", flush=True)
                 except Exception as e:
@@ -11063,8 +11063,8 @@ def upload_receipt_auto():
                 "ai_receipt_total": ocr_data.get("total"),
                 "ai_receipt_date": ocr_data.get("date")
             }
-            if receipt_url:
-                update_data["receipt_url"] = receipt_url
+            if r2_url:
+                update_data["r2_url"] = r2_url
             update_row_by_index(idx, update_data, source="smart_upload")
 
             print(f"✅ Auto-matched to transaction {idx} ({confidence}%)", flush=True)
@@ -11088,13 +11088,13 @@ def upload_receipt_auto():
             temp_path.rename(pending_path)
 
             # Upload to R2 even for pending receipts
-            receipt_url = None
+            r2_url_pending = None
             if R2_ENABLED and upload_to_r2:
                 try:
                     success, result = upload_to_r2(pending_path)
                     if success:
-                        receipt_url = result
-                        print(f"☁️  Uploaded pending to R2: {receipt_url}", flush=True)
+                        r2_url_pending = result
+                        print(f"☁️  Uploaded pending to R2: {r2_url_pending}", flush=True)
                 except Exception as e:
                     print(f"⚠️  R2 upload error: {e}", flush=True)
 
@@ -11108,7 +11108,7 @@ def upload_receipt_auto():
                 "transaction": match["row"],
                 "confidence": confidence,
                 "filename": pending_filename,
-                "receipt_url": receipt_url,
+                "receipt_url": r2_url_pending,
                 "message": f"Found possible match ({confidence}% confidence). Receipt saved - verify and attach manually."
             }))
 
@@ -12831,10 +12831,15 @@ def reports_standalone_page(report_id):
 
         # Calculate totals - use metadata if no expenses linked
         if expenses:
-            total_amount = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses)
-            receipt_count = sum(1 for e in expenses if e.get("receipt_file"))
+            # Separate charges (positive in DB) from refunds (negative in DB)
+            total_charges = sum(float(e.get("chase_amount", 0) or 0) for e in expenses if float(e.get("chase_amount", 0) or 0) > 0)
+            total_refunds = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses if float(e.get("chase_amount", 0) or 0) < 0)
+            net_total = total_charges - total_refunds  # Net amount spent
+            receipt_count = sum(1 for e in expenses if e.get("receipt_file") or e.get("r2_url"))
         else:
-            total_amount = total_from_meta
+            total_charges = total_from_meta
+            total_refunds = 0
+            net_total = total_from_meta
             receipt_count = 0
 
         # Get date range - convert datetime objects to strings
@@ -12976,8 +12981,13 @@ tr:hover {{
 }}
 .amount {{
   font-weight: 700;
-  color: #00ff88;
   font-size: 15px;
+}}
+.amount.charge {{
+  color: #ff6b6b;
+}}
+.amount.refund {{
+  color: #00ff88;
 }}
 .receipt-link {{
   color: #00ff88;
@@ -13005,15 +13015,23 @@ tr:hover {{
 
 <div class="stats">
   <div class="stat-card">
-    <div class="stat-label">Total Amount</div>
-    <div class="stat-value">${total_amount:,.2f}</div>
+    <div class="stat-label">Total Charges</div>
+    <div class="stat-value" style="color:#ff6b6b">-${total_charges:,.2f}</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Expenses</div>
+    <div class="stat-label">Refunds/Credits</div>
+    <div class="stat-value" style="color:#00ff88">+${total_refunds:,.2f}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Net Total</div>
+    <div class="stat-value">-${net_total:,.2f}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Transactions</div>
     <div class="stat-value">{len(expenses)}</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Receipts</div>
+    <div class="stat-label">With Receipts</div>
     <div class="stat-value">{receipt_count}</div>
   </div>
 </div>
@@ -13046,7 +13064,20 @@ tr:hover {{
         for exp in expenses:
             date = format_date(exp.get("chase_date", ""))
             desc = exp.get("chase_description", "")
-            amount = abs(float(exp.get("chase_amount", 0) or 0))
+            raw_amount = float(exp.get("chase_amount", 0) or 0)
+            # Display convention: charges (positive in DB) shown as negative, refunds (negative in DB) shown as positive
+            # This matches bank statement convention where money out = negative
+            if raw_amount > 0:
+                # Charge - show as negative (money out)
+                amount_str = f"-${raw_amount:,.2f}"
+                amount_class = "charge"
+            elif raw_amount < 0:
+                # Refund/payment - show as positive (money in)
+                amount_str = f"+${abs(raw_amount):,.2f}"
+                amount_class = "refund"
+            else:
+                amount_str = "$0.00"
+                amount_class = ""
             category = exp.get("category") or exp.get("chase_category", "")
             notes = exp.get("notes", "")
 
@@ -13069,7 +13100,7 @@ tr:hover {{
       <tr>
         <td>{date}</td>
         <td>{desc}</td>
-        <td class="amount">${amount:,.2f}</td>
+        <td class="amount {amount_class}">{amount_str}</td>
         <td>{category}</td>
         <td class="notes">{notes}</td>
         <td>{receipt_link}</td>
@@ -15124,15 +15155,15 @@ def get_library_receipts():
         all_receipts = []
 
         # 1. Get receipts from transactions table - select only needed columns for speed
+        # Note: receipt_url column was dropped - use r2_url as canonical source
         tx_query = '''
             SELECT id, _index, chase_description, chase_amount, chase_date,
-                   receipt_url, receipt_file, r2_url,
+                   receipt_file, r2_url,
                    source, business_type, notes, ai_note,
                    ocr_merchant, ocr_amount, ocr_date, ocr_confidence, ocr_verified, ocr_verification_status
             FROM transactions
-            WHERE (receipt_url IS NOT NULL AND receipt_url != '')
+            WHERE (r2_url IS NOT NULL AND r2_url != '')
                OR (receipt_file IS NOT NULL AND receipt_file != '')
-               OR (r2_url IS NOT NULL AND r2_url != '')
         '''
         cursor = db_execute(conn, db_type, tx_query, ())
         tx_rows = cursor.fetchall()
@@ -15143,8 +15174,8 @@ def get_library_receipts():
             if receipt_source == 'mobile_scanner' or receipt_source == 'mobile_scanner_pwa':
                 receipt_source = 'scanner'
 
-            # Use r2_url first, then receipt_url, then receipt_file
-            receipt_image = tx.get('r2_url') or tx.get('receipt_url') or tx.get('receipt_file')
+            # Use r2_url first, then receipt_file (receipt_url column was dropped)
+            receipt_image = tx.get('r2_url') or tx.get('receipt_file')
 
             # Handle both SQLite (merchant, amount, date) and MySQL (chase_description, chase_amount, chase_date)
             # Use OCR data as fallback when transaction data is missing

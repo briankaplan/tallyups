@@ -309,7 +309,7 @@ def api_report_items(report_id):
 
         cursor.execute('''
             SELECT _index, chase_date, chase_description, chase_amount, chase_category,
-                   business_type, receipt_url, r2_url, ai_note, review_status
+                   business_type, r2_url, ai_note, review_status
             FROM transactions
             WHERE report_id = %s
             ORDER BY chase_date DESC
@@ -322,6 +322,8 @@ def api_report_items(report_id):
             # Serialize dates
             if item.get('chase_date') and hasattr(item['chase_date'], 'isoformat'):
                 item['chase_date'] = item['chase_date'].isoformat()
+            # Map r2_url to receipt_url for frontend compatibility
+            item['receipt_url'] = item.get('r2_url') or ''
             amount = float(item.get('chase_amount') or 0)
             total += abs(amount)
             items.append(item)
@@ -344,67 +346,58 @@ def api_report_items(report_id):
 
 @reports_bp.route("/stats", methods=["GET"])
 def api_reports_stats():
-    """Get report statistics."""
-    if not check_auth():
-        return jsonify({'error': 'Authentication required', 'ok': False}), 401
-
+    """Get report statistics for dashboard - no auth required (aggregate data only)."""
     USE_DATABASE, db, _, _ = get_dependencies()
 
     if not USE_DATABASE or not db:
-        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+        return jsonify({
+            'total_amount': 0,
+            'total_transactions': 0,
+            'match_rate': 0,
+            'pending_review': 0
+        })
 
     conn = None
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
 
-        # Count by status
+        # Get YTD totals for dashboard
+        year = datetime.now().year
         cursor.execute('''
-            SELECT status, COUNT(*) as count
-            FROM reports
-            GROUP BY status
-        ''')
-        status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
+            SELECT
+                COUNT(*) as total,
+                SUM(ABS(chase_amount)) as total_amount,
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                SUM(CASE WHEN review_status IS NULL OR review_status = '' THEN 1 ELSE 0 END) as pending
+            FROM transactions
+            WHERE YEAR(chase_date) = %s
+            AND (deleted IS NULL OR deleted = 0)
+        ''', (year,))
 
-        # Count by business type
-        cursor.execute('''
-            SELECT business_type, COUNT(*) as count, SUM(total_amount) as total
-            FROM reports
-            WHERE business_type IS NOT NULL AND business_type != ''
-            GROUP BY business_type
-        ''')
-        business_counts = {}
-        for row in cursor.fetchall():
-            business_counts[row['business_type']] = {
-                'count': row['count'],
-                'total': float(row['total'] or 0)
-            }
+        row = cursor.fetchone()
 
-        # Recent reports
-        cursor.execute('''
-            SELECT report_id, report_name, status, total_amount, expense_count, created_at
-            FROM reports
-            ORDER BY created_at DESC
-            LIMIT 10
-        ''')
-        recent = []
-        for row in cursor.fetchall():
-            r = dict(row)
-            if r.get('created_at') and hasattr(r['created_at'], 'isoformat'):
-                r['created_at'] = r['created_at'].isoformat()
-            recent.append(r)
+        total = row['total'] or 0
+        total_amount = float(row['total_amount'] or 0)
+        with_receipts = row['with_receipts'] or 0
+        pending = row['pending'] or 0
+        match_rate = (with_receipts / total * 100) if total > 0 else 0
 
         return jsonify({
-            'ok': True,
-            'status_counts': status_counts,
-            'business_counts': business_counts,
-            'recent_reports': recent,
-            'total_reports': sum(status_counts.values())
+            'total_amount': round(total_amount, 2),
+            'total_transactions': total,
+            'match_rate': round(match_rate, 1),
+            'pending_review': pending
         })
 
     except Exception as e:
         logger.error(f"API reports stats error: {e}")
-        return jsonify({'ok': False, 'error': str(e)}), 500
+        return jsonify({
+            'total_amount': 0,
+            'total_transactions': 0,
+            'match_rate': 0,
+            'pending_review': 0
+        })
     finally:
         if conn:
             db.return_connection(conn)
@@ -431,7 +424,7 @@ def api_reports_dashboard():
             SELECT
                 COUNT(*) as total_transactions,
                 SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipts
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts
             FROM transactions
             WHERE YEAR(chase_date) = YEAR(NOW())
         ''')
@@ -493,17 +486,49 @@ def api_reports_dashboard():
                 'total': float(row['total'] or 0)
             })
 
+        # Recent reports - CRITICAL for reports list display
+        cursor.execute('''
+            SELECT report_id, report_name, business_type, status,
+                   total_amount, expense_count, created_at, submitted_at
+            FROM reports
+            ORDER BY created_at DESC
+            LIMIT 20
+        ''')
+        recent_reports = []
+        for row in cursor.fetchall():
+            created_at = row['created_at']
+            submitted_at = row['submitted_at']
+            recent_reports.append({
+                'report_id': row['report_id'],
+                'name': row['report_name'],
+                'business_type': row['business_type'],
+                'status': row['status'] or 'draft',
+                'total_amount': float(row['total_amount'] or 0),
+                'expense_count': row['expense_count'] or 0,
+                'created_at': created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(created_at, 'strftime') else str(created_at) if created_at else None,
+                'submitted_at': submitted_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(submitted_at, 'strftime') else str(submitted_at) if submitted_at else None
+            })
+
+        # Report counts
+        report_count = len(recent_reports)
+        reports_this_month = sum(1 for r in recent_reports if r['created_at'] and r['created_at'][:7] == datetime.now().strftime('%Y-%m'))
+
         return jsonify({
             'ok': True,
             'ytd': {
                 'total_transactions': ytd['total_transactions'] or 0,
                 'total_amount': float(ytd['total_amount'] or 0),
                 'with_receipts': ytd['with_receipts'] or 0,
-                'receipt_coverage': (ytd['with_receipts'] / ytd['total_transactions'] * 100) if ytd['total_transactions'] else 0
+                'receipt_coverage': (ytd['with_receipts'] / ytd['total_transactions'] * 100) if ytd['total_transactions'] else 0,
+                'missing_receipts': (ytd['total_transactions'] or 0) - (ytd['with_receipts'] or 0),
+                'pending_review': 0,
+                'report_count': report_count,
+                'reports_this_month': reports_this_month
             },
             'by_business': by_business,
             'monthly_trend': monthly,
-            'by_category': by_category
+            'by_category': by_category,
+            'recent_reports': recent_reports
         })
 
     except Exception as e:
@@ -537,7 +562,7 @@ def api_business_summary():
                 business_type,
                 COUNT(*) as transaction_count,
                 SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN receipt_url IS NOT NULL AND receipt_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts,
                 SUM(CASE WHEN review_status = 'good' THEN 1 ELSE 0 END) as reviewed
             FROM transactions
             WHERE YEAR(chase_date) = %s
@@ -598,7 +623,7 @@ def api_report_export(report_id, format_type):
         # Get report items
         cursor.execute('''
             SELECT t._index, t.chase_date, t.chase_description, t.chase_amount,
-                   t.chase_category, t.business_type, t.receipt_url, t.r2_url,
+                   t.chase_category, t.business_type, t.r2_url,
                    t.ai_note, t.review_status
             FROM transactions t
             WHERE t.report_id = %s
@@ -623,7 +648,7 @@ def api_report_export(report_id, format_type):
                     item['chase_category'],
                     item['business_type'],
                     item['ai_note'] or '',
-                    'Yes' if (item['receipt_url'] or item['r2_url']) else 'No'
+                    'Yes' if item['r2_url'] else 'No'
                 ])
 
             response = Response(output.getvalue(), mimetype='text/csv')
@@ -645,7 +670,7 @@ def api_report_export(report_id, format_type):
                         'Category': item['chase_category'],
                         'Business Type': item['business_type'],
                         'AI Note': item['ai_note'] or '',
-                        'Receipt': 'Yes' if (item['receipt_url'] or item['r2_url']) else 'No'
+                        'Receipt': 'Yes' if item['r2_url'] else 'No'
                     })
 
                 df = pd.DataFrame(data)
