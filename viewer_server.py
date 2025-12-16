@@ -12831,10 +12831,10 @@ def reports_standalone_page(report_id):
 
         # Calculate totals - use metadata if no expenses linked
         if expenses:
-            # Separate charges (positive in DB) from refunds (negative in DB)
-            total_charges = sum(float(e.get("chase_amount", 0) or 0) for e in expenses if float(e.get("chase_amount", 0) or 0) > 0)
-            total_refunds = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses if float(e.get("chase_amount", 0) or 0) < 0)
-            net_total = total_charges - total_refunds  # Net amount spent
+            # Credit card convention: NEGATIVE amounts = charges (expenses), POSITIVE amounts = refunds (credits)
+            total_charges = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses if float(e.get("chase_amount", 0) or 0) < 0)
+            total_refunds = sum(float(e.get("chase_amount", 0) or 0) for e in expenses if float(e.get("chase_amount", 0) or 0) > 0)
+            net_total = total_refunds - total_charges  # Negative = net spent, Positive = net credited
             receipt_count = sum(1 for e in expenses if e.get("receipt_file") or e.get("r2_url"))
         else:
             total_charges = total_from_meta
@@ -13024,7 +13024,7 @@ tr:hover {{
   </div>
   <div class="stat-card">
     <div class="stat-label">Net Total</div>
-    <div class="stat-value" style="color:{'#ff6b6b' if net_total > 0 else '#00ff88' if net_total < 0 else '#888'}">{"−" if net_total > 0 else "+" if net_total < 0 else ""}${abs(net_total):,.2f}</div>
+    <div class="stat-value" style="color:{'#ff6b6b' if net_total < 0 else '#00ff88' if net_total > 0 else '#888'}">{"-" if net_total < 0 else "+" if net_total > 0 else ""}${abs(net_total):,.2f}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Transactions</div>
@@ -13065,15 +13065,14 @@ tr:hover {{
             date = format_date(exp.get("chase_date", ""))
             desc = exp.get("chase_description", "")
             raw_amount = float(exp.get("chase_amount", 0) or 0)
-            # Display convention: charges (positive in DB) shown as negative, refunds (negative in DB) shown as positive
-            # This matches bank statement convention where money out = negative
-            if raw_amount > 0:
-                # Charge - show as negative (money out)
-                amount_str = f"-${raw_amount:,.2f}"
+            # Credit card convention: NEGATIVE = charge (expense), POSITIVE = refund (credit)
+            if raw_amount < 0:
+                # Charge/expense - show as negative (money spent)
+                amount_str = f"-${abs(raw_amount):,.2f}"
                 amount_class = "charge"
-            elif raw_amount < 0:
-                # Refund/payment - show as positive (money in)
-                amount_str = f"+${abs(raw_amount):,.2f}"
+            elif raw_amount > 0:
+                # Refund/credit - show as positive (money back)
+                amount_str = f"+${raw_amount:,.2f}"
                 amount_class = "refund"
             else:
                 amount_str = "$0.00"
@@ -15952,20 +15951,20 @@ def api_report_audit(report_id):
         """, (report_id, business_type))
         transactions = cursor.fetchall()
 
-        # Calculate totals
-        charges = []  # Positive amounts (expenses)
-        refunds = []  # Negative amounts (credits)
+        # Calculate totals - Credit card convention: NEGATIVE = charges, POSITIVE = refunds
+        charges = []  # Negative amounts (expenses/purchases)
+        refunds = []  # Positive amounts (credits/returns)
 
         for t in transactions:
             amount = float(t.get('chase_amount', 0) or 0)
-            if amount > 0:
+            if amount < 0:
                 charges.append(t)
-            elif amount < 0:
+            elif amount > 0:
                 refunds.append(t)
 
-        total_charges = sum(float(t['chase_amount']) for t in charges)
-        total_refunds = sum(abs(float(t['chase_amount'])) for t in refunds)
-        net_total = total_charges - total_refunds
+        total_charges = sum(abs(float(t['chase_amount'])) for t in charges)
+        total_refunds = sum(float(t['chase_amount']) for t in refunds)
+        net_total = total_refunds - total_charges  # Negative = net spent
 
         # Find duplicates (same date + amount)
         from collections import defaultdict
