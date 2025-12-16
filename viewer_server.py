@@ -13540,7 +13540,7 @@ tr:hover .row-actions {{
         <td class="amount {amount_class}">{amount_str}</td>
         <td>{category}</td>
         <td class="notes-cell">
-          <span class="notes" onclick="editNotes(this, {exp_id})" title="Click to edit">{notes or '<em style=\"opacity:0.5\">Add note...</em>'}</span>
+          <span class="notes" onclick="editNotes(this, {exp_id})" title="Click to edit">{notes or "<em style='opacity:0.5'>Add note...</em>"}</span>
         </td>
         <td>{receipt_link}</td>
         <td>
