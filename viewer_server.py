@@ -13448,16 +13448,16 @@ tr:hover .row-actions {{
 
 <div class="stats">
   <div class="stat-card">
-    <div class="stat-label">Total Charges</div>
+    <div class="stat-label">Total Spent</div>
     <div class="stat-value" style="color:var(--danger)">${total_charges:,.2f}</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Refunds/Credits</div>
+    <div class="stat-label">Refunds Received</div>
     <div class="stat-value" style="color:var(--accent)">${total_refunds:,.2f}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Net Total</div>
-    <div class="stat-value" style="color:{'var(--danger)' if net_total > 0 else 'var(--accent)' if net_total < 0 else 'var(--text-muted)'}">${net_total:,.2f}</div>
+    <div class="stat-value" style="color:var(--danger)">${net_total:,.2f}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Transactions</div>
