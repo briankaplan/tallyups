@@ -567,6 +567,752 @@
   </style>
 </head>
 <body>
+  <!-- Guided Reconciliation Modal -->
+  <div class="reconcile-guide-overlay" id="reconcile-guide-overlay">
+    <div class="reconcile-guide-modal">
+      <button class="reconcile-close-btn" onclick="closeReconcileGuide()">✕</button>
+      <div class="reconcile-header">
+        <div class="reconcile-icon">
+          <svg viewBox="0 0 60 60" fill="none">
+            <circle cx="30" cy="30" r="28" fill="rgba(255, 78, 106, 0.15)" stroke="#ff4e6a" stroke-width="2"/>
+            <path d="M30 18v18" stroke="#ff4e6a" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="30" cy="44" r="2" fill="#ff4e6a"/>
+          </svg>
+        </div>
+        <h2>Missing Receipts</h2>
+        <p class="reconcile-subtitle">You have <span id="missing-guide-count">0</span> transactions without receipts</p>
+      </div>
+
+      <div class="reconcile-options">
+        <h3>How would you like to fix this?</h3>
+
+        <div class="reconcile-option" onclick="window.location='/scanner'">
+          <div class="option-icon">📸</div>
+          <div class="option-content">
+            <strong>Scan Physical Receipts</strong>
+            <span>Use your camera to capture paper receipts</span>
+          </div>
+          <div class="option-arrow">→</div>
+        </div>
+
+        <div class="reconcile-option" onclick="window.location='/incoming'">
+          <div class="option-icon">📧</div>
+          <div class="option-content">
+            <strong>Check Email Inbox</strong>
+            <span>Digital receipts auto-imported from Gmail</span>
+          </div>
+          <div class="option-arrow">→</div>
+        </div>
+
+        <div class="reconcile-option" onclick="window.location='/viewer?filter=missing'">
+          <div class="option-icon">🔗</div>
+          <div class="option-content">
+            <strong>Manual Matching</strong>
+            <span>Browse & match receipts to transactions</span>
+          </div>
+          <div class="option-arrow">→</div>
+        </div>
+
+        <div class="reconcile-option secondary" onclick="markAsNoReceipt()">
+          <div class="option-icon">🚫</div>
+          <div class="option-content">
+            <strong>Mark as "No Receipt"</strong>
+            <span>Some transactions don't have receipts (ATM, transfers)</span>
+          </div>
+          <div class="option-arrow">→</div>
+        </div>
+      </div>
+
+      <div class="reconcile-tip">
+        <span class="tip-icon">💡</span>
+        <span>Tip: Most businesses email receipts. Check your inbox filters!</span>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Reconcile Guide Modal Styles */
+    .reconcile-guide-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .reconcile-guide-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .reconcile-guide-modal {
+      background: var(--bg-secondary);
+      border: 1px solid rgba(255, 78, 106, 0.3);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 440px;
+      padding: 32px;
+      position: relative;
+      animation: modalSlideUp 0.4s ease;
+    }
+
+    @keyframes modalSlideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .reconcile-close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bg-hover);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .reconcile-close-btn:hover {
+      background: rgba(255, 78, 106, 0.2);
+      color: #ff4e6a;
+    }
+
+    .reconcile-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .reconcile-icon {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 16px;
+    }
+
+    .reconcile-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .reconcile-header h2 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .reconcile-subtitle {
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    .reconcile-subtitle span {
+      color: #ff4e6a;
+      font-weight: 600;
+    }
+
+    .reconcile-options h3 {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+
+    .reconcile-option {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .reconcile-option:hover {
+      border-color: var(--accent-color);
+      background: rgba(0, 255, 136, 0.05);
+      transform: translateX(4px);
+    }
+
+    .reconcile-option.secondary {
+      background: transparent;
+      border-style: dashed;
+      opacity: 0.7;
+    }
+
+    .reconcile-option.secondary:hover {
+      opacity: 1;
+      border-color: var(--text-muted);
+    }
+
+    .option-icon {
+      font-size: 24px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-hover);
+      border-radius: 12px;
+      flex-shrink: 0;
+    }
+
+    .option-content {
+      flex: 1;
+    }
+
+    .option-content strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
+
+    .option-content span {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .option-arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+      transition: transform 0.2s;
+    }
+
+    .reconcile-option:hover .option-arrow {
+      transform: translateX(4px);
+      color: var(--accent-color);
+    }
+
+    .reconcile-tip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      border-radius: 12px;
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--accent-color);
+    }
+
+    .reconcile-tip .tip-icon {
+      font-size: 18px;
+    }
+  </style>
+
+  <!-- Onboarding Modal - Shows only for first-time users -->
+  <div class="onboarding-overlay" id="onboarding-overlay">
+    <div class="onboarding-modal">
+      <div class="onboarding-slides" id="onboarding-slides">
+        <!-- Slide 1: Welcome -->
+        <div class="onboarding-slide active" data-slide="0">
+          <div class="onboarding-icon">
+            <svg viewBox="0 0 80 80" fill="none">
+              <rect x="10" y="10" width="60" height="60" rx="16" fill="rgba(0,255,136,0.15)" stroke="var(--accent-color)" stroke-width="2"/>
+              <path d="M25 35h30M25 45h20M25 55h25" stroke="var(--accent-color)" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="55" cy="25" r="12" fill="var(--accent-color)"/>
+              <path d="M51 25l3 3 6-6" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h2>Welcome to TallyUps</h2>
+          <p>Your intelligent expense tracking companion. Scan receipts, match transactions, and generate reports effortlessly.</p>
+          <div class="onboarding-features">
+            <div class="feature-pill"><span>📸</span> AI-Powered Scanning</div>
+            <div class="feature-pill"><span>🔗</span> Auto-Matching</div>
+            <div class="feature-pill"><span>📊</span> Smart Reports</div>
+          </div>
+        </div>
+
+        <!-- Slide 2: How it Works -->
+        <div class="onboarding-slide" data-slide="1">
+          <div class="onboarding-icon">
+            <svg viewBox="0 0 80 80" fill="none">
+              <circle cx="20" cy="40" r="12" fill="rgba(0,255,136,0.2)" stroke="var(--accent-color)" stroke-width="2"/>
+              <circle cx="40" cy="40" r="12" fill="rgba(0,255,136,0.4)" stroke="var(--accent-color)" stroke-width="2"/>
+              <circle cx="60" cy="40" r="12" fill="var(--accent-color)"/>
+              <path d="M26 40h8M46 40h8" stroke="var(--accent-color)" stroke-width="2" stroke-dasharray="2 2"/>
+              <text x="20" y="44" text-anchor="middle" fill="var(--accent-color)" font-size="12" font-weight="bold">1</text>
+              <text x="40" y="44" text-anchor="middle" fill="var(--accent-color)" font-size="12" font-weight="bold">2</text>
+              <text x="60" y="44" text-anchor="middle" fill="#000" font-size="12" font-weight="bold">3</text>
+            </svg>
+          </div>
+          <h2>How It Works</h2>
+          <div class="onboarding-steps">
+            <div class="step-item">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <strong>Scan Receipts</strong>
+                <span>Take a photo or upload - AI extracts merchant, amount & date</span>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <strong>Auto-Match</strong>
+                <span>We match receipts to your bank transactions automatically</span>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <strong>Generate Reports</strong>
+                <span>Export organized expense reports for taxes or reimbursement</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 3: Key Concepts -->
+        <div class="onboarding-slide" data-slide="2">
+          <div class="onboarding-icon">
+            <svg viewBox="0 0 80 80" fill="none">
+              <circle cx="40" cy="40" r="30" fill="none" stroke="rgba(0,255,136,0.3)" stroke-width="8"/>
+              <circle cx="40" cy="40" r="30" fill="none" stroke="var(--accent-color)" stroke-width="8" stroke-dasharray="141 47" stroke-linecap="round" transform="rotate(-90 40 40)"/>
+              <text x="40" y="38" text-anchor="middle" fill="var(--accent-color)" font-size="16" font-weight="bold">75%</text>
+              <text x="40" y="50" text-anchor="middle" fill="var(--text-secondary)" font-size="8">MATCH RATE</text>
+            </svg>
+          </div>
+          <h2>Understanding Your Dashboard</h2>
+          <div class="concept-grid">
+            <div class="concept-item">
+              <div class="concept-icon" style="background: rgba(0,255,136,0.15); color: var(--accent-color);">%</div>
+              <div class="concept-text">
+                <strong>Match Rate</strong>
+                <span>% of transactions with receipts attached</span>
+              </div>
+            </div>
+            <div class="concept-item">
+              <div class="concept-icon" style="background: rgba(255,78,106,0.15); color: #ff4e6a;">!</div>
+              <div class="concept-text">
+                <strong>Missing</strong>
+                <span>Transactions that need receipts</span>
+              </div>
+            </div>
+            <div class="concept-item">
+              <div class="concept-icon" style="background: rgba(255,216,94,0.15); color: #ffd85e;">📥</div>
+              <div class="concept-text">
+                <strong>Inbox</strong>
+                <span>New receipts waiting to be processed</span>
+              </div>
+            </div>
+            <div class="concept-item">
+              <div class="concept-icon" style="background: rgba(74,158,255,0.15); color: #4a9eff;">⏳</div>
+              <div class="concept-text">
+                <strong>Pending</strong>
+                <span>Items needing business category</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 4: Get Started -->
+        <div class="onboarding-slide" data-slide="3">
+          <div class="onboarding-icon celebration">
+            <svg viewBox="0 0 80 80" fill="none">
+              <circle cx="40" cy="40" r="28" fill="var(--accent-color)"/>
+              <path d="M28 40l8 8 16-16" stroke="#000" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="confetti confetti-1"></div>
+            <div class="confetti confetti-2"></div>
+            <div class="confetti confetti-3"></div>
+          </div>
+          <h2>You're All Set!</h2>
+          <p>Start by scanning your first receipt or explore the dashboard to see your expense overview.</p>
+          <div class="quick-start-actions">
+            <button class="quick-start-btn primary" onclick="closeOnboarding(); window.location='/scanner'">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Scan First Receipt
+            </button>
+            <button class="quick-start-btn secondary" onclick="closeOnboarding()">
+              Explore Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="onboarding-nav">
+        <div class="onboarding-dots">
+          <button class="dot active" data-slide="0"></button>
+          <button class="dot" data-slide="1"></button>
+          <button class="dot" data-slide="2"></button>
+          <button class="dot" data-slide="3"></button>
+        </div>
+        <div class="onboarding-buttons">
+          <button class="onboarding-skip" onclick="closeOnboarding()">Skip</button>
+          <button class="onboarding-next" onclick="nextSlide()">
+            Next
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Onboarding Styles */
+    .onboarding-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.4s ease;
+    }
+
+    .onboarding-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .onboarding-modal {
+      background: var(--bg-secondary);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      border-radius: 28px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(0, 255, 136, 0.1);
+      animation: modalEnter 0.5s ease;
+    }
+
+    @keyframes modalEnter {
+      from { transform: scale(0.9) translateY(20px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .onboarding-slides {
+      position: relative;
+      min-height: 420px;
+    }
+
+    .onboarding-slide {
+      position: absolute;
+      inset: 0;
+      padding: 40px 32px 24px;
+      text-align: center;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(30px);
+      transition: all 0.4s ease;
+    }
+
+    .onboarding-slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+      position: relative;
+    }
+
+    .onboarding-slide.exit {
+      transform: translateX(-30px);
+    }
+
+    .onboarding-icon {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 24px;
+      position: relative;
+    }
+
+    .onboarding-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .onboarding-icon.celebration {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.3)); }
+      50% { filter: drop-shadow(0 0 25px rgba(0, 255, 136, 0.6)); }
+    }
+
+    .confetti {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: confetti-fall 2s ease-out infinite;
+    }
+
+    .confetti-1 { background: var(--accent-color); left: -10px; top: 20px; animation-delay: 0s; }
+    .confetti-2 { background: #ff4e6a; right: -10px; top: 30px; animation-delay: 0.3s; }
+    .confetti-3 { background: #ffd85e; left: 50%; top: -10px; animation-delay: 0.6s; }
+
+    @keyframes confetti-fall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(40px) rotate(360deg); opacity: 0; }
+    }
+
+    .onboarding-slide h2 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--text-primary), var(--accent-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .onboarding-slide p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .onboarding-features {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .feature-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent-color);
+    }
+
+    .onboarding-steps {
+      text-align: left;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .step-item:last-child {
+      border-bottom: none;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      background: var(--accent-color);
+      color: #000;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-content strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .step-content span {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      text-align: left;
+    }
+
+    .concept-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background: var(--bg-tertiary);
+      border-radius: 12px;
+    }
+
+    .concept-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .concept-text strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+
+    .concept-text span {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .quick-start-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .quick-start-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 24px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .quick-start-btn.primary {
+      background: linear-gradient(135deg, var(--accent-color), #00cc6a);
+      color: #000;
+      box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+    }
+
+    .quick-start-btn.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(0, 255, 136, 0.4);
+    }
+
+    .quick-start-btn.secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+
+    .quick-start-btn.secondary:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .onboarding-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 32px 28px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .onboarding-dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .onboarding-dots .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--bg-hover);
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      padding: 0;
+    }
+
+    .onboarding-dots .dot.active {
+      width: 24px;
+      border-radius: 4px;
+      background: var(--accent-color);
+    }
+
+    .onboarding-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .onboarding-skip {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 8px 16px;
+    }
+
+    .onboarding-skip:hover {
+      color: var(--text-secondary);
+    }
+
+    .onboarding-next {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-color);
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .onboarding-next:hover {
+      transform: translateX(2px);
+      box-shadow: 0 4px 16px rgba(0, 255, 136, 0.3);
+    }
+
+    .onboarding-next.finish {
+      background: linear-gradient(135deg, var(--accent-color), #00cc6a);
+    }
+  </style>
   <!-- Header with User Controls -->
   <header style="position:fixed; top:0; left:0; right:0; height:56px; background:linear-gradient(180deg, rgba(12,12,18,0.98), rgba(12,12,18,0.95)); backdrop-filter:blur(20px); border-bottom:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; padding:0 20px; z-index:100;">
     <div style="display:flex; align-items:center; gap:12px;">
@@ -574,6 +1320,7 @@
       <h1 style="font-size:18px; font-weight:700; background:linear-gradient(135deg, var(--accent-color), #00cc6a); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Tallyups</h1>
     </div>
     <div style="display:flex; gap:8px;">
+      <button onclick="showOnboarding()" id="help-btn" title="Help & Getting Started" class="help-btn">?</button>
       <button onclick="toggleTheme()" id="theme-toggle" title="Toggle Light/Dark Mode" style="background:var(--bg-elevated); border:1px solid var(--border-color); width:40px; height:40px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--text-primary);">🌙</button>
       <a href="/logout" title="Logout" style="background:var(--bg-elevated); border:1px solid var(--border-color); width:40px; height:40px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; text-decoration:none; color:var(--text-primary);">🚪</a>
     </div>
@@ -737,6 +1484,151 @@
 
     </div>
   </main>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <a href="/" class="nav-link active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </a>
+    <a href="/viewer" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+      </svg>
+      <span>Reconcile</span>
+    </a>
+    <a href="/library" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+        <rect x="3" y="3" width="7" height="7"/>
+        <rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      <span>Library</span>
+    </a>
+    <a href="/incoming" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+        <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+      </svg>
+      <span>Inbox</span>
+      <span class="nav-badge" id="nav-inbox-badge">0</span>
+    </a>
+    <a href="/scanner" class="nav-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span>Scan</span>
+    </a>
+  </nav>
+
+  <style>
+    /* Bottom Navigation Styles */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(18, 18, 26, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+      z-index: 200;
+    }
+
+    @media (min-width: 1024px) {
+      .bottom-nav {
+        display: none;
+      }
+    }
+
+    .nav-link {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 6px 4px;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+    }
+
+    .nav-link:active {
+      transform: scale(0.95);
+    }
+
+    .nav-link.active {
+      color: var(--accent-color);
+    }
+
+    .nav-link.active::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 3px;
+      background: var(--accent-color);
+      border-radius: 0 0 3px 3px;
+    }
+
+    .nav-link.active svg {
+      transform: scale(1.1);
+    }
+
+    .nav-link svg {
+      transition: transform 0.2s ease;
+    }
+
+    .nav-badge {
+      position: absolute;
+      top: 4px;
+      right: 50%;
+      transform: translateX(12px);
+      min-width: 16px;
+      height: 16px;
+      background: var(--error);
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: white;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+    }
+
+    .nav-badge.visible {
+      display: flex;
+    }
+
+    /* Adjust body padding for bottom nav */
+    body {
+      padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    }
+
+    @media (min-width: 1024px) {
+      body {
+        padding-bottom: 0;
+      }
+    }
+  </style>
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -970,7 +1862,8 @@
           title: `${missingCount} Missing Receipts`,
           message: 'Transactions need receipts attached for expense tracking.',
           action: 'Fix Now',
-          href: '/viewer?filter=missing'
+          href: '#',
+          onclick: `event.preventDefault(); showReconcileGuide(${missingCount});`
         });
       }
 
@@ -1010,7 +1903,7 @@
       }
 
       container.innerHTML = alerts.map(a => `
-        <a href="${a.href}" class="alert alert--${a.type}">
+        <a href="${a.href}" class="alert alert--${a.type}" ${a.onclick ? `onclick="${a.onclick}"` : ''}>
           <div class="alert__icon">${a.icon}</div>
           <div class="alert__content">
             <div class="alert__title">${a.title}</div>
@@ -1122,6 +2015,521 @@
 
     // Initialize on load
     document.addEventListener('DOMContentLoaded', initDashboard);
+
+    // =====================================
+    // ONBOARDING SYSTEM
+    // =====================================
+    let currentSlide = 0;
+    const totalSlides = 4;
+
+    function showOnboarding() {
+      document.getElementById('onboarding-overlay').classList.add('visible');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeOnboarding() {
+      document.getElementById('onboarding-overlay').classList.remove('visible');
+      document.body.style.overflow = '';
+      localStorage.setItem('tallyups_onboarding_complete', 'true');
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        goToSlide(currentSlide + 1);
+      } else {
+        closeOnboarding();
+      }
+    }
+
+    function goToSlide(index) {
+      const slides = document.querySelectorAll('.onboarding-slide');
+      const dots = document.querySelectorAll('.onboarding-dots .dot');
+      const nextBtn = document.querySelector('.onboarding-next');
+
+      // Exit current slide
+      slides[currentSlide].classList.add('exit');
+      slides[currentSlide].classList.remove('active');
+      dots[currentSlide].classList.remove('active');
+
+      // Enter new slide
+      setTimeout(() => {
+        slides[currentSlide].classList.remove('exit');
+        currentSlide = index;
+        slides[currentSlide].classList.add('active');
+        dots[currentSlide].classList.add('active');
+
+        // Update button text on last slide
+        if (currentSlide === totalSlides - 1) {
+          nextBtn.innerHTML = 'Get Started <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="m9 18 6-6-6-6"/></svg>';
+          nextBtn.classList.add('finish');
+        } else {
+          nextBtn.innerHTML = 'Next <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="m9 18 6-6-6-6"/></svg>';
+          nextBtn.classList.remove('finish');
+        }
+      }, 100);
+    }
+
+    // Initialize onboarding dots click handlers
+    document.querySelectorAll('.onboarding-dots .dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        goToSlide(parseInt(dot.dataset.slide));
+      });
+    });
+
+    // Check if first-time user
+    if (!localStorage.getItem('tallyups_onboarding_complete')) {
+      setTimeout(showOnboarding, 500);
+    }
+
+    // =====================================
+    // RECONCILIATION GUIDE
+    // =====================================
+    function showReconcileGuide(missingCount) {
+      const overlay = document.getElementById('reconcile-guide-overlay');
+      const countEl = document.getElementById('missing-guide-count');
+      if (countEl && missingCount !== undefined) {
+        countEl.textContent = missingCount;
+      }
+      overlay.classList.add('visible');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeReconcileGuide() {
+      document.getElementById('reconcile-guide-overlay').classList.remove('visible');
+      document.body.style.overflow = '';
+    }
+
+    function markAsNoReceipt() {
+      closeReconcileGuide();
+      window.location = '/viewer?filter=missing&action=mark-no-receipt';
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('reconcile-guide-overlay').addEventListener('click', function(e) {
+      if (e.target === this) closeReconcileGuide();
+    });
+
+    // Close on escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeReconcileGuide();
+        closeOnboarding();
+      }
+    });
+
+    // =====================================
+    // TOOLTIP SYSTEM
+    // =====================================
+    function createTooltip(element, text) {
+      const tooltip = document.createElement('div');
+      tooltip.className = 'stat-tooltip';
+      tooltip.textContent = text;
+
+      element.style.position = 'relative';
+      element.appendChild(tooltip);
+
+      element.addEventListener('mouseenter', () => tooltip.classList.add('visible'));
+      element.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+      element.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        tooltip.classList.toggle('visible');
+      });
+    }
+
+    // Add tooltips after DOM loads
+    document.addEventListener('DOMContentLoaded', () => {
+      // Hero stat tooltips
+      const tooltipData = {
+        'inbox-count': 'New receipts from email waiting to be reviewed and matched',
+        'missing-count': 'Bank transactions that don\'t have a receipt attached yet',
+        'pending-count': 'Items that need a business category assigned',
+        'month-total': 'Total expenses tracked this month across all businesses'
+      };
+
+      Object.entries(tooltipData).forEach(([id, text]) => {
+        const el = document.getElementById(id);
+        if (el && el.parentElement) {
+          createTooltip(el.parentElement, text);
+        }
+      });
+
+      // Match rate tooltip
+      const matchRateEl = document.querySelector('.hero-progress');
+      if (matchRateEl) {
+        createTooltip(matchRateEl, 'Percentage of bank transactions that have receipts attached. 100% means all expenses are documented!');
+      }
+    });
+  </script>
+
+  <style>
+    /* Tooltip Styles */
+    .stat-tooltip {
+      position: absolute;
+      bottom: calc(100% + 12px);
+      left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: rgba(0, 0, 0, 0.95);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: normal;
+      width: max-content;
+      max-width: 220px;
+      text-align: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      z-index: 1000;
+      pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+    }
+
+    .stat-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: rgba(0, 0, 0, 0.95);
+    }
+
+    .stat-tooltip.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .hero-stat {
+      cursor: help;
+      transition: all 0.2s;
+    }
+
+    .hero-stat:hover {
+      transform: translateY(-2px);
+      background: var(--bg-hover);
+    }
+
+    .hero-progress {
+      cursor: help;
+    }
+
+    /* Help button in header */
+    .help-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .help-btn:hover {
+      background: rgba(0, 255, 136, 0.15);
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+    }
+
+    /* Micro-interactions */
+    .quick-action {
+      transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .quick-action:active {
+      transform: scale(0.96);
+    }
+
+    .alert {
+      transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .alert:active {
+      transform: scale(0.98);
+    }
+
+    /* Success animations */
+    @keyframes success-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+      70% { box-shadow: 0 0 0 15px rgba(0, 255, 136, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+    }
+
+    .success-pulse {
+      animation: success-pulse 0.6s ease;
+    }
+
+    /* Progress ring animation enhancement */
+    .hero-progress__fill {
+      transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Card hover effects */
+    .dashboard-card {
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .dashboard-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      border-color: rgba(0, 255, 136, 0.3);
+    }
+
+    /* Staggered animation for dashboard cards */
+    .dashboard-card {
+      opacity: 0;
+      animation: cardFadeIn 0.5s ease forwards;
+    }
+
+    .dashboard-card:nth-child(1) { animation-delay: 0.1s; }
+    .dashboard-card:nth-child(2) { animation-delay: 0.2s; }
+    .dashboard-card:nth-child(3) { animation-delay: 0.3s; }
+    .dashboard-card:nth-child(4) { animation-delay: 0.4s; }
+    .dashboard-card:nth-child(5) { animation-delay: 0.5s; }
+
+    @keyframes cardFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Hero section entrance animation */
+    .dashboard-hero {
+      animation: heroFadeIn 0.8s ease;
+    }
+
+    @keyframes heroFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Quick actions stagger */
+    .quick-action {
+      opacity: 0;
+      animation: quickActionIn 0.4s ease forwards;
+    }
+
+    .quick-action:nth-child(1) { animation-delay: 0.05s; }
+    .quick-action:nth-child(2) { animation-delay: 0.1s; }
+    .quick-action:nth-child(3) { animation-delay: 0.15s; }
+    .quick-action:nth-child(4) { animation-delay: 0.2s; }
+    .quick-action:nth-child(5) { animation-delay: 0.25s; }
+    .quick-action:nth-child(6) { animation-delay: 0.3s; }
+
+    @keyframes quickActionIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* Number counter animation */
+    .hero-stat__value, .hero-progress__value {
+      transition: all 0.3s ease;
+    }
+
+    /* Success Celebration */
+    .celebration-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10000;
+    }
+
+    .confetti-particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      animation: confetti-fly 2s ease-out forwards;
+    }
+
+    @keyframes confetti-fly {
+      0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    /* Loading Skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-elevated) 50%, var(--bg-hover) 75%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.5s infinite;
+      border-radius: 8px;
+    }
+
+    @keyframes skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .skeleton-text {
+      height: 16px;
+      width: 80%;
+      margin: 8px 0;
+    }
+
+    .skeleton-stat {
+      height: 48px;
+      width: 100%;
+    }
+
+    /* Enhanced Button States */
+    .btn-loading {
+      position: relative;
+      color: transparent !important;
+      pointer-events: none;
+    }
+
+    .btn-loading::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      top: 50%;
+      left: 50%;
+      margin: -9px 0 0 -9px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: btn-spin 0.6s linear infinite;
+    }
+
+    @keyframes btn-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Success Check Animation */
+    .success-check {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 60px;
+      height: 60px;
+      background: var(--accent-color);
+      border-radius: 50%;
+      animation: check-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .success-check svg {
+      width: 32px;
+      height: 32px;
+      stroke: #000;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .success-check svg path {
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      animation: check-draw 0.4s ease 0.2s forwards;
+    }
+
+    @keyframes check-pop {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes check-draw {
+      to { stroke-dashoffset: 0; }
+    }
+
+    /* Number Count Up Animation */
+    .count-up {
+      animation: count-pulse 0.5s ease;
+    }
+
+    @keyframes count-pulse {
+      0% { transform: scale(1); color: var(--text-primary); }
+      50% { transform: scale(1.1); color: var(--accent-color); }
+      100% { transform: scale(1); color: var(--text-primary); }
+    }
+
+    /* Focus Ring Enhancement */
+    :focus-visible {
+      outline: 2px solid var(--accent-color);
+      outline-offset: 2px;
+    }
+
+    /* Smooth scroll behavior */
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+
+  <script>
+    // Success celebration function
+    function showCelebration() {
+      const colors = ['#00ff88', '#ff4e6a', '#ffd85e', '#4a9eff', '#aa66ff'];
+      const overlay = document.createElement('div');
+      overlay.className = 'celebration-overlay';
+      document.body.appendChild(overlay);
+
+      for (let i = 0; i < 30; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'confetti-particle';
+        particle.style.left = Math.random() * 100 + 'vw';
+        particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        particle.style.animationDelay = Math.random() * 0.5 + 's';
+        particle.style.animationDuration = (1.5 + Math.random()) + 's';
+        overlay.appendChild(particle);
+      }
+
+      setTimeout(() => overlay.remove(), 3000);
+    }
+
+    // Number count animation
+    function animateCount(el, target, duration = 1000) {
+      const start = parseInt(el.textContent) || 0;
+      const increment = (target - start) / (duration / 16);
+      let current = start;
+      const timer = setInterval(() => {
+        current += increment;
+        if ((increment > 0 && current >= target) || (increment < 0 && current <= target)) {
+          current = target;
+          clearInterval(timer);
+          el.classList.add('count-up');
+          setTimeout(() => el.classList.remove('count-up'), 500);
+        }
+        el.textContent = Math.round(current);
+      }, 16);
+    }
+
+    // Expose celebration function globally
+    window.showCelebration = showCelebration;
+    window.animateCount = animateCount;
   </script>
 </body>
 </html>

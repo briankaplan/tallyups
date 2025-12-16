@@ -794,47 +794,146 @@
       margin-left: 11px;
     }
 
-    /* Empty State */
+    /* Empty State - Enhanced */
     .empty-state {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 80px 20px;
+      padding: 60px 20px 80px;
       text-align: center;
+      animation: emptyFadeIn 0.6s ease;
     }
 
-    .empty-state svg {
-      width: 80px;
-      height: 80px;
-      color: var(--border);
+    @keyframes emptyFadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .empty-illustration {
+      width: 140px;
+      height: 140px;
       margin-bottom: 24px;
     }
 
+    .empty-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .empty-svg .float-1 {
+      animation: float1 3s ease-in-out infinite;
+    }
+
+    .empty-svg .float-2 {
+      animation: float2 4s ease-in-out infinite;
+    }
+
+    .empty-svg .float-3 {
+      animation: float3 3.5s ease-in-out infinite;
+    }
+
+    @keyframes float1 {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    @keyframes float2 {
+      0%, 100% { transform: translateY(0) translateX(0); }
+      50% { transform: translateY(-6px) translateX(4px); }
+    }
+
+    @keyframes float3 {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
     .empty-state h3 {
-      font-size: 20px;
+      font-size: 22px;
+      font-weight: 700;
       margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--text-primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .empty-state p {
-      color: var(--text-muted);
+      color: var(--text-secondary);
+      font-size: 15px;
+      max-width: 320px;
+      margin-bottom: 20px;
+    }
+
+    .empty-tips {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .empty-tip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       font-size: 14px;
-      max-width: 300px;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+
+    .empty-tip:hover {
+      border-color: var(--accent);
+      background: rgba(0, 255, 136, 0.05);
+    }
+
+    .tip-icon {
+      font-size: 18px;
+    }
+
+    .empty-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
     }
 
     .empty-action {
-      margin-top: 24px;
-      padding: 12px 24px;
-      background: var(--accent);
-      border: none;
-      border-radius: 10px;
-      color: #000;
+      padding: 14px 24px;
+      border-radius: 12px;
       font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .empty-action.primary {
+      background: linear-gradient(135deg, var(--accent), #00cc6a);
+      color: #000;
+      box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+    }
+
+    .empty-action.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(0, 255, 136, 0.4);
+    }
+
+    .empty-action.secondary {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .empty-action.secondary:hover {
+      border-color: var(--accent);
+      background: rgba(0, 255, 136, 0.1);
     }
 
     /* Loading */
@@ -1895,23 +1994,60 @@
         <!-- Timeline View -->
         <div class="timeline-view" id="timeline-view"></div>
 
-        <!-- Empty State -->
+        <!-- Empty State - Enhanced with guidance -->
         <div class="empty-state hidden" id="empty-state">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
-            <rect x="9" y="3" width="6" height="4" rx="1"></rect>
-            <path d="M9 14l2 2 4-4"></path>
-          </svg>
-          <h3 id="empty-title">No receipts found</h3>
-          <p id="empty-message">Try adjusting your filters or upload some receipts</p>
-          <button class="empty-action" id="empty-upload-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
+          <div class="empty-illustration">
+            <svg viewBox="0 0 120 120" fill="none" class="empty-svg">
+              <!-- Receipt shape -->
+              <rect x="35" y="20" width="50" height="70" rx="4" fill="rgba(0, 255, 136, 0.1)" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 2"/>
+              <!-- Lines on receipt -->
+              <line x1="45" y1="35" x2="75" y2="35" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="45" y1="45" x2="70" y2="45" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="45" y1="55" x2="65" y2="55" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="45" y1="70" x2="75" y2="70" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+              <!-- Plus circle -->
+              <circle cx="85" cy="75" r="18" fill="var(--accent)"/>
+              <line x1="85" y1="67" x2="85" y2="83" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+              <line x1="77" y1="75" x2="93" y2="75" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+              <!-- Floating elements -->
+              <circle cx="25" cy="40" r="4" fill="rgba(0, 255, 136, 0.3)" class="float-1"/>
+              <circle cx="100" cy="30" r="3" fill="rgba(74, 158, 255, 0.3)" class="float-2"/>
+              <circle cx="30" cy="90" r="5" fill="rgba(255, 165, 2, 0.3)" class="float-3"/>
             </svg>
-            Upload Receipts
-          </button>
+          </div>
+          <h3 id="empty-title">No receipts yet</h3>
+          <p id="empty-message">Start building your receipt library! Here's how:</p>
+          <div class="empty-tips">
+            <div class="empty-tip">
+              <span class="tip-icon">📸</span>
+              <span class="tip-text">Scan receipts with your camera</span>
+            </div>
+            <div class="empty-tip">
+              <span class="tip-icon">📧</span>
+              <span class="tip-text">Auto-import from Gmail</span>
+            </div>
+            <div class="empty-tip">
+              <span class="tip-icon">📤</span>
+              <span class="tip-text">Drag & drop files here</span>
+            </div>
+          </div>
+          <div class="empty-actions">
+            <button class="empty-action primary" id="empty-scan-btn" onclick="window.location='/scanner'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Scan Receipt
+            </button>
+            <button class="empty-action secondary" id="empty-upload-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Upload Files
+            </button>
+          </div>
         </div>
       </div>
     </main>
@@ -2159,7 +2295,7 @@
         <path d="M9 11l3 3L22 4"/>
         <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
       </svg>
-      <span>Review</span>
+      <span>Reconcile</span>
     </a>
     <a href="/library" class="nav-link active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
