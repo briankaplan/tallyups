@@ -13024,7 +13024,7 @@ tr:hover {{
   </div>
   <div class="stat-card">
     <div class="stat-label">Net Total</div>
-    <div class="stat-value">-${net_total:,.2f}</div>
+    <div class="stat-value" style="color:{'#ff6b6b' if net_total > 0 else '#00ff88' if net_total < 0 else '#888'}">{"−" if net_total > 0 else "+" if net_total < 0 else ""}${abs(net_total):,.2f}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Transactions</div>
