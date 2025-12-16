@@ -228,8 +228,8 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [unit-tests, integration-tests]
-    # Temporarily disabled - using manual Railway deployment
-    if: false && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Production deployment - triggers on push to main
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     environment:
       name: production
