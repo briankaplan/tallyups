@@ -327,7 +327,7 @@ class TransactionReviewInterface {
         const classes = [];
         if (tx._index === this.selectedTransaction?._index) classes.push('selected');
         if (this.bulk.selectedIds.has(tx._index)) classes.push('bulk-selected');
-        if (parseFloat(tx['Chase Amount']) > 0) classes.push('refund-row');
+        if (parseFloat(tx['Chase Amount']) < 0) classes.push('refund-row'); // Chase: negative = refund
         if (tx.newly_matched) classes.push('newly-matched');
 
         row.className = classes.join(' ');
