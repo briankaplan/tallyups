@@ -4542,6 +4542,29 @@ def update_transaction_notes(tx_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@app.route("/api/transactions/<int:tx_id>/description", methods=["PUT"])
+def update_transaction_description(tx_id):
+    """Update a transaction's ai_note field (description for reports)"""
+    try:
+        data = request.get_json()
+        if data is None:
+            return jsonify({'ok': False, 'error': 'No data provided'}), 400
+
+        ai_note = data.get('ai_note', '')
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE transactions SET ai_note = %s WHERE id = %s", (ai_note, tx_id))
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Description updated'})
+    except Exception as e:
+        print(f"Update description error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/transactions/move-to-report", methods=["POST"])
 def move_transactions_to_report():
     """Move transactions to a different report"""
@@ -12684,15 +12707,17 @@ def reports_export_downhome(report_id):
                 ""
             )
 
-            # Build memo from description and notes
-            description = exp.get("chase_description", "")
-            notes = exp.get("notes", "")
-            memo = description
-            if notes and notes != description:
-                memo = f"{description} - {notes}" if description else notes
+            # Build memo from merchant and ai_note (description)
+            merchant = exp.get("chase_description", "")
+            ai_note = exp.get("ai_note", "") or exp.get("notes", "")
+            # Use ai_note as the primary memo, append merchant if different
+            if ai_note:
+                memo = ai_note
+            else:
+                memo = merchant
 
-            # Get receipt URL - check receipt_url column or generate from filename
-            receipt_url = exp.get("receipt_url", "")
+            # Get receipt URL - prefer R2 URL, then receipt_url, then generate from filename
+            receipt_url = exp.get("r2_url", "") or exp.get("receipt_url", "")
             if not receipt_url:
                 receipt_file = exp.get("receipt_file", "")
                 if receipt_file:
@@ -12993,13 +13018,11 @@ def reports_standalone_page(report_id):
         # If no expenses, show a message
         expense_count = len(expenses) if expenses else count_from_meta
 
-        # Use ai_note from database, fallback to generated note
+        # Generate ai_note for expenses that don't have one
         for exp in expenses:
-            # Prefer ai_note from database
-            if exp.get("ai_note"):
-                exp["notes"] = exp.get("ai_note")
-            elif not exp.get("notes") or exp.get("notes", "").startswith("AI-"):
-                exp["notes"] = generate_human_note({
+            if not exp.get("ai_note") and not exp.get("notes"):
+                # Generate a basic note from the description
+                exp["ai_note"] = generate_human_note({
                     "Chase Description": exp.get("chase_description", ""),
                     "Chase Category": exp.get("chase_category", ""),
                     "Category": exp.get("category", ""),
@@ -13267,33 +13290,45 @@ tr.selected {{
   color: var(--text-muted);
   font-size: 12px;
 }}
-.notes-cell {{
-  max-width: 200px;
+.description-cell {{
+  max-width: 300px;
+  min-width: 200px;
 }}
-.notes {{
-  color: var(--text-muted);
+.merchant-cell {{
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}}
+.description {{
+  color: var(--text);
   font-size: 12px;
   cursor: pointer;
   padding: 6px 10px;
   border-radius: 6px;
+  display: block;
+  line-height: 1.4;
   transition: background 0.2s;
   display: block;
   min-height: 28px;
 }}
-.notes:hover {{
+.description:hover {{
   background: var(--bg-hover);
 }}
-.notes-input {{
+.description-input {{
   background: var(--bg-dark);
   border: 1px solid var(--accent);
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 8px 10px;
   color: var(--text);
   font-size: 12px;
   width: 100%;
-  min-width: 180px;
+  min-width: 220px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
 }}
-.notes-input:focus {{
+.description-input:focus {{
   outline: none;
   box-shadow: 0 0 0 2px rgba(0,255,136,0.2);
 }}
@@ -13486,10 +13521,10 @@ tr:hover .row-actions {{
       <tr>
         <th style="width:40px;"><input type="checkbox" class="row-checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
         <th>Date</th>
-        <th>Description</th>
+        <th>Merchant</th>
         <th>Amount</th>
         <th>Category</th>
-        <th style="min-width:180px;">Notes</th>
+        <th style="min-width:250px;">Description</th>
         <th>Receipt</th>
         <th style="width:100px;">Actions</th>
       </tr>
@@ -13501,7 +13536,7 @@ tr:hover .row-actions {{
         for exp in expenses:
             exp_id = exp.get("id", "")
             date = format_date(exp.get("chase_date", ""))
-            desc = exp.get("chase_description", "")
+            merchant = exp.get("chase_description", "")
             raw_amount = float(exp.get("chase_amount", 0) or 0)
             # Chase convention: POSITIVE = charge (purchase), NEGATIVE = refund/credit
             if raw_amount > 0:
@@ -13516,8 +13551,9 @@ tr:hover .row-actions {{
                 amount_str = "$0.00"
                 amount_class = ""
             category = exp.get("category") or exp.get("chase_category", "")
-            notes = exp.get("notes", "") or ""
-            notes_escaped = notes.replace('"', '&quot;').replace("'", "&#39;")
+            # Use ai_note as the primary description, fall back to notes
+            description = exp.get("ai_note", "") or exp.get("notes", "") or ""
+            description_escaped = description.replace('"', '&quot;').replace("'", "&#39;")
 
             # Get receipt URL - prefer R2 URL, fall back to receipt_url, then local path
             receipt_url = exp.get("r2_url") or exp.get("R2 URL") or exp.get("receipt_url") or ""
@@ -13536,11 +13572,11 @@ tr:hover .row-actions {{
       <tr data-id="{exp_id}">
         <td><input type="checkbox" class="row-checkbox" onchange="updateSelection()"></td>
         <td>{date}</td>
-        <td>{desc}</td>
+        <td class="merchant-cell">{merchant}</td>
         <td class="amount {amount_class}">{amount_str}</td>
         <td>{category}</td>
-        <td class="notes-cell">
-          <span class="notes" onclick="editNotes(this, {exp_id})" title="Click to edit">{notes or "<em style='opacity:0.5'>Add note...</em>"}</span>
+        <td class="description-cell">
+          <span class="description" onclick="editDescription(this, {exp_id})" title="Click to edit">{description or "<em style='opacity:0.5'>Add description...</em>"}</span>
         </td>
         <td>{receipt_link}</td>
         <td>
@@ -13569,8 +13605,11 @@ tr:hover .row-actions {{
   <div class="modal" onclick="event.stopPropagation()">
     <h3>Move Transaction</h3>
     <select id="targetReport">
-      <option value="">Select a report...</option>
+      <option value="">Select destination...</option>
+      <option value="__LIBRARY__">📚 Return to Library (unassigned)</option>
+      <optgroup label="Reports">
       """ + report_options + """
+      </optgroup>
     </select>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeMoveModal()">Cancel</button>
@@ -13668,15 +13707,15 @@ function deselectAll() {
   updateSelection();
 }
 
-// Inline notes editing
-function editNotes(el, id) {
+// Inline description editing (saves to ai_note field)
+function editDescription(el, id) {
   const currentText = el.textContent.trim();
-  const isPlaceholder = el.innerHTML.includes('Add note');
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.className = 'notes-input';
+  const isPlaceholder = el.innerHTML.includes('Add description');
+  const input = document.createElement('textarea');
+  input.className = 'description-input';
   input.value = isPlaceholder ? '' : currentText;
-  input.placeholder = 'Enter note...';
+  input.placeholder = 'Enter description...';
+  input.rows = 2;
 
   el.replaceWith(input);
   input.focus();
@@ -13685,33 +13724,33 @@ function editNotes(el, id) {
   const save = async () => {
     const newValue = input.value.trim();
     const span = document.createElement('span');
-    span.className = 'notes';
-    span.onclick = () => editNotes(span, id);
+    span.className = 'description';
+    span.onclick = () => editDescription(span, id);
     span.title = 'Click to edit';
-    span.innerHTML = newValue || '<em style=\"opacity:0.5\">Add note...</em>';
+    span.innerHTML = newValue || '<em style=\"opacity:0.5\">Add description...</em>';
     input.replaceWith(span);
 
     if (newValue !== currentText && !(isPlaceholder && !newValue)) {
       try {
-        const res = await fetch('/api/transactions/' + id + '/notes', {
+        const res = await fetch('/api/transactions/' + id + '/description', {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({notes: newValue})
+          body: JSON.stringify({ai_note: newValue})
         });
         if (res.ok) {
-          showToast('Note saved');
+          showToast('Description saved');
         } else {
-          showToast('Failed to save note', true);
+          showToast('Failed to save description', true);
         }
       } catch (e) {
-        showToast('Failed to save note', true);
+        showToast('Failed to save description', true);
       }
     }
   };
 
   input.onblur = save;
   input.onkeydown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); input.blur(); }
     if (e.key === 'Escape') { input.value = isPlaceholder ? '' : currentText; input.blur(); }
   };
 }
@@ -13740,18 +13779,29 @@ function closeMoveModal(e) {
 async function confirmMove() {
   const targetReport = document.getElementById('targetReport').value;
   if (!targetReport) {
-    showToast('Please select a report', true);
+    showToast('Please select a destination', true);
     return;
   }
 
   const ids = isBulkMove ? Array.from(selectedIds) : [currentMoveId];
 
   try {
-    const res = await fetch('/api/transactions/move-to-report', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({transaction_ids: ids, target_report_id: targetReport})
-    });
+    let res;
+    if (targetReport === '__LIBRARY__') {
+      // Return to library (remove from report)
+      res = await fetch('/api/transactions/bulk-remove-from-report', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({transaction_ids: ids, report_id: REPORT_ID})
+      });
+    } else {
+      // Move to another report
+      res = await fetch('/api/transactions/move-to-report', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({transaction_ids: ids, target_report_id: targetReport})
+      });
+    }
 
     if (res.ok) {
       showToast(ids.length + ' transaction(s) moved');
