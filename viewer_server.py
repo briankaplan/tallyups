@@ -13058,6 +13058,8 @@ def reports_standalone_page(report_id):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{report_name} - Expense Report</title>
+<link rel="stylesheet" href="/static/css/design-system.css">
+<script src="/static/js/app-shell.js" defer></script>
 <style>
 :root {{
   --bg-dark: #0a0a0a;
@@ -13074,13 +13076,17 @@ def reports_standalone_page(report_id):
 * {{ box-sizing: border-box; }}
 body {{
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 30px 20px;
   background: var(--bg-dark);
   color: var(--text);
+  margin: 0;
+  padding: 0;
 }}
-.header {{
+.main-content {{
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 80px 20px 100px 20px;
+}}
+.report-header {{
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: #000;
   padding: 30px 40px;
@@ -13093,17 +13099,17 @@ body {{
   flex-wrap: wrap;
   gap: 20px;
 }}
-.header-left h1 {{
+.report-header-left h1 {{
   margin: 0 0 8px 0;
   font-size: 24px;
   font-weight: 700;
 }}
-.header-left p {{
+.report-header-left p {{
   margin: 4px 0;
   opacity: 0.85;
   font-size: 14px;
 }}
-.header-right {{
+.report-header-right {{
   display: flex;
   gap: 10px;
 }}
@@ -13465,13 +13471,14 @@ tr:hover .row-actions {{
 </style>
 </head>
 <body>
+<main class="main-content">
 
-<div class="header">
-  <div class="header-left">
+<div class="report-header">
+  <div class="report-header-left">
     <h1>{report_name}</h1>
     <p><strong>{business_type}</strong> &middot; {date_from} to {date_to}</p>
   </div>
-  <div class="header-right">
+  <div class="report-header-right">
     <a href="/reports/{report_id}/export/downhome" class="btn btn-primary" download>
       <span>📊</span> Export CSV
     </a>
@@ -13891,6 +13898,7 @@ document.addEventListener('keydown', (e) => {
 });
 </script>
 
+</main>
 </body>
 </html>
 """
