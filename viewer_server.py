@@ -4519,6 +4519,137 @@ def update_transaction(tx_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route("/api/transactions/<int:tx_id>/notes", methods=["PUT"])
+def update_transaction_notes(tx_id):
+    """Update a transaction's notes field (for inline editing in reports)"""
+    try:
+        data = request.get_json()
+        if data is None:
+            return jsonify({'ok': False, 'error': 'No data provided'}), 400
+
+        notes = data.get('notes', '')
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE transactions SET notes = %s WHERE id = %s", (notes, tx_id))
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({'ok': True, 'message': 'Notes updated'})
+    except Exception as e:
+        print(f"Update notes error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/transactions/move-to-report", methods=["POST"])
+def move_transactions_to_report():
+    """Move transactions to a different report"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'ok': False, 'error': 'No data provided'}), 400
+
+        transaction_ids = data.get('transaction_ids', [])
+        target_report_id = data.get('target_report_id')
+
+        if not transaction_ids or not target_report_id:
+            return jsonify({'ok': False, 'error': 'Missing transaction_ids or target_report_id'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get target report's business_type
+        cursor.execute("SELECT business_type FROM reports WHERE report_id = %s", (target_report_id,))
+        target_report = cursor.fetchone()
+        if not target_report:
+            cursor.close()
+            return_db_connection(conn)
+            return jsonify({'ok': False, 'error': 'Target report not found'}), 404
+
+        target_business_type = target_report['business_type']
+
+        # Update transactions
+        placeholders = ','.join(['%s'] * len(transaction_ids))
+        cursor.execute(f"""
+            UPDATE transactions
+            SET report_id = %s, business_type = %s
+            WHERE id IN ({placeholders})
+        """, [target_report_id, target_business_type] + list(transaction_ids))
+
+        affected = cursor.rowcount
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({'ok': True, 'message': f'{affected} transaction(s) moved', 'affected': affected})
+    except Exception as e:
+        print(f"Move transactions error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/transactions/<int:tx_id>/remove-from-report", methods=["POST"])
+def remove_transaction_from_report(tx_id):
+    """Remove a transaction from its report (returns to reconciliation queue)"""
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Clear the report_id to remove from report
+        cursor.execute("""
+            UPDATE transactions
+            SET report_id = NULL
+            WHERE id = %s
+        """, (tx_id,))
+
+        affected = cursor.rowcount
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        if affected == 0:
+            return jsonify({'ok': False, 'error': 'Transaction not found'}), 404
+
+        return jsonify({'ok': True, 'message': 'Transaction removed from report'})
+    except Exception as e:
+        print(f"Remove from report error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/transactions/bulk-remove-from-report", methods=["POST"])
+def bulk_remove_transactions_from_report():
+    """Remove multiple transactions from their report (returns to reconciliation queue)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'ok': False, 'error': 'No data provided'}), 400
+
+        transaction_ids = data.get('transaction_ids', [])
+        if not transaction_ids:
+            return jsonify({'ok': False, 'error': 'No transaction_ids provided'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Clear the report_id for all specified transactions
+        placeholders = ','.join(['%s'] * len(transaction_ids))
+        cursor.execute(f"""
+            UPDATE transactions
+            SET report_id = NULL
+            WHERE id IN ({placeholders})
+        """, list(transaction_ids))
+
+        affected = cursor.rowcount
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({'ok': True, 'message': f'{affected} transaction(s) removed from report', 'affected': affected})
+    except Exception as e:
+        print(f"Bulk remove from report error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/transactions/attach-receipt", methods=["POST"])
 @login_required
 def attach_receipt_to_transaction():
@@ -12865,6 +12996,27 @@ def reports_standalone_page(report_id):
                     "Chase Amount": exp.get("chase_amount", 0)
                 })
 
+        # Get list of all reports for move dropdown
+        all_reports = []
+        try:
+            report_cursor = db_execute(conn, db_type, """
+                SELECT DISTINCT report_id, report_name, business_type
+                FROM reports
+                WHERE report_id != %s
+                ORDER BY created_at DESC
+                LIMIT 20
+            """, (report_id,))
+            all_reports = report_cursor.fetchall()
+            report_cursor.close()
+        except:
+            pass
+
+        # Build report options HTML
+        report_options = ''.join([
+            f'<option value="{r["report_id"]}">{r["report_name"]} ({r["business_type"]})</option>'
+            for r in all_reports
+        ])
+
         # Render HTML template
         html = f"""
 <!DOCTYPE html>
@@ -12874,157 +13026,428 @@ def reports_standalone_page(report_id):
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{report_name} - Expense Report</title>
 <style>
+:root {{
+  --bg-dark: #0a0a0a;
+  --bg-card: #111;
+  --bg-hover: #1a1a1a;
+  --border: #222;
+  --text: #f0f0f0;
+  --text-muted: #888;
+  --accent: #00ff88;
+  --accent-dark: #00cc6a;
+  --danger: #ff6b6b;
+  --warning: #ffd93d;
+}}
+* {{ box-sizing: border-box; }}
 body {{
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 40px 20px;
-  background: #000;
-  color: #f0f0f0;
+  padding: 30px 20px;
+  background: var(--bg-dark);
+  color: var(--text);
 }}
 .header {{
-  background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: #000;
-  padding: 40px;
-  border-radius: 12px;
-  margin-bottom: 30px;
-  box-shadow: 0 4px 16px rgba(0,255,136,0.3);
+  padding: 30px 40px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0,255,136,0.25);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
 }}
-.header h1 {{
-  margin: 0 0 10px 0;
-  font-size: 28px;
+.header-left h1 {{
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 700;
 }}
-.header p {{
-  margin: 5px 0;
-  opacity: 0.8;
-  font-size: 16px;
+.header-left p {{
+  margin: 4px 0;
+  opacity: 0.85;
+  font-size: 14px;
+}}
+.header-right {{
+  display: flex;
+  gap: 10px;
 }}
 .stats {{
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}}
+@media (max-width: 900px) {{
+  .stats {{ grid-template-columns: repeat(3, 1fr); }}
+}}
+@media (max-width: 600px) {{
+  .stats {{ grid-template-columns: repeat(2, 1fr); }}
 }}
 .stat-card {{
-  background: #111;
-  padding: 24px;
-  border-radius: 12px;
-  border: 1px solid #222;
-}}
-.stat-label {{
-  color: #888;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-}}
-.stat-value {{
-  font-size: 32px;
-  font-weight: 700;
-  color: #00ff88;
-}}
-.actions {{
-  background: #111;
+  background: var(--bg-card);
   padding: 20px;
   border-radius: 12px;
-  margin-bottom: 30px;
+  border: 1px solid var(--border);
+  transition: transform 0.2s, box-shadow 0.2s;
+}}
+.stat-card:hover {{
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}}
+.stat-label {{
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}}
+.stat-value {{
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+}}
+.toolbar {{
+  background: var(--bg-card);
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
   display: flex;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
-  border: 1px solid #222;
+  gap: 12px;
+  border: 1px solid var(--border);
+}}
+.toolbar-left {{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}}
+.toolbar-right {{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}}
+.search-box {{
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 14px;
+  width: 250px;
+}}
+.search-box:focus {{
+  outline: none;
+  border-color: var(--accent);
 }}
 .btn {{
-  padding: 12px 24px;
+  padding: 10px 18px;
   border-radius: 8px;
   text-decoration: none;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s;
   border: none;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }}
 .btn-primary {{
-  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #000;
 }}
 .btn-primary:hover {{
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0,255,136,0.4);
 }}
+.btn-secondary {{
+  background: var(--bg-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+}}
+.btn-secondary:hover {{
+  background: #252525;
+  border-color: var(--accent);
+}}
+.btn-danger {{
+  background: rgba(255,107,107,0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255,107,107,0.3);
+}}
+.btn-danger:hover {{
+  background: rgba(255,107,107,0.25);
+}}
+.btn-sm {{
+  padding: 6px 12px;
+  font-size: 12px;
+}}
 .table-container {{
-  background: #111;
+  background: var(--bg-card);
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #222;
+  border: 1px solid var(--border);
 }}
 table {{
   width: 100%;
   border-collapse: collapse;
 }}
 th {{
-  background: #0a0a0a;
-  padding: 16px;
+  background: var(--bg-dark);
+  padding: 14px 16px;
   text-align: left;
   font-weight: 600;
-  color: #888;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }}
 td {{
-  padding: 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid #1a1a1a;
+  vertical-align: middle;
+}}
+tr {{
+  transition: background 0.15s;
 }}
 tr:hover {{
-  background: #0a0a0a;
+  background: var(--bg-hover);
+}}
+tr.selected {{
+  background: rgba(0,255,136,0.08);
+}}
+.row-checkbox {{
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent);
 }}
 .amount {{
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
+  font-family: 'SF Mono', Monaco, monospace;
 }}
 .amount.charge {{
-  color: #ff6b6b;
+  color: var(--danger);
 }}
 .amount.refund {{
-  color: #00ff88;
+  color: var(--accent);
 }}
 .receipt-link {{
-  color: #00ff88;
+  color: var(--accent);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 12px;
+  padding: 4px 10px;
+  background: rgba(0,255,136,0.1);
+  border-radius: 4px;
+  transition: background 0.2s;
 }}
 .receipt-link:hover {{
-  text-decoration: underline;
+  background: rgba(0,255,136,0.2);
+}}
+.no-receipt {{
+  color: var(--text-muted);
+  font-size: 12px;
+}}
+.notes-cell {{
+  max-width: 200px;
 }}
 .notes {{
-  color: #888;
-  font-size: 13px;
-  font-style: italic;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background 0.2s;
+  display: block;
+  min-height: 28px;
+}}
+.notes:hover {{
+  background: var(--bg-hover);
+}}
+.notes-input {{
+  background: var(--bg-dark);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 12px;
+  width: 100%;
+  min-width: 180px;
+}}
+.notes-input:focus {{
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0,255,136,0.2);
+}}
+.row-actions {{
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}}
+tr:hover .row-actions {{
+  opacity: 1;
+}}
+.action-btn {{
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}}
+.action-btn.move {{
+  background: rgba(100,149,237,0.15);
+  color: #6495ed;
+}}
+.action-btn.move:hover {{
+  background: rgba(100,149,237,0.25);
+}}
+.action-btn.remove {{
+  background: rgba(255,107,107,0.15);
+  color: var(--danger);
+}}
+.action-btn.remove:hover {{
+  background: rgba(255,107,107,0.25);
+}}
+/* Modal */
+.modal-overlay {{
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}}
+.modal-overlay.active {{
+  display: flex;
+}}
+.modal {{
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 30px;
+  max-width: 450px;
+  width: 90%;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+}}
+.modal h3 {{
+  margin: 0 0 20px 0;
+  font-size: 18px;
+}}
+.modal select {{
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 20px;
+}}
+.modal-actions {{
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}}
+/* Bulk actions bar */
+.bulk-bar {{
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 8px 30px rgba(0,255,136,0.3);
+  transition: transform 0.3s ease;
+  z-index: 100;
+}}
+.bulk-bar.active {{
+  transform: translateX(-50%) translateY(0);
+}}
+.bulk-count {{
+  font-weight: 600;
+  color: var(--accent);
+}}
+.toast {{
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}}
+.toast.show {{
+  transform: translateY(0);
+  opacity: 1;
+}}
+.toast.error {{
+  border-color: var(--danger);
+}}
+.footer {{
+  margin-top: 40px;
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
 }}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>🧾 Tallyups Expense Report</h1>
-  <p><strong>{report_name}</strong></p>
-  <p>{business_type}</p>
-  <p>{date_from} to {date_to}</p>
+  <div class="header-left">
+    <h1>{report_name}</h1>
+    <p><strong>{business_type}</strong> &middot; {date_from} to {date_to}</p>
+  </div>
+  <div class="header-right">
+    <a href="/reports/{report_id}/export/downhome" class="btn btn-primary" download>
+      <span>📊</span> Export CSV
+    </a>
+    <a href="/reports/{report_id}/receipts.zip" class="btn btn-primary" download>
+      <span>📦</span> Download Receipts
+    </a>
+  </div>
 </div>
 
 <div class="stats">
   <div class="stat-card">
     <div class="stat-label">Total Charges</div>
-    <div class="stat-value" style="color:#ff6b6b">-${total_charges:,.2f}</div>
+    <div class="stat-value" style="color:var(--danger)">-${total_charges:,.2f}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Refunds/Credits</div>
-    <div class="stat-value" style="color:#00ff88">+${total_refunds:,.2f}</div>
+    <div class="stat-value" style="color:var(--accent)">+${total_refunds:,.2f}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Net Total</div>
-    <div class="stat-value" style="color:{'#ff6b6b' if net_total < 0 else '#00ff88' if net_total > 0 else '#888'}">{"-" if net_total < 0 else "+" if net_total > 0 else ""}${abs(net_total):,.2f}</div>
+    <div class="stat-value" style="color:{'var(--danger)' if net_total < 0 else 'var(--accent)' if net_total > 0 else 'var(--text-muted)'}">{"-" if net_total < 0 else "+" if net_total > 0 else ""}${abs(net_total):,.2f}</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Transactions</div>
@@ -13036,25 +13459,29 @@ tr:hover {{
   </div>
 </div>
 
-<div class="actions">
-  <a href="/reports/{report_id}/export/downhome" class="btn btn-primary" download>
-    📊 Download CSV
-  </a>
-  <a href="/reports/{report_id}/receipts.zip" class="btn btn-primary" download>
-    📦 Download All Receipts
-  </a>
+<div class="toolbar">
+  <div class="toolbar-left">
+    <input type="text" class="search-box" id="searchBox" placeholder="Filter transactions..." oninput="filterTable()">
+    <span id="filterCount" style="color:var(--text-muted);font-size:13px;"></span>
+  </div>
+  <div class="toolbar-right">
+    <button class="btn btn-secondary btn-sm" onclick="selectAll()">Select All</button>
+    <button class="btn btn-secondary btn-sm" onclick="deselectAll()">Deselect All</button>
+  </div>
 </div>
 
 <div class="table-container">
-  <table>
+  <table id="expenseTable">
     <thead>
       <tr>
+        <th style="width:40px;"><input type="checkbox" class="row-checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
         <th>Date</th>
         <th>Description</th>
         <th>Amount</th>
         <th>Category</th>
-        <th>Notes</th>
+        <th style="min-width:180px;">Notes</th>
         <th>Receipt</th>
+        <th style="width:100px;">Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -13062,6 +13489,7 @@ tr:hover {{
 
         # Add expense rows
         for exp in expenses:
+            exp_id = exp.get("id", "")
             date = format_date(exp.get("chase_date", ""))
             desc = exp.get("chase_description", "")
             raw_amount = float(exp.get("chase_amount", 0) or 0)
@@ -13078,7 +13506,8 @@ tr:hover {{
                 amount_str = "$0.00"
                 amount_class = ""
             category = exp.get("category") or exp.get("chase_category", "")
-            notes = exp.get("notes", "")
+            notes = exp.get("notes", "") or ""
+            notes_escaped = notes.replace('"', '&quot;').replace("'", "&#39;")
 
             # Get receipt URL - prefer R2 URL, fall back to receipt_url, then local path
             receipt_url = exp.get("r2_url") or exp.get("R2 URL") or exp.get("receipt_url") or ""
@@ -13086,23 +13515,30 @@ tr:hover {{
 
             receipt_link = ""
             if receipt_url:
-                # Use cloud URL directly
-                receipt_link = f'<a href="{receipt_url}" class="receipt-link" target="_blank">View Receipt</a>'
+                receipt_link = f'<a href="{receipt_url}" class="receipt-link" target="_blank">View</a>'
             elif receipt_file:
-                # Fall back to local path (strip any leading receipts/ to avoid double path)
                 clean_file = receipt_file.replace("receipts/", "").lstrip("/")
-                receipt_link = f'<a href="/reports/{report_id}/receipts/{clean_file}" class="receipt-link" target="_blank">View Receipt</a>'
+                receipt_link = f'<a href="/reports/{report_id}/receipts/{clean_file}" class="receipt-link" target="_blank">View</a>'
             else:
-                receipt_link = '<span style="color:#999">No receipt</span>'
+                receipt_link = '<span class="no-receipt">None</span>'
 
             html += f"""
-      <tr>
+      <tr data-id="{exp_id}">
+        <td><input type="checkbox" class="row-checkbox" onchange="updateSelection()"></td>
         <td>{date}</td>
         <td>{desc}</td>
         <td class="amount {amount_class}">{amount_str}</td>
         <td>{category}</td>
-        <td class="notes">{notes}</td>
+        <td class="notes-cell">
+          <span class="notes" onclick="editNotes(this, {exp_id})" title="Click to edit">{notes or '<em style=\"opacity:0.5\">Add note...</em>'}</span>
+        </td>
         <td>{receipt_link}</td>
+        <td>
+          <div class="row-actions">
+            <button class="action-btn move" onclick="showMoveModal({exp_id})" title="Move to another report">Move</button>
+            <button class="action-btn remove" onclick="removeFromReport({exp_id})" title="Remove from report">Remove</button>
+          </div>
+        </td>
       </tr>
 """
 
@@ -13111,10 +13547,289 @@ tr:hover {{
   </table>
 </div>
 
-<div style="margin-top:40px;padding:20px;text-align:center;color:#999;font-size:13px">
-  <p>Generated by ReceiptAI Master System</p>
+<!-- Bulk Actions Bar -->
+<div class="bulk-bar" id="bulkBar">
+  <span class="bulk-count"><span id="selectedCount">0</span> selected</span>
+  <button class="btn btn-secondary btn-sm" onclick="showBulkMoveModal()">Move Selected</button>
+  <button class="btn btn-danger btn-sm" onclick="removeSelected()">Remove Selected</button>
+</div>
+
+<!-- Move Modal -->
+<div class="modal-overlay" id="moveModal" onclick="closeMoveModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>Move Transaction</h3>
+    <select id="targetReport">
+      <option value="">Select a report...</option>
+      """ + report_options + """
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeMoveModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmMove()">Move</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="toast" id="toast">
+  <span id="toastMessage"></span>
+</div>
+
+<div class="footer">
+  <p>Generated by TallyUps</p>
   <p>Report ID: """ + report_id + """ | Created: """ + created_at + """</p>
 </div>
+
+<script>
+const REPORT_ID = '""" + report_id + """';
+let selectedIds = new Set();
+let currentMoveId = null;
+let isBulkMove = false;
+
+// Filter table by search term
+function filterTable() {
+  const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+  const rows = document.querySelectorAll('#expenseTable tbody tr');
+  let visibleCount = 0;
+
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    const match = text.includes(searchTerm);
+    row.style.display = match ? '' : 'none';
+    if (match) visibleCount++;
+  });
+
+  const countEl = document.getElementById('filterCount');
+  if (searchTerm) {
+    countEl.textContent = `Showing ${visibleCount} of ${rows.length}`;
+  } else {
+    countEl.textContent = '';
+  }
+}
+
+// Selection management
+function updateSelection() {
+  selectedIds.clear();
+  document.querySelectorAll('#expenseTable tbody tr').forEach(row => {
+    const checkbox = row.querySelector('.row-checkbox');
+    if (checkbox && checkbox.checked) {
+      selectedIds.add(row.dataset.id);
+      row.classList.add('selected');
+    } else {
+      row.classList.remove('selected');
+    }
+  });
+
+  const bulkBar = document.getElementById('bulkBar');
+  const countEl = document.getElementById('selectedCount');
+  countEl.textContent = selectedIds.size;
+
+  if (selectedIds.size > 0) {
+    bulkBar.classList.add('active');
+  } else {
+    bulkBar.classList.remove('active');
+  }
+}
+
+function toggleSelectAll() {
+  const selectAll = document.getElementById('selectAllCheckbox').checked;
+  document.querySelectorAll('#expenseTable tbody tr').forEach(row => {
+    if (row.style.display !== 'none') {
+      const checkbox = row.querySelector('.row-checkbox');
+      if (checkbox) checkbox.checked = selectAll;
+    }
+  });
+  updateSelection();
+}
+
+function selectAll() {
+  document.querySelectorAll('#expenseTable tbody tr').forEach(row => {
+    if (row.style.display !== 'none') {
+      const checkbox = row.querySelector('.row-checkbox');
+      if (checkbox) checkbox.checked = true;
+    }
+  });
+  document.getElementById('selectAllCheckbox').checked = true;
+  updateSelection();
+}
+
+function deselectAll() {
+  document.querySelectorAll('#expenseTable tbody tr .row-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('selectAllCheckbox').checked = false;
+  updateSelection();
+}
+
+// Inline notes editing
+function editNotes(el, id) {
+  const currentText = el.textContent.trim();
+  const isPlaceholder = el.innerHTML.includes('Add note');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'notes-input';
+  input.value = isPlaceholder ? '' : currentText;
+  input.placeholder = 'Enter note...';
+
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const save = async () => {
+    const newValue = input.value.trim();
+    const span = document.createElement('span');
+    span.className = 'notes';
+    span.onclick = () => editNotes(span, id);
+    span.title = 'Click to edit';
+    span.innerHTML = newValue || '<em style=\"opacity:0.5\">Add note...</em>';
+    input.replaceWith(span);
+
+    if (newValue !== currentText && !(isPlaceholder && !newValue)) {
+      try {
+        const res = await fetch('/api/transactions/' + id + '/notes', {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({notes: newValue})
+        });
+        if (res.ok) {
+          showToast('Note saved');
+        } else {
+          showToast('Failed to save note', true);
+        }
+      } catch (e) {
+        showToast('Failed to save note', true);
+      }
+    }
+  };
+
+  input.onblur = save;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = isPlaceholder ? '' : currentText; input.blur(); }
+  };
+}
+
+// Move functionality
+function showMoveModal(id) {
+  currentMoveId = id;
+  isBulkMove = false;
+  document.getElementById('moveModal').classList.add('active');
+}
+
+function showBulkMoveModal() {
+  if (selectedIds.size === 0) return;
+  isBulkMove = true;
+  document.getElementById('moveModal').classList.add('active');
+}
+
+function closeMoveModal(e) {
+  if (!e || e.target.classList.contains('modal-overlay')) {
+    document.getElementById('moveModal').classList.remove('active');
+    currentMoveId = null;
+    isBulkMove = false;
+  }
+}
+
+async function confirmMove() {
+  const targetReport = document.getElementById('targetReport').value;
+  if (!targetReport) {
+    showToast('Please select a report', true);
+    return;
+  }
+
+  const ids = isBulkMove ? Array.from(selectedIds) : [currentMoveId];
+
+  try {
+    const res = await fetch('/api/transactions/move-to-report', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({transaction_ids: ids, target_report_id: targetReport})
+    });
+
+    if (res.ok) {
+      showToast(ids.length + ' transaction(s) moved');
+      // Remove rows from table
+      ids.forEach(id => {
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        if (row) row.remove();
+      });
+      closeMoveModal();
+      deselectAll();
+    } else {
+      showToast('Failed to move transactions', true);
+    }
+  } catch (e) {
+    showToast('Failed to move transactions', true);
+  }
+}
+
+// Remove functionality
+async function removeFromReport(id) {
+  if (!confirm('Remove this transaction from the report? It will return to the reconciliation queue.')) return;
+
+  try {
+    const res = await fetch('/api/transactions/' + id + '/remove-from-report', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({report_id: REPORT_ID})
+    });
+
+    if (res.ok) {
+      showToast('Transaction removed');
+      const row = document.querySelector(`tr[data-id="${id}"]`);
+      if (row) row.remove();
+    } else {
+      showToast('Failed to remove transaction', true);
+    }
+  } catch (e) {
+    showToast('Failed to remove transaction', true);
+  }
+}
+
+async function removeSelected() {
+  if (selectedIds.size === 0) return;
+  if (!confirm(`Remove ${selectedIds.size} transaction(s) from the report?`)) return;
+
+  const ids = Array.from(selectedIds);
+
+  try {
+    const res = await fetch('/api/transactions/bulk-remove-from-report', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({transaction_ids: ids, report_id: REPORT_ID})
+    });
+
+    if (res.ok) {
+      showToast(ids.length + ' transaction(s) removed');
+      ids.forEach(id => {
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        if (row) row.remove();
+      });
+      deselectAll();
+    } else {
+      showToast('Failed to remove transactions', true);
+    }
+  } catch (e) {
+    showToast('Failed to remove transactions', true);
+  }
+}
+
+// Toast notification
+function showToast(message, isError = false) {
+  const toast = document.getElementById('toast');
+  const msgEl = document.getElementById('toastMessage');
+  msgEl.textContent = message;
+  toast.classList.toggle('error', isError);
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeMoveModal();
+  if (e.key === '/' && !e.target.matches('input, textarea')) {
+    e.preventDefault();
+    document.getElementById('searchBox').focus();
+  }
+});
+</script>
 
 </body>
 </html>
