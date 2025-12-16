@@ -12988,20 +12988,34 @@ def reports_standalone_page(report_id):
         # Calculate totals - use metadata if no expenses linked
         if expenses:
             # Chase convention: POSITIVE amounts = charges (purchases), NEGATIVE amounts = refunds/credits
-            # Debug: log sample amounts to verify sign
-            if expenses:
-                sample_amounts = [float(e.get("chase_amount", 0) or 0) for e in expenses[:5]]
-                print(f"📄 DEBUG: Sample chase_amounts: {sample_amounts}", flush=True)
+            # IMPORTANT: Credit card payments (PAYMENT THANK YOU) are NOT refunds - exclude them
+            def is_payment(desc):
+                d = (desc or '').lower()
+                return 'payment thank you' in d or 'payment - web' in d
 
-            total_charges = sum(float(e.get("chase_amount", 0) or 0) for e in expenses if float(e.get("chase_amount", 0) or 0) > 0)
-            total_refunds = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses if float(e.get("chase_amount", 0) or 0) < 0)
-            net_total = total_charges - total_refunds  # Positive = net spent
+            # Charges = positive amounts (actual purchases)
+            total_charges = sum(float(e.get("chase_amount", 0) or 0) for e in expenses
+                              if float(e.get("chase_amount", 0) or 0) > 0)
+
+            # Refunds = negative amounts that are NOT credit card payments
+            total_refunds = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses
+                              if float(e.get("chase_amount", 0) or 0) < 0
+                              and not is_payment(e.get("chase_description", "")))
+
+            # Credit card payments = negative amounts with "PAYMENT" in description
+            total_payments = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses
+                               if float(e.get("chase_amount", 0) or 0) < 0
+                               and is_payment(e.get("chase_description", "")))
+
+            # Net total = charges - refunds (payments are excluded as they're not expenses)
+            net_total = total_charges - total_refunds
             receipt_count = sum(1 for e in expenses if e.get("receipt_file") or e.get("r2_url"))
 
-            print(f"📄 DEBUG: total_charges=${total_charges:.2f}, total_refunds=${total_refunds:.2f}, net=${net_total:.2f}", flush=True)
+            print(f"📄 DEBUG: charges=${total_charges:.2f}, refunds=${total_refunds:.2f}, payments=${total_payments:.2f}, net=${net_total:.2f}", flush=True)
         else:
             total_charges = total_from_meta
             total_refunds = 0
+            total_payments = 0
             net_total = total_from_meta
             receipt_count = 0
 
@@ -13488,15 +13502,19 @@ tr:hover .row-actions {{
 
 <div class="stats">
   <div class="stat-card">
-    <div class="stat-label">Total Spent</div>
+    <div class="stat-label">Total Charges</div>
     <div class="stat-value" style="color:var(--danger)">${total_charges:,.2f}</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Refunds Received</div>
+    <div class="stat-label">Refunds/Credits</div>
     <div class="stat-value" style="color:var(--accent)">${total_refunds:,.2f}</div>
   </div>
+  {"" if total_payments == 0 else f'''<div class="stat-card">
+    <div class="stat-label">CC Payments</div>
+    <div class="stat-value" style="color:var(--warning)">${total_payments:,.2f}</div>
+  </div>'''}
   <div class="stat-card">
-    <div class="stat-label">Net Total</div>
+    <div class="stat-label">Net Expenses</div>
     <div class="stat-value" style="color:var(--danger)">${net_total:,.2f}</div>
   </div>
   <div class="stat-card">
