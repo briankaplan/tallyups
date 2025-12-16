@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="Tallyups Report Detail - View and edit expense report">
+<meta name="theme-color" content="#0b0d10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Report Detail - Tallyups</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<style>
+:root {
+  --bg: #000000;
+  --panel: #111111;
+  --panel2: #0a0a0a;
+  --edge: #222;
+  --ink: #f0f0f0;
+  --muted: #888;
+  --brand: #00ff88;
+  --ok: #00ff88;
+  --bad: #ff4e6a;
+  --warn: #ffd85e;
+  --info: #6b8aff;
+  --glow: rgba(0,255,136,.35);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Header */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + var(--safe-top));
+  padding-top: var(--safe-top);
+  background: linear-gradient(180deg, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.95) 100%);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--edge);
+  display: flex;
+  align-items: center;
+  padding-left: 20px;
+  padding-right: 20px;
+  z-index: 100;
+  gap: 16px;
+}
+
+.header-back {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: var(--ink);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.header-back:hover { background: rgba(255,255,255,0.15); }
+
+.header-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.header-stats {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.header-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.header-stat-value {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Main Container */
+.main {
+  margin-top: calc(60px + var(--safe-top));
+  padding: 24px;
+  padding-bottom: calc(100px + var(--safe-bottom));
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand), #00cc6a);
+  color: #000;
+  box-shadow: 0 4px 16px rgba(0,255,136,0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(0,255,136,0.4);
+}
+
+.btn-secondary {
+  background: rgba(255,255,255,0.1);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+}
+
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: var(--muted);
+}
+
+.btn-ai {
+  background: linear-gradient(135deg, #6b8aff, #4e6ae6);
+  color: #fff;
+}
+
+.btn-ai:hover {
+  background: linear-gradient(135deg, #7b9aff, #5e7af6);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Progress bar */
+.progress-bar {
+  display: none;
+  margin-left: auto;
+  width: 200px;
+  height: 6px;
+  background: var(--edge);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar.active { display: block; }
+
+.progress-fill {
+  height: 100%;
+  background: var(--brand);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 10px;
+}
+
+/* Table */
+.expense-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--edge);
+}
+
+.expense-table th,
+.expense-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--edge);
+}
+
+.expense-table th {
+  background: var(--panel2);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.expense-table tr:hover td {
+  background: rgba(0,255,136,0.03);
+}
+
+.expense-table tr.selected td {
+  background: rgba(0,255,136,0.1);
+}
+
+/* Checkbox column */
+.col-check {
+  width: 40px;
+  text-align: center;
+}
+
+.row-check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+/* Receipt column */
+.col-receipt {
+  width: 60px;
+  text-align: center;
+}
+
+.receipt-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--edge);
+  transition: all 0.2s;
+}
+
+.receipt-thumb:hover {
+  transform: scale(1.1);
+  border-color: var(--brand);
+}
+
+.no-receipt {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: var(--panel2);
+  border: 1px dashed var(--edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.no-receipt:hover {
+  border-color: var(--brand);
+  background: rgba(0,255,136,0.1);
+}
+
+.no-receipt svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--muted);
+}
+
+/* Date column */
+.col-date {
+  width: 100px;
+  white-space: nowrap;
+}
+
+/* Amount column */
+.col-amount {
+  width: 100px;
+  text-align: right;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-weight: 600;
+}
+
+.col-amount.negative {
+  color: #ff4e6a;
+}
+
+.col-amount.positive {
+  color: #00ff88;
+}
+
+/* Category column */
+.col-category {
+  width: 120px;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Description column */
+.col-description {
+  min-width: 200px;
+}
+
+/* AI Note column - the main feature */
+.col-note {
+  min-width: 300px;
+}
+
+.ai-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ai-note-text {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  min-height: 24px;
+}
+
+.ai-note-text.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Inline Edit */
+.inline-edit {
+  flex: 1;
+  display: none;
+}
+
+.inline-edit.active {
+  display: block;
+}
+
+.inline-edit textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--brand);
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.inline-edit textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--glow);
+}
+
+.inline-edit-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.inline-edit-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.inline-edit-btn.save {
+  background: var(--brand);
+  color: #000;
+}
+
+.inline-edit-btn.cancel {
+  background: var(--edge);
+  color: var(--ink);
+}
+
+/* Note Actions */
+.note-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.note-action {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.note-action:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--ink);
+  border-color: var(--edge);
+}
+
+.note-action.generate:hover {
+  background: rgba(107,138,255,0.2);
+  color: var(--info);
+  border-color: var(--info);
+}
+
+.note-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Status indicators */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.good {
+  background: rgba(0,255,136,0.15);
+  color: var(--ok);
+}
+
+.status-badge.pending {
+  background: rgba(255,216,94,0.15);
+  color: var(--warn);
+}
+
+.status-badge.missing {
+  background: rgba(255,78,106,0.15);
+  color: var(--bad);
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(12px);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: modalIn 0.3s ease;
+}
+
+@keyframes modalIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--edge);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 10;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--brand);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 28px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.modal-close:hover { color: var(--ink); }
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--edge);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  position: sticky;
+  bottom: 0;
+  background: var(--panel);
+}
+
+/* Receipt Picker */
+.receipt-picker-search {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.receipt-picker-search input {
+  flex: 1;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.receipt-picker-search input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.receipt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.receipt-card {
+  background: var(--bg);
+  border: 2px solid var(--edge);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.receipt-card:hover {
+  border-color: var(--brand);
+}
+
+.receipt-card.selected {
+  border-color: var(--brand);
+  background: rgba(0,255,136,0.1);
+}
+
+.receipt-card-img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--panel);
+}
+
+.receipt-card-info {
+  font-size: 12px;
+}
+
+.receipt-card-merchant {
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.receipt-card-details {
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Receipt Preview Modal */
+.receipt-preview {
+  text-align: center;
+}
+
+.receipt-preview img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 12px;
+  border: 1px solid var(--edge);
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  bottom: calc(20px + var(--safe-bottom));
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 14px 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideIn 0.3s ease;
+  max-width: 400px;
+}
+
+.toast.success { border-color: var(--ok); }
+.toast.error { border-color: var(--bad); }
+.toast.warning { border-color: var(--warn); }
+.toast.info { border-color: var(--info); }
+
+@keyframes slideIn {
+  from { transform: translateX(100px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Loading indicator */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--edge);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Bottom Actions Bar */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(70px + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: linear-gradient(180deg, rgba(17,17,17,0.95) 0%, var(--panel) 100%);
+  border-top: 1px solid var(--edge);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 24px;
+  padding-right: 24px;
+  z-index: 90;
+}
+
+.selected-count {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.selected-count strong {
+  color: var(--brand);
+}
+
+.bottom-actions {
+  display: flex;
+  gap: 12px;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <a href="/reports-dashboard" class="header-back">Reports</a>
+  <h1 class="header-title" id="report-title">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+      <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+    </svg>
+    <span id="report-name">Loading...</span>
+  </h1>
+  <div class="header-stats">
+    <div class="header-stat">
+      <span id="stat-count">0</span>
+      <span>expenses</span>
+    </div>
+    <div class="header-stat">
+      <span class="header-stat-value" id="stat-total">$0.00</span>
+      <span>total</span>
+    </div>
+    <div class="header-stat">
+      <span id="stat-receipts">0%</span>
+      <span>receipts</span>
+    </div>
+    <div class="header-stat">
+      <span id="stat-notes">0%</span>
+      <span>notes</span>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="exportReport('excel')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Export
+    </button>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="main">
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-ai" id="auto-notes-btn" onclick="generateAllNotes()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      Auto AI Notes
+    </button>
+    <button class="btn btn-secondary" onclick="selectAll()">Select All</button>
+    <button class="btn btn-secondary" onclick="selectNone()">Select None</button>
+
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+    </div>
+    <span class="progress-text" id="progress-text"></span>
+  </div>
+
+  <!-- Expense Table -->
+  <table class="expense-table" id="expense-table">
+    <thead>
+      <tr>
+        <th class="col-check"><input type="checkbox" id="check-all" onchange="toggleAll(this)"></th>
+        <th class="col-receipt">Receipt</th>
+        <th class="col-date">Date</th>
+        <th class="col-description">Description</th>
+        <th class="col-amount">Amount</th>
+        <th class="col-category">Category</th>
+        <th class="col-note">AI Note</th>
+        <th style="width: 60px">Status</th>
+      </tr>
+    </thead>
+    <tbody id="expense-tbody">
+      <tr>
+        <td colspan="8" style="text-align: center; padding: 40px; color: var(--muted);">
+          <div class="loading-spinner"></div> Loading expenses...
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+</main>
+
+<!-- Bottom Actions Bar -->
+<div class="bottom-bar">
+  <div class="selected-count">
+    <strong id="selected-count">0</strong> selected
+  </div>
+  <div class="bottom-actions">
+    <button class="btn btn-ai" onclick="generateSelectedNotes()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      Generate Notes for Selected
+    </button>
+    <button class="btn btn-secondary" onclick="removeSelected()">Remove from Report</button>
+  </div>
+</div>
+
+<!-- Receipt Picker Modal -->
+<div class="modal-overlay" id="receipt-picker-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Attach Receipt</h3>
+      <button class="modal-close" onclick="closeReceiptPicker()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="receipt-picker-search">
+        <input type="text" id="receipt-search" placeholder="Search by merchant, amount, or date..." oninput="searchReceipts()">
+        <button class="btn btn-secondary" onclick="loadMatchingReceipts()">Find Best Match</button>
+      </div>
+      <div class="receipt-grid" id="receipt-grid">
+        <!-- Receipts will be loaded here -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeReceiptPicker()">Cancel</button>
+      <button class="btn btn-primary" id="attach-receipt-btn" onclick="attachSelectedReceipt()" disabled>Attach Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Preview Modal -->
+<div class="modal-overlay" id="receipt-preview-modal">
+  <div class="modal" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 class="modal-title" id="preview-title">Receipt Preview</h3>
+      <button class="modal-close" onclick="closeReceiptPreview()">&times;</button>
+    </div>
+    <div class="modal-body receipt-preview">
+      <img id="preview-image" src="" alt="Receipt">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeReceiptPreview()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// Get report ID from URL
+const reportId = window.location.pathname.split('/').pop();
+let expenses = [];
+let selectedExpenses = new Set();
+let selectedReceiptId = null;
+let currentTransactionIndex = null;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  loadReport();
+});
+
+// Load report data
+async function loadReport() {
+  try {
+    const response = await fetch(`/api/reports/${reportId}/items`);
+    if (!response.ok) throw new Error('Failed to load report');
+
+    const data = await response.json();
+
+    document.getElementById('report-name').textContent = data.report_name || reportId;
+    document.title = `${data.report_name || 'Report'} - Tallyups`;
+
+    expenses = data.items || [];
+    renderExpenses();
+    updateStats();
+
+  } catch (err) {
+    console.error('Failed to load report:', err);
+    showToast('Failed to load report', 'error');
+  }
+}
+
+// Render expenses table
+function renderExpenses() {
+  const tbody = document.getElementById('expense-tbody');
+
+  if (!expenses.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; padding: 60px; color: var(--muted);">
+          No expenses in this report yet. Add transactions from the library.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = expenses.map((exp, i) => {
+    const hasReceipt = exp.receipt_url || exp.r2_url;
+    const hasNote = exp.ai_note && exp.ai_note.trim();
+    const receiptThumb = hasReceipt ?
+      `<img src="${exp.receipt_url || exp.r2_url}" class="receipt-thumb" onclick="previewReceipt('${exp.receipt_url || exp.r2_url}', '${escapeHtml(exp.chase_description)}')" onerror="this.style.display='none'">` :
+      `<div class="no-receipt" onclick="openReceiptPicker(${exp._index})" title="Click to attach receipt">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </div>`;
+
+    const status = hasReceipt && hasNote ? 'good' : (hasReceipt || hasNote ? 'pending' : 'missing');
+    const statusLabel = status === 'good' ? 'Ready' : (status === 'pending' ? 'Partial' : 'Needs Work');
+
+    return `
+      <tr data-index="${exp._index}" class="${selectedExpenses.has(exp._index) ? 'selected' : ''}">
+        <td class="col-check">
+          <input type="checkbox" class="row-check" ${selectedExpenses.has(exp._index) ? 'checked' : ''} onchange="toggleSelect(${exp._index}, this)">
+        </td>
+        <td class="col-receipt">${receiptThumb}</td>
+        <td class="col-date">${formatDate(exp.chase_date)}</td>
+        <td class="col-description">${escapeHtml(exp.chase_description || '')}</td>
+        <td class="col-amount ${(exp.chase_amount || 0) < 0 ? 'negative' : 'positive'}">$${Math.abs(exp.chase_amount || 0).toFixed(2)}</td>
+        <td class="col-category">
+          <span class="category-badge">${exp.chase_category || ''}</span>
+        </td>
+        <td class="col-note">
+          <div class="ai-note" id="note-${exp._index}">
+            <span class="ai-note-text ${!hasNote ? 'empty' : ''}" id="note-text-${exp._index}">
+              ${hasNote ? escapeHtml(exp.ai_note) : 'No note - click to generate'}
+            </span>
+            <div class="inline-edit" id="note-edit-${exp._index}">
+              <textarea id="note-input-${exp._index}">${escapeHtml(exp.ai_note || '')}</textarea>
+              <div class="inline-edit-actions">
+                <button class="inline-edit-btn save" onclick="saveNote(${exp._index})">Save</button>
+                <button class="inline-edit-btn cancel" onclick="cancelEdit(${exp._index})">Cancel</button>
+              </div>
+            </div>
+            <div class="note-actions">
+              <button class="note-action generate" onclick="generateNote(${exp._index})" title="Generate AI Note">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5"/>
+                </svg>
+              </button>
+              <button class="note-action" onclick="startEdit(${exp._index})" title="Edit Note">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="status-badge ${status}">${statusLabel}</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Update stats
+function updateStats() {
+  const total = expenses.reduce((sum, e) => sum + Math.abs(e.chase_amount || 0), 0);
+  const withReceipts = expenses.filter(e => e.receipt_url || e.r2_url).length;
+  const withNotes = expenses.filter(e => e.ai_note && e.ai_note.trim()).length;
+
+  document.getElementById('stat-count').textContent = expenses.length;
+  document.getElementById('stat-total').textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  document.getElementById('stat-receipts').textContent = expenses.length ? Math.round(withReceipts / expenses.length * 100) + '%' : '0%';
+  document.getElementById('stat-notes').textContent = expenses.length ? Math.round(withNotes / expenses.length * 100) + '%' : '0%';
+}
+
+// Selection functions
+function toggleSelect(index, checkbox) {
+  if (checkbox.checked) {
+    selectedExpenses.add(index);
+  } else {
+    selectedExpenses.delete(index);
+  }
+  updateSelectedCount();
+  document.querySelector(`tr[data-index="${index}"]`)?.classList.toggle('selected', checkbox.checked);
+}
+
+function toggleAll(checkbox) {
+  if (checkbox.checked) {
+    expenses.forEach(e => selectedExpenses.add(e._index));
+  } else {
+    selectedExpenses.clear();
+  }
+  document.querySelectorAll('.row-check').forEach(cb => cb.checked = checkbox.checked);
+  document.querySelectorAll('#expense-tbody tr').forEach(tr => tr.classList.toggle('selected', checkbox.checked));
+  updateSelectedCount();
+}
+
+function selectAll() {
+  document.getElementById('check-all').checked = true;
+  toggleAll(document.getElementById('check-all'));
+}
+
+function selectNone() {
+  document.getElementById('check-all').checked = false;
+  toggleAll(document.getElementById('check-all'));
+}
+
+function updateSelectedCount() {
+  document.getElementById('selected-count').textContent = selectedExpenses.size;
+}
+
+// Inline editing
+function startEdit(index) {
+  document.getElementById(`note-text-${index}`).style.display = 'none';
+  document.getElementById(`note-edit-${index}`).classList.add('active');
+  document.getElementById(`note-input-${index}`).focus();
+}
+
+function cancelEdit(index) {
+  document.getElementById(`note-text-${index}`).style.display = '';
+  document.getElementById(`note-edit-${index}`).classList.remove('active');
+}
+
+async function saveNote(index) {
+  const textarea = document.getElementById(`note-input-${index}`);
+  const note = textarea.value.trim();
+
+  try {
+    const response = await fetch(`/api/notes/${index}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note })
+    });
+
+    if (!response.ok) throw new Error('Failed to save note');
+
+    const data = await response.json();
+
+    // Update local data
+    const exp = expenses.find(e => e._index === index);
+    if (exp) exp.ai_note = note;
+
+    // Update UI
+    const textEl = document.getElementById(`note-text-${index}`);
+    textEl.textContent = note || 'No note - click to generate';
+    textEl.classList.toggle('empty', !note);
+
+    cancelEdit(index);
+    updateStats();
+    showToast('Note saved', 'success');
+
+  } catch (err) {
+    console.error('Failed to save note:', err);
+    showToast('Failed to save note', 'error');
+  }
+}
+
+// Generate AI notes
+async function generateNote(index) {
+  const exp = expenses.find(e => e._index === index);
+  if (!exp) return;
+
+  const noteText = document.getElementById(`note-text-${index}`);
+  noteText.innerHTML = '<span class="loading-spinner"></span> Generating...';
+
+  try {
+    const response = await fetch('/api/notes/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _index: index })
+    });
+
+    if (!response.ok) throw new Error('Failed to generate note');
+
+    const data = await response.json();
+
+    // Update local data
+    exp.ai_note = data.note;
+
+    // Update UI
+    noteText.textContent = data.note || 'No note generated';
+    noteText.classList.toggle('empty', !data.note);
+    document.getElementById(`note-input-${index}`).value = data.note || '';
+
+    updateStats();
+    showToast('Note generated', 'success');
+
+  } catch (err) {
+    console.error('Failed to generate note:', err);
+    noteText.textContent = 'Failed to generate';
+    noteText.classList.add('empty');
+    showToast('Failed to generate note', 'error');
+  }
+}
+
+async function generateSelectedNotes() {
+  if (selectedExpenses.size === 0) {
+    showToast('No expenses selected', 'warning');
+    return;
+  }
+
+  await generateBatchNotes(Array.from(selectedExpenses));
+}
+
+async function generateAllNotes() {
+  // Get all expenses without notes
+  const needNotes = expenses.filter(e => !e.ai_note || !e.ai_note.trim()).map(e => e._index);
+
+  if (needNotes.length === 0) {
+    showToast('All expenses already have notes', 'info');
+    return;
+  }
+
+  await generateBatchNotes(needNotes);
+}
+
+async function generateBatchNotes(indexes) {
+  const progressBar = document.getElementById('progress-bar');
+  const progressFill = document.getElementById('progress-fill');
+  const progressText = document.getElementById('progress-text');
+  const btn = document.getElementById('auto-notes-btn');
+
+  progressBar.classList.add('active');
+  btn.disabled = true;
+
+  let completed = 0;
+  const total = indexes.length;
+
+  // Process in batches of 5
+  const batchSize = 5;
+  for (let i = 0; i < indexes.length; i += batchSize) {
+    const batch = indexes.slice(i, i + batchSize);
+
+    try {
+      const response = await fetch('/api/notes/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          indexes: batch,
+          skip_existing: false
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Update UI for each result
+        data.results?.forEach(result => {
+          if (result.success && result.note) {
+            const exp = expenses.find(e => e._index === result._index);
+            if (exp) exp.ai_note = result.note;
+
+            const noteText = document.getElementById(`note-text-${result._index}`);
+            if (noteText) {
+              noteText.textContent = result.note;
+              noteText.classList.remove('empty');
+            }
+            const noteInput = document.getElementById(`note-input-${result._index}`);
+            if (noteInput) noteInput.value = result.note;
+          }
+        });
+
+        completed += batch.length;
+      }
+    } catch (err) {
+      console.error('Batch error:', err);
+      completed += batch.length;
+    }
+
+    // Update progress
+    const pct = Math.round(completed / total * 100);
+    progressFill.style.width = pct + '%';
+    progressText.textContent = `${completed}/${total}`;
+  }
+
+  progressBar.classList.remove('active');
+  progressText.textContent = '';
+  btn.disabled = false;
+
+  updateStats();
+  showToast(`Generated ${completed} notes`, 'success');
+}
+
+// Receipt picker
+function openReceiptPicker(transactionIndex) {
+  currentTransactionIndex = transactionIndex;
+  selectedReceiptId = null;
+  document.getElementById('attach-receipt-btn').disabled = true;
+  document.getElementById('receipt-picker-modal').classList.add('active');
+  loadAvailableReceipts();
+}
+
+function closeReceiptPicker() {
+  document.getElementById('receipt-picker-modal').classList.remove('active');
+}
+
+async function loadAvailableReceipts() {
+  const grid = document.getElementById('receipt-grid');
+  grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--muted);"><div class="loading-spinner"></div> Loading receipts...</div>';
+
+  try {
+    const response = await fetch('/api/incoming/pending?limit=50');
+    if (!response.ok) throw new Error('Failed to load receipts');
+
+    const data = await response.json();
+    const receipts = data.receipts || [];
+
+    if (receipts.length === 0) {
+      grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--muted);">No unmatched receipts available</div>';
+      return;
+    }
+
+    grid.innerHTML = receipts.map(r => `
+      <div class="receipt-card" data-id="${r.id}" onclick="selectReceipt(${r.id}, this)">
+        <img src="${r.receipt_image_url || ''}" class="receipt-card-img" alt="Receipt" onerror="this.src='/static/img/no-receipt.svg'">
+        <div class="receipt-card-info">
+          <div class="receipt-card-merchant">${escapeHtml(r.ocr_merchant || r.merchant || r.subject || 'Unknown')}</div>
+          <div class="receipt-card-details">
+            <span>${r.ocr_amount ? '$' + r.ocr_amount.toFixed(2) : (r.amount ? '$' + r.amount.toFixed(2) : '')}</span>
+            <span>${formatDate(r.ocr_date || r.received_date)}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    console.error('Failed to load receipts:', err);
+    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--bad);">Failed to load receipts</div>';
+  }
+}
+
+async function loadMatchingReceipts() {
+  if (!currentTransactionIndex) return;
+
+  const exp = expenses.find(e => e._index === currentTransactionIndex);
+  if (!exp) return;
+
+  const grid = document.getElementById('receipt-grid');
+  grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--muted);"><div class="loading-spinner"></div> Finding best matches...</div>';
+
+  try {
+    const response = await fetch(`/api/incoming/match-candidates?amount=${Math.abs(exp.chase_amount)}&date=${exp.chase_date}&description=${encodeURIComponent(exp.chase_description || '')}`);
+    if (!response.ok) throw new Error('Failed to find matches');
+
+    const data = await response.json();
+    const receipts = data.receipts || [];
+
+    if (receipts.length === 0) {
+      grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--muted);">No matching receipts found</div>';
+      return;
+    }
+
+    grid.innerHTML = receipts.map(r => `
+      <div class="receipt-card" data-id="${r.id}" onclick="selectReceipt(${r.id}, this)">
+        <img src="${r.receipt_image_url || ''}" class="receipt-card-img" alt="Receipt" onerror="this.src='/static/img/no-receipt.svg'">
+        <div class="receipt-card-info">
+          <div class="receipt-card-merchant">${escapeHtml(r.ocr_merchant || r.merchant || r.subject || 'Unknown')}</div>
+          <div class="receipt-card-details">
+            <span>${r.ocr_amount ? '$' + r.ocr_amount.toFixed(2) : (r.amount ? '$' + r.amount.toFixed(2) : '')}</span>
+            <span>${r.match_score ? 'Score: ' + r.match_score + '%' : ''}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    console.error('Failed to find matches:', err);
+    loadAvailableReceipts();
+  }
+}
+
+function selectReceipt(id, element) {
+  document.querySelectorAll('.receipt-card').forEach(c => c.classList.remove('selected'));
+  element.classList.add('selected');
+  selectedReceiptId = id;
+  document.getElementById('attach-receipt-btn').disabled = false;
+}
+
+async function attachSelectedReceipt() {
+  if (!selectedReceiptId || !currentTransactionIndex) return;
+
+  try {
+    const response = await fetch('/api/transactions/attach-receipt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transaction_index: currentTransactionIndex,
+        incoming_receipt_id: selectedReceiptId
+      })
+    });
+
+    if (!response.ok) throw new Error('Failed to attach receipt');
+
+    const data = await response.json();
+
+    // Update local data
+    const exp = expenses.find(e => e._index === currentTransactionIndex);
+    if (exp && data.receipt_url) {
+      exp.receipt_url = data.receipt_url;
+    }
+
+    closeReceiptPicker();
+    renderExpenses();
+    updateStats();
+    showToast('Receipt attached', 'success');
+
+  } catch (err) {
+    console.error('Failed to attach receipt:', err);
+    showToast('Failed to attach receipt', 'error');
+  }
+}
+
+function searchReceipts() {
+  const query = document.getElementById('receipt-search').value.toLowerCase();
+  document.querySelectorAll('.receipt-card').forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(query) ? '' : 'none';
+  });
+}
+
+// Receipt preview
+function previewReceipt(url, title) {
+  document.getElementById('preview-title').textContent = title || 'Receipt';
+  document.getElementById('preview-image').src = url;
+  document.getElementById('receipt-preview-modal').classList.add('active');
+}
+
+function closeReceiptPreview() {
+  document.getElementById('receipt-preview-modal').classList.remove('active');
+}
+
+// Export
+async function exportReport(format) {
+  window.location.href = `/api/reports/${reportId}/export/${format}`;
+  showToast('Exporting report...', 'info');
+}
+
+// Remove selected from report
+async function removeSelected() {
+  if (selectedExpenses.size === 0) {
+    showToast('No expenses selected', 'warning');
+    return;
+  }
+
+  if (!confirm(`Remove ${selectedExpenses.size} expense(s) from this report?`)) return;
+
+  let removed = 0;
+  for (const index of selectedExpenses) {
+    try {
+      const response = await fetch(`/api/reports/${reportId}/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _index: index })
+      });
+      if (response.ok) removed++;
+    } catch (err) {
+      console.error('Failed to remove:', err);
+    }
+  }
+
+  selectedExpenses.clear();
+  loadReport();
+  showToast(`Removed ${removed} expense(s)`, 'success');
+}
+
+// Utility functions
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+
+  const icons = { success: 'OK', error: 'X', warning: '!', info: 'i' };
+  toast.innerHTML = `<span style="font-weight: bold;">${icons[type] || icons.info}</span><span>${message}</span>`;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'slideIn 0.3s ease reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Close modals on escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeReceiptPicker();
+    closeReceiptPreview();
+  }
+});
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.classList.remove('active');
+    }
+  });
+});
+</script>
+
+</body>
+</html>

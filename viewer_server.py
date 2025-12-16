@@ -12986,9 +12986,12 @@ def reports_standalone_page(report_id):
         # If no expenses, show a message
         expense_count = len(expenses) if expenses else count_from_meta
 
-        # Generate human notes for each expense
+        # Use ai_note from database, fallback to generated note
         for exp in expenses:
-            if not exp.get("notes") or exp.get("notes", "").startswith("AI-"):
+            # Prefer ai_note from database
+            if exp.get("ai_note"):
+                exp["notes"] = exp.get("ai_note")
+            elif not exp.get("notes") or exp.get("notes", "").startswith("AI-"):
                 exp["notes"] = generate_human_note({
                     "Chase Description": exp.get("chase_description", ""),
                     "Chase Category": exp.get("chase_category", ""),
