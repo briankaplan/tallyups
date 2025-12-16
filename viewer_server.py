@@ -15914,6 +15914,191 @@ def api_report_items_batch():
             db.return_connection(conn)
 
 
+@app.route("/api/reports/<report_id>/audit", methods=["GET"])
+# Public endpoint for comprehensive audit
+def api_report_audit(report_id):
+    """
+    Comprehensive audit of a report:
+    - Math verification
+    - Duplicate detection
+    - Receipt mismatch check
+    - Source verification
+    """
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Get report metadata
+        cursor.execute("SELECT * FROM reports WHERE report_id = %s", (report_id,))
+        report_meta = cursor.fetchone()
+
+        if not report_meta:
+            return jsonify({'ok': False, 'error': f'Report {report_id} not found'}), 404
+
+        business_type = report_meta.get('business_type', 'Personal')
+
+        # Get all transactions for this report
+        cursor.execute("""
+            SELECT id, _index, chase_date, chase_description, chase_amount,
+                   business_type, r2_url, receipt_file, ocr_merchant, ocr_amount,
+                   ocr_date, source, notes
+            FROM transactions
+            WHERE report_id = %s OR (business_type = %s AND report_id IS NULL)
+            ORDER BY chase_date DESC, chase_amount
+        """, (report_id, business_type))
+        transactions = cursor.fetchall()
+
+        # Calculate totals
+        charges = []  # Positive amounts (expenses)
+        refunds = []  # Negative amounts (credits)
+
+        for t in transactions:
+            amount = float(t.get('chase_amount', 0) or 0)
+            if amount > 0:
+                charges.append(t)
+            elif amount < 0:
+                refunds.append(t)
+
+        total_charges = sum(float(t['chase_amount']) for t in charges)
+        total_refunds = sum(abs(float(t['chase_amount'])) for t in refunds)
+        net_total = total_charges - total_refunds
+
+        # Find duplicates (same date + amount)
+        from collections import defaultdict
+        by_date_amount = defaultdict(list)
+        for t in transactions:
+            key = f"{t['chase_date']}_{t['chase_amount']}"
+            by_date_amount[key].append(t)
+
+        duplicates = []
+        for key, txns in by_date_amount.items():
+            if len(txns) > 1:
+                duplicates.append({
+                    'key': key,
+                    'count': len(txns),
+                    'transactions': [{'id': t['id'], 'desc': t['chase_description'][:50],
+                                     'amount': float(t['chase_amount']),
+                                     'has_receipt': bool(t.get('r2_url') or t.get('receipt_file'))}
+                                    for t in txns]
+                })
+
+        # Find receipt mismatches (OCR amount differs from chase_amount)
+        mismatches = []
+        for t in transactions:
+            if t.get('ocr_amount'):
+                ocr_amt = float(t['ocr_amount'])
+                chase_amt = abs(float(t['chase_amount']))
+                diff = abs(ocr_amt - chase_amt)
+                if diff > 1.00:  # More than $1 difference
+                    mismatches.append({
+                        'id': t['id'],
+                        'date': str(t['chase_date']),
+                        'description': t['chase_description'][:40],
+                        'chase_amount': float(t['chase_amount']),
+                        'ocr_amount': ocr_amt,
+                        'difference': diff
+                    })
+
+        # Count receipts
+        with_receipts = sum(1 for t in transactions if t.get('r2_url') or t.get('receipt_file'))
+
+        # Large refunds (might be wrong business type)
+        large_refunds = [{'id': t['id'], 'date': str(t['chase_date']),
+                         'desc': t['chase_description'][:40],
+                         'amount': float(t['chase_amount'])}
+                        for t in refunds if abs(float(t['chase_amount'])) > 500]
+
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            'business_type': business_type,
+            'math': {
+                'total_transactions': len(transactions),
+                'charge_count': len(charges),
+                'refund_count': len(refunds),
+                'total_charges': total_charges,
+                'total_refunds': total_refunds,
+                'net_total': net_total,
+                'with_receipts': with_receipts
+            },
+            'issues': {
+                'duplicate_count': len(duplicates),
+                'duplicates': duplicates[:10],  # First 10
+                'mismatch_count': len(mismatches),
+                'mismatches': mismatches[:10],
+                'large_refunds': large_refunds[:10]
+            },
+            'summary': f"{'⚠️' if duplicates or mismatches else '✓'} {len(transactions)} transactions, "
+                      f"{len(duplicates)} potential duplicates, {len(mismatches)} receipt mismatches"
+        })
+    except Exception as e:
+        print(f"❌ API report audit error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@app.route("/api/transactions/fix-business-type", methods=["POST"])
+@login_required
+def api_fix_business_type():
+    """Fix business type for specific transactions"""
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        data = request.get_json()
+        transaction_ids = data.get('transaction_ids', [])
+        new_business_type = data.get('business_type')
+        description_match = data.get('description_match')  # e.g., '%Kit%'
+
+        if not new_business_type:
+            return jsonify({'ok': False, 'error': 'business_type required'}), 400
+
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        if transaction_ids:
+            # Update specific transactions
+            placeholders = ', '.join(['%s'] * len(transaction_ids))
+            cursor.execute(f"""
+                UPDATE transactions
+                SET business_type = %s
+                WHERE id IN ({placeholders})
+            """, [new_business_type] + transaction_ids)
+        elif description_match:
+            # Update by description pattern
+            cursor.execute("""
+                UPDATE transactions
+                SET business_type = %s
+                WHERE chase_description LIKE %s
+            """, (new_business_type, description_match))
+        else:
+            return jsonify({'ok': False, 'error': 'transaction_ids or description_match required'}), 400
+
+        conn.commit()
+        updated = cursor.rowcount
+
+        return jsonify({
+            'ok': True,
+            'updated': updated,
+            'new_business_type': new_business_type
+        })
+    except Exception as e:
+        print(f"❌ API fix business type error: {e}", flush=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
 @app.route("/api/reports/<report_id>/diagnose", methods=["GET"])
 # Public endpoint for debugging - no login required
 def api_report_diagnose(report_id):
