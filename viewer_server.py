@@ -13032,15 +13032,13 @@ def reports_standalone_page(report_id):
         # Get list of all reports for move dropdown
         all_reports = []
         try:
-            report_cursor = db_execute(conn, db_type, """
+            all_reports = db.execute_query("""
                 SELECT DISTINCT report_id, report_name, business_type
                 FROM reports
                 WHERE report_id != %s
                 ORDER BY created_at DESC
                 LIMIT 20
             """, (report_id,))
-            all_reports = report_cursor.fetchall()
-            report_cursor.close()
         except:
             pass
 
