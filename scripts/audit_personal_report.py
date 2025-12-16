@@ -67,28 +67,28 @@ def audit_personal_report():
 
     print(f"\nTotal Personal transactions: {len(transactions)}")
 
-    # Calculate totals
-    total_charges = 0  # Negative amounts (expenses)
-    total_refunds = 0  # Positive amounts (credits)
+    # Calculate totals - Chase convention: POSITIVE = charges, NEGATIVE = refunds
+    total_charges = 0  # Positive amounts (purchases)
+    total_refunds = 0  # Negative amounts (credits)
 
     for t in transactions:
         amount = float(t['chase_amount'] or 0)
-        if amount < 0:
+        if amount > 0:
             total_charges += amount
         else:
-            total_refunds += amount
+            total_refunds += abs(amount)
 
-    net_total = total_charges + total_refunds
+    net_total = total_charges - total_refunds
 
     print(f"\n--- MATH AUDIT ---")
-    print(f"Total Charges (expenses):  ${total_charges:,.2f}")
+    print(f"Total Charges (purchases): ${total_charges:,.2f}")
     print(f"Total Refunds (credits):   ${total_refunds:,.2f}")
     print(f"Net Total:                 ${net_total:,.2f}")
     print(f"")
     print(f"Expected display:")
-    print(f"  TOTAL CHARGES:    -{abs(total_charges):,.2f}")
-    print(f"  REFUNDS/CREDITS:  +{total_refunds:,.2f}")
-    print(f"  NET TOTAL:        {'+'if net_total >= 0 else '-'}${abs(net_total):,.2f}")
+    print(f"  TOTAL CHARGES:    ${total_charges:,.2f}")
+    print(f"  REFUNDS/CREDITS:  ${total_refunds:,.2f}")
+    print(f"  NET TOTAL:        ${net_total:,.2f}")
 
     # Check for the bug: -$-63,574.75 suggests double negative
     if net_total > 0:
