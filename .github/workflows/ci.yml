@@ -245,7 +245,7 @@ jobs:
 
       - name: Deploy to Production
         run: |
-          railway link f6f866e5-94f7-4ced-9bc7-a33197ca8411 --environment production
+          railway link -p f6f866e5-94f7-4ced-9bc7-a33197ca8411 -e production
           railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
