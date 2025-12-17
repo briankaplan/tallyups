@@ -13070,6 +13070,9 @@ def reports_standalone_page(report_id):
             for r in all_reports
         ])
 
+        # Build receipts download URL (use pre-generated if available)
+        download_receipts_url = receipts_zip_url if receipts_zip_url else f'/reports/{report_id}/receipts.zip'
+
         # Render HTML template
         html = f"""
 <!DOCTYPE html>
@@ -13502,7 +13505,7 @@ tr:hover .row-actions {{
     <a href="/reports/{report_id}/export/downhome" class="btn btn-primary" download>
       <span>📊</span> Export CSV
     </a>
-    <a href="{receipts_zip_url if receipts_zip_url else f'/reports/{report_id}/receipts.zip'}" class="btn btn-primary" download>
+    <a href="{download_receipts_url}" class="btn btn-primary" download>
       <span>📦</span> Download Receipts
     </a>
   </div>
