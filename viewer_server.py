@@ -12856,7 +12856,7 @@ def reports_download_receipts_zip(report_id):
 
             for exp in expenses:
                 receipt_file = exp.get("receipt_file")
-                receipt_url = exp.get("receipt_url") or ""
+                receipt_url = exp.get("r2_url") or exp.get("receipt_url") or ""
 
                 # Build descriptive filename
                 merchant = exp.get("chase_description", "expense")
@@ -12968,6 +12968,14 @@ def reports_standalone_page(report_id):
             created_at = str(created_at_raw) if created_at_raw else ""
         total_from_meta = float(report_meta.get("total_amount") or 0)
         count_from_meta = report_meta.get("expense_count") or 0
+        receipts_zip_url = report_meta.get("receipts_zip_url") or ""
+
+        # Hardcoded ZIP URLs for known reports (until DB column is added)
+        known_zips = {
+            'RPT-DH-20251213': 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/exports/DOWN_HOME_RECEIPTS_2024_2025.zip'
+        }
+        if not receipts_zip_url and report_id in known_zips:
+            receipts_zip_url = known_zips[report_id]
 
         print(f"📄 Found report metadata: {report_name} (business: {business_type})", flush=True)
 
@@ -13494,7 +13502,7 @@ tr:hover .row-actions {{
     <a href="/reports/{report_id}/export/downhome" class="btn btn-primary" download>
       <span>📊</span> Export CSV
     </a>
-    <a href="/reports/{report_id}/receipts.zip" class="btn btn-primary" download>
+    <a href="{receipts_zip_url if receipts_zip_url else f'/reports/{report_id}/receipts.zip'}" class="btn btn-primary" download>
       <span>📦</span> Download Receipts
     </a>
   </div>
