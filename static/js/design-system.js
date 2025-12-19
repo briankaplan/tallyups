@@ -195,8 +195,46 @@ const Confirm = {
   }
 };
 
+// Global theme toggle function for onclick handlers
+function toggleTheme() {
+  ThemeManager.toggle();
+  var icon = ThemeManager.isDark ? '🌙' : '☀️';
+  Toast.show('Theme: ' + (ThemeManager.isDark ? 'Dark' : 'Light'), 'info', 1500);
+}
+
+// Accessibility: Add skip link functionality
+function setupAccessibility() {
+  // Add skip to main content link if not present
+  if (!document.querySelector('.skip-link')) {
+    var skip = document.createElement('a');
+    skip.href = '#main-content';
+    skip.className = 'skip-link sr-only';
+    skip.textContent = 'Skip to main content';
+    skip.style.cssText = 'position:absolute;top:-40px;left:0;background:var(--brand-primary);color:#000;padding:8px;z-index:9999;transition:top 0.3s;';
+    skip.addEventListener('focus', function() { this.style.top = '0'; });
+    skip.addEventListener('blur', function() { this.style.top = '-40px'; });
+    document.body.insertBefore(skip, document.body.firstChild);
+  }
+
+  // Add aria-labels to icon-only buttons
+  document.querySelectorAll('button').forEach(function(btn) {
+    if (!btn.getAttribute('aria-label') && btn.title) {
+      btn.setAttribute('aria-label', btn.title);
+    }
+  });
+}
+
 // INIT ON DOM READY
 document.addEventListener('DOMContentLoaded', function() {
   ThemeManager.init();
   Toast.init();
+  setupAccessibility();
+
+  // Add keyboard shortcut for theme toggle (Ctrl/Cmd + Shift + T)
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+      e.preventDefault();
+      toggleTheme();
+    }
+  });
 });
