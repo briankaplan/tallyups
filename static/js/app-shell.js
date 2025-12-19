@@ -83,6 +83,7 @@
       '.site-header-content',
       '.nav-links',
       '.header-nav',
+      '.mobile-nav',  // Mobile bottom nav (replaced by .bottom-nav)
       'body > header'  // Any header directly on body
     ];
 
