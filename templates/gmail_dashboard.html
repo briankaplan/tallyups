@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail & Payments | Tallyups</title>
+    <link rel="stylesheet" href="/static/css/design-system.css">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --accent-green: #00d4aa;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-orange: #f59e0b;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --border-color: #2a2a3a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .tab:hover { border-color: var(--accent-green); }
+        .tab.active {
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            color: white;
+            border-color: transparent;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .stat-card .value.green { color: var(--accent-green); }
+        .stat-card .value.blue { color: var(--accent-blue); }
+        .stat-card .value.purple { color: var(--accent-purple); }
+        .stat-card .value.orange { color: var(--accent-orange); }
+
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn:hover { transform: translateY(-1px); opacity: 0.9; }
+
+        .payment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .payment-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            gap: 16px;
+        }
+
+        .payment-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .payment-icon.square { background: linear-gradient(135deg, #00d632, #00a825); }
+        .payment-icon.toast { background: linear-gradient(135deg, #ff6b35, #cc5429); }
+        .payment-icon.parking { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .payment-icon.uber { background: #000; }
+        .payment-icon.venmo { background: linear-gradient(135deg, #008cff, #0070cc); }
+        .payment-icon.default { background: var(--bg-card); }
+
+        .payment-details {
+            flex: 1;
+        }
+
+        .payment-details .merchant {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .payment-details .meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .payment-amount {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent-green);
+        }
+
+        .payment-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .account-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .account-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            gap: 16px;
+        }
+
+        .account-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .account-info { flex: 1; }
+        .account-info .email { font-weight: 600; }
+        .account-info .status { font-size: 13px; color: var(--text-secondary); }
+
+        .account-stats {
+            text-align: right;
+        }
+
+        .account-stats .count {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-green);
+        }
+
+        .account-stats .label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-badge.connected {
+            background: rgba(0, 212, 170, 0.15);
+            color: var(--accent-green);
+        }
+
+        .status-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .filter-select {
+            padding: 10px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 10px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .search-input::placeholder { color: var(--text-secondary); }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .tabs { overflow-x: auto; }
+            .filter-bar { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📧 Gmail & Payments</h1>
+            <div>
+                <button class="btn btn-secondary" onclick="refreshAll()">🔄 Refresh</button>
+                <button class="btn btn-primary" onclick="scanReceipts()">📥 Scan Receipts</button>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="accounts">📬 Accounts</div>
+            <div class="tab" data-tab="payments">💳 Payments</div>
+            <div class="tab" data-tab="receipts">🧾 Receipt URLs</div>
+            <div class="tab" data-tab="pending">⏳ Pending</div>
+        </div>
+
+        <div class="stats-grid" id="stats">
+            <div class="stat-card">
+                <div class="label">Gmail Accounts</div>
+                <div class="value blue" id="stat-accounts">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Pending Receipts</div>
+                <div class="value orange" id="stat-pending">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">iMessage Payments</div>
+                <div class="value purple" id="stat-payments">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Total Amount</div>
+                <div class="value green" id="stat-amount">-</div>
+            </div>
+        </div>
+
+        <!-- Accounts Tab -->
+        <div class="tab-content" id="tab-accounts">
+            <div class="section">
+                <div class="section-header">
+                    <h2>Connected Gmail Accounts</h2>
+                    <button class="btn btn-secondary" onclick="syncAllAccounts()">🔄 Sync All</button>
+                </div>
+                <div class="account-list" id="account-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments Tab -->
+        <div class="tab-content hidden" id="tab-payments">
+            <div class="section">
+                <div class="section-header">
+                    <h2>iMessage Payments (Last 30 Days)</h2>
+                </div>
+                <div class="filter-bar">
+                    <select class="filter-select" id="platform-filter" onchange="filterPayments()">
+                        <option value="">All Platforms</option>
+                        <option value="square">Square</option>
+                        <option value="toast">Toast</option>
+                        <option value="pmc">Parking (PMC)</option>
+                        <option value="uber">Uber</option>
+                        <option value="lyft">Lyft</option>
+                        <option value="venmo">Venmo</option>
+                        <option value="zelle">Zelle</option>
+                    </select>
+                    <select class="filter-select" id="type-filter" onchange="filterPayments()">
+                        <option value="">All Types</option>
+                        <option value="pos">POS</option>
+                        <option value="parking">Parking</option>
+                        <option value="rideshare">Rideshare</option>
+                        <option value="p2p">P2P</option>
+                        <option value="food_delivery">Food Delivery</option>
+                    </select>
+                    <input type="text" class="search-input" placeholder="Search payments..." id="payment-search" onkeyup="filterPayments()">
+                </div>
+                <div class="payment-list" id="payment-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Receipts Tab -->
+        <div class="tab-content hidden" id="tab-receipts">
+            <div class="section">
+                <div class="section-header">
+                    <h2>Receipt URLs from iMessage</h2>
+                </div>
+                <div class="payment-list" id="receipt-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Tab -->
+        <div class="tab-content hidden" id="tab-pending">
+            <div class="section">
+                <div class="section-header">
+                    <h2>Pending Email Receipts</h2>
+                    <button class="btn btn-primary" onclick="processAll()">✅ Process All</button>
+                </div>
+                <div class="payment-list" id="pending-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        const ADMIN_KEY = new URLSearchParams(window.location.search).get('admin_key') || '';
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+            });
+        });
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadAccounts();
+            loadPayments();
+            loadReceipts();
+            loadPending();
+        });
+
+        async function apiCall(endpoint, options = {}) {
+            const url = new URL(endpoint, window.location.origin);
+            if (ADMIN_KEY) url.searchParams.set('admin_key', ADMIN_KEY);
+
+            try {
+                const response = await fetch(url, options);
+                return await response.json();
+            } catch (error) {
+                console.error('API error:', error);
+                return { error: error.message };
+            }
+        }
+
+        async function loadStats() {
+            const [health, pending] = await Promise.all([
+                apiCall('/api/health'),
+                apiCall('/api/incoming/count')
+            ]);
+
+            if (health.services?.gmail) {
+                document.getElementById('stat-accounts').textContent = health.services.gmail.connected_count || 0;
+            }
+            document.getElementById('stat-pending').textContent = pending.count || 0;
+
+            // iMessage stats would need local access - show placeholder
+            document.getElementById('stat-payments').textContent = 'N/A';
+            document.getElementById('stat-amount').textContent = 'N/A';
+        }
+
+        async function loadAccounts() {
+            const health = await apiCall('/api/health');
+            const container = document.getElementById('account-list');
+
+            if (health.services?.gmail?.accounts) {
+                container.innerHTML = health.services.gmail.accounts.map(acc => `
+                    <div class="account-item">
+                        <div class="account-avatar">${acc.email[0].toUpperCase()}</div>
+                        <div class="account-info">
+                            <div class="email">${acc.email}</div>
+                            <div class="status">
+                                <span class="status-badge connected">
+                                    <span class="dot"></span>
+                                    Connected
+                                </span>
+                            </div>
+                        </div>
+                        <div class="account-stats">
+                            <div class="count">✓</div>
+                            <div class="label">Active</div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No accounts connected</p></div>';
+            }
+        }
+
+        let allPayments = [];
+
+        async function loadPayments() {
+            const container = document.getElementById('payment-list');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">💬</div>
+                    <p>iMessage payments are only available when running locally</p>
+                    <p style="font-size: 12px; margin-top: 8px;">Run on your Mac to scan Square, Toast, parking receipts, etc.</p>
+                </div>
+            `;
+        }
+
+        function filterPayments() {
+            const platform = document.getElementById('platform-filter').value;
+            const type = document.getElementById('type-filter').value;
+            const search = document.getElementById('payment-search').value.toLowerCase();
+
+            const filtered = allPayments.filter(p => {
+                if (platform && p.platform !== platform) return false;
+                if (type && p.platform_type !== type) return false;
+                if (search && !JSON.stringify(p).toLowerCase().includes(search)) return false;
+                return true;
+            });
+
+            renderPayments(filtered);
+        }
+
+        function renderPayments(payments) {
+            const container = document.getElementById('payment-list');
+
+            if (!payments.length) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">💳</div><p>No payments found</p></div>';
+                return;
+            }
+
+            container.innerHTML = payments.map(p => {
+                const iconClass = getIconClass(p.platform);
+                const icon = getIcon(p.platform);
+                const date = new Date(p.date).toLocaleDateString();
+
+                return `
+                    <div class="payment-item">
+                        <div class="payment-icon ${iconClass}">${icon}</div>
+                        <div class="payment-details">
+                            <div class="merchant">${p.platform.toUpperCase()}</div>
+                            <div class="meta">${date} • ${p.platform_type} • ${p.sender || 'Unknown'}</div>
+                        </div>
+                        <div class="payment-amount">${p.amount ? '$' + p.amount.toFixed(2) : 'N/A'}</div>
+                        <div class="payment-actions">
+                            ${p.urls?.length ? `<button class="action-btn" onclick="openUrl('${p.urls[0]}')" title="Open Receipt">🔗</button>` : ''}
+                            <button class="action-btn" onclick="createTask('${p.platform}', ${p.amount || 0})" title="Create Task">📋</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getIconClass(platform) {
+            const classes = {
+                square: 'square', toast: 'toast', pmc: 'parking', parkmobile: 'parking',
+                uber: 'uber', lyft: 'uber', venmo: 'venmo', zelle: 'venmo'
+            };
+            return classes[platform] || 'default';
+        }
+
+        function getIcon(platform) {
+            const icons = {
+                square: '◻️', toast: '🍞', pmc: '🅿️', parkmobile: '🅿️', spothero: '🅿️',
+                uber: '🚗', lyft: '🚗', venmo: '💸', zelle: '💸', paypal: '💰',
+                doordash: '🍔', ubereats: '🍔', grubhub: '🍔'
+            };
+            return icons[platform] || '💳';
+        }
+
+        async function loadReceipts() {
+            const container = document.getElementById('receipt-list');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">🧾</div>
+                    <p>Receipt URLs are scanned from iMessage locally</p>
+                </div>
+            `;
+        }
+
+        async function loadPending() {
+            const data = await apiCall('/api/incoming/receipts?limit=50');
+            const container = document.getElementById('pending-list');
+
+            if (data.receipts?.length) {
+                container.innerHTML = data.receipts.map(r => `
+                    <div class="payment-item">
+                        <div class="payment-icon default">📧</div>
+                        <div class="payment-details">
+                            <div class="merchant">${r.merchant || 'Unknown Merchant'}</div>
+                            <div class="meta">${r.gmail_account} • ${r.received_at || 'Unknown date'}</div>
+                        </div>
+                        <div class="payment-amount">${r.amount ? '$' + parseFloat(r.amount).toFixed(2) : 'N/A'}</div>
+                        <div class="payment-actions">
+                            <button class="action-btn" onclick="acceptReceipt(${r.id})" title="Accept">✅</button>
+                            <button class="action-btn" onclick="rejectReceipt(${r.id})" title="Reject">❌</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state"><div class="icon">✨</div><p>No pending receipts</p></div>';
+            }
+        }
+
+        async function scanReceipts() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Scanning...';
+
+            await apiCall('/api/incoming/scan', { method: 'POST' });
+            await loadPending();
+            await loadStats();
+
+            btn.disabled = false;
+            btn.textContent = '📥 Scan Receipts';
+        }
+
+        async function syncAllAccounts() {
+            alert('Syncing all accounts...');
+            // Would trigger sync for each account
+        }
+
+        async function processAll() {
+            alert('Processing all pending receipts...');
+        }
+
+        async function acceptReceipt(id) {
+            await apiCall('/api/incoming/accept', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ receipt_id: id })
+            });
+            loadPending();
+            loadStats();
+        }
+
+        async function rejectReceipt(id) {
+            await apiCall('/api/incoming/reject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ receipt_id: id })
+            });
+            loadPending();
+            loadStats();
+        }
+
+        function openUrl(url) {
+            window.open(url, '_blank');
+        }
+
+        async function createTask(platform, amount) {
+            const content = `Process ${platform} receipt $${amount.toFixed(2)}`;
+            await apiCall('/api/taskade/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, project: 'finance' })
+            });
+            alert('Task created in Taskade!');
+        }
+
+        function refreshAll() {
+            loadStats();
+            loadAccounts();
+            loadPayments();
+            loadReceipts();
+            loadPending();
+        }
+    </script>
+</body>
+</html>

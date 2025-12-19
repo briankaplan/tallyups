@@ -2235,6 +2235,13 @@ def demo_page():
     return render_template("demo.html")
 
 
+@app.route("/gmail")
+@require_auth
+def gmail_dashboard():
+    """Gmail & Payments dashboard - unified view of email receipts, iMessage payments, and processing queue."""
+    return render_template("gmail_dashboard.html")
+
+
 @app.route("/auth/google")
 def auth_google_start():
     """Start Google OAuth flow for new users."""
