@@ -25158,6 +25158,10 @@ CONTACT_HUB_TEMPLATE = '''
             <span style="font-size:20px;">📥</span>
             <span>Incoming</span>
         </a>
+        <a href="/gmail" class="nav-item">
+            <span style="font-size:20px;">📧</span>
+            <span>Gmail</span>
+        </a>
     </nav>
 
     <script>
