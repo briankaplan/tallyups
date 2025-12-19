@@ -7446,6 +7446,7 @@ def atlas_contact_communications(contact_id):
 
 
 @app.route("/api/atlas/contacts/<contact_id>", methods=["PUT"])
+@csrf_exempt_route
 def atlas_contact_update(contact_id):
     """Update a contact"""
     # Check admin_key or session auth
@@ -8813,6 +8814,7 @@ def atlas_sync_resolve_conflict():
 
 
 @app.route("/api/atlas/contacts", methods=["POST"])
+@csrf_exempt_route
 def atlas_contact_create():
     """Create a new contact"""
     # Check admin_key or session auth
