@@ -31,6 +31,16 @@
    * Initialize the app shell
    */
   function init() {
+    // Skip app shell for full-screen standalone pages (scanner, etc.)
+    const isFullscreenApp = document.documentElement.dataset.fullscreenApp === 'true' ||
+                            document.body.dataset.fullscreenApp === 'true' ||
+                            ['/scanner', '/mobile_scanner', '/mobile-scanner'].includes(window.location.pathname);
+
+    if (isFullscreenApp) {
+      console.log('[AppShell] Skipping - fullscreen app detected');
+      return;
+    }
+
     // Inject design system CSS if not already present
     injectDesignSystem();
 

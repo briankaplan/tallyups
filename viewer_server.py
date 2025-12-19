@@ -3379,14 +3379,10 @@ def ocr_endpoint():
             file.save(tmp.name)
             tmp_path = tmp.name
 
-        # Use Gemini OCR (free tier!)
+        # Use OCR with OpenAI/Gemini fallback
         try:
-            import google.generativeai as genai
             import PIL.Image
             import json as json_module
-
-            # Get Gemini model
-            model = get_gemini_model()
 
             # Load image
             img = PIL.Image.open(tmp_path)
@@ -3432,20 +3428,26 @@ For the "note" field, match the expense to relevant calendar events:
 
 Return ONLY valid JSON, no explanation."""
 
-                response = model.generate_content([prompt_text, img])
-                text = response.text.strip()
-
-                # Clean markdown if present
-                if text.startswith('```'):
-                    lines = text.split('\n')
-                    text = '\n'.join(lines[1:-1]) if len(lines) > 2 else text
-
-                try:
-                    result = json_module.loads(text)
-                except json_module.JSONDecodeError:
-                    # Fall back to basic result
+                # Use fallback mechanism (OpenAI first, then Gemini)
+                text = generate_content_with_fallback(prompt_text, img)
+                if not text:
+                    # Fall back to basic result if AI fails
                     result = basic_result
                     result['note'] = None
+                else:
+                    text = text.strip()
+
+                    # Clean markdown if present
+                    if text.startswith('```'):
+                        lines = text.split('\n')
+                        text = '\n'.join(lines[1:-1]) if len(lines) > 2 else text
+
+                    try:
+                        result = json_module.loads(text)
+                    except json_module.JSONDecodeError:
+                        # Fall back to basic result
+                        result = basic_result
+                        result['note'] = None
             else:
                 # No calendar context, use basic result
                 result = basic_result
@@ -4442,6 +4444,13 @@ def mobile_upload():
 
             except Exception as e:
                 print(f"⚠️ Database error saving mobile receipt: {e}")
+                # Return error so frontend knows the save failed
+                return jsonify({
+                    "success": False,
+                    "error": f"Failed to save to inbox: {str(e)}",
+                    "filename": filename,
+                    "merchant": merchant
+                }), 500
 
         response_data = {
             "success": True,

@@ -4836,14 +4836,26 @@
             body: formData
           });
 
-          if (response.ok) {
-            const result = await response.json();
+          const result = await response.json();
+
+          if (response.ok && result.success) {
             receiptData.synced = true;
             receiptData.serverId = result.id;
+            console.log('📱 Receipt saved to inbox:', result.id);
+          } else {
+            // Server returned an error - mark for retry
+            console.error('Server error:', result.error || 'Unknown error');
+            showToast(result.error || 'Failed to save to inbox', 'error');
+            receiptData.pendingData = {
+              imageData: currentImage.data,
+              category: $('category-select').value,
+              notes: $('notes-input').value
+            };
           }
         }
       } catch (err) {
         console.error('Upload error:', err);
+        showToast('Network error - saved offline', 'warning');
         receiptData.pendingData = {
           imageData: currentImage.data,
           category: $('category-select').value,
