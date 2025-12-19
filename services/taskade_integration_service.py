@@ -85,16 +85,13 @@ class TaskadeIntegration:
         """
         task_data = {
             'content': content,
-            'contentType': 'text/plain'
+            'contentType': 'text/plain',
+            'placement': 'afterbegin'  # Add at top of list
         }
 
-        # Add placement (top of list by default)
+        # Add parent task ID if creating a subtask
         if parent_id:
             task_data['taskId'] = parent_id
-            task_data['placement'] = 'afterbegin'  # Add as first child
-        else:
-            task_data['taskId'] = 'null'
-            task_data['placement'] = 'afterbegin'  # Add at top
 
         endpoint = f'/projects/{project_id}/tasks'
         result = self._request('POST', endpoint, {'tasks': [task_data]})
@@ -265,7 +262,6 @@ class TaskadeIntegration:
             task_data.append({
                 'content': task['content'],
                 'contentType': 'text/plain',
-                'taskId': 'null',
                 'placement': 'beforeend'
             })
 
