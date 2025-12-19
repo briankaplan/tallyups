@@ -535,6 +535,13 @@ try:
 except ImportError as e:
     logger.warning(f"Could not load library blueprint: {e}")
 
+try:
+    from routes.taskade import taskade_bp
+    app.register_blueprint(taskade_bp)
+    logger.info("Registered blueprint: taskade")
+except ImportError as e:
+    logger.warning(f"Could not load taskade blueprint: {e}")
+
 # Set up API monitoring
 try:
     from monitoring import setup_flask_monitoring, get_monitor
@@ -20951,6 +20958,7 @@ def clear_rejected_incoming_receipts():
 
 
 @app.route("/api/incoming/scan", methods=["POST"])
+@csrf_exempt_route
 def scan_incoming_receipts():
     """
     Trigger a manual scan of Gmail accounts for new receipts.
@@ -21265,12 +21273,18 @@ def add_merchant_domain():
 
 
 @app.route("/api/incoming/stats", methods=["GET"])
-@login_required
 def get_incoming_stats():
     """
     Get statistics about incoming receipts system.
     Shows whitelist coverage, detection rates, etc.
+    Supports admin_key for API access.
     """
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
     try:
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
@@ -21350,12 +21364,18 @@ def get_incoming_stats():
 
 
 @app.route("/api/incoming/count", methods=["GET"])
-@login_required
 def get_incoming_count():
     """
     Get count of pending incoming receipts.
     Used by dashboard to show inbox badge.
+    Supports admin_key for API access.
     """
+    # Auth: admin_key OR login
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not is_authenticated():
+            return jsonify({'ok': False, 'error': 'Authentication required'}), 401
     try:
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
