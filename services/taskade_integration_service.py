@@ -20,9 +20,14 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 
 # Taskade API Configuration
-TASKADE_API_KEY = os.environ.get('TASKADE_API_KEY', 'tskdp_GGyLT1AcVZKmmi2cKcAQkBuswMitj4GZ19')
+# SECURITY: Never hardcode API keys - always use environment variables
+TASKADE_API_KEY = os.environ.get('TASKADE_API_KEY')
 TASKADE_BASE_URL = 'https://www.taskade.com/api/v1'
-WORKSPACE_ID = 'lrehjdiszlbcf1ur'
+WORKSPACE_ID = os.environ.get('TASKADE_WORKSPACE_ID', 'lrehjdiszlbcf1ur')
+
+if not TASKADE_API_KEY:
+    import logging
+    logging.warning("TASKADE_API_KEY not set in environment - Taskade integration will fail")
 
 # Your 12 Core Projects (Correct IDs from API)
 PROJECTS = {

@@ -6714,6 +6714,196 @@ def atlas_imessage_conversation(handle: str):
         return jsonify({'error': str(e)}), 500
 
 
+# =============================================================================
+# IMESSAGE PAYMENTS API - View payments from chat.db
+# =============================================================================
+
+@app.route("/api/atlas/imessage/payments", methods=["GET"])
+@login_required
+def atlas_imessage_payments():
+    """Get payment-related messages from iMessage (Square, Toast, Parking, etc.)"""
+    try:
+        # Try to import the shared client (local copy for Railway deployment)
+        try:
+            from services.shared.imessage_client import iMessageClient, PaymentMessage
+            IMESSAGE_CLIENT_AVAILABLE = True
+        except ImportError:
+            try:
+                # Fallback to monorepo packages path (local dev)
+                import sys
+                sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+                from packages.shared.imessage_client import iMessageClient, PaymentMessage
+                IMESSAGE_CLIENT_AVAILABLE = True
+            except ImportError:
+                IMESSAGE_CLIENT_AVAILABLE = False
+
+        if not IMESSAGE_CLIENT_AVAILABLE:
+            return jsonify({'error': 'iMessage client not available'}), 503
+
+        days = request.args.get('days', 30, type=int)
+        platform = request.args.get('platform', None)  # Filter by platform
+        platform_type = request.args.get('type', None)  # Filter by type (pos, parking, rideshare, etc.)
+
+        client = iMessageClient()
+        payments = client.get_recent_payments(days=days)
+
+        # Apply filters
+        if platform:
+            payments = [p for p in payments if p.platform.lower() == platform.lower()]
+        if platform_type:
+            payments = [p for p in payments if p.platform_type.lower() == platform_type.lower()]
+
+        # Convert to JSON-serializable format
+        results = []
+        for p in payments:
+            results.append({
+                'platform': p.platform,
+                'platform_type': p.platform_type,
+                'amount': p.amount,
+                'raw_amount': p.raw_amount,
+                'date': p.message.date.isoformat(),
+                'sender': p.message.sender,
+                'is_from_me': p.message.is_from_me,
+                'message_preview': p.message.text[:200] if p.message.text else None,
+                'urls': p.urls[:3] if p.urls else [],  # Limit URLs
+            })
+
+        return jsonify({
+            "ok": True,
+            "days": days,
+            "count": len(results),
+            "payments": results
+        })
+    except Exception as e:
+        print(f"iMessage payments error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/imessage/payments/stats", methods=["GET"])
+@login_required
+def atlas_imessage_payment_stats():
+    """Get statistics about payments in iMessages"""
+    try:
+        try:
+            from services.shared.imessage_client import iMessageClient
+            IMESSAGE_CLIENT_AVAILABLE = True
+        except ImportError:
+            IMESSAGE_CLIENT_AVAILABLE = False
+
+        if not IMESSAGE_CLIENT_AVAILABLE:
+            return jsonify({'error': 'iMessage client not available'}), 503
+
+        days = request.args.get('days', 30, type=int)
+
+        client = iMessageClient()
+        stats = client.get_payment_stats(days=days)
+
+        return jsonify({
+            "ok": True,
+            "days": days,
+            "stats": stats
+        })
+    except Exception as e:
+        print(f"iMessage payment stats error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/imessage/receipts", methods=["GET"])
+@login_required
+def atlas_imessage_receipts():
+    """Get receipt URLs found in iMessages"""
+    try:
+        try:
+            from services.shared.imessage_client import iMessageClient
+            IMESSAGE_CLIENT_AVAILABLE = True
+        except ImportError:
+            IMESSAGE_CLIENT_AVAILABLE = False
+
+        if not IMESSAGE_CLIENT_AVAILABLE:
+            return jsonify({'error': 'iMessage client not available'}), 503
+
+        days = request.args.get('days', 90, type=int)
+        limit = request.args.get('limit', 100, type=int)
+
+        client = iMessageClient()
+        receipts = client.find_receipt_urls(days=days)[:limit]
+
+        results = []
+        for r in receipts:
+            results.append({
+                'url': r.url,
+                'platform': r.platform,
+                'amount': r.amount,
+                'date': r.message.date.isoformat(),
+                'sender': r.message.sender,
+            })
+
+        return jsonify({
+            "ok": True,
+            "days": days,
+            "count": len(results),
+            "receipts": results
+        })
+    except Exception as e:
+        print(f"iMessage receipts error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/atlas/imessage/search-transaction", methods=["POST"])
+@login_required
+def atlas_imessage_search_transaction():
+    """Search iMessages for a specific transaction match"""
+    try:
+        try:
+            from services.shared.imessage_client import iMessageClient
+            IMESSAGE_CLIENT_AVAILABLE = True
+        except ImportError:
+            IMESSAGE_CLIENT_AVAILABLE = False
+
+        if not IMESSAGE_CLIENT_AVAILABLE:
+            return jsonify({'error': 'iMessage client not available'}), 503
+
+        data = request.get_json()
+        merchant = data.get('merchant', '')
+        amount = float(data.get('amount', 0))
+        date_str = data.get('date')
+        window_days = data.get('window_days', 5)
+
+        if not merchant or not amount or not date_str:
+            return jsonify({'error': 'merchant, amount, and date required'}), 400
+
+        from datetime import datetime
+        tx_date = datetime.strptime(date_str, '%Y-%m-%d')
+
+        client = iMessageClient()
+        matches = client.search_for_transaction(merchant, amount, tx_date, window_days=window_days)
+
+        results = []
+        for m in matches:
+            results.append({
+                'platform': m.platform,
+                'platform_type': m.platform_type,
+                'amount': m.amount,
+                'date': m.message.date.isoformat(),
+                'sender': m.message.sender,
+                'message_preview': m.message.text[:200] if m.message.text else None,
+                'urls': m.urls[:3] if m.urls else [],
+            })
+
+        return jsonify({
+            "ok": True,
+            "merchant": merchant,
+            "amount": amount,
+            "date": date_str,
+            "matches": results
+        })
+    except Exception as e:
+        print(f"iMessage transaction search error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/api/atlas/relationship/<path:identifier>", methods=["GET"])
 @login_required
 def atlas_relationship_health(identifier: str):
