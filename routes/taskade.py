@@ -32,6 +32,19 @@ def get_dependencies():
     return is_authenticated, TaskadeIntegration, PROJECTS, get_taskade_service
 
 
+def get_csrf_exempt():
+    """Import csrf_exempt_route decorator."""
+    from viewer_server import csrf_exempt_route
+    return csrf_exempt_route
+
+
+# Create decorator that applies CSRF exemption
+def csrf_exempt_api(f):
+    """Mark a route as CSRF exempt for API access."""
+    f._csrf_exempt = True
+    return f
+
+
 def check_auth():
     """Check if request is authenticated via admin key or session."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
@@ -92,6 +105,7 @@ def get_project_tasks(project):
 
 
 @taskade_bp.route("/tasks", methods=["POST"])
+@csrf_exempt_api
 def create_task():
     """
     Create a new task with auto-routing.
@@ -146,6 +160,7 @@ def create_task():
 
 
 @taskade_bp.route("/tasks/<project>/<task_id>", methods=["PUT"])
+@csrf_exempt_api
 def update_task(project, task_id):
     """Update a task."""
     if not check_auth():
@@ -180,6 +195,7 @@ def update_task(project, task_id):
 
 
 @taskade_bp.route("/tasks/<project>/<task_id>", methods=["DELETE"])
+@csrf_exempt_api
 def delete_task(project, task_id):
     """Delete a task."""
     if not check_auth():
@@ -205,6 +221,7 @@ def delete_task(project, task_id):
 
 
 @taskade_bp.route("/tasks/<project>/<task_id>/complete", methods=["POST"])
+@csrf_exempt_api
 def complete_task(project, task_id):
     """Mark a task as complete."""
     if not check_auth():
@@ -254,6 +271,7 @@ def get_today_tasks():
 
 
 @taskade_bp.route("/sync-unmatched", methods=["POST"])
+@csrf_exempt_api
 def sync_unmatched_to_taskade():
     """
     Sync unmatched transactions to Taskade Finance project.
@@ -314,6 +332,7 @@ def sync_unmatched_to_taskade():
 
 
 @taskade_bp.route("/bulk-create", methods=["POST"])
+@csrf_exempt_api
 def bulk_create_tasks():
     """
     Create multiple tasks at once.

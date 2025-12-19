@@ -656,6 +656,14 @@ if CSRF_AVAILABLE:
 
     csrf = CSRFProtect(app)
 
+    # Exempt entire taskade blueprint (uses API key auth, not sessions)
+    try:
+        from routes.taskade import taskade_bp
+        csrf.exempt(taskade_bp)
+        logger.info("Taskade blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
     # Exempt API endpoints that use API key authentication (they don't use sessions)
     # These are already protected by api_key_required decorator
     CSRF_EXEMPT_ENDPOINTS = [
