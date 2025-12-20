@@ -404,7 +404,7 @@
 				CODE_SIGN_ENTITLEMENTS = TallyScanner/TallyScanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = R2LSUCXR5J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TallyScanner/Info.plist;
@@ -441,7 +441,7 @@
 				CODE_SIGN_ENTITLEMENTS = TallyScanner/TallyScanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = R2LSUCXR5J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TallyScanner/Info.plist;
