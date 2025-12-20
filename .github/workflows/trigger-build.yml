@@ -1,0 +1,25 @@
+name: Trigger Xcode Cloud Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: 'Build notes'
+        required: false
+        default: 'New build'
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Xcode Cloud
+        run: |
+          echo "📱 To deploy from your phone:"
+          echo ""
+          echo "1. Open App Store Connect app (or browser)"
+          echo "2. Go to your app → Xcode Cloud"
+          echo "3. Tap 'Start Build'"
+          echo ""
+          echo "That's it! No certs, no Mac, no secrets."
+          echo ""
+          echo "Xcode Cloud handles everything automatically."
