@@ -4549,6 +4549,43 @@ def mobile_upload():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/transactions/<int:tx_id>", methods=["GET"])
+@login_required
+def get_transaction(tx_id):
+    """Get a single transaction by ID (for iOS app)"""
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT _index, chase_date, chase_description, chase_amount, business_type,
+                   category, notes, receipt_file, receipt_url, r2_url, review_status,
+                   ocr_verified, ocr_verification_status, ocr_data
+            FROM transactions WHERE _index = %s
+        """, (tx_id,))
+
+        row = cursor.fetchone()
+        cursor.close()
+        return_db_connection(conn)
+
+        if not row:
+            return jsonify({"error": "Transaction not found"}), 404
+
+        columns = ['_index', 'chase_date', 'chase_description', 'chase_amount', 'business_type',
+                   'category', 'notes', 'receipt_file', 'receipt_url', 'r2_url', 'review_status',
+                   'ocr_verified', 'ocr_verification_status', 'ocr_data']
+        tx = dict(zip(columns, row))
+
+        # Handle date serialization
+        if tx.get('chase_date') and hasattr(tx['chase_date'], 'isoformat'):
+            tx['chase_date'] = tx['chase_date'].isoformat()
+
+        return jsonify({"ok": True, "transaction": tx})
+    except Exception as e:
+        print(f"Get transaction error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/transactions/<int:tx_id>", methods=["PUT"])
 def update_transaction(tx_id):
     """Update a transaction's fields (admin only)"""
@@ -23949,6 +23986,7 @@ def api_contact_hub_calendar_sync():
 
 
 @app.route("/api/contact-hub/calendar/events", methods=["GET"])
+@app.route("/api/calendar/events", methods=["GET"])  # iOS app compatibility alias
 @login_required
 def api_contact_hub_calendar_events():
     """Get calendar events"""
@@ -23957,8 +23995,9 @@ def api_contact_hub_calendar_events():
 
     try:
         contact_id = request.args.get('contact_id', type=int)
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
+        # Support both iOS app params (date, start, end) and web params (start_date, end_date)
+        start_date = request.args.get('start_date') or request.args.get('start') or request.args.get('date')
+        end_date = request.args.get('end_date') or request.args.get('end') or request.args.get('date')
         limit = request.args.get('limit', 50, type=int)
 
         events = db.atlas_get_calendar_events(contact_id, start_date, end_date, limit)

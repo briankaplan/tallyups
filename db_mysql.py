@@ -1150,6 +1150,12 @@ class MySQLReceiptDatabase:
                     # Composite indexes for common filter combinations
                     ("idx_date_deleted", "CREATE INDEX idx_date_deleted ON transactions(chase_date, deleted)"),
                     ("idx_has_receipt", "CREATE INDEX idx_has_receipt ON transactions(r2_url(50), receipt_url(50), receipt_file(50))"),
+                    # OCR verification indexes - CRITICAL for dashboard performance
+                    ("idx_ocr_verified", "CREATE INDEX idx_ocr_verified ON transactions(ocr_verified)"),
+                    ("idx_ocr_verification_status", "CREATE INDEX idx_ocr_verification_status ON transactions(ocr_verification_status)"),
+                    ("idx_ocr_method", "CREATE INDEX idx_ocr_method ON transactions(ocr_method)"),
+                    # Composite index for dashboard stats
+                    ("idx_business_date", "CREATE INDEX idx_business_date ON transactions(business_type, chase_date)"),
                 ]
 
                 # Get existing indexes
