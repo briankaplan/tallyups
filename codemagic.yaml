@@ -4,14 +4,17 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 30
 
+    integrations:
+      app_store_connect: TallyScanner API Key
+
     environment:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.tallyups.scanner
       vars:
-        XCODE_WORKSPACE: "ios/TallyScanner.xcodeproj"
+        XCODE_PROJECT: "TallyScanner.xcodeproj"
         XCODE_SCHEME: "TallyScanner"
-        APP_STORE_APPLE_ID: "Kaplan.brian@gmail.com"
+        BUNDLE_ID: "com.tallyups.scanner"
       xcode: 15.2
 
     triggering:
@@ -20,47 +23,47 @@ workflows:
       branch_patterns:
         - pattern: main
           include: true
+        - pattern: claude/*
+          include: true
 
     scripts:
-      - name: Set up code signing
-        script: |
-          keychain initialize
+      - name: Set up keychain
+        script: keychain initialize
 
       - name: Fetch signing files
         script: |
-          app-store-connect fetch-signing-files $(XCODE_SCHEME) \
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
 
-      - name: Set up signing
-        script: |
-          keychain add-certificates
+      - name: Add certificates to keychain
+        script: keychain add-certificates
 
       - name: Set up provisioning profiles
-        script: |
-          xcode-project use-profiles
+        script: xcode-project use-profiles
 
       - name: Increment build number
         script: |
           cd ios
-          BUILD_NUMBER=$(($(app-store-connect get-latest-testflight-build-number "$APP_ID") + 1))
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_ID" || echo "0")
+          BUILD_NUMBER=$((LATEST + 1))
+          echo "Build number: $BUILD_NUMBER"
           agvtool new-version -all $BUILD_NUMBER
 
-      - name: Build ipa
+      - name: Build IPA
         script: |
           cd ios
           xcode-project build-ipa \
-            --project "$XCODE_WORKSPACE" \
+            --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME" \
             --config Release
 
     artifacts:
       - ios/build/ios/ipa/*.ipa
       - ios/build/ios/xcarchive/*.xcarchive
+      - /tmp/xcodebuild_logs/*.log
 
     publishing:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        beta_groups:
-          - Internal Testers
