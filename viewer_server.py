@@ -2236,7 +2236,7 @@ def demo_page():
 
 
 @app.route("/gmail")
-@require_auth
+@login_required
 def gmail_dashboard():
     """Gmail & Payments dashboard - unified view of email receipts, iMessage payments, and processing queue."""
     return render_template("gmail_dashboard.html")
@@ -27509,13 +27509,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=5050)
     args = parser.parse_args()
 
-    # Lightweight backup of the current CSV
-    if CSV_PATH.exists():
-        ts = dt.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = CSV_PATH.with_suffix(f".backup.{ts}.csv")
-        shutil.copy2(CSV_PATH, backup_path)
-        print(f"💾 Backup created for {CSV_PATH.name} → {backup_path.name}")
-
+    # Initialize data from MySQL (CSV backup removed - MySQL only)
     load_csv()
     RECEIPT_DIR.mkdir(exist_ok=True)
     TRASH_DIR.mkdir(exist_ok=True)
