@@ -1,0 +1,147 @@
+name: iOS TestFlight Deploy
+
+on:
+  # Trigger manually from GitHub (works from phone!)
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.1)'
+        required: false
+        default: ''
+      release_notes:
+        description: 'What to Test notes for testers'
+        required: false
+        default: 'Bug fixes and improvements'
+
+  # Auto-deploy on push to main (optional)
+  # push:
+  #   branches: [main]
+  #   paths: ['ios/**']
+
+jobs:
+  build-and-deploy:
+    name: Build & Upload to TestFlight
+    runs-on: macos-14
+
+    env:
+      SCHEME: TallyScanner
+      PROJECT_PATH: ios/TallyScanner.xcodeproj
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.2'
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install Apple certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # Import certificate and provisioning profile from secrets
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          # Create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Apply provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      - name: Update version number
+        if: github.event.inputs.version != ''
+        run: |
+          cd ios
+          agvtool new-marketing-version ${{ github.event.inputs.version }}
+
+      - name: Increment build number
+        run: |
+          cd ios
+          BUILD_NUMBER=$(date +%Y%m%d%H%M)
+          agvtool new-version -all $BUILD_NUMBER
+          echo "Build number: $BUILD_NUMBER"
+
+      - name: Build archive
+        run: |
+          cd ios
+          xcodebuild archive \
+            -scheme "$SCHEME" \
+            -project "$PROJECT_PATH" \
+            -archivePath build/TallyScanner.xcarchive \
+            -destination "generic/platform=iOS" \
+            -configuration Release \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="${{ secrets.TEAM_ID }}" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}"
+
+      - name: Export IPA
+        run: |
+          cd ios
+          xcodebuild -exportArchive \
+            -archivePath build/TallyScanner.xcarchive \
+            -exportPath build \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Upload to TestFlight
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          # Create API key file
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo -n "$APP_STORE_CONNECT_API_KEY_BASE64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
+
+          # Upload using altool
+          xcrun altool --upload-app \
+            --type ios \
+            --file ios/build/TallyScanner.ipa \
+            --apiKey "$APP_STORE_CONNECT_API_KEY_ID" \
+            --apiIssuer "$APP_STORE_CONNECT_API_ISSUER_ID"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TallyScanner-${{ github.run_number }}
+          path: |
+            ios/build/TallyScanner.ipa
+            ios/build/TallyScanner.xcarchive
+          retention-days: 30
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "✅ Build uploaded to TestFlight!"
+          echo "📱 Check App Store Connect for processing status"
+          echo "⏱️ Usually takes 5-30 minutes to appear in TestFlight"
