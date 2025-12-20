@@ -542,6 +542,14 @@ try:
 except ImportError as e:
     logger.warning(f"Could not load taskade blueprint: {e}")
 
+# Plaid Bank Integration
+try:
+    from services.plaid_routes import plaid_bp
+    app.register_blueprint(plaid_bp)
+    logger.info("Registered blueprint: plaid (bank integration)")
+except ImportError as e:
+    logger.warning(f"Could not load plaid blueprint: {e}")
+
 # Set up API monitoring
 try:
     from monitoring import setup_flask_monitoring, get_monitor
@@ -2514,6 +2522,14 @@ def viewer():
 def settings_page():
     """Serve the Settings page."""
     return send_from_directory(BASE_DIR, "settings.html")
+
+
+@app.route("/settings/bank-accounts")
+@app.route("/bank-accounts")
+@login_required
+def bank_accounts_page():
+    """Serve the Bank Accounts settings page (Plaid integration)."""
+    return send_from_directory(BASE_DIR, "bank_accounts.html")
 
 
 @app.route("/incoming.html")

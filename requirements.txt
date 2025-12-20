@@ -28,6 +28,9 @@ boto3>=1.34.0
 pymysql>=1.1.0
 cryptography>=41.0.0
 
+# Plaid Bank Integration
+plaid-python>=17.0.0
+
 # PDF/HTML processing
 PyMuPDF>=1.23.0  # Pure Python PDF processing - no external dependencies!
 pdf2image>=1.16.0  # Fallback - requires poppler (via nixpacks.toml)

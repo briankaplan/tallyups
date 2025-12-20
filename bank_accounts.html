@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0f14">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <title>Tallyups - Bank Accounts</title>
+  <link rel="stylesheet" href="/static/css/design-system.css">
+  <link rel="stylesheet" href="/static/tallyups-design.css">
+
+  <!-- Plaid Link SDK -->
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+
+  <style>
+    :root {
+      --bg: #0a0f14;
+      --bg-card: #0e141a;
+      --bg-elevated: #121a25;
+      --accent: #00ff88;
+      --accent-dim: rgba(0, 255, 136, 0.15);
+      --accent-glow: rgba(0, 255, 136, 0.3);
+      --text: #ffffff;
+      --text-dim: #666666;
+      --text-secondary: #999999;
+      --border: #1b2a3a;
+      --success: #00ff88;
+      --warning: #ffaa00;
+      --error: #ff4444;
+      --info: #4488ff;
+
+      /* Business colors */
+      --personal: #8b5cf6;
+      --downhome: #00ff88;
+      --mcr: #f59e0b;
+      --emco: #3b82f6;
+
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      padding-top: calc(60px + var(--safe-top));
+      padding-bottom: calc(100px + var(--safe-bottom));
+      margin: 0;
+    }
+
+    /* Header */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: calc(var(--safe-top) + 16px) 20px 16px;
+      background: linear-gradient(180deg, rgba(0,255,136,0.08) 0%, var(--bg) 100%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: var(--text-secondary);
+    }
+
+    .back-btn:hover {
+      background: var(--bg-elevated);
+      border-color: var(--accent);
+    }
+
+    .header-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Main content */
+    .main-content {
+      padding: 80px 16px 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    /* Status Banner */
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+
+    .status-banner.not-configured {
+      border-color: var(--warning);
+      background: rgba(255, 170, 0, 0.1);
+    }
+
+    .status-banner.configured {
+      border-color: var(--success);
+      background: rgba(0, 255, 136, 0.1);
+    }
+
+    .status-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .status-icon.warning {
+      background: rgba(255, 170, 0, 0.2);
+      color: var(--warning);
+    }
+
+    .status-icon.success {
+      background: rgba(0, 255, 136, 0.2);
+      color: var(--success);
+    }
+
+    .status-text h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0 0 4px;
+    }
+
+    .status-text p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    /* Section */
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Connect Button */
+    .connect-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .connect-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+    }
+
+    .connect-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Bank Card */
+    .bank-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .bank-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .bank-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .bank-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .bank-name {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .bank-status {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .bank-status.active {
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--success);
+    }
+
+    .bank-status.needs-reauth {
+      background: rgba(255, 170, 0, 0.15);
+      color: var(--warning);
+    }
+
+    .bank-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .bank-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .bank-btn:hover {
+      background: var(--bg-elevated);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .bank-btn.danger:hover {
+      border-color: var(--error);
+      color: var(--error);
+    }
+
+    /* Account Row */
+    .account-row {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+
+    .account-row:last-child {
+      border-bottom: none;
+    }
+
+    .account-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--bg-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .account-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .account-name {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .account-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .account-type {
+      text-transform: capitalize;
+    }
+
+    .account-balance {
+      font-size: 15px;
+      font-weight: 600;
+      margin-right: 16px;
+      white-space: nowrap;
+    }
+
+    /* Business Tags */
+    .business-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .business-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .business-tag.personal {
+      background: rgba(139, 92, 246, 0.2);
+      color: var(--personal);
+    }
+    .business-tag.personal.selected {
+      background: var(--personal);
+      color: #fff;
+    }
+
+    .business-tag.downhome {
+      background: rgba(0, 255, 136, 0.2);
+      color: var(--downhome);
+    }
+    .business-tag.downhome.selected {
+      background: var(--downhome);
+      color: #000;
+    }
+
+    .business-tag.mcr {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--mcr);
+    }
+    .business-tag.mcr.selected {
+      background: var(--mcr);
+      color: #000;
+    }
+
+    .business-tag.emco {
+      background: rgba(59, 130, 246, 0.2);
+      color: var(--emco);
+    }
+    .business-tag.emco.selected {
+      background: var(--emco);
+      color: #fff;
+    }
+
+    /* Sync Toggle */
+    .sync-toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .sync-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .sync-toggle .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      transition: 0.3s;
+    }
+
+    .sync-toggle .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .sync-toggle input:checked + .slider {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .sync-toggle input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      color: var(--accent);
+      opacity: 0.6;
+    }
+
+    .empty-state h3 {
+      color: var(--text);
+      font-size: 20px;
+      margin: 0 0 8px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      margin: 0 0 24px;
+      max-width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Info Card */
+    .info-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 24px;
+    }
+
+    .info-card h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 0 8px;
+      color: var(--info);
+    }
+
+    .info-card p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 500;
+      z-index: 10000;
+      animation: fadeInUp 0.3s ease;
+    }
+
+    .toast.success {
+      background: var(--success);
+      color: #000;
+    }
+
+    .toast.error {
+      background: var(--error);
+      color: #fff;
+    }
+
+    .toast.info {
+      background: var(--info);
+      color: #fff;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+    }
+
+    /* Bottom Nav */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      padding: 12px 0 calc(var(--safe-bottom) + 12px);
+      display: flex;
+      justify-content: space-around;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      color: var(--text-dim);
+      font-size: 11px;
+      transition: color 0.2s;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      color: var(--accent);
+    }
+
+    .nav-item svg {
+      width: 24px;
+      height: 24px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <a href="/settings" class="back-btn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </a>
+    <h1 class="header-title">Bank Accounts</h1>
+    <div class="header-actions">
+      <button class="connect-btn" id="connectBtn" onclick="connectBank()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Connect
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content" id="mainContent">
+    <div class="loading" id="loadingState">
+      <div class="spinner"></div>
+      <p>Loading bank accounts...</p>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="/" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      </svg>
+      Home
+    </a>
+    <a href="/receipt_library" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+      </svg>
+      Receipts
+    </a>
+    <a href="/settings" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      Settings
+    </a>
+  </nav>
+
+  <!-- Plaid Link JS -->
+  <script src="/static/js/plaid-link.js"></script>
+
+  <script>
+    // Business types available
+    const BUSINESS_TYPES = [
+      { id: 'Personal', label: 'Personal', class: 'personal' },
+      { id: 'Down_Home', label: 'Down Home', class: 'downhome' },
+      { id: 'MCR', label: 'Music City Rodeo', class: 'mcr' },
+      { id: 'Em.Co', label: 'Em.Co', class: 'emco' }
+    ];
+
+    // State
+    let items = [];
+    let accountBusinessTypes = {}; // accountId -> [business_types]
+
+    // Load data on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      loadBankAccounts();
+    });
+
+    // Listen for Plaid events
+    window.addEventListener('plaid:connected', (e) => {
+      loadBankAccounts();
+    });
+
+    window.addEventListener('plaid:synced', (e) => {
+      loadBankAccounts();
+    });
+
+    async function loadBankAccounts() {
+      const mainContent = document.getElementById('mainContent');
+
+      try {
+        // Check if Plaid is configured
+        const status = await PlaidLink.getStatus();
+
+        if (!status.configured) {
+          mainContent.innerHTML = renderNotConfigured();
+          return;
+        }
+
+        // Get items and accounts
+        items = await PlaidLink.getItems();
+
+        if (items.length === 0) {
+          mainContent.innerHTML = renderEmptyState();
+          return;
+        }
+
+        // Load account business types from localStorage (or server)
+        loadAccountBusinessTypes();
+
+        // Render banks
+        mainContent.innerHTML = await renderBanks();
+
+      } catch (error) {
+        console.error('Failed to load bank accounts:', error);
+        mainContent.innerHTML = `
+          <div class="status-banner not-configured">
+            <div class="status-icon warning">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4M12 16h.01"/>
+              </svg>
+            </div>
+            <div class="status-text">
+              <h3>Failed to Load</h3>
+              <p>${error.message || 'Unable to connect to the server'}</p>
+            </div>
+          </div>
+          <button class="connect-btn" onclick="loadBankAccounts()">Retry</button>
+        `;
+      }
+    }
+
+    function loadAccountBusinessTypes() {
+      // Try to load from localStorage first
+      const saved = localStorage.getItem('accountBusinessTypes');
+      if (saved) {
+        accountBusinessTypes = JSON.parse(saved);
+      }
+    }
+
+    function saveAccountBusinessTypes() {
+      localStorage.setItem('accountBusinessTypes', JSON.stringify(accountBusinessTypes));
+
+      // Also save to server
+      Object.entries(accountBusinessTypes).forEach(([accountId, types]) => {
+        fetch(`/api/plaid/accounts/${accountId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            business_types: types,
+            // Set default_business_type to the first selected type
+            default_business_type: types[0] || null
+          })
+        }).catch(err => console.warn('Failed to save to server:', err));
+      });
+    }
+
+    function renderNotConfigured() {
+      return `
+        <div class="status-banner not-configured">
+          <div class="status-icon warning">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 8v4M12 16h.01"/>
+            </svg>
+          </div>
+          <div class="status-text">
+            <h3>Plaid Not Configured</h3>
+            <p>Contact your administrator to set up Plaid integration.</p>
+          </div>
+        </div>
+        <div class="info-card">
+          <h4>About Bank Connections</h4>
+          <p>
+            Connect your bank accounts and credit cards to automatically import transactions.
+            Each account can be assigned to multiple businesses (Personal, Down Home, MCR, Em.Co).
+          </p>
+        </div>
+      `;
+    }
+
+    function renderEmptyState() {
+      return `
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="1" y="4" width="22" height="16" rx="2"/>
+              <path d="M1 10h22"/>
+            </svg>
+          </div>
+          <h3>No Bank Accounts Connected</h3>
+          <p>Connect your bank accounts and credit cards to automatically sync transactions for receipt matching.</p>
+          <button class="connect-btn" onclick="connectBank()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Connect Bank Account
+          </button>
+        </div>
+        <div class="info-card">
+          <h4>How it works</h4>
+          <p>
+            1. Connect your bank securely through Plaid<br>
+            2. Assign each card to one or more businesses<br>
+            3. Transactions sync automatically every hour<br>
+            4. Receipts are matched to transactions automatically
+          </p>
+        </div>
+      `;
+    }
+
+    async function renderBanks() {
+      let html = '';
+
+      for (const item of items) {
+        const accounts = await PlaidLink.getAccounts(item.item_id);
+        const statusClass = item.status === 'active' ? 'active' : 'needs-reauth';
+        const initial = (item.institution_name || 'B')[0].toUpperCase();
+
+        html += `
+          <div class="bank-card">
+            <div class="bank-header">
+              <div class="bank-info">
+                <div class="bank-logo">${initial}</div>
+                <div>
+                  <div class="bank-name">${item.institution_name || 'Bank Account'}</div>
+                  <span class="bank-status ${statusClass}">
+                    ${item.status === 'active' ? 'Connected' : 'Needs Re-auth'}
+                  </span>
+                </div>
+              </div>
+              <div class="bank-actions">
+                ${item.status === 'needs_reauth' ? `
+                  <button class="bank-btn" onclick="reauthBank('${item.item_id}')" title="Re-authenticate">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                    </svg>
+                  </button>
+                ` : ''}
+                <button class="bank-btn" onclick="syncBank('${item.item_id}')" title="Sync now">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    <path d="M9 12l2 2 4-4"/>
+                  </svg>
+                </button>
+                <button class="bank-btn danger" onclick="removeBank('${item.item_id}')" title="Disconnect">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            ${accounts.map(acct => renderAccount(acct)).join('')}
+
+            <div style="padding: 12px 16px; font-size: 12px; color: var(--text-dim); background: rgba(0,0,0,0.2);">
+              Last synced: ${item.last_successful_sync ?
+                new Date(item.last_successful_sync).toLocaleString() : 'Never'}
+            </div>
+          </div>
+        `;
+      }
+
+      // Add connect button at bottom
+      html += `
+        <button class="connect-btn" onclick="connectBank()" style="width: 100%; justify-content: center; margin-top: 16px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Add Another Bank Account
+        </button>
+      `;
+
+      return html;
+    }
+
+    function renderAccount(account) {
+      const selectedTypes = accountBusinessTypes[account.account_id] || [];
+      const icon = getAccountIcon(account.type);
+      const balance = account.balance_current !== null
+        ? `$${Math.abs(account.balance_current).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+        : '--';
+
+      return `
+        <div class="account-row">
+          <div class="account-icon">${icon}</div>
+          <div class="account-details">
+            <div class="account-name">${account.name}</div>
+            <div class="account-meta">
+              <span class="account-type">${account.type}${account.subtype ? ` - ${account.subtype}` : ''}</span>
+              <span>****${account.mask || '----'}</span>
+            </div>
+            <div class="business-tags">
+              ${BUSINESS_TYPES.map(bt => `
+                <span class="business-tag ${bt.class} ${selectedTypes.includes(bt.id) ? 'selected' : ''}"
+                      onclick="toggleBusinessType('${account.account_id}', '${bt.id}', this)">
+                  ${bt.label}
+                </span>
+              `).join('')}
+            </div>
+          </div>
+          <div class="account-balance">${balance}</div>
+          <label class="sync-toggle" title="${account.sync_enabled ? 'Sync enabled' : 'Sync disabled'}">
+            <input type="checkbox" ${account.sync_enabled ? 'checked' : ''}
+                   onchange="toggleSync('${account.account_id}', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      `;
+    }
+
+    function getAccountIcon(type) {
+      switch (type) {
+        case 'credit':
+          return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="4" width="22" height="16" rx="2"/>
+            <path d="M1 10h22"/>
+          </svg>`;
+        case 'depository':
+          return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11"/>
+            <rect x="9" y="14" width="6" height="7"/>
+          </svg>`;
+        case 'investment':
+          return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>`;
+        default:
+          return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>`;
+      }
+    }
+
+    // Actions
+    async function connectBank() {
+      try {
+        await PlaidLink.connect();
+      } catch (error) {
+        showToast(error.message || 'Failed to connect bank', 'error');
+      }
+    }
+
+    async function reauthBank(itemId) {
+      try {
+        await PlaidLink.update(itemId);
+      } catch (error) {
+        showToast(error.message || 'Failed to re-authenticate', 'error');
+      }
+    }
+
+    async function syncBank(itemId) {
+      try {
+        showToast('Syncing transactions...', 'info');
+        const result = await PlaidLink.sync(itemId);
+        const added = result.results?.[0]?.added || 0;
+        showToast(`Synced ${added} new transactions`, 'success');
+        loadBankAccounts();
+      } catch (error) {
+        showToast(error.message || 'Sync failed', 'error');
+      }
+    }
+
+    async function removeBank(itemId) {
+      if (!confirm('Are you sure you want to disconnect this bank? Your existing transactions will be kept.')) {
+        return;
+      }
+
+      try {
+        await PlaidLink.removeItem(itemId);
+        loadBankAccounts();
+      } catch (error) {
+        showToast(error.message || 'Failed to disconnect', 'error');
+      }
+    }
+
+    function toggleBusinessType(accountId, businessType, element) {
+      if (!accountBusinessTypes[accountId]) {
+        accountBusinessTypes[accountId] = [];
+      }
+
+      const types = accountBusinessTypes[accountId];
+      const index = types.indexOf(businessType);
+
+      if (index === -1) {
+        // Add
+        types.push(businessType);
+        element.classList.add('selected');
+      } else {
+        // Remove
+        types.splice(index, 1);
+        element.classList.remove('selected');
+      }
+
+      saveAccountBusinessTypes();
+      showToast(`Updated ${businessType}`, 'success');
+    }
+
+    async function toggleSync(accountId, enabled) {
+      try {
+        await PlaidLink.updateAccount(accountId, { sync_enabled: enabled });
+      } catch (error) {
+        showToast('Failed to update sync setting', 'error');
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => toast.remove(), 3000);
+    }
+  </script>
+</body>
+</html>
