@@ -30,7 +30,7 @@ struct ReceiptCardView: View {
             // Details
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(receipt.merchant ?? "Unknown Merchant")
+                    Text(receipt.displayMerchant)
                         .font(.headline)
                         .foregroundColor(.white)
                         .lineLimit(1)
@@ -52,14 +52,36 @@ struct ReceiptCardView: View {
                     StatusBadge(status: receipt.status)
                 }
 
-                if let category = receipt.category {
-                    HStack(spacing: 4) {
-                        Image(systemName: categoryIcon(category))
-                            .font(.caption)
-                        Text(category)
-                            .font(.caption)
+                // Show AI notes if available
+                if let notes = receipt.displayNotes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .lineLimit(2)
+                }
+
+                HStack(spacing: 8) {
+                    // Business type badge
+                    if let business = receipt.business, !business.isEmpty {
+                        Text(business)
+                            .font(.caption2)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(businessColor(business))
+                            .cornerRadius(4)
                     }
-                    .foregroundColor(.gray)
+
+                    // Category
+                    if let category = receipt.category {
+                        HStack(spacing: 4) {
+                            Image(systemName: categoryIcon(category))
+                                .font(.caption)
+                            Text(category)
+                                .font(.caption)
+                        }
+                        .foregroundColor(.gray)
+                    }
                 }
             }
 
@@ -81,6 +103,15 @@ struct ReceiptCardView: View {
         case "travel": return "airplane"
         case "business": return "briefcase.fill"
         default: return "tag.fill"
+        }
+    }
+
+    private func businessColor(_ business: String) -> Color {
+        switch business.lowercased() {
+        case "down home", "downhome": return .orange
+        case "mcr", "music city rodeo": return .purple
+        case "personal": return .blue
+        default: return .gray
         }
     }
 }
