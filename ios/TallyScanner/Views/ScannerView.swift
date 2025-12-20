@@ -3,6 +3,7 @@ import PhotosUI
 
 struct ScannerView: View {
     @StateObject private var viewModel = ScannerViewModel()
+    @StateObject private var historyService = ScanHistoryService.shared
     @EnvironmentObject var uploadQueue: UploadQueue
 
     @State private var showingDocumentScanner = false
@@ -10,6 +11,7 @@ struct ScannerView: View {
     @State private var showingPhotosPicker = false
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var showingReceiptEditor = false
+    @State private var showingHistory = false
     @State private var capturedImage: UIImage?
 
     var body: some View {
@@ -40,6 +42,16 @@ struct ScannerView: View {
             }
             .navigationTitle("Scan Receipt")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: { showingHistory = true }) {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingHistory) {
+                ScanHistoryView()
+            }
             .sheet(isPresented: $showingDocumentScanner) {
                 DocumentScannerView { images in
                     handleScannedImages(images)
@@ -77,14 +89,14 @@ struct ScannerView: View {
         HStack(spacing: 16) {
             StatCard(
                 title: "Today",
-                value: "\(viewModel.todayCount)",
+                value: "\(historyService.totalScansToday)",
                 icon: "doc.text.fill",
                 color: .tallyAccent
             )
 
             StatCard(
                 title: "This Week",
-                value: "\(viewModel.weekCount)",
+                value: "\(historyService.totalScansThisWeek)",
                 icon: "calendar",
                 color: .blue
             )
@@ -275,6 +287,15 @@ struct ScannerView: View {
     }
 
     private func enqueueReceipt(_ receipt: EditedReceipt) {
+        // Add to scan history
+        _ = historyService.addScan(
+            imageData: receipt.imageData,
+            merchant: receipt.merchant,
+            amount: receipt.amount,
+            date: receipt.date ?? Date()
+        )
+
+        // Add to upload queue
         uploadQueue.enqueueReceipt(
             imageData: receipt.imageData,
             merchant: receipt.merchant,
@@ -348,6 +369,13 @@ struct ReceiptEditorView: View {
     @State private var business = "personal"
     @State private var isProcessingOCR = false
     @State private var ocrResult: OCRResult?
+
+    // Calendar & Contacts
+    @State private var calendarEvents: [CalendarEvent] = []
+    @State private var suggestedContacts: [Contact] = []
+    @State private var selectedAttendees: [Contact] = []
+    @State private var isLoadingContext = false
+    @State private var showingContactPicker = false
 
     let categories = ["Food & Dining", "Transportation", "Shopping", "Entertainment", "Travel", "Business", "Other"]
     let businesses = ["personal", "downhome", "mcr"]
@@ -424,6 +452,14 @@ struct ReceiptEditorView: View {
                     .padding()
                     .background(Color.tallyCard)
                     .cornerRadius(16)
+
+                    // Calendar Context Section
+                    if !calendarEvents.isEmpty {
+                        calendarSection
+                    }
+
+                    // Attendees Section
+                    attendeesSection
                 }
                 .padding()
             }
@@ -446,8 +482,125 @@ struct ReceiptEditorView: View {
             }
             .task {
                 await performOCR()
+                await loadContext()
+            }
+            .onChange(of: date) { oldValue, newValue in
+                Task { await loadContext() }
+            }
+            .onChange(of: merchant) { oldValue, newValue in
+                Task { await loadContactSuggestions() }
             }
         }
+    }
+
+    // MARK: - Calendar Section
+
+    private var calendarSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundColor(.tallyAccent)
+                Text("Events on this date")
+                    .font(.headline)
+                Spacer()
+            }
+
+            ForEach(calendarEvents.prefix(3)) { event in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(event.title)
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                        if let location = event.location {
+                            Text(location)
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    Spacer()
+                    Text(event.formattedTime)
+                        .font(.caption)
+                        .foregroundColor(.tallyAccent)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .padding()
+        .background(Color.tallyCard)
+        .cornerRadius(16)
+    }
+
+    // MARK: - Attendees Section
+
+    private var attendeesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "person.2.fill")
+                    .foregroundColor(.tallyAccent)
+                Text("Attendees")
+                    .font(.headline)
+                Spacer()
+                Button(action: { showingContactPicker = true }) {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundColor(.tallyAccent)
+                }
+            }
+
+            // Selected attendees
+            if !selectedAttendees.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(selectedAttendees) { contact in
+                            HStack(spacing: 4) {
+                                Text(contact.name)
+                                    .font(.caption)
+                                Button(action: {
+                                    selectedAttendees.removeAll { $0.id == contact.id }
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.tallyAccent.opacity(0.2))
+                            .foregroundColor(.tallyAccent)
+                            .cornerRadius(15)
+                        }
+                    }
+                }
+            }
+
+            // Suggested contacts
+            if !suggestedContacts.isEmpty {
+                Text("Suggested")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(suggestedContacts.filter { suggested in
+                            !selectedAttendees.contains { $0.id == suggested.id }
+                        }.prefix(5)) { contact in
+                            Button(action: {
+                                selectedAttendees.append(contact)
+                            }) {
+                                Text(contact.name)
+                                    .font(.caption)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.tallyBackground)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(15)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color.tallyCard)
+        .cornerRadius(16)
     }
 
     private func performOCR() async {
@@ -479,6 +632,31 @@ struct ReceiptEditorView: View {
             }
         }
         return nil
+    }
+
+    private func loadContext() async {
+        isLoadingContext = true
+        defer { isLoadingContext = false }
+
+        // Load calendar events for this date
+        do {
+            calendarEvents = try await APIClient.shared.fetchCalendarEvents(date: date)
+        } catch {
+            print("Failed to load calendar events: \(error)")
+        }
+
+        // Load contact suggestions
+        await loadContactSuggestions()
+    }
+
+    private func loadContactSuggestions() async {
+        guard !merchant.isEmpty else { return }
+
+        do {
+            suggestedContacts = try await APIClient.shared.suggestContacts(merchant: merchant, date: date)
+        } catch {
+            print("Failed to load contact suggestions: \(error)")
+        }
     }
 
     private func saveReceipt() {

@@ -164,3 +164,83 @@ struct ContactListResponse: Codable {
     let contacts: [Contact]
     let total: Int?
 }
+
+// MARK: - Calendar Event (for context matching)
+struct CalendarEvent: Identifiable, Codable {
+    var id: String { eventId }
+    let eventId: String
+    var title: String
+    var startTime: Date?
+    var endTime: Date?
+    var location: String?
+    var attendees: [String]?
+    var description: String?
+
+    enum CodingKeys: String, CodingKey {
+        case eventId = "event_id"
+        case title
+        case startTime = "start_time"
+        case endTime = "end_time"
+        case location
+        case attendees
+        case description
+    }
+
+    var formattedTime: String {
+        guard let start = startTime else { return "" }
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: start)
+    }
+
+    var attendeeNames: [String] {
+        attendees ?? []
+    }
+}
+
+// MARK: - Scan History Item
+struct ScanHistoryItem: Identifiable, Codable {
+    let id: UUID
+    let imageData: Data
+    var merchant: String?
+    var amount: Double?
+    var date: Date
+    var status: ScanStatus
+    var r2Url: String?
+    var receiptId: String?
+    var ocrResult: OCRResult?
+    let scannedAt: Date
+
+    enum ScanStatus: String, Codable {
+        case pending
+        case uploading
+        case uploaded
+        case failed
+
+        var icon: String {
+            switch self {
+            case .pending: return "clock.fill"
+            case .uploading: return "arrow.up.circle.fill"
+            case .uploaded: return "checkmark.circle.fill"
+            case .failed: return "xmark.circle.fill"
+            }
+        }
+
+        var color: String {
+            switch self {
+            case .pending: return "orange"
+            case .uploading: return "blue"
+            case .uploaded: return "green"
+            case .failed: return "red"
+            }
+        }
+    }
+
+    var formattedAmount: String {
+        guard let amount = amount else { return "" }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        return formatter.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+    }
+}

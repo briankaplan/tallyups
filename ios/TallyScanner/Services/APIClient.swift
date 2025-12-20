@@ -388,6 +388,61 @@ actor APIClient {
         return response.note
     }
 
+    // MARK: - Calendar Events
+
+    /// Fetch calendar events for a specific date (for context matching)
+    func fetchCalendarEvents(date: Date) async throws -> [CalendarEvent] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let dateStr = formatter.string(from: date)
+
+        let request = try makeRequest(path: "/api/calendar/events?date=\(dateStr)", method: "GET")
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        struct EventsResponse: Codable {
+            let events: [CalendarEvent]
+        }
+
+        let response = try decoder.decode(EventsResponse.self, from: data)
+        return response.events
+    }
+
+    /// Fetch calendar events for a date range
+    func fetchCalendarEventsRange(startDate: Date, endDate: Date) async throws -> [CalendarEvent] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        let path = "/api/calendar/events?start=\(formatter.string(from: startDate))&end=\(formatter.string(from: endDate))"
+        let request = try makeRequest(path: path, method: "GET")
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        struct EventsResponse: Codable {
+            let events: [CalendarEvent]
+        }
+
+        let response = try decoder.decode(EventsResponse.self, from: data)
+        return response.events
+    }
+
+    // MARK: - Contact Suggestions
+
+    /// Get suggested contacts for a transaction/receipt based on merchant and date
+    func suggestContacts(merchant: String, date: Date? = nil) async throws -> [Contact] {
+        var path = "/api/contact-hub/suggest?merchant=\(merchant.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? merchant)"
+
+        if let date = date {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            path += "&date=\(formatter.string(from: date))"
+        }
+
+        let request = try makeRequest(path: path, method: "GET")
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        let response = try decoder.decode(ContactListResponse.self, from: data)
+        return response.contacts
+    }
+
     // MARK: - Private Helpers
 
     private func makeRequest(path: String, method: String) throws -> URLRequest {
