@@ -109,16 +109,52 @@ struct UploadResponse: Codable {
 }
 
 struct InboxStats: Codable {
-    let pending: Int
-    let accepted: Int
-    let rejected: Int
-    let total: Int
+    var pending: Int
+    var accepted: Int
+    var rejected: Int
+    var total: Int
+
+    // Nested counts structure from API
+    struct Counts: Codable {
+        var pending: Int?
+        var matched: Int?
+        var rejected: Int?
+        var auto_rejected: Int?
+        var spam: Int?
+    }
 
     enum CodingKeys: String, CodingKey {
         case pending = "pending_count"
         case accepted = "accepted_count"
         case rejected = "rejected_count"
         case total = "total_count"
+        case counts
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Try nested counts first (from /api/incoming/receipts response)
+        if let counts = try? container.decode(Counts.self, forKey: .counts) {
+            pending = counts.pending ?? 0
+            accepted = counts.matched ?? 0
+            rejected = (counts.rejected ?? 0) + (counts.auto_rejected ?? 0)
+            total = pending + accepted + rejected
+        } else {
+            // Direct decoding fallback
+            pending = (try? container.decode(Int.self, forKey: .pending)) ?? 0
+            accepted = (try? container.decode(Int.self, forKey: .accepted)) ?? 0
+            rejected = (try? container.decode(Int.self, forKey: .rejected)) ?? 0
+            total = (try? container.decode(Int.self, forKey: .total)) ?? (pending + accepted + rejected)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(pending, forKey: .pending)
+        try container.encode(accepted, forKey: .accepted)
+        try container.encode(rejected, forKey: .rejected)
+        try container.encode(total, forKey: .total)
     }
 }
 

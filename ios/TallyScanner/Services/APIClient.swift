@@ -291,9 +291,10 @@ actor APIClient {
         return response.receipts
     }
 
-    /// Get inbox statistics
+    /// Get inbox statistics (uses receipts endpoint which includes counts)
     func fetchInboxStats() async throws -> InboxStats {
-        let request = try makeRequest(path: "/api/incoming/stats", method: "GET")
+        // Use receipts endpoint since /api/incoming/stats has issues
+        let request = try makeRequest(path: "/api/incoming/receipts?status=pending&limit=1", method: "GET")
         let (data, _) = try await URLSession.shared.data(for: request)
         return try decoder.decode(InboxStats.self, from: data)
     }

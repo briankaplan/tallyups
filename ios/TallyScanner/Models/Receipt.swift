@@ -13,11 +13,15 @@ struct Receipt: Identifiable, Codable, Hashable {
     var source: String?
     var business: String?
     var ocrConfidence: Double?
-    var createdAt: Date
+    var createdAt: Date?
     var updatedAt: Date?
 
     // Transaction link
     var transactionIndex: Int?
+
+    // Additional fields from API
+    var merchantName: String?
+    var aiNotes: String?
 
     enum ReceiptStatus: String, Codable {
         case pending
@@ -53,19 +57,32 @@ struct Receipt: Identifiable, Codable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id
         case merchant
+        case merchantName = "merchant_name"
         case amount
         case date
         case category
         case notes
-        case imageURL = "image_url"
+        case aiNotes = "ai_notes"
+        case imageURL = "receipt_url"  // API returns receipt_url
         case thumbnailURL = "thumbnail_url"
         case status
         case source
-        case business
+        case business = "business_type"
         case ocrConfidence = "ocr_confidence"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
-        case transactionIndex = "transaction_index"
+        case transactionIndex = "transaction_id"
+    }
+
+    // Display merchant name (prefer merchant_name over merchant)
+    var displayMerchant: String {
+        merchantName ?? merchant ?? "Unknown"
+    }
+
+    // Display notes (prefer ai_notes over notes)
+    var displayNotes: String? {
+        if let ai = aiNotes, !ai.isEmpty { return ai }
+        return notes
     }
 
     var formattedAmount: String {
@@ -87,7 +104,7 @@ struct Receipt: Identifiable, Codable, Hashable {
 
 // MARK: - Incoming Receipt (from Gmail)
 struct IncomingReceipt: Identifiable, Codable {
-    let id: String
+    var id: String
     var subject: String?
     var sender: String?
     var senderEmail: String?
@@ -101,6 +118,13 @@ struct IncomingReceipt: Identifiable, Codable {
     var emailAccount: String?
     var extractedData: ExtractedData?
 
+    // Additional fields from API
+    var aiNotes: String?
+    var businessType: String?
+    var category: String?
+    var bodySnippet: String?
+    var confidenceScore: Double?
+
     struct ExtractedData: Codable {
         var merchant: String?
         var amount: Double?
@@ -113,16 +137,63 @@ struct IncomingReceipt: Identifiable, Codable {
         case id
         case subject
         case sender
-        case senderEmail = "sender_email"
-        case receivedDate = "received_date"
+        case senderEmail = "from_email"
+        case receivedDate = "created_at"
         case merchant
         case amount
         case date
-        case imageURL = "image_url"
+        case imageURL = "r2_url"
         case thumbnailURL = "thumbnail_url"
         case status
-        case emailAccount = "email_account"
+        case emailAccount = "gmail_account"
         case extractedData = "extracted_data"
+        case aiNotes = "ai_notes"
+        case businessType = "business_type"
+        case category
+        case bodySnippet = "body_snippet"
+        case confidenceScore = "confidence_score"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Handle id as Int or String
+        if let intId = try? container.decode(Int.self, forKey: .id) {
+            id = String(intId)
+        } else {
+            id = try container.decode(String.self, forKey: .id)
+        }
+
+        subject = try? container.decode(String.self, forKey: .subject)
+        sender = try? container.decode(String.self, forKey: .sender)
+        senderEmail = try? container.decode(String.self, forKey: .senderEmail)
+        receivedDate = try? container.decode(Date.self, forKey: .receivedDate)
+        merchant = try? container.decode(String.self, forKey: .merchant)
+        amount = try? container.decode(Double.self, forKey: .amount)
+        date = try? container.decode(Date.self, forKey: .date)
+        imageURL = try? container.decode(String.self, forKey: .imageURL)
+        thumbnailURL = try? container.decode(String.self, forKey: .thumbnailURL)
+        status = (try? container.decode(String.self, forKey: .status)) ?? "pending"
+        emailAccount = try? container.decode(String.self, forKey: .emailAccount)
+        extractedData = try? container.decode(ExtractedData.self, forKey: .extractedData)
+        aiNotes = try? container.decode(String.self, forKey: .aiNotes)
+        businessType = try? container.decode(String.self, forKey: .businessType)
+        category = try? container.decode(String.self, forKey: .category)
+        bodySnippet = try? container.decode(String.self, forKey: .bodySnippet)
+        confidenceScore = try? container.decode(Double.self, forKey: .confidenceScore)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(subject, forKey: .subject)
+        try container.encodeIfPresent(sender, forKey: .sender)
+        try container.encodeIfPresent(senderEmail, forKey: .senderEmail)
+        try container.encodeIfPresent(merchant, forKey: .merchant)
+        try container.encodeIfPresent(amount, forKey: .amount)
+        try container.encodeIfPresent(imageURL, forKey: .imageURL)
+        try container.encodeIfPresent(status, forKey: .status)
+        try container.encodeIfPresent(emailAccount, forKey: .emailAccount)
     }
 }
 
@@ -222,11 +293,69 @@ struct LibraryStats: Codable {
     var unmatchedReceipts: Int
     var totalAmount: Double
 
+    // Nested counts from API
+    struct Counts: Codable {
+        var total: Int?
+        var matched: Int?
+        var needs_review: Int?
+        var recent: Int?
+        var verified: Int?
+        var down_home: Int?
+        var personal: Int?
+        var mcr: Int?
+    }
+
+    struct IncomingReceipts: Codable {
+        var pending: Int?
+        var matched: Int?
+        var rejected: Int?
+    }
+
+    var counts: Counts?
+    var incomingReceipts: IncomingReceipts?
+    var transactionReceipts: Int?
+
     enum CodingKeys: String, CodingKey {
-        case totalReceipts = "total_receipts"
+        case counts
+        case incomingReceipts = "incoming_receipts"
+        case transactionReceipts = "transaction_receipts"
+        case totalReceipts = "total"
         case pendingReceipts = "pending_receipts"
         case matchedReceipts = "matched_receipts"
         case unmatchedReceipts = "unmatched_receipts"
         case totalAmount = "total_amount"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Try to decode nested structure first (from /api/library/counts)
+        counts = try? container.decode(Counts.self, forKey: .counts)
+        incomingReceipts = try? container.decode(IncomingReceipts.self, forKey: .incomingReceipts)
+        transactionReceipts = try? container.decode(Int.self, forKey: .transactionReceipts)
+
+        // Map to simple stats
+        if let c = counts {
+            totalReceipts = c.total ?? 0
+            matchedReceipts = transactionReceipts ?? c.matched ?? 0
+            pendingReceipts = incomingReceipts?.pending ?? c.needs_review ?? 0
+            unmatchedReceipts = (c.total ?? 0) - (transactionReceipts ?? c.matched ?? 0)
+        } else {
+            // Direct decoding fallback
+            totalReceipts = (try? container.decode(Int.self, forKey: .totalReceipts)) ?? 0
+            matchedReceipts = (try? container.decode(Int.self, forKey: .matchedReceipts)) ?? 0
+            pendingReceipts = (try? container.decode(Int.self, forKey: .pendingReceipts)) ?? 0
+            unmatchedReceipts = (try? container.decode(Int.self, forKey: .unmatchedReceipts)) ?? 0
+        }
+        totalAmount = (try? container.decode(Double.self, forKey: .totalAmount)) ?? 0
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(totalReceipts, forKey: .totalReceipts)
+        try container.encode(matchedReceipts, forKey: .matchedReceipts)
+        try container.encode(pendingReceipts, forKey: .pendingReceipts)
+        try container.encode(unmatchedReceipts, forKey: .unmatchedReceipts)
+        try container.encode(totalAmount, forKey: .totalAmount)
     }
 }
