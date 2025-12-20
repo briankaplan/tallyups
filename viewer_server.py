@@ -4395,6 +4395,47 @@ def mobile_upload():
             file_path.rename(new_file_path)
             file_path = new_file_path
 
+        # Upload to R2 storage
+        receipt_image_url = None
+        thumbnail_url = None
+        try:
+            from r2_service import upload_to_r2, R2_ENABLED
+            if R2_ENABLED:
+                # Upload full image to R2
+                r2_key = f"receipts/mobile/{timestamp}_{safe_merchant}{ext}"
+                success, url_or_error = upload_to_r2(file_path, r2_key)
+                if success:
+                    receipt_image_url = url_or_error
+                    print(f"☁️ Uploaded to R2: {receipt_image_url}")
+
+                    # Generate and upload thumbnail
+                    try:
+                        from PIL import Image
+                        thumb_path = incoming_dir / f"thumb_{filename}"
+                        with Image.open(file_path) as img:
+                            # Create thumbnail (max 400px)
+                            img.thumbnail((400, 400), Image.Resampling.LANCZOS)
+                            img.save(thumb_path, quality=85)
+
+                        thumb_key = f"receipts/mobile/thumbs/{timestamp}_{safe_merchant}_thumb{ext}"
+                        thumb_success, thumb_url = upload_to_r2(thumb_path, thumb_key)
+                        if thumb_success:
+                            thumbnail_url = thumb_url
+                            print(f"☁️ Thumbnail uploaded: {thumbnail_url}")
+
+                        # Clean up local thumbnail
+                        thumb_path.unlink(missing_ok=True)
+                    except Exception as thumb_err:
+                        print(f"⚠️ Thumbnail generation failed: {thumb_err}")
+                else:
+                    print(f"⚠️ R2 upload failed: {url_or_error}")
+            else:
+                print("⚠️ R2 not configured, storing locally only")
+        except ImportError:
+            print("⚠️ R2 service not available")
+        except Exception as r2_err:
+            print(f"⚠️ R2 upload error: {r2_err}")
+
         # Create incoming receipt record in database
         receipt_id = None
         if USE_DATABASE and db:
@@ -4422,11 +4463,11 @@ def mobile_upload():
                 cursor = db_execute(conn, db_type, '''
                     INSERT INTO incoming_receipts
                     (source, sender, subject, receipt_date, received_date, merchant, amount, category,
-                     business_type, receipt_file, status, notes, created_at,
+                     business_type, receipt_file, receipt_image_url, thumbnail_url, status, notes, created_at,
                      ocr_merchant, ocr_amount, ocr_date, ocr_subtotal, ocr_tax, ocr_tip,
                      ocr_receipt_number, ocr_payment_method, ocr_line_items,
                      ocr_confidence, ocr_method, ocr_extracted_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?,
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?,
                             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     source,
@@ -4439,6 +4480,8 @@ def mobile_upload():
                     category,
                     business,
                     f"incoming/{filename}",
+                    receipt_image_url,  # R2 URL for full image
+                    thumbnail_url,      # R2 URL for thumbnail
                     notes,
                     now_iso,
                     # OCR fields
@@ -4460,7 +4503,8 @@ def mobile_upload():
                 conn.commit()
                 return_db_connection(conn)
 
-                print(f"📱 Mobile receipt uploaded: {merchant} ${amount_float:.2f} -> {filename} (OCR: {ocr_method or 'none'})")
+                r2_status = f"R2: {receipt_image_url[:50]}..." if receipt_image_url else "R2: local only"
+                print(f"📱 Mobile receipt uploaded: {merchant} ${amount_float:.2f} -> {filename} (OCR: {ocr_method or 'none'}, {r2_status})")
 
             except Exception as e:
                 print(f"⚠️ Database error saving mobile receipt: {e}")
@@ -4468,12 +4512,18 @@ def mobile_upload():
         response_data = {
             "success": True,
             "id": receipt_id,
+            "receipt_id": str(receipt_id) if receipt_id else None,
             "filename": filename,
             "merchant": merchant,
             "amount": amount_float,
             "date": date_str,
             "message": "Receipt uploaded to Inbox",
-            "ocr_used": ocr_result is not None
+            "ocr_used": ocr_result is not None,
+            # R2 URLs
+            "r2_url": receipt_image_url,
+            "receipt_image_url": receipt_image_url,
+            "thumbnail_url": thumbnail_url,
+            "image_url": receipt_image_url  # Alias for iOS app compatibility
         }
 
         # Include full OCR data if extraction was performed
