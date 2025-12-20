@@ -1,0 +1,66 @@
+workflows:
+  ios-testflight:
+    name: iOS TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.tallyups.scanner
+      vars:
+        XCODE_WORKSPACE: "ios/TallyScanner.xcodeproj"
+        XCODE_SCHEME: "TallyScanner"
+        APP_STORE_APPLE_ID: "Kaplan.brian@gmail.com"
+      xcode: 15.2
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+
+    scripts:
+      - name: Set up code signing
+        script: |
+          keychain initialize
+
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files $(XCODE_SCHEME) \
+            --type IOS_APP_STORE \
+            --create
+
+      - name: Set up signing
+        script: |
+          keychain add-certificates
+
+      - name: Set up provisioning profiles
+        script: |
+          xcode-project use-profiles
+
+      - name: Increment build number
+        script: |
+          cd ios
+          BUILD_NUMBER=$(($(app-store-connect get-latest-testflight-build-number "$APP_ID") + 1))
+          agvtool new-version -all $BUILD_NUMBER
+
+      - name: Build ipa
+        script: |
+          cd ios
+          xcode-project build-ipa \
+            --project "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME" \
+            --config Release
+
+    artifacts:
+      - ios/build/ios/ipa/*.ipa
+      - ios/build/ios/xcarchive/*.xcarchive
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers
