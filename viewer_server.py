@@ -2105,15 +2105,33 @@ def login():
     error = None
     next_url = request.args.get('next', '/')
 
+    # Check if this is an API request (iOS app, etc.)
+    is_api_request = (
+        request.headers.get('Accept', '').startswith('application/json') or
+        request.headers.get('Content-Type', '').startswith('application/json') or
+        request.headers.get('Content-Type', '').startswith('application/x-www-form-urlencoded')
+    )
+
     if request.method == "POST":
-        password = request.form.get('password', '')
+        # Handle both form data and JSON
+        if request.is_json:
+            password = request.get_json().get('password', '')
+        else:
+            password = request.form.get('password', '')
+
         if verify_password(password):
             session['authenticated'] = True
             session.permanent = True
+            # Return JSON for API clients, redirect for browsers
+            if is_api_request and not request.accept_mimetypes.accept_html:
+                return jsonify({"success": True})
             return redirect(next_url)
         else:
             error = "Invalid password"
             logger.warning(f"Failed login attempt from {request.remote_addr}")
+            # Return JSON error for API clients
+            if is_api_request and not request.accept_mimetypes.accept_html:
+                return jsonify({"error": "Invalid password"}), 401
 
     return render_template_string(LOGIN_PAGE_HTML, error=error, has_pin=bool(AUTH_PIN))
 
