@@ -30,6 +30,9 @@
 		A1000021 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021 /* CameraView.swift */; };
 		A1000022 /* ReceiptCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000022 /* ReceiptCardView.swift */; };
 		A1000023 /* UploadProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000023 /* UploadProgressView.swift */; };
+		A1000024 /* ScanHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000026 /* ScanHistoryService.swift */; };
+		A1000025 /* ScanHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000027 /* ScanHistoryView.swift */; };
+		A1000026 /* FullScreenScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000028 /* FullScreenScannerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +62,9 @@
 		A2000023 /* UploadProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadProgressView.swift; sourceTree = "<group>"; };
 		A2000024 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A2000025 /* TallyScanner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TallyScanner.entitlements; sourceTree = "<group>"; };
+		A2000026 /* ScanHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanHistoryService.swift; sourceTree = "<group>"; };
+		A2000027 /* ScanHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanHistoryView.swift; sourceTree = "<group>"; };
+		A2000028 /* FullScreenScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenScannerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,6 +131,8 @@
 				A2000021 /* CameraView.swift */,
 				A2000022 /* ReceiptCardView.swift */,
 				A2000023 /* UploadProgressView.swift */,
+				A2000027 /* ScanHistoryView.swift */,
+				A2000028 /* FullScreenScannerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -147,6 +155,7 @@
 				A2000007 /* UploadQueue.swift */,
 				A2000018 /* KeychainService.swift */,
 				A2000019 /* NetworkMonitor.swift */,
+				A2000026 /* ScanHistoryService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -259,6 +268,9 @@
 				A1000021 /* CameraView.swift in Sources */,
 				A1000022 /* ReceiptCardView.swift in Sources */,
 				A1000023 /* UploadProgressView.swift in Sources */,
+				A1000024 /* ScanHistoryService.swift in Sources */,
+				A1000025 /* ScanHistoryView.swift in Sources */,
+				A1000026 /* FullScreenScannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

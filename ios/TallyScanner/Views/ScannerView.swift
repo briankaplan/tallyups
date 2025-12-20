@@ -8,6 +8,7 @@ struct ScannerView: View {
 
     @State private var showingDocumentScanner = false
     @State private var showingCamera = false
+    @State private var showingFullScreenScanner = false
     @State private var showingPhotosPicker = false
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var showingReceiptEditor = false
@@ -59,6 +60,11 @@ struct ScannerView: View {
             }
             .sheet(isPresented: $showingCamera) {
                 CameraView { image in
+                    handleCapturedImage(image)
+                }
+            }
+            .fullScreenCover(isPresented: $showingFullScreenScanner) {
+                FullScreenScannerView(isPresented: $showingFullScreenScanner) { image in
                     handleCapturedImage(image)
                 }
             }
@@ -140,8 +146,8 @@ struct ScannerView: View {
             }
 
             HStack(spacing: 16) {
-                // Quick Photo
-                Button(action: { showingCamera = true }) {
+                // Quick Photo - Full Screen Scanner
+                Button(action: { showingFullScreenScanner = true }) {
                     VStack(spacing: 12) {
                         Image(systemName: "camera.fill")
                             .font(.system(size: 32))
@@ -187,7 +193,7 @@ struct ScannerView: View {
                     ForEach(viewModel.recentMerchants, id: \.self) { merchant in
                         Button(action: {
                             viewModel.presetMerchant = merchant
-                            showingCamera = true
+                            showingFullScreenScanner = true
                         }) {
                             Text(merchant)
                                 .font(.subheadline)
