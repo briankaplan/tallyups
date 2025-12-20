@@ -26,8 +26,10 @@ jobs:
           API_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
         run: |
-          mkdir -p ~/private_keys
-          echo "$API_KEY" > ~/private_keys/AuthKey_${API_KEY_ID}.p8
+          mkdir -p "$HOME/private_keys"
+          echo "$API_KEY" > "$HOME/private_keys/AuthKey_${API_KEY_ID}.p8"
+          chmod 600 "$HOME/private_keys/AuthKey_${API_KEY_ID}.p8"
+          echo "API Key installed: AuthKey_${API_KEY_ID}.p8"
 
       - name: Build and Upload
         env:
@@ -36,6 +38,9 @@ jobs:
         run: |
           cd ios
 
+          KEY_PATH="$HOME/private_keys/AuthKey_${API_KEY_ID}.p8"
+          echo "Using key: $KEY_PATH"
+
           # Build archive with automatic signing
           xcodebuild archive \
             -project TallyScanner.xcodeproj \
@@ -43,9 +48,9 @@ jobs:
             -archivePath build/TallyScanner.xcarchive \
             -destination "generic/platform=iOS" \
             -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${API_KEY_ID}.p8 \
-            -authenticationKeyID $API_KEY_ID \
-            -authenticationKeyIssuerID $API_ISSUER_ID \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$API_KEY_ID" \
+            -authenticationKeyIssuerID "$API_ISSUER_ID" \
             CODE_SIGN_STYLE=Automatic \
             DEVELOPMENT_TEAM=R2LSUCXR5J
 
@@ -55,18 +60,18 @@ jobs:
             -exportPath build \
             -exportOptionsPlist ExportOptions.plist \
             -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${API_KEY_ID}.p8 \
-            -authenticationKeyID $API_KEY_ID \
-            -authenticationKeyIssuerID $API_ISSUER_ID
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$API_KEY_ID" \
+            -authenticationKeyIssuerID "$API_ISSUER_ID"
 
           # Upload to TestFlight
           xcrun altool --upload-app \
             -f build/TallyScanner.ipa \
             -t ios \
-            --apiKey $API_KEY_ID \
-            --apiIssuer $API_ISSUER_ID
+            --apiKey "$API_KEY_ID" \
+            --apiIssuer "$API_ISSUER_ID"
 
       - name: Done
         run: |
-          echo "✅ Build uploaded to TestFlight!"
+          echo "Build uploaded to TestFlight!"
           echo "Check App Store Connect in ~15 minutes"
