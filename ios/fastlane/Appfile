@@ -1,0 +1,22 @@
+# App identifier
+app_identifier("com.tallyups.scanner")
+
+# Apple ID email
+apple_id("YOUR_APPLE_ID@email.com")
+
+# Team ID from Apple Developer Portal
+team_id("YOUR_TEAM_ID")
+
+# App Store Connect Team ID (may be different from Developer Team ID)
+itc_team_id("YOUR_ITC_TEAM_ID")
+
+# For all lanes
+for_platform :ios do
+  for_lane :beta do
+    app_identifier("com.tallyups.scanner")
+  end
+
+  for_lane :release do
+    app_identifier("com.tallyups.scanner")
+  end
+end
