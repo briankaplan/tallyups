@@ -81,15 +81,30 @@ struct UploadResponse: Codable {
     let success: Bool
     let receiptId: String?
     let message: String?
-    let imageUrl: String?
+    let r2Url: String?
+    let receiptImageUrl: String?
+    let thumbnailUrl: String?
     let extractedData: OCRResult?
+    let merchant: String?
+    let amount: Double?
+    let date: String?
 
     enum CodingKeys: String, CodingKey {
         case success
         case receiptId = "receipt_id"
         case message
-        case imageUrl = "r2_url"
-        case extractedData = "extracted_data"
+        case r2Url = "r2_url"
+        case receiptImageUrl = "receipt_image_url"
+        case thumbnailUrl = "thumbnail_url"
+        case extractedData = "ocr"
+        case merchant
+        case amount
+        case date
+    }
+
+    /// Best available image URL (prefers R2)
+    var imageUrl: String? {
+        r2Url ?? receiptImageUrl
     }
 }
 
