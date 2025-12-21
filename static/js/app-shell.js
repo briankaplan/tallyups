@@ -9,13 +9,13 @@
   // Navigation items configuration
   const NAV_ITEMS = [
     { id: 'home', label: 'Home', icon: '🏠', href: '/', paths: ['/', '/dashboard'] },
-    { id: 'swipe', label: 'Swipe', icon: '👆', href: '/mobile-swipe', paths: ['/mobile-swipe', '/mobile_swipe'] },
     { id: 'reconcile', label: 'Reconcile', icon: '🔄', href: '/viewer', paths: ['/viewer', '/reconcile'] },
     { id: 'library', label: 'Library', icon: '📚', href: '/library', paths: ['/library'] },
     { id: 'scan', label: 'Scan', icon: '📸', href: '/scanner', paths: ['/scanner', '/mobile_scanner'] },
     { id: 'inbox', label: 'Inbox', icon: '📥', href: '/incoming', paths: ['/incoming', '/inbox'], badge: 'inboxCount' },
+    { id: 'gmail', label: 'Gmail', icon: '📧', href: '/gmail', paths: ['/gmail'] },
     { id: 'reports', label: 'Reports', icon: '📊', href: '/reports', paths: ['/reports', '/report'] },
-    { id: 'contacts', label: 'Contacts', icon: '👥', href: '/contacts', paths: ['/contacts'] }
+    { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings', paths: ['/settings'] }
   ];
 
   // App state

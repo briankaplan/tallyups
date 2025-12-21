@@ -2805,13 +2805,17 @@ def dashboard_stats():
             print(f"Pending count error (table may not exist): {pe}")
             pending = 0
 
-        # This month's spending - sum all expenses this month (negative amounts are expenses)
+        # This month's spending - sum expenses this month (negative amounts, exclude payments)
         month_total = 0.0
         try:
             cursor = db_execute(conn, db_type, """
                 SELECT COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total
                 FROM transactions
                 WHERE chase_date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
+                  AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND chase_description NOT LIKE '%Payment%'
+                  AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
+                  AND chase_description NOT LIKE '%Thank You%'
             """)
             row = cursor.fetchone()
             month_total = float(row['total']) if row and row['total'] else 0.0
@@ -2848,6 +2852,8 @@ def dashboard_stats():
             print(f"Verification stats error: {ve}")
 
         # ========== BUSINESS BREAKDOWN ==========
+        # Note: In Chase CSVs, negative amounts = expenses (debits), positive = credits (refunds/payments)
+        # We filter for expenses (negative amounts) and exclude payments, then use ABS for display
         business_breakdown = []
         by_business = {}  # Object format for frontend compatibility
         try:
@@ -2855,10 +2861,13 @@ def dashboard_stats():
                 SELECT
                     COALESCE(business_type, 'Personal') AS business,
                     COUNT(*) AS tx_count,
-                    COALESCE(SUM(CAST(chase_amount AS DECIMAL(10,2))), 0) AS total_spent,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total_spent,
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS has_receipt
                 FROM transactions
-                WHERE CAST(chase_amount AS DECIMAL(10,2)) > 0
+                WHERE CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND chase_description NOT LIKE '%Payment%'
+                  AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
+                  AND chase_description NOT LIKE '%Thank You%'
                 GROUP BY COALESCE(business_type, 'Personal')
                 ORDER BY total_spent DESC
             """)
@@ -2885,12 +2894,15 @@ def dashboard_stats():
                 SELECT
                     DATE_FORMAT(chase_date, '%Y-%m') AS month,
                     DATE_FORMAT(chase_date, '%b') AS month_name,
-                    COALESCE(SUM(CAST(chase_amount AS DECIMAL(10,2))), 0) AS total,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total,
                     COUNT(*) AS tx_count,
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt
                 FROM transactions
                 WHERE chase_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
-                AND CAST(chase_amount AS DECIMAL(10,2)) > 0
+                  AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND chase_description NOT LIKE '%Payment%'
+                  AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
+                  AND chase_description NOT LIKE '%Thank You%'
                 GROUP BY DATE_FORMAT(chase_date, '%Y-%m'), DATE_FORMAT(chase_date, '%b')
                 ORDER BY month ASC
             """)
@@ -2913,10 +2925,13 @@ def dashboard_stats():
                 SELECT
                     chase_description AS merchant,
                     COUNT(*) AS tx_count,
-                    COALESCE(SUM(CAST(chase_amount AS DECIMAL(10,2))), 0) AS total_spent,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total_spent,
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt
                 FROM transactions
-                WHERE CAST(chase_amount AS DECIMAL(10,2)) > 0
+                WHERE CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND chase_description NOT LIKE '%Payment%'
+                  AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
+                  AND chase_description NOT LIKE '%Thank You%'
                 GROUP BY chase_description
                 ORDER BY total_spent DESC
                 LIMIT 10
@@ -2944,8 +2959,10 @@ def dashboard_stats():
                     business_type
                 FROM transactions
                 WHERE (r2_url IS NULL OR r2_url = '')
-                AND CAST(chase_amount AS DECIMAL(10,2)) > 0
-                ORDER BY CAST(chase_amount AS DECIMAL(10,2)) DESC
+                  AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND chase_description NOT LIKE '%Payment%'
+                  AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
+                ORDER BY ABS(CAST(chase_amount AS DECIMAL(10,2))) DESC
                 LIMIT 10
             """)
             for row in cursor.fetchall():
@@ -3027,11 +3044,14 @@ def dashboard_stats():
         try:
             cursor = db_execute(conn, db_type, """
                 SELECT
-                    CASE WHEN business_type IS NOT NULL AND business_type != '' THEN 'business' ELSE 'personal' END AS category,
-                    COALESCE(SUM(CAST(chase_amount AS DECIMAL(10,2))), 0) AS total
+                    CASE WHEN business_type IS NOT NULL AND business_type != '' AND business_type != 'Personal' THEN 'business' ELSE 'personal' END AS category,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total
                 FROM transactions
-                WHERE CAST(chase_amount AS DECIMAL(10,2)) > 0
-                GROUP BY CASE WHEN business_type IS NOT NULL AND business_type != '' THEN 'business' ELSE 'personal' END
+                WHERE CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND chase_description NOT LIKE '%Payment%'
+                  AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
+                  AND chase_description NOT LIKE '%Thank You%'
+                GROUP BY CASE WHEN business_type IS NOT NULL AND business_type != '' AND business_type != 'Personal' THEN 'business' ELSE 'personal' END
             """)
             for row in cursor.fetchall():
                 category_spending[row['category']] = round(float(row['total'] or 0), 2)
