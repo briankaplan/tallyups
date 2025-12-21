@@ -11,6 +11,8 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
   <title>TallyUps - Dashboard</title>
   <link rel="stylesheet" href="/static/css/design-system.css">
+  <script src="/static/js/business-types.js"></script>
+  <script src="/static/js/unified-header.js"></script>
   <script src="/static/js/design-system.js"></script>
   <style>
     /* Light Theme Override */
@@ -1405,19 +1407,36 @@
       chart: null
     };
 
-    // Business color palette
-    const BUSINESS_COLORS = {
-      'Down Home': '#00ff88',
-      'Music City Rodeo': '#ff66aa',
-      'Personal': '#4a9eff',
-      'Compass RE': '#aa66ff',
-      '1099 Contractor': '#ff9f43',
-      'EM.co': '#00d4ff'
-    };
+    // Business color palette (dynamically loaded)
+    let BUSINESS_COLORS = {};
+
+    // Load business colors from API
+    async function loadBusinessColors() {
+      try {
+        const types = await BusinessTypes.getAll();
+        types.forEach(t => { BUSINESS_COLORS[t.name] = t.color; });
+      } catch (e) {
+        console.warn('Failed to load business colors, using defaults');
+        BUSINESS_COLORS = {
+          'Down Home': '#00ff88',
+          'Music City Rodeo': '#ff66aa',
+          'Personal': '#4a9eff',
+          'EM.co': '#00d4ff'
+        };
+      }
+    }
+
+    // Get color for a business type
+    function getBusinessColor(name) {
+      return BUSINESS_COLORS[name] || BusinessTypes.getColorSync(name) || '#888888';
+    }
 
     // Initialize dashboard
     async function initDashboard() {
       try {
+        // Load business colors first
+        await loadBusinessColors();
+
         await Promise.all([
           loadDashboardStats(),
           loadRecentActivity(),
@@ -1507,7 +1526,7 @@
       container.innerHTML = entries.map(([name, data]) => {
         const amount = data.total || data;
         const percent = total > 0 ? (amount / total) * 100 : 0;
-        const color = BUSINESS_COLORS[name] || '#666';
+        const color = getBusinessColor(name);
 
         return `
           <div class="business-item">

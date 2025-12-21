@@ -11,6 +11,8 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
 <link rel="stylesheet" href="/static/css/design-system.css">
 <link rel="stylesheet" href="/static/css/incoming-extracted.css">
+<script src="/static/js/business-types.js"></script>
+<script src="/static/js/unified-header.js"></script>
 <script src="/static/js/app-shell.js" defer></script>
 <script src="/static/js/design-system.js"></script>
 </head>
@@ -581,8 +583,42 @@ function applyDateRange() {
 
 // ============== END SEARCH/SORT/DATE FILTER ==============
 
+// ============== BUSINESS TYPES ==============
+let cachedBizTypes = null;
+
+// Generate business type chips HTML from cached types
+function getBizTypeChipsHTML() {
+  if (!cachedBizTypes || cachedBizTypes.length === 0) {
+    // Fallback to default if not loaded yet
+    return `
+      <div class="biz-chip active" data-biz="Personal" onclick="event.stopPropagation();selectBizType(this)">Personal</div>
+      <div class="biz-chip" data-biz="Down Home" onclick="event.stopPropagation();selectBizType(this)">Down Home</div>
+      <div class="biz-chip" data-biz="Music City Rodeo" onclick="event.stopPropagation();selectBizType(this)">MCR</div>
+      <div class="biz-chip" data-biz="EM.co" onclick="event.stopPropagation();selectBizType(this)">EM.co</div>
+    `;
+  }
+  return cachedBizTypes.map((t, i) => {
+    const isActive = i === 0 ? 'active' : '';
+    const displayName = t.name.length > 15 ? t.name.substring(0, 12) + '...' : t.name;
+    return `<div class="biz-chip ${isActive}" data-biz="${t.name}" style="--biz-color:${t.color}" onclick="event.stopPropagation();selectBizType(this)">${displayName}</div>`;
+  }).join('');
+}
+
+// Initialize business types from API
+async function initBizTypes() {
+  try {
+    cachedBizTypes = await BusinessTypes.getAll();
+  } catch (e) {
+    console.warn('Failed to load business types:', e);
+  }
+}
+
+// ============== END BUSINESS TYPES ==============
+
 // Load receipts on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load business types first
+  await initBizTypes();
   // Set pending as active by default
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   document.querySelector('.chip[data-filter="pending"]')?.classList.add('active');
@@ -810,10 +846,7 @@ function renderMobileCard(receipt) {
           <span>No matching expense</span>
         </div>
         <div class="biz-type-chips" data-receipt="${receipt.id}">
-          <div class="biz-chip active" data-biz="Personal" onclick="event.stopPropagation();selectBizType(this)">Personal</div>
-          <div class="biz-chip" data-biz="Down Home" onclick="event.stopPropagation();selectBizType(this)">Down Home</div>
-          <div class="biz-chip" data-biz="Music City Rodeo" onclick="event.stopPropagation();selectBizType(this)">MCR</div>
-          <div class="biz-chip" data-biz="EM.co" onclick="event.stopPropagation();selectBizType(this)">EM.co</div>
+          ${getBizTypeChipsHTML()}
         </div>
         <div class="inbox-card-extras" data-receipt="${receipt.id}">
           <select class="inbox-category-select" onclick="event.stopPropagation()">

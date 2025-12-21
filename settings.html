@@ -11,6 +11,7 @@
   <title>Tallyups - Settings</title>
   <link rel="stylesheet" href="/static/css/design-system.css">
   <link rel="stylesheet" href="/static/tallyups-design.css">
+  <script src="/static/js/unified-header.js"></script>
   <script src="/static/js/app-shell.js" defer></script>
   <style>
     :root {
@@ -460,6 +461,29 @@
     </div>
   </div>
 
+  <!-- Business Types Section -->
+  <div class="section">
+    <h2 class="section-title">Business Types</h2>
+    <div class="settings-card">
+      <div id="business-types-list">
+        <!-- Business types will be loaded here -->
+        <div style="text-align: center; padding: 20px; color: var(--text-dim);">Loading...</div>
+      </div>
+      <div style="padding: 16px; border-top: 1px solid var(--border);">
+        <div style="display: flex; gap: 12px;">
+          <input type="text" id="new-business-type" placeholder="New business type name..."
+                 style="flex: 1; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text); font-size: 14px;">
+          <input type="color" id="new-business-color" value="#00d4ff"
+                 style="width: 48px; height: 48px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer;">
+          <button onclick="addBusinessType()"
+                  style="padding: 12px 20px; border-radius: 10px; border: none; background: var(--accent); color: #000; font-weight: 600; cursor: pointer;">
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Services Section -->
   <div class="section">
     <h2 class="section-title">Services</h2>
@@ -695,6 +719,114 @@
   </div>
 
   <script>
+    // ============================================
+    // BUSINESS TYPES MANAGEMENT
+    // ============================================
+    const DEFAULT_BUSINESS_TYPES = [
+      { name: 'Personal', color: '#4a9eff' },
+      { name: 'Down Home', color: '#00ff88' },
+      { name: 'Music City Rodeo', color: '#ff66aa' },
+      { name: 'EM.co', color: '#00d4ff' }
+    ];
+
+    async function loadBusinessTypes() {
+      try {
+        const response = await fetch('/api/settings/business-types', { credentials: 'include' });
+        let types = DEFAULT_BUSINESS_TYPES;
+        if (response.ok) {
+          const data = await response.json();
+          if (data.types && data.types.length > 0) {
+            types = data.types;
+          }
+        }
+        renderBusinessTypes(types);
+      } catch (error) {
+        console.error('Error loading business types:', error);
+        renderBusinessTypes(DEFAULT_BUSINESS_TYPES);
+      }
+    }
+
+    function renderBusinessTypes(types) {
+      const container = document.getElementById('business-types-list');
+      container.innerHTML = types.map((t, i) => `
+        <div class="settings-item" style="display: flex; align-items: center; padding: 12px 16px;">
+          <div style="width: 24px; height: 24px; border-radius: 6px; background: ${t.color}; margin-right: 16px;"></div>
+          <span style="flex: 1; font-size: 15px; font-weight: 500;">${t.name}</span>
+          <span style="font-size: 12px; color: var(--text-dim); margin-right: 12px;">${t.color}</span>
+          ${t.name !== 'Personal' ? `<button onclick="deleteBusinessType('${t.name}')" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--error); cursor: pointer; font-size: 12px;">Remove</button>` : '<span style="font-size: 12px; color: var(--text-dim);">Default</span>'}
+        </div>
+      `).join('');
+    }
+
+    async function addBusinessType() {
+      const nameInput = document.getElementById('new-business-type');
+      const colorInput = document.getElementById('new-business-color');
+      const name = nameInput.value.trim();
+      const color = colorInput.value;
+
+      if (!name) {
+        alert('Please enter a business type name');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/settings/business-types', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, color })
+        });
+        if (response.ok) {
+          nameInput.value = '';
+          loadBusinessTypes();
+        } else {
+          const data = await response.json();
+          alert(data.error || 'Failed to add business type');
+        }
+      } catch (error) {
+        console.error('Error adding business type:', error);
+        alert('Failed to add business type');
+      }
+    }
+
+    async function deleteBusinessType(name, force = false) {
+      if (!force && !confirm(`Remove "${name}" as a business type?`)) return;
+
+      try {
+        const url = `/api/settings/business-types/${encodeURIComponent(name)}${force ? '?force=true' : ''}`;
+        const response = await fetch(url, {
+          method: 'DELETE',
+          credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          loadBusinessTypes();
+          if (data.transactions_affected > 0) {
+            alert(`Business type "${name}" removed. ${data.transactions_affected} transactions still have this type assigned.`);
+          }
+        } else if (data.requires_force) {
+          // Show warning about transactions
+          const forceDelete = confirm(`${data.transaction_count} transactions are using "${name}".\n\nDeleting will NOT change those transactions - they will keep "${name}" as their business type but it won't appear in dropdowns.\n\nDelete anyway?`);
+          if (forceDelete) {
+            deleteBusinessType(name, true);
+          }
+        } else {
+          alert(data.error || 'Failed to remove business type');
+        }
+      } catch (error) {
+        console.error('Error deleting business type:', error);
+        alert('Failed to remove business type');
+      }
+    }
+
+    // Load business types on page load
+    document.addEventListener('DOMContentLoaded', loadBusinessTypes);
+
+    // ============================================
+    // HEALTH STATUS
+    // ============================================
+
     // Load health status on page load
     async function loadStatus() {
       try {
