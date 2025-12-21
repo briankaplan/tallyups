@@ -3705,17 +3705,19 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Theme
+// Theme - unified with tallyups-theme
 function toggleTheme() {
-  document.body.classList.toggle('light');
-  localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  const newTheme = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('tallyups-theme', newTheme);
   showToast('Theme changed', '🎨');
 }
 
 function loadTheme() {
-  if (localStorage.getItem('theme') === 'light') {
-    document.body.classList.add('light');
-  }
+  const saved = localStorage.getItem('tallyups-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
 }
 
 // Logout

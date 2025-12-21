@@ -1229,7 +1229,7 @@
       const currentTheme = root.getAttribute('data-theme') || 'dark';
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
       root.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
+      localStorage.setItem('tallyups-theme', newTheme);
       updateThemeIcon(newTheme);
     }
 
@@ -1238,9 +1238,9 @@
       if (btn) btn.textContent = theme === 'dark' ? '🌙' : '☀️';
     }
 
-    // Load saved theme
+    // Load saved theme - unified with tallyups-theme
     (function initTheme() {
-      const savedTheme = localStorage.getItem('theme') || 'dark';
+      const savedTheme = localStorage.getItem('tallyups-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', savedTheme);
       setTimeout(() => updateThemeIcon(savedTheme), 0);
     })();

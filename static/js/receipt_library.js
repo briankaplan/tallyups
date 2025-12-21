@@ -1138,22 +1138,20 @@
   }
 
   // ============================================
-  // Theme Toggle
+  // Theme Toggle - unified with tallyups-theme
   // ============================================
 
   function toggleTheme() {
-    const isDark = document.body.classList.contains('dark-mode');
-    document.body.classList.toggle('dark-mode', !isDark);
-    document.body.classList.toggle('light-mode', isDark);
-    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme') || 'dark';
+    const newTheme = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setItem('tallyups-theme', newTheme);
   }
 
   function loadTheme() {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'light') {
-      document.body.classList.remove('dark-mode');
-      document.body.classList.add('light-mode');
-    }
+    const saved = localStorage.getItem('tallyups-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
   }
 
   // ============================================
