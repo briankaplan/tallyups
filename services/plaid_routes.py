@@ -907,6 +907,152 @@ def plaid_status():
 
 
 # =============================================================================
+# OAUTH REDIRECT HANDLER
+# =============================================================================
+
+@plaid_bp.route('/oauth', methods=['GET'])
+def plaid_oauth_redirect():
+    """
+    Handle OAuth redirect from Plaid Link.
+
+    When users connect to OAuth banks (Chase, BofA, Capital One, etc),
+    they are redirected to the bank's site, then back through Plaid,
+    then to this endpoint with an oauth_state_id.
+
+    This page re-initializes Plaid Link to complete the connection.
+    """
+    oauth_state_id = request.args.get('oauth_state_id', '')
+
+    # Return HTML page that resumes Plaid Link
+    return f'''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completing Bank Connection...</title>
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            background: #0a0f14;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }}
+        .container {{
+            text-align: center;
+            padding: 40px;
+        }}
+        .spinner {{
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 255, 136, 0.2);
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }}
+        @keyframes spin {{
+            to {{ transform: rotate(360deg); }}
+        }}
+        h2 {{ color: #00ff88; margin: 0 0 10px; }}
+        p {{ color: #999; margin: 0; }}
+        .error {{ color: #ff4444; display: none; margin-top: 20px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner" id="spinner"></div>
+        <h2>Completing Bank Connection</h2>
+        <p>Please wait while we finalize your connection...</p>
+        <p class="error" id="error"></p>
+    </div>
+    <script>
+        const oauthStateId = "{oauth_state_id}";
+
+        async function completePlaidLink() {{
+            if (!oauthStateId) {{
+                document.getElementById('error').textContent = 'Missing OAuth state. Please try connecting again.';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('spinner').style.display = 'none';
+                return;
+            }}
+
+            try {{
+                // Get a new link token for the OAuth flow
+                const response = await fetch('/api/plaid/link-token', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    credentials: 'same-origin',
+                    body: JSON.stringify({{ receivedRedirectUri: window.location.href }})
+                }});
+
+                const data = await response.json();
+
+                if (!data.success) {{
+                    throw new Error(data.error || 'Failed to get link token');
+                }}
+
+                // Create Plaid Link handler
+                const handler = Plaid.create({{
+                    token: data.link_token,
+                    receivedRedirectUri: window.location.href,
+                    onSuccess: async (publicToken, metadata) => {{
+                        // Exchange token
+                        const exchangeResponse = await fetch('/api/plaid/exchange-token', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            credentials: 'same-origin',
+                            body: JSON.stringify({{ public_token: publicToken }})
+                        }});
+
+                        const exchangeData = await exchangeResponse.json();
+
+                        if (exchangeData.success) {{
+                            // Redirect to bank accounts page
+                            window.location.href = '/bank_accounts.html?connected=1';
+                        }} else {{
+                            throw new Error(exchangeData.error || 'Token exchange failed');
+                        }}
+                    }},
+                    onExit: (err, metadata) => {{
+                        if (err) {{
+                            document.getElementById('error').textContent = 'Connection was cancelled or failed.';
+                            document.getElementById('error').style.display = 'block';
+                        }}
+                        document.getElementById('spinner').style.display = 'none';
+                        // Redirect back after a moment
+                        setTimeout(() => window.location.href = '/bank_accounts.html', 2000);
+                    }},
+                    onEvent: (eventName, metadata) => {{
+                        console.log('Plaid event:', eventName, metadata);
+                    }}
+                }});
+
+                // Open Link to complete OAuth flow
+                handler.open();
+
+            }} catch (error) {{
+                console.error('OAuth completion error:', error);
+                document.getElementById('error').textContent = error.message || 'An error occurred. Please try again.';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('spinner').style.display = 'none';
+            }}
+        }}
+
+        // Start the OAuth completion
+        completePlaidLink();
+    </script>
+</body>
+</html>
+'''
+
+
+# =============================================================================
 # REGISTER BLUEPRINT FUNCTION
 # =============================================================================
 
