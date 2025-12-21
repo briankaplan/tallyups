@@ -18,84 +18,16 @@
 </head>
 <body>
 
-<!-- Header -->
-<header>
-  <div class="brand">
-    <h1>🧾 Tallyups</h1>
-    <span class="version">v2.0</span>
-  </div>
-
-  <!-- Desktop Navigation Links -->
-  <nav class="nav-links">
-    <a href="/" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-      </svg>
-      Home
-    </a>
-    <a href="/viewer" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M9 11l3 3L22 4"></path>
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-      </svg>
-      Reconcile
-    </a>
-    <a href="/library" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="7" height="7"></rect>
-        <rect x="14" y="3" width="7" height="7"></rect>
-        <rect x="14" y="14" width="7" height="7"></rect>
-        <rect x="3" y="14" width="7" height="7"></rect>
-      </svg>
-      Library
-    </a>
-    <a href="/scanner" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-        <circle cx="12" cy="13" r="4"></circle>
-      </svg>
-      Scan
-    </a>
-    <a href="/incoming" class="nav-link-btn active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
-        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
-      </svg>
-      Inbox
-    </a>
-    <a href="/reports" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-        <polyline points="14 2 14 8 20 8"></polyline>
-        <line x1="16" y1="13" x2="8" y2="13"></line>
-        <line x1="16" y1="17" x2="8" y2="17"></line>
-      </svg>
-      Reports
-    </a>
-    <a href="/gmail" class="nav-link-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-        <polyline points="22,6 12,13 2,6"></polyline>
-      </svg>
-      Gmail
-    </a>
-  </nav>
-
-  <div class="controls" style="display:flex !important; gap:8px; flex-wrap:wrap;">
-    <button class="btn-primary" onclick="scanForNew()" style="display:inline-flex !important;">🔄 Scan Now</button>
-    <button onclick="regenerateImages()" style="display:inline-flex !important; background:#00ff88; color:#000; font-weight:600; padding:8px 12px; border:none; border-radius:8px; cursor:pointer;">🖼️ Fix Images</button>
-    <button onclick="clearDismissed()" style="display:inline-flex !important; background:#ff4757; color:#fff; padding:8px 12px; border:none; border-radius:8px; cursor:pointer;">🗑️ Clear Dismissed</button>
-    <button class="btn-ghost btn-sm" onclick="rematchAll()">🔗 Rematch</button>
-    <button class="btn-ghost btn-sm" onclick="cleanSpam()">🧹 Clean</button>
-  </div>
-
-  <!-- User Controls -->
-  <div class="user-controls" style="display:flex; gap:8px; margin-left:auto;">
-    <button onclick="toggleTheme()" class="btn-icon" title="Toggle Light/Dark Mode" style="background:rgba(255,255,255,0.1); border:none; width:36px; height:36px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px;" id="theme-toggle">🌙</button>
-    <a href="/logout" class="btn-icon" title="Logout" style="background:rgba(255,255,255,0.1); border:none; width:36px; height:36px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; text-decoration:none;">🚪</a>
-  </div>
-</header>
+<!-- Page Toolbar - page-specific actions (header handled by unified-header.js) -->
+<div class="page-toolbar" style="display:flex; align-items:center; gap:8px; padding:12px 20px; background:var(--bg-secondary); border-bottom:1px solid var(--border-primary); flex-wrap:wrap;">
+  <h2 style="margin:0; font-size:1.25rem; font-weight:600; color:var(--text-primary);">📥 Inbox</h2>
+  <div style="flex:1;"></div>
+  <button class="btn btn-primary" onclick="scanForNew()">🔄 Scan Now</button>
+  <button class="btn btn-secondary" onclick="regenerateImages()">🖼️ Fix Images</button>
+  <button class="btn btn-secondary" onclick="clearDismissed()" style="background:var(--error); color:white;">🗑️ Clear Dismissed</button>
+  <button class="btn btn-ghost" onclick="rematchAll()">🔗 Rematch</button>
+  <button class="btn btn-ghost" onclick="cleanSpam()">🧹 Clean</button>
+</div>
 
 <!-- Stats Dashboard -->
 <div class="dashboard">
@@ -361,13 +293,13 @@
 </style>
 
 <script>
-// Theme toggle functionality
+// Theme toggle functionality - uses unified 'tallyups-theme' key
 function toggleTheme() {
   const root = document.documentElement;
   const currentTheme = root.getAttribute('data-theme') || 'dark';
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   root.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
+  localStorage.setItem('tallyups-theme', newTheme);
   updateThemeIcon(newTheme);
 }
 
@@ -376,9 +308,9 @@ function updateThemeIcon(theme) {
   if (btn) btn.textContent = theme === 'dark' ? '🌙' : '☀️';
 }
 
-// Load saved theme
+// Load saved theme - uses unified 'tallyups-theme' key
 (function initTheme() {
-  const savedTheme = localStorage.getItem('theme') || 'dark';
+  const savedTheme = localStorage.getItem('tallyups-theme') || 'dark';
   document.documentElement.setAttribute('data-theme', savedTheme);
   setTimeout(() => updateThemeIcon(savedTheme), 0);
 })();

@@ -477,83 +477,9 @@ body {
 .empty-state-description { font-size: var(--text-sm); max-width: 300px; }
 
 /* =================================================================
-   APP HEADER (app-shell.js)
+   APP HEADER - Defined in UNIFIED HEADER section below
+   (Legacy section removed to prevent duplicate definitions)
    ================================================================= */
-.app-header {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 60px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-secondary);
-  z-index: var(--z-fixed);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-4);
-  padding-top: var(--safe-top);
-}
-
-.app-header__logo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  text-decoration: none;
-  color: var(--text-primary);
-  font-weight: 600;
-  font-size: var(--text-md);
-}
-
-.app-header__logo-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--brand-primary);
-  color: #000;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: var(--text-lg);
-}
-
-.app-header__nav {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.app-header__nav-link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-}
-
-.app-header__nav-link:hover {
-  background: var(--brand-primary-dim);
-  color: var(--text-primary);
-}
-
-.app-header__nav-link.active {
-  background: var(--brand-primary-dim);
-  color: var(--brand-primary);
-}
-
-.app-header__nav-link .icon {
-  font-size: var(--text-base);
-}
-
-.app-header__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
 
 /* =================================================================
    BOTTOM NAVIGATION (app-shell.js)
@@ -988,9 +914,18 @@ body.has-app-header {
   padding-top: 60px;
 }
 
-/* Remove old bottom nav */
-.bottom-nav, .mobile-nav, [class*="bottom-nav"] {
-  display: none !important;
+/* Bottom nav hidden on desktop, shown on mobile */
+@media (min-width: 1024px) {
+  .bottom-nav, .mobile-nav {
+    display: none !important;
+  }
+}
+
+/* Mobile: show bottom nav */
+@media (max-width: 1023px) {
+  .bottom-nav {
+    display: flex !important;
+  }
 }
 
 /* =================================================================
@@ -1197,5 +1132,46 @@ body.has-app-header {
 @media (max-width: 640px) {
   .three-column {
     grid-template-columns: 1fr;
+  }
+}
+
+/* =================================================================
+   PAGE TOOLBAR
+   Secondary toolbar for page-specific actions
+   ================================================================= */
+.page-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+  flex-wrap: wrap;
+}
+
+.page-toolbar h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .page-toolbar {
+    padding: var(--space-2) var(--space-4);
+    gap: var(--space-1);
+  }
+
+  .page-toolbar h2 {
+    font-size: var(--text-base);
+    width: 100%;
+    margin-bottom: var(--space-2);
+  }
+
+  .page-toolbar .btn {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-2);
   }
 }
