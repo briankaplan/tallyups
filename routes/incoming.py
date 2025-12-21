@@ -395,12 +395,13 @@ def accept_incoming_receipt():
 @incoming_bp.route("/reject", methods=["POST"])
 def reject_incoming_receipt():
     """
-    Reject an incoming receipt.
+    Reject an incoming receipt and learn to block similar senders in the future.
 
     Body:
     {
         "receipt_id": 123,
-        "reason": "Not a receipt"  # Optional
+        "reason": "Not a receipt",  # Optional
+        "block_sender": true        # Optional - permanently block this sender
     }
     """
     if not check_auth():
@@ -415,24 +416,57 @@ def reject_incoming_receipt():
         data = request.get_json(force=True) or {}
         receipt_id = data.get('receipt_id')
         reason = data.get('reason', 'user_rejected')
+        block_sender = data.get('block_sender', True)  # Default to blocking
 
         if not receipt_id:
             return jsonify({'ok': False, 'error': 'Missing required field: receipt_id'}), 400
 
         conn, db_type = get_db_connection()
 
+        # Get the receipt's sender info before rejecting
+        sender_email = None
+        if block_sender:
+            cursor = db_execute(conn, db_type, '''
+                SELECT from_email, subject FROM incoming_receipts WHERE id = %s
+            ''', (receipt_id,))
+            receipt_info = cursor.fetchone()
+            if receipt_info:
+                sender_email = receipt_info.get('from_email') or receipt_info.get(0)
+
+        # Reject the receipt
         cursor = db_execute(conn, db_type, '''
             UPDATE incoming_receipts
             SET status = 'rejected', rejection_reason = %s, reviewed_at = NOW()
             WHERE id = %s
         ''', (reason, receipt_id))
 
+        # Learn to block this sender pattern for future emails
+        blocked_pattern = None
+        if block_sender and sender_email:
+            try:
+                # Add to blocked senders list
+                cursor = db_execute(conn, db_type, '''
+                    INSERT INTO blocked_email_senders (email_pattern, reason, created_at, rejection_count)
+                    VALUES (%s, %s, NOW(), 1)
+                    ON DUPLICATE KEY UPDATE rejection_count = rejection_count + 1, updated_at = NOW()
+                ''', (sender_email.lower(), reason))
+                blocked_pattern = sender_email.lower()
+                logger.info(f"Added blocked sender pattern: {blocked_pattern}")
+            except Exception as block_err:
+                # Table might not exist yet - that's okay
+                logger.debug(f"Could not add to blocked senders (table may not exist): {block_err}")
+
         conn.commit()
         return_db_connection(conn)
 
-        logger.info(f"Rejected receipt {receipt_id}: {reason}")
+        logger.info(f"Rejected receipt {receipt_id}: {reason}" +
+                   (f" (blocked: {blocked_pattern})" if blocked_pattern else ""))
 
-        return jsonify({'ok': True, 'receipt_id': receipt_id})
+        return jsonify({
+            'ok': True,
+            'receipt_id': receipt_id,
+            'blocked_sender': blocked_pattern
+        })
 
     except Exception as e:
         logger.error(f"Error rejecting receipt: {e}")

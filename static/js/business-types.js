@@ -8,6 +8,15 @@ const BusinessTypes = {
   _cacheTime: null,
   _cacheDuration: 5 * 60 * 1000, // 5 minutes
 
+  /**
+   * Escape HTML to prevent XSS
+   */
+  _escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  },
+
   // Default fallback types
   defaults: [
     { name: 'Personal', color: '#4a9eff' },
@@ -158,7 +167,9 @@ const BusinessTypes = {
       chip.style.setProperty('--chip-color', t.color);
 
       if (showCounts) {
-        chip.innerHTML = `${t.name} <span class="notification-badge" id="${t.name.toLowerCase().replace(/\s+/g, '-')}-count">0</span>`;
+        const safeName = this._escapeHtml(t.name);
+        const safeId = t.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        chip.innerHTML = `${safeName} <span class="notification-badge" id="${safeId}-count">0</span>`;
       } else {
         chip.textContent = t.name;
       }
@@ -187,7 +198,10 @@ const BusinessTypes = {
       const btn = document.createElement('button');
       btn.className = 'action-btn business-type-btn';
       btn.style.borderColor = t.color;
-      btn.innerHTML = `<span style="color: ${t.color}">${t.name}</span>`;
+      const span = document.createElement('span');
+      span.style.color = t.color;
+      span.textContent = t.name;
+      btn.appendChild(span);
       btn.onclick = () => onAssign(t.name);
       container.appendChild(btn);
     });

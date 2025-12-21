@@ -217,12 +217,14 @@ class AuthService: ObservableObject {
     // MARK: - Credential Storage for Biometrics
 
     func storePasswordForBiometrics(_ password: String) {
-        KeychainService.shared.save(key: "stored_password", value: password)
+        // Use enhanced security for sensitive credentials
+        KeychainService.shared.saveSensitive(key: "stored_password", value: password)
         biometricsEnabled = true
     }
 
     func storePINForBiometrics(_ pin: String) {
-        KeychainService.shared.save(key: "stored_pin", value: pin)
+        // Use enhanced security for sensitive credentials
+        KeychainService.shared.saveSensitive(key: "stored_pin", value: pin)
         biometricsEnabled = true
     }
 

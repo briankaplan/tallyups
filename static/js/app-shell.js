@@ -6,16 +6,16 @@
 (function() {
   'use strict';
 
-  // Navigation items configuration
+  // Navigation items configuration - matches unified-header.js
   const NAV_ITEMS = [
     { id: 'home', label: 'Home', icon: '🏠', href: '/', paths: ['/', '/dashboard'] },
     { id: 'reconcile', label: 'Reconcile', icon: '🔄', href: '/viewer', paths: ['/viewer', '/reconcile'] },
     { id: 'library', label: 'Library', icon: '📚', href: '/library', paths: ['/library'] },
     { id: 'scan', label: 'Scan', icon: '📸', href: '/scanner', paths: ['/scanner', '/mobile_scanner'] },
     { id: 'inbox', label: 'Inbox', icon: '📥', href: '/incoming', paths: ['/incoming', '/inbox'], badge: 'inboxCount' },
-    { id: 'gmail', label: 'Gmail', icon: '📧', href: '/gmail', paths: ['/gmail'] },
     { id: 'reports', label: 'Reports', icon: '📊', href: '/reports', paths: ['/reports', '/report'] },
-    { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings', paths: ['/settings'] }
+    { id: 'gmail', label: 'Gmail', icon: '📧', href: '/gmail', paths: ['/gmail'] },
+    { id: 'contacts', label: 'Contacts', icon: '👥', href: '/contacts', paths: ['/contacts'] }
   ];
 
   // App state
@@ -92,29 +92,34 @@
 
   /**
    * Create the app header
+   * IMPORTANT: If unified-header.js has already created a header, skip this
    */
   function createHeader() {
-    // Remove ALL existing headers to prevent duplicates
-    // This includes all known header classes used across the app
-    const headerSelectors = [
-      '.app-header',
+    // Check if header already exists (from unified-header.js)
+    if (document.querySelector('.app-header')) {
+      // Header already exists, just ensure body has the class
+      document.body.classList.add('has-app-header');
+      return;
+    }
+
+    // Remove legacy inline headers (not .app-header from unified-header.js)
+    const legacyHeaderSelectors = [
       'header.header',
       'header.site-header',
       'header.swipe-header',
       '.header-content',
       '.site-header-content',
-      '.nav-links',
-      '.header-nav',
-      'body > header'  // Any header directly on body
+      'body > header:not(.app-header)'  // Legacy headers only
     ];
 
-    document.querySelectorAll(headerSelectors.join(', ')).forEach(el => {
+    document.querySelectorAll(legacyHeaderSelectors.join(', ')).forEach(el => {
       // Don't remove if it's inside main content areas
       if (!el.closest('main, .main-content, .content, .page-content, .dashboard-content')) {
         el.remove();
       }
     });
 
+    // Only create header if none exists
     const header = document.createElement('header');
     header.className = 'app-header';
     header.innerHTML = `
@@ -138,6 +143,7 @@
     `;
 
     document.body.insertBefore(header, document.body.firstChild);
+    document.body.classList.add('has-app-header');
   }
 
   /**

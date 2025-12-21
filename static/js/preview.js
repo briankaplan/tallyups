@@ -13,11 +13,21 @@ class ReceiptPreview {
         this.rotation = 0;
         this.isLoading = false;
         this.imageLoaded = false;
+        this._boundWheelHandler = null; // Track bound event handler for cleanup
 
         // Preload Panzoom library if available
         this.panzoomReady = typeof Panzoom !== 'undefined';
 
         this.init();
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    _escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     init() {
@@ -400,10 +410,8 @@ class ReceiptPreview {
     initPanzoom() {
         if (!this.panzoomReady || !this.image) return;
 
-        // Destroy existing instance
-        if (this.panzoomInstance) {
-            this.panzoomInstance.destroy();
-        }
+        // Clean up existing instance and event listener
+        this.destroyPanzoom();
 
         try {
             this.panzoomInstance = Panzoom(this.image, {
@@ -413,10 +421,24 @@ class ReceiptPreview {
                 canvas: true,
             });
 
-            // Enable wheel zoom
-            this.imageWrapper?.addEventListener('wheel', this.panzoomInstance.zoomWithWheel);
+            // Enable wheel zoom - store bound handler for cleanup
+            this._boundWheelHandler = this.panzoomInstance.zoomWithWheel;
+            this.imageWrapper?.addEventListener('wheel', this._boundWheelHandler);
         } catch (e) {
             console.warn('Panzoom initialization failed:', e);
+        }
+    }
+
+    destroyPanzoom() {
+        // Remove wheel event listener
+        if (this._boundWheelHandler && this.imageWrapper) {
+            this.imageWrapper.removeEventListener('wheel', this._boundWheelHandler);
+            this._boundWheelHandler = null;
+        }
+        // Destroy panzoom instance
+        if (this.panzoomInstance) {
+            this.panzoomInstance.destroy();
+            this.panzoomInstance = null;
         }
     }
 
@@ -507,7 +529,7 @@ class ReceiptPreview {
         }
 
         this.matchReasons.innerHTML = reasons.map(r => `
-            <span class="reason ${r.status}">${r.icon} ${r.text}</span>
+            <span class="reason ${this._escapeHtml(r.status)}">${this._escapeHtml(r.icon)} ${this._escapeHtml(r.text)}</span>
         `).join('');
     }
 

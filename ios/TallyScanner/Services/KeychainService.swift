@@ -18,20 +18,34 @@ class KeychainService {
     }
 
     @discardableResult
-    func save(key: String, data: Data) -> Bool {
+    func save(key: String, data: Data, isSensitive: Bool = false) -> Bool {
         // Delete existing item first
         delete(key: key)
+
+        // Use stricter protection for sensitive credentials (passwords, PINs, API keys)
+        // - WhenUnlockedThisDeviceOnly: Only accessible when device is unlocked
+        // - ThisDeviceOnly: Not backed up or transferred to new devices
+        let accessibility = isSensitive
+            ? kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            : kSecAttrAccessibleAfterFirstUnlock
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceName,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+            kSecAttrAccessible as String: accessibility
         ]
 
         let status = SecItemAdd(query as CFDictionary, nil)
         return status == errSecSuccess
+    }
+
+    /// Save sensitive credentials with enhanced security
+    @discardableResult
+    func saveSensitive(key: String, value: String) -> Bool {
+        guard let data = value.data(using: .utf8) else { return false }
+        return save(key: key, data: data, isSensitive: true)
     }
 
     // MARK: - Retrieve
