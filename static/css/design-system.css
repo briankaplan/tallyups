@@ -16,10 +16,10 @@
    Consistent palette across all views
    ================================================================= */
 :root {
-  /* Brand Colors */
-  --brand-primary: #00d4aa;
-  --brand-primary-dim: rgba(0, 212, 170, 0.15);
-  --brand-primary-hover: #00e6b8;
+  /* Brand Colors - Tallyups Green (matches login icon) */
+  --brand-primary: #00ff88;
+  --brand-primary-dim: rgba(0, 255, 136, 0.15);
+  --brand-primary-hover: #33ffaa;
   --brand-secondary: #3b82f6;
   --brand-secondary-dim: rgba(59, 130, 246, 0.15);
 
