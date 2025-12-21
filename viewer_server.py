@@ -673,6 +673,14 @@ if CSRF_AVAILABLE:
     except ImportError:
         pass
 
+    # Exempt Plaid blueprint (session auth but AJAX requests from JS)
+    try:
+        from services.plaid_routes import plaid_bp
+        csrf.exempt(plaid_bp)
+        logger.info("Plaid blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
     # Exempt API endpoints that use API key authentication (they don't use sessions)
     # These are already protected by api_key_required decorator
     CSRF_EXEMPT_ENDPOINTS = [
