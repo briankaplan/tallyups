@@ -139,8 +139,8 @@ struct ScanHistoryView: View {
     private var emptyView: some View {
         VStack(spacing: 16) {
             Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
+                .font(.system(size: 44))
+                .foregroundColor(.gray.opacity(0.6))
             Text("No scan history")
                 .font(.headline)
                 .foregroundColor(.white)
@@ -222,7 +222,7 @@ struct HistoryItemRow: View {
                     .foregroundColor(.white)
 
                 HStack {
-                    if let amount = item.amount {
+                    if item.amount != nil {
                         Text(item.formattedAmount)
                             .font(.subheadline)
                             .foregroundColor(.tallyAccent)

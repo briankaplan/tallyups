@@ -638,7 +638,6 @@ class PremiumCameraController: NSObject, ObservableObject, AVCapturePhotoCapture
         }
 
         // Photo output with high quality
-        photoOutput.isHighResolutionCaptureEnabled = true
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
         }
@@ -647,7 +646,8 @@ class PremiumCameraController: NSObject, ObservableObject, AVCapturePhotoCapture
         videoOutput.setSampleBufferDelegate(self, queue: processingQueue)
         videoOutput.alwaysDiscardsLateVideoFrames = true
         if let connection = videoOutput.connection(with: .video) {
-            connection.videoOrientation = .portrait
+            // Use videoRotationAngle instead of deprecated videoOrientation
+            connection.videoRotationAngle = 90 // Portrait orientation
         }
         if session.canAddOutput(videoOutput) {
             session.addOutput(videoOutput)
@@ -742,7 +742,8 @@ class PremiumCameraController: NSObject, ObservableObject, AVCapturePhotoCapture
         }
 
         let settings = AVCapturePhotoSettings()
-        settings.isHighResolutionPhotoEnabled = true
+        // Use max photo dimensions instead of deprecated isHighResolutionPhotoEnabled
+        settings.maxPhotoDimensions = photoOutput.maxPhotoDimensions
         if let device = currentDevice, device.hasFlash {
             settings.flashMode = device.torchMode == .on ? .on : .off
         }
@@ -899,7 +900,8 @@ class PremiumCameraController: NSObject, ObservableObject, AVCapturePhotoCapture
         UINotificationFeedbackGenerator().notificationOccurred(.success)
 
         let settings = AVCapturePhotoSettings()
-        settings.isHighResolutionPhotoEnabled = true
+        // Use max photo dimensions instead of deprecated isHighResolutionPhotoEnabled
+        settings.maxPhotoDimensions = photoOutput.maxPhotoDimensions
         burstCount = 1
         burstImages = []
         captureCompletion = { [weak self] images in

@@ -9,9 +9,11 @@ struct Transaction: Identifiable, Codable, Hashable {
     var category: String?
     var notes: String?
     var business: String?
-    var receiptCount: Int
-    var hasReceipt: Bool
-    var status: TransactionStatus
+    var receiptCount: Int = 0
+    var hasReceipt: Bool = false
+    var status: TransactionStatus = .pending
+    var receiptUrl: String?
+    var r2Url: String?
 
     enum TransactionStatus: String, Codable {
         case pending
@@ -31,15 +33,108 @@ struct Transaction: Identifiable, Codable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case index = "_index"
-        case merchant
-        case amount
-        case date
+        case merchant = "chase_description"  // Backend uses chase_description
+        case amount = "chase_amount"          // Backend uses chase_amount
+        case date = "chase_date"              // Backend uses chase_date
         case category
         case notes
         case business = "business_type"
         case receiptCount = "receipt_count"
         case hasReceipt = "has_receipt"
-        case status
+        case status = "review_status"
+        case receiptUrl = "receipt_url"
+        case r2Url = "r2_url"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        index = try container.decode(Int.self, forKey: .index)
+        merchant = try container.decode(String.self, forKey: .merchant)
+
+        // Handle amount - can be Double or String
+        if let doubleAmount = try? container.decode(Double.self, forKey: .amount) {
+            amount = doubleAmount
+        } else if let stringAmount = try? container.decode(String.self, forKey: .amount),
+                  let parsed = Double(stringAmount) {
+            amount = parsed
+        } else {
+            amount = 0
+        }
+
+        // Handle date - can be various formats
+        if let dateValue = try? container.decode(Date.self, forKey: .date) {
+            date = dateValue
+        } else if let dateString = try? container.decode(String.self, forKey: .date) {
+            let formatters = [
+                "yyyy-MM-dd",
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd HH:mm:ss"
+            ]
+            var parsedDate: Date?
+            for format in formatters {
+                let formatter = DateFormatter()
+                formatter.dateFormat = format
+                formatter.locale = Locale(identifier: "en_US_POSIX")
+                if let d = formatter.date(from: dateString) {
+                    parsedDate = d
+                    break
+                }
+            }
+            date = parsedDate ?? Date()
+        } else {
+            date = Date()
+        }
+
+        category = try container.decodeIfPresent(String.self, forKey: .category)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes)
+        business = try container.decodeIfPresent(String.self, forKey: .business)
+        receiptUrl = try container.decodeIfPresent(String.self, forKey: .receiptUrl)
+        r2Url = try container.decodeIfPresent(String.self, forKey: .r2Url)
+
+        // Receipt count - derive from receipt_url if not provided
+        if let count = try? container.decode(Int.self, forKey: .receiptCount) {
+            receiptCount = count
+        } else {
+            receiptCount = (receiptUrl != nil || r2Url != nil) ? 1 : 0
+        }
+
+        // Has receipt - derive from receipt_url if not provided
+        if let has = try? container.decode(Bool.self, forKey: .hasReceipt) {
+            hasReceipt = has
+        } else {
+            hasReceipt = receiptUrl != nil || r2Url != nil
+        }
+
+        // Status - handle review_status from backend
+        if let statusString = try? container.decode(String.self, forKey: .status) {
+            switch statusString.lowercased() {
+            case "matched", "verified", "complete":
+                status = .matched
+            case "excluded", "exclude":
+                status = .excluded
+            case "unmatched", "needs_review", "missing":
+                status = .unmatched
+            default:
+                status = hasReceipt ? .matched : .pending
+            }
+        } else {
+            status = hasReceipt ? .matched : .pending
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(index, forKey: .index)
+        try container.encode(merchant, forKey: .merchant)
+        try container.encode(amount, forKey: .amount)
+        try container.encode(date, forKey: .date)
+        try container.encodeIfPresent(category, forKey: .category)
+        try container.encodeIfPresent(notes, forKey: .notes)
+        try container.encodeIfPresent(business, forKey: .business)
+        try container.encode(receiptCount, forKey: .receiptCount)
+        try container.encode(hasReceipt, forKey: .hasReceipt)
+        try container.encode(status.rawValue, forKey: .status)
     }
 
     var formattedAmount: String {

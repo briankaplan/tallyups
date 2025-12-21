@@ -10,7 +10,7 @@ actor APIClient {
 
     /// Base URL for the API - configure this to your Railway deployment
     private var baseURL: String {
-        UserDefaults.standard.string(forKey: "api_base_url") ?? "https://your-app.railway.app"
+        UserDefaults.standard.string(forKey: "api_base_url") ?? "https://tallyups.com"
     }
 
     private var sessionToken: String? {
@@ -96,20 +96,52 @@ actor APIClient {
         let body = "password=\(password.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? password)"
         request.httpBody = body.data(using: .utf8)
 
+        print("🔐 APIClient: Attempting login to \(baseURL)/login")
+
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
 
+        print("🔐 APIClient: Login response status: \(httpResponse.statusCode)")
+
         if httpResponse.statusCode == 200 {
             // Extract session cookie if present
-            if let cookies = HTTPCookieStorage.shared.cookies(for: URL(string: baseURL)!) {
-                for cookie in cookies where cookie.name == "session" {
-                    setSessionToken(cookie.value)
+            if let url = URL(string: baseURL),
+               let cookies = HTTPCookieStorage.shared.cookies(for: url) {
+                print("🔐 APIClient: Found \(cookies.count) cookies")
+                for cookie in cookies {
+                    print("🔐 APIClient: Cookie: \(cookie.name) = \(cookie.value.prefix(20))...")
+                    if cookie.name == "session" {
+                        setSessionToken(cookie.value)
+                        print("🔐 APIClient: Session token saved to keychain")
+                    }
+                }
+            } else {
+                print("🔐 APIClient: No cookies found for \(baseURL)")
+            }
+
+            // Also check Set-Cookie header directly
+            if let setCookie = httpResponse.value(forHTTPHeaderField: "Set-Cookie") {
+                print("🔐 APIClient: Set-Cookie header: \(setCookie.prefix(50))...")
+                // Parse session token from Set-Cookie header if present
+                if let sessionRange = setCookie.range(of: "session=") {
+                    let afterEquals = setCookie[sessionRange.upperBound...]
+                    if let endRange = afterEquals.range(of: ";") {
+                        let token = String(afterEquals[..<endRange.lowerBound])
+                        setSessionToken(token)
+                        print("🔐 APIClient: Extracted session from header")
+                    }
                 }
             }
+
             return true
+        }
+
+        // Log error response
+        if let errorStr = String(data: data, encoding: .utf8) {
+            print("🔐 APIClient: Login failed: \(errorStr)")
         }
 
         return false
@@ -122,13 +154,51 @@ actor APIClient {
         let body = ["pin": pin]
         request.httpBody = try JSONEncoder().encode(body)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        print("🔐 APIClient: Attempting PIN login to \(baseURL)/login/pin")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
 
-        return httpResponse.statusCode == 200
+        print("🔐 APIClient: PIN login response status: \(httpResponse.statusCode)")
+
+        if httpResponse.statusCode == 200 {
+            // Extract session cookie if present
+            if let url = URL(string: baseURL),
+               let cookies = HTTPCookieStorage.shared.cookies(for: url) {
+                print("🔐 APIClient: Found \(cookies.count) cookies after PIN login")
+                for cookie in cookies {
+                    if cookie.name == "session" {
+                        setSessionToken(cookie.value)
+                        print("🔐 APIClient: Session token saved from PIN login")
+                    }
+                }
+            }
+
+            // Also check Set-Cookie header directly
+            if let setCookie = httpResponse.value(forHTTPHeaderField: "Set-Cookie") {
+                print("🔐 APIClient: Set-Cookie header: \(setCookie.prefix(50))...")
+                if let sessionRange = setCookie.range(of: "session=") {
+                    let afterEquals = setCookie[sessionRange.upperBound...]
+                    if let endRange = afterEquals.range(of: ";") {
+                        let token = String(afterEquals[..<endRange.lowerBound])
+                        setSessionToken(token)
+                        print("🔐 APIClient: Extracted session from PIN login header")
+                    }
+                }
+            }
+
+            return true
+        }
+
+        // Log error response
+        if let errorStr = String(data: data, encoding: .utf8) {
+            print("🔐 APIClient: PIN login failed: \(errorStr)")
+        }
+
+        return false
     }
 
     func logout() async throws {
@@ -246,11 +316,31 @@ actor APIClient {
             path += "&search=\(search.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? search)"
         }
 
-        let request = try makeRequest(path: path, method: "GET")
-        let (data, _) = try await URLSession.shared.data(for: request)
+        print("📡 APIClient: Fetching \(baseURL)\(path)")
 
-        let response = try decoder.decode(ReceiptListResponse.self, from: data)
-        return response.receipts
+        let request = try makeRequest(path: path, method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let httpResponse = response as? HTTPURLResponse {
+            print("📡 APIClient: Response status: \(httpResponse.statusCode)")
+            if httpResponse.statusCode == 401 {
+                throw APIError.unauthorized
+            }
+        }
+
+        // Debug: print first 500 chars of response
+        if let str = String(data: data, encoding: .utf8) {
+            print("📡 APIClient: Response preview: \(String(str.prefix(500)))")
+        }
+
+        do {
+            let response = try decoder.decode(ReceiptListResponse.self, from: data)
+            print("📡 APIClient: Decoded \(response.receipts.count) receipts")
+            return response.receipts
+        } catch {
+            print("📡 APIClient: Decode error: \(error)")
+            throw APIError.decodingError(error)
+        }
     }
 
     /// Fetch library statistics
@@ -302,13 +392,15 @@ actor APIClient {
     }
 
     /// Accept an incoming receipt
-    func acceptReceipt(id: String, merchant: String?, amount: Double?, date: Date?) async throws {
+    func acceptReceipt(id: String, merchant: String?, amount: Double?, date: Date?, business: String? = nil, category: String? = nil) async throws {
         var request = try makeRequest(path: "/api/incoming/accept", method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         var body: [String: Any] = ["receipt_id": id]
         if let merchant = merchant { body["merchant"] = merchant }
         if let amount = amount { body["amount"] = amount }
+        if let business = business { body["business_type"] = business }
+        if let category = category { body["category"] = category }
         if let date = date {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
@@ -355,6 +447,87 @@ actor APIClient {
         let request = try makeRequest(path: "/api/transactions/\(index)", method: "GET")
         let (data, _) = try await URLSession.shared.data(for: request)
         return try decoder.decode(Transaction.self, from: data)
+    }
+
+    /// Link a receipt to a transaction
+    func linkReceiptToTransaction(transactionIndex: Int, receiptId: String) async throws -> Bool {
+        var request = try makeRequest(path: "/api/transactions/\(transactionIndex)/link", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = ["receipt_id": receiptId]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 200 {
+            return true
+        }
+
+        // Try to parse error message
+        if let errorData = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let message = errorData["error"] as? String {
+            throw APIError.serverError(httpResponse.statusCode, message)
+        }
+
+        return false
+    }
+
+    /// Exclude a transaction from receipt matching
+    func excludeTransaction(transactionIndex: Int, reason: String? = nil) async throws -> Bool {
+        var request = try makeRequest(path: "/api/transactions/\(transactionIndex)/exclude", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = ["excluded": true]
+        if let reason = reason {
+            body["exclusion_reason"] = reason
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        return httpResponse.statusCode == 200
+    }
+
+    /// Unexclude a transaction
+    func unexcludeTransaction(transactionIndex: Int) async throws -> Bool {
+        var request = try makeRequest(path: "/api/transactions/\(transactionIndex)/exclude", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = ["excluded": false]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        return httpResponse.statusCode == 200
+    }
+
+    /// Unlink a receipt from a transaction
+    func unlinkReceiptFromTransaction(transactionIndex: Int, receiptId: String) async throws -> Bool {
+        var request = try makeRequest(path: "/api/transactions/\(transactionIndex)/unlink", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = ["receipt_id": receiptId]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        return httpResponse.statusCode == 200
     }
 
     // MARK: - Contacts

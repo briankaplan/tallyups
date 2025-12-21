@@ -1,11 +1,15 @@
 import SwiftUI
 import BackgroundTasks
+import UserNotifications
 
 @main
 struct TallyScannerApp: App {
     @StateObject private var authService = AuthService.shared
     @StateObject private var uploadQueue = UploadQueue.shared
     @StateObject private var networkMonitor = NetworkMonitor.shared
+    @StateObject private var notificationService = NotificationService.shared
+
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
         // Configure app appearance
@@ -13,6 +17,9 @@ struct TallyScannerApp: App {
 
         // Register background tasks
         registerBackgroundTasks()
+
+        // Set notification delegate
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
     }
 
     var body: some Scene {
@@ -21,6 +28,7 @@ struct TallyScannerApp: App {
                 .environmentObject(authService)
                 .environmentObject(uploadQueue)
                 .environmentObject(networkMonitor)
+                .environmentObject(notificationService)
                 .preferredColorScheme(.dark)
                 .onAppear {
                     // Start network monitoring
@@ -29,6 +37,11 @@ struct TallyScannerApp: App {
                     // Resume pending uploads if authenticated
                     if authService.isAuthenticated {
                         uploadQueue.resumePendingUploads()
+                    }
+
+                    // Request notification permissions
+                    Task {
+                        _ = await notificationService.requestAuthorization()
                     }
                 }
         }
@@ -88,7 +101,7 @@ struct TallyScannerApp: App {
 
         Task {
             // Sync library data in background
-            try? await APIClient.shared.fetchReceipts(limit: 50)
+            _ = try? await APIClient.shared.fetchReceipts(limit: 50)
             task.setTaskCompleted(success: true)
             scheduleBackgroundSync()
         }
@@ -107,6 +120,30 @@ struct TallyScannerApp: App {
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60) // 15 minutes
 
         try? BGTaskScheduler.shared.submit(request)
+    }
+}
+
+// MARK: - App Delegate
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // Request notification permissions on first launch
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        // Convert token to string for backend registration
+        let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
+        let token = tokenParts.joined()
+        print("🔔 Push token: \(token)")
+        // TODO: Send to backend for push notifications
     }
 }
 

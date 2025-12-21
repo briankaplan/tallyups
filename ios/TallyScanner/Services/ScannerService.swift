@@ -12,9 +12,11 @@ class ScannerService: NSObject, ObservableObject {
     @Published var locationPermissionStatus: CLAuthorizationStatus = .notDetermined
     @Published var isProcessing = false
     @Published var lastError: String?
+    @Published var currentLocationName: String?
 
     private let locationManager = CLLocationManager()
     private var lastLocation: CLLocation?
+    private let geocoder = CLGeocoder()
 
     override init() {
         super.init()
@@ -79,7 +81,7 @@ class ScannerService: NSObject, ObservableObject {
         let context = CIContext()
 
         // Apply auto-enhancement filters
-        var filters = ciImage.autoAdjustmentFilters(options: [
+        let filters = ciImage.autoAdjustmentFilters(options: [
             CIImageAutoAdjustmentOption.redEye: false
         ])
 
@@ -144,18 +146,59 @@ class ScannerService: NSObject, ObservableObject {
 
 extension ScannerService: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        lastLocation = locations.last
+        guard let location = locations.last else { return }
+        lastLocation = location
+
+        // Geocode to get place name
+        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
+            guard let self = self else { return }
+
+            Task { @MainActor in
+                if let placemark = placemarks?.first {
+                    var components: [String] = []
+
+                    // Try to get the most useful location info
+                    if let name = placemark.name, !name.isEmpty,
+                       name != placemark.thoroughfare { // Avoid just showing street name
+                        components.append(name)
+                    }
+
+                    if let locality = placemark.locality {
+                        components.append(locality)
+                    }
+
+                    if components.isEmpty {
+                        if let thoroughfare = placemark.thoroughfare {
+                            components.append(thoroughfare)
+                        }
+                        if let subLocality = placemark.subLocality {
+                            components.append(subLocality)
+                        }
+                    }
+
+                    self.currentLocationName = components.isEmpty ? nil : components.joined(separator: ", ")
+                } else {
+                    self.currentLocationName = nil
+                }
+            }
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         Task { @MainActor in
             locationPermissionStatus = status
+            if status == .authorizedWhenInUse || status == .authorizedAlways {
+                locationManager.startUpdatingLocation()
+            }
         }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             locationPermissionStatus = manager.authorizationStatus
+            if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+                locationManager.startUpdatingLocation()
+            }
         }
     }
 }

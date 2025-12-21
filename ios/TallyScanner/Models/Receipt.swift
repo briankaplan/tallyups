@@ -22,6 +22,7 @@ struct Receipt: Identifiable, Codable, Hashable {
     // Additional fields from API
     var merchantName: String?
     var aiNotes: String?
+    var verificationStatus: String?
 
     enum ReceiptStatus: String, Codable {
         case pending
@@ -63,7 +64,7 @@ struct Receipt: Identifiable, Codable, Hashable {
         case category
         case notes
         case aiNotes = "ai_notes"
-        case imageURL = "receipt_url"  // API returns receipt_url
+        case imageURL = "receipt_url"
         case thumbnailURL = "thumbnail_url"
         case status
         case source
@@ -72,6 +73,161 @@ struct Receipt: Identifiable, Codable, Hashable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case transactionIndex = "transaction_id"
+        case verificationStatus = "verification_status"
+    }
+
+    // Custom decoder to handle edge cases (empty dates, flexible types)
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // ID can be String or Int
+        if let intId = try? container.decode(Int.self, forKey: .id) {
+            id = String(intId)
+        } else {
+            id = try container.decode(String.self, forKey: .id)
+        }
+
+        merchant = try? container.decode(String.self, forKey: .merchant)
+        merchantName = try? container.decode(String.self, forKey: .merchantName)
+
+        // Amount can be Double or String
+        if let doubleAmount = try? container.decode(Double.self, forKey: .amount) {
+            amount = doubleAmount
+        } else if let stringAmount = try? container.decode(String.self, forKey: .amount),
+                  let parsed = Double(stringAmount) {
+            amount = parsed
+        } else {
+            amount = nil
+        }
+
+        // Date: handle Date, String (including empty), or nil
+        date = Receipt.decodeOptionalDate(from: container, forKey: .date)
+        createdAt = Receipt.decodeOptionalDate(from: container, forKey: .createdAt)
+        updatedAt = Receipt.decodeOptionalDate(from: container, forKey: .updatedAt)
+
+        category = try? container.decode(String.self, forKey: .category)
+        notes = try? container.decode(String.self, forKey: .notes)
+        aiNotes = try? container.decode(String.self, forKey: .aiNotes)
+        imageURL = try? container.decode(String.self, forKey: .imageURL)
+        thumbnailURL = try? container.decode(String.self, forKey: .thumbnailURL)
+        source = try? container.decode(String.self, forKey: .source)
+        business = try? container.decode(String.self, forKey: .business)
+        ocrConfidence = try? container.decode(Double.self, forKey: .ocrConfidence)
+        verificationStatus = try? container.decode(String.self, forKey: .verificationStatus)
+
+        // Transaction ID can be Int or String
+        if let intIndex = try? container.decode(Int.self, forKey: .transactionIndex) {
+            transactionIndex = intIndex
+        } else if let stringIndex = try? container.decode(String.self, forKey: .transactionIndex),
+                  let parsed = Int(stringIndex) {
+            transactionIndex = parsed
+        } else {
+            transactionIndex = nil
+        }
+
+        // Status: default to matched if decoding fails
+        status = (try? container.decode(ReceiptStatus.self, forKey: .status)) ?? .matched
+    }
+
+    // Helper to decode dates that might be empty strings or null
+    private static func decodeOptionalDate(from container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) -> Date? {
+        // Try to decode as Date first (for custom date decoder in APIClient)
+        if let date = try? container.decode(Date.self, forKey: key) {
+            return date
+        }
+
+        // If that fails, try as String and parse manually
+        if let dateString = try? container.decode(String.self, forKey: key),
+           !dateString.isEmpty,
+           dateString.lowercased() != "none",
+           dateString.lowercased() != "null" {
+            // Try various date formats
+            let formatters = [
+                "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ",
+                "yyyy-MM-dd'T'HH:mm:ssZ",
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd"
+            ]
+
+            for format in formatters {
+                let formatter = DateFormatter()
+                formatter.dateFormat = format
+                formatter.locale = Locale(identifier: "en_US_POSIX")
+                if let date = formatter.date(from: dateString) {
+                    return date
+                }
+            }
+
+            // Try ISO8601
+            if let date = ISO8601DateFormatter().date(from: dateString) {
+                return date
+            }
+        }
+
+        return nil
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(merchant, forKey: .merchant)
+        try container.encodeIfPresent(merchantName, forKey: .merchantName)
+        try container.encodeIfPresent(amount, forKey: .amount)
+        try container.encodeIfPresent(date, forKey: .date)
+        try container.encodeIfPresent(category, forKey: .category)
+        try container.encodeIfPresent(notes, forKey: .notes)
+        try container.encodeIfPresent(aiNotes, forKey: .aiNotes)
+        try container.encodeIfPresent(imageURL, forKey: .imageURL)
+        try container.encodeIfPresent(thumbnailURL, forKey: .thumbnailURL)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(source, forKey: .source)
+        try container.encodeIfPresent(business, forKey: .business)
+        try container.encodeIfPresent(ocrConfidence, forKey: .ocrConfidence)
+        try container.encodeIfPresent(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(transactionIndex, forKey: .transactionIndex)
+        try container.encodeIfPresent(verificationStatus, forKey: .verificationStatus)
+    }
+
+    // Memberwise init for previews and testing
+    init(
+        id: String,
+        merchant: String? = nil,
+        amount: Double? = nil,
+        date: Date? = nil,
+        category: String? = nil,
+        notes: String? = nil,
+        imageURL: String? = nil,
+        thumbnailURL: String? = nil,
+        status: ReceiptStatus = .pending,
+        source: String? = nil,
+        business: String? = nil,
+        ocrConfidence: Double? = nil,
+        createdAt: Date? = nil,
+        updatedAt: Date? = nil,
+        transactionIndex: Int? = nil,
+        merchantName: String? = nil,
+        aiNotes: String? = nil,
+        verificationStatus: String? = nil
+    ) {
+        self.id = id
+        self.merchant = merchant
+        self.amount = amount
+        self.date = date
+        self.category = category
+        self.notes = notes
+        self.imageURL = imageURL
+        self.thumbnailURL = thumbnailURL
+        self.status = status
+        self.source = source
+        self.business = business
+        self.ocrConfidence = ocrConfidence
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.transactionIndex = transactionIndex
+        self.merchantName = merchantName
+        self.aiNotes = aiNotes
+        self.verificationStatus = verificationStatus
     }
 
     // Display merchant name (prefer merchant_name over merchant)
@@ -99,6 +255,11 @@ struct Receipt: Identifiable, Codable, Hashable {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+
+    // Is this receipt verified?
+    var isVerified: Bool {
+        verificationStatus == "verified" || status == .matched
     }
 }
 

@@ -14,6 +14,30 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut, value: authService.isAuthenticated)
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToScanner)) { _ in
+            withAnimation(.spring(response: 0.3)) {
+                selectedTab = 0
+            }
+            HapticService.shared.mediumTap()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToTransactions)) { _ in
+            withAnimation(.spring(response: 0.3)) {
+                selectedTab = 1
+            }
+            HapticService.shared.mediumTap()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToLibrary)) { _ in
+            withAnimation(.spring(response: 0.3)) {
+                selectedTab = 2
+            }
+            HapticService.shared.mediumTap()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToInbox)) { _ in
+            withAnimation(.spring(response: 0.3)) {
+                selectedTab = 3
+            }
+            HapticService.shared.mediumTap()
+        }
     }
 
     private var mainTabView: some View {
@@ -24,25 +48,34 @@ struct ContentView: View {
                 }
                 .tag(0)
 
+            TransactionsView()
+                .tabItem {
+                    Label("Charges", systemImage: "creditcard.fill")
+                }
+                .tag(1)
+
             LibraryView()
                 .tabItem {
                     Label("Library", systemImage: "photo.stack.fill")
                 }
-                .tag(1)
+                .tag(2)
 
             InboxView()
                 .tabItem {
                     Label("Inbox", systemImage: "tray.fill")
                 }
-                .tag(2)
+                .tag(3)
 
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
-                .tag(3)
+                .tag(4)
         }
         .tint(Color.tallyAccent)
+        .onChange(of: selectedTab) { oldValue, newValue in
+            HapticService.shared.tabSwitch()
+        }
         .overlay(alignment: .top) {
             uploadQueueIndicator
         }

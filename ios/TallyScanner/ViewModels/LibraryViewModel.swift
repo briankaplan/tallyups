@@ -5,9 +5,10 @@ import SwiftUI
 class LibraryViewModel: ObservableObject {
     @Published var receipts: [Receipt] = []
     @Published var stats: LibraryStats?
-    @Published var isLoading = false
+    @Published var isLoading = true  // Start true to show loading state, not empty state
     @Published var hasMore = true
     @Published var error: String?
+    @Published var hasLoaded = false  // Track if initial load completed
 
     // Search & Filters
     @Published var searchQuery = ""
@@ -21,12 +22,15 @@ class LibraryViewModel: ObservableObject {
     private var searchTask: Task<Void, Never>?
 
     func loadReceipts() async {
-        guard !isLoading else { return }
+        // Allow first load even when isLoading is true (initial state)
+        guard !isLoading || !hasLoaded else { return }
 
         isLoading = true
         currentOffset = 0
         hasMore = true
         error = nil
+
+        print("📚 LibraryViewModel: Loading receipts...")
 
         do {
             receipts = try await APIClient.shared.fetchReceipts(
@@ -35,17 +39,25 @@ class LibraryViewModel: ObservableObject {
                 search: searchQuery.isEmpty ? nil : searchQuery
             )
 
+            print("📚 LibraryViewModel: Loaded \(receipts.count) receipts")
+
             hasMore = receipts.count >= pageSize
             currentOffset = receipts.count
 
             // Also load stats
-            stats = try await APIClient.shared.fetchLibraryStats()
+            do {
+                stats = try await APIClient.shared.fetchLibraryStats()
+                print("📚 LibraryViewModel: Stats loaded - Total: \(stats?.totalReceipts ?? 0)")
+            } catch {
+                print("📚 LibraryViewModel: Stats failed: \(error)")
+            }
         } catch {
             self.error = error.localizedDescription
-            print("Failed to load receipts: \(error)")
+            print("📚 LibraryViewModel: Failed to load receipts: \(error)")
         }
 
         isLoading = false
+        hasLoaded = true
     }
 
     func loadMore() async {

@@ -5,6 +5,8 @@ struct LibraryView: View {
     @State private var searchText = ""
     @State private var selectedReceipt: Receipt?
     @State private var showingFilters = false
+    @State private var showingScanHistory = false
+    @State private var selectedTab = 0
 
     var body: some View {
         NavigationStack {
@@ -12,23 +14,41 @@ struct LibraryView: View {
                 Color.tallyBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Stats Bar
-                    statsBar
+                    // Segmented Control for Receipts / Scan History
+                    Picker("View", selection: $selectedTab) {
+                        Text("Receipts").tag(0)
+                        Text("Scan History").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
 
-                    // Search
-                    searchBar
+                    if selectedTab == 0 {
+                        // Receipts Tab
+                        VStack(spacing: 0) {
+                            // Stats Bar
+                            statsBar
 
-                    // Receipt List
-                    if viewModel.isLoading && viewModel.receipts.isEmpty {
-                        loadingView
-                    } else if viewModel.receipts.isEmpty {
-                        emptyView
+                            // Search
+                            searchBar
+
+                            // Receipt List
+                            if viewModel.isLoading {
+                                loadingView
+                            } else if viewModel.receipts.isEmpty && viewModel.hasLoaded {
+                                emptyView
+                                    .transition(.opacity.animation(.easeIn(duration: 0.3)))
+                            } else {
+                                receiptList
+                            }
+                        }
                     } else {
-                        receiptList
+                        // Scan History Tab
+                        ScanHistoryView()
                     }
                 }
             }
-            .navigationTitle("Receipt Library")
+            .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -158,8 +178,8 @@ struct LibraryView: View {
     private var emptyView: some View {
         VStack(spacing: 16) {
             Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 60))
-                .foregroundColor(.gray)
+                .font(.system(size: 44))
+                .foregroundColor(.gray.opacity(0.6))
             Text("No receipts found")
                 .font(.headline)
                 .foregroundColor(.white)
@@ -233,11 +253,12 @@ struct FilterView: View {
                 Section("Business") {
                     Picker("Business", selection: $business) {
                         Text("All").tag("all")
-                        Text("Personal").tag("personal")
-                        Text("Down Home").tag("downhome")
-                        Text("MCR").tag("mcr")
+                        Text("Personal").tag("Personal")
+                        Text("Down Home").tag("Down Home")
+                        Text("MCR").tag("Music City Rodeo")
+                        Text("Em.co").tag("Em.co")
                     }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.menu)
                 }
 
                 Section("Date Range") {

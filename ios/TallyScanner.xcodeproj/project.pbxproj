@@ -33,10 +33,14 @@
 		A1000024 /* ScanHistoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000026 /* ScanHistoryService.swift */; };
 		A1000025 /* ScanHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000027 /* ScanHistoryView.swift */; };
 		A1000026 /* FullScreenScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000028 /* FullScreenScannerView.swift */; };
+		A1000027 /* TransactionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000029 /* TransactionsView.swift */; };
+		A1000028 /* TransactionsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000030 /* TransactionsViewModel.swift */; };
+		A1000029 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000031 /* NotificationService.swift */; };
+		A1000031 /* HapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000033 /* HapticService.swift */; };
+		A1000032 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000034 /* LocationService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A3000001 /* TallyScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TallyScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A2000001 /* TallyScannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TallyScannerApp.swift; sourceTree = "<group>"; };
 		A2000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A2000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -65,6 +69,12 @@
 		A2000026 /* ScanHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanHistoryService.swift; sourceTree = "<group>"; };
 		A2000027 /* ScanHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanHistoryView.swift; sourceTree = "<group>"; };
 		A2000028 /* FullScreenScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenScannerView.swift; sourceTree = "<group>"; };
+		A2000029 /* TransactionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsView.swift; sourceTree = "<group>"; };
+		A2000030 /* TransactionsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsViewModel.swift; sourceTree = "<group>"; };
+		A2000031 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		A2000033 /* HapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticService.swift; sourceTree = "<group>"; };
+		A2000034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		A3000001 /* TallyScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TallyScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -133,6 +143,7 @@
 				A2000023 /* UploadProgressView.swift */,
 				A2000027 /* ScanHistoryView.swift */,
 				A2000028 /* FullScreenScannerView.swift */,
+				A2000029 /* TransactionsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -142,6 +153,7 @@
 			children = (
 				A2000016 /* ScannerViewModel.swift */,
 				A2000017 /* LibraryViewModel.swift */,
+				A2000030 /* TransactionsViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -156,6 +168,9 @@
 				A2000018 /* KeychainService.swift */,
 				A2000019 /* NetworkMonitor.swift */,
 				A2000026 /* ScanHistoryService.swift */,
+				A2000031 /* NotificationService.swift */,
+				A2000033 /* HapticService.swift */,
+				A2000034 /* LocationService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -205,7 +220,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					A6000001 = {
 						CreatedOnToolsVersion = 15.0;
@@ -271,6 +286,11 @@
 				A1000024 /* ScanHistoryService.swift in Sources */,
 				A1000025 /* ScanHistoryView.swift in Sources */,
 				A1000026 /* FullScreenScannerView.swift in Sources */,
+				A1000027 /* TransactionsView.swift in Sources */,
+				A1000028 /* TransactionsViewModel.swift in Sources */,
+				A1000029 /* NotificationService.swift in Sources */,
+				A1000031 /* HapticService.swift in Sources */,
+				A1000032 /* LocationService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -312,6 +332,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = R2LSUCXR5J;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -335,6 +356,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -375,6 +397,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = R2LSUCXR5J;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -391,6 +414,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -404,7 +428,6 @@
 				CODE_SIGN_ENTITLEMENTS = TallyScanner/TallyScanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = R2LSUCXR5J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TallyScanner/Info.plist;
@@ -441,7 +464,6 @@
 				CODE_SIGN_ENTITLEMENTS = TallyScanner/TallyScanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = R2LSUCXR5J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TallyScanner/Info.plist;

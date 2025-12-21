@@ -250,11 +250,14 @@ struct ScannerView: View {
     private func handleScannedImages(_ images: [UIImage]) {
         showingDocumentScanner = false
 
+        // Haptic feedback for successful scan
+        HapticService.shared.scanSuccess()
+
         if images.count == 1 {
             capturedImage = images.first
             showingReceiptEditor = true
         } else {
-            // Batch upload
+            // Batch upload with celebration
             for image in images {
                 if let data = ScannerService.shared.compressImage(image) {
                     uploadQueue.enqueueReceipt(
@@ -263,14 +266,27 @@ struct ScannerView: View {
                     )
                 }
             }
+
+            // Extra haptic for batch success
+            HapticService.shared.batchSyncComplete(count: images.count)
         }
         viewModel.presetMerchant = nil
+
+        // Reset inactivity timer - user is active!
+        NotificationService.shared.resetInactivityTimer()
     }
 
     private func handleCapturedImage(_ image: UIImage) {
         showingCamera = false
+
+        // Camera shutter haptic
+        HapticService.shared.playCapturePattern()
+
         capturedImage = image
         showingReceiptEditor = true
+
+        // Reset inactivity timer
+        NotificationService.shared.resetInactivityTimer()
     }
 
     private func handleSelectedPhotos(_ items: [PhotosPickerItem]) async {
@@ -293,6 +309,9 @@ struct ScannerView: View {
     }
 
     private func enqueueReceipt(_ receipt: EditedReceipt) {
+        // Success haptic
+        HapticService.shared.success()
+
         // Add to scan history
         _ = historyService.addScan(
             imageData: receipt.imageData,
@@ -300,6 +319,13 @@ struct ScannerView: View {
             amount: receipt.amount,
             date: receipt.date ?? Date()
         )
+
+        // Learn this location for future reminders
+        if let merchant = receipt.merchant,
+           let lat = ScannerService.shared.currentLocation?.latitude,
+           let lon = ScannerService.shared.currentLocation?.longitude {
+            LocationService.shared.learnLocation(merchant: merchant, latitude: lat, longitude: lon)
+        }
 
         // Add to upload queue
         uploadQueue.enqueueReceipt(
@@ -315,6 +341,9 @@ struct ScannerView: View {
         )
         capturedImage = nil
         showingReceiptEditor = false
+
+        // Reset inactivity timer
+        NotificationService.shared.resetInactivityTimer()
     }
 }
 
@@ -382,9 +411,17 @@ struct ReceiptEditorView: View {
     @State private var selectedAttendees: [Contact] = []
     @State private var isLoadingContext = false
     @State private var showingContactPicker = false
+    @State private var showingReasonPrompt = false
+    @State private var customReason = ""
+    @State private var currentLocation: String?
 
     let categories = ["Food & Dining", "Transportation", "Shopping", "Entertainment", "Travel", "Business", "Other"]
-    let businesses = ["personal", "downhome", "mcr"]
+    let businesses = [
+        ("Personal", "Personal"),
+        ("Down Home", "Down Home"),
+        ("Music City Rodeo", "Music City Rodeo"),
+        ("Em.co", "Em.co")
+    ]
 
     var body: some View {
         NavigationStack {
@@ -446,23 +483,22 @@ struct ReceiptEditorView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
                             Picker("Business", selection: $business) {
-                                Text("Personal").tag("personal")
-                                Text("Down Home").tag("downhome")
-                                Text("MCR").tag("mcr")
+                                ForEach(businesses, id: \.1) { (label, value) in
+                                    Text(label).tag(value)
+                                }
                             }
-                            .pickerStyle(.segmented)
+                            .pickerStyle(.menu)
+                            .tint(.tallyAccent)
                         }
 
-                        FormField(title: "Notes", text: $notes, placeholder: "Optional notes")
+                        FormField(title: "Notes / Purpose", text: $notes, placeholder: "Business purpose or notes")
                     }
                     .padding()
                     .background(Color.tallyCard)
                     .cornerRadius(16)
 
-                    // Calendar Context Section
-                    if !calendarEvents.isEmpty {
-                        calendarSection
-                    }
+                    // Context Section (Calendar, Location, or Prompt)
+                    contextSection
 
                     // Attendees Section
                     attendeesSection
@@ -499,41 +535,134 @@ struct ReceiptEditorView: View {
         }
     }
 
-    // MARK: - Calendar Section
+    // MARK: - Context Section
 
-    private var calendarSection: some View {
+    private var contextSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Image(systemName: "calendar")
-                    .foregroundColor(.tallyAccent)
-                Text("Events on this date")
+                Image(systemName: hasContext ? "checkmark.circle.fill" : "questionmark.circle.fill")
+                    .foregroundColor(hasContext ? .green : .orange)
+                Text("Context")
                     .font(.headline)
                 Spacer()
+                if isLoadingContext {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                }
             }
 
-            ForEach(calendarEvents.prefix(3)) { event in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(event.title)
-                            .font(.subheadline)
-                            .foregroundColor(.white)
-                        if let location = event.location {
-                            Text(location)
+            // Location if available
+            if let location = currentLocation {
+                HStack(spacing: 8) {
+                    Image(systemName: "location.fill")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    Text(location)
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                }
+                .padding(.vertical, 4)
+            }
+
+            // Calendar events
+            if !calendarEvents.isEmpty {
+                Divider().background(Color.gray.opacity(0.3))
+
+                Text("Events on this date")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+
+                ForEach(calendarEvents.prefix(3)) { event in
+                    Button(action: {
+                        applyEventContext(event)
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(event.title)
+                                    .font(.subheadline)
+                                    .foregroundColor(.white)
+                                if let location = event.location {
+                                    Text(location)
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            Spacer()
+                            Text(event.formattedTime)
+                                .font(.caption)
+                                .foregroundColor(.tallyAccent)
+                            Image(systemName: "arrow.right.circle")
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
                     }
-                    Spacer()
-                    Text(event.formattedTime)
-                        .font(.caption)
-                        .foregroundColor(.tallyAccent)
+                    .padding(.vertical, 4)
                 }
-                .padding(.vertical, 4)
+            }
+
+            // No context prompt
+            if !hasContext && notes.isEmpty {
+                Divider().background(Color.gray.opacity(0.3))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No calendar event found for this date.")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+
+                    Text("What was this expense for?")
+                        .font(.subheadline)
+                        .foregroundColor(.orange)
+
+                    // Quick reason buttons
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(quickReasons, id: \.self) { reason in
+                                Button(action: {
+                                    notes = reason
+                                }) {
+                                    Text(reason)
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(notes == reason ? Color.tallyAccent : Color.tallyBackground)
+                                        .foregroundColor(notes == reason ? .white : .gray)
+                                        .cornerRadius(15)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         .padding()
         .background(Color.tallyCard)
         .cornerRadius(16)
+    }
+
+    private var hasContext: Bool {
+        !calendarEvents.isEmpty || currentLocation != nil || !notes.isEmpty
+    }
+
+    private var quickReasons: [String] {
+        switch category.lowercased() {
+        case "food", "food & dining", "dining":
+            return ["Client meeting", "Team lunch", "Working meal", "Business dinner", "Site visit"]
+        case "transportation", "travel":
+            return ["Client visit", "Site inspection", "Conference", "Airport", "Business travel"]
+        case "shopping":
+            return ["Office supplies", "Equipment", "Inventory", "Client gift", "Event supplies"]
+        default:
+            return ["Business meeting", "Client expense", "Work supplies", "Training", "Other business"]
+        }
+    }
+
+    private func applyEventContext(_ event: CalendarEvent) {
+        // Apply calendar event as context
+        notes = "Meeting: \(event.title)"
+        if let attendees = event.attendees, !attendees.isEmpty {
+            // Add first few attendees to selected
+            // TODO: Match with contacts
+        }
     }
 
     // MARK: - Attendees Section
@@ -644,9 +773,18 @@ struct ReceiptEditorView: View {
         isLoadingContext = true
         defer { isLoadingContext = false }
 
+        // Get current location
+        if ScannerService.shared.currentLocation != nil {
+            // Reverse geocode to get place name
+            await MainActor.run {
+                currentLocation = ScannerService.shared.currentLocationName
+            }
+        }
+
         // Load calendar events for this date
         do {
             calendarEvents = try await APIClient.shared.fetchCalendarEvents(date: date)
+            print("Context: Loaded \(calendarEvents.count) calendar events for \(date)")
         } catch {
             print("Failed to load calendar events: \(error)")
         }

@@ -115,7 +115,7 @@ struct UploadQueueView: View {
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
+                .font(.system(size: 44))
                 .foregroundColor(.tallyAccent)
             Text("All caught up!")
                 .font(.headline)
