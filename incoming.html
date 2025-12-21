@@ -1293,7 +1293,7 @@ async function doAccept(id, merchant, amount, isRefund, transDate, card, actions
   }
 }
 
-// Mobile reject with visual feedback
+// Mobile reject with visual feedback - also blocks sender for future
 async function mobileReject(id, btn) {
   const card = btn.closest('.inbox-card');
   const actionsDiv = card.querySelector('.inbox-card-actions');
@@ -1301,7 +1301,7 @@ async function mobileReject(id, btn) {
   // Show loading state
   actionsDiv.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;justify-content:center;padding:12px;color:var(--muted)">
-      <span class="spinner"></span> Rejecting...
+      <span class="spinner"></span> Dismissing...
     </div>
   `;
 
@@ -1310,12 +1310,19 @@ async function mobileReject(id, btn) {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       credentials: 'include',
-      body: JSON.stringify({ receipt_id: id })
+      body: JSON.stringify({ receipt_id: id, block_sender: true })
     });
 
     const data = await response.json();
 
     if (data.ok) {
+      // Show feedback about blocked sender
+      if (data.blocked_sender) {
+        showToast(`Dismissed & blocked: ${data.blocked_sender}`, 'info');
+      } else {
+        showToast('Dismissed', 'info');
+      }
+
       // Fade out animation
       card.style.transition = 'all 0.3s ease';
       card.style.opacity = '0';
@@ -1582,20 +1589,25 @@ async function quickAccept(id, merchant, amount, isRefund = false, receiptDate =
 async function quickReject(id) {
   const row = document.querySelector(`tr[data-id="${id}"]`);
   const actionsCell = row.querySelector('td:last-child');
-  actionsCell.innerHTML = '<span style="color:var(--muted);font-size:11px">Processing...</span>';
+  actionsCell.innerHTML = '<span style="color:var(--muted);font-size:11px">Dismissing...</span>';
 
   try {
     const response = await fetch('/api/incoming/reject', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       credentials: 'include',
-      body: JSON.stringify({ receipt_id: id })
+      body: JSON.stringify({ receipt_id: id, block_sender: true })
     });
 
     const data = await response.json();
 
     if (data.ok) {
-      showToast('Rejected', 'info');
+      // Show feedback about blocked sender
+      if (data.blocked_sender) {
+        showToast(`Dismissed & blocked: ${data.blocked_sender}`, 'info');
+      } else {
+        showToast('Dismissed', 'info');
+      }
 
       // Fade out and remove the row
       row.style.transition = 'opacity 0.3s ease';
@@ -1610,11 +1622,11 @@ async function quickReject(id) {
         updateStats();
       }, 300);
     } else {
-      showToast(data.error || 'Failed to reject', 'error');
+      showToast(data.error || 'Failed to dismiss', 'error');
     }
   } catch (e) {
-    console.error('Reject error:', e);
-    showToast('Error rejecting receipt', 'error');
+    console.error('Dismiss error:', e);
+    showToast('Error dismissing receipt', 'error');
   }
 }
 

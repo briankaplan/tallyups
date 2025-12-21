@@ -2962,12 +2962,80 @@ def scan_gmail_for_new_receipts(account_email, since_date='2024-09-01'):
         print(f"   ❌ Error scanning Gmail: {e}")
         return []
 
+def is_sender_blocked(conn, from_email):
+    """Check if sender is in the blocked list (user has rejected emails from them before)."""
+    if not from_email:
+        return False
+    try:
+        cursor = conn.cursor()
+        # Check exact email match or domain match
+        email_lower = from_email.lower()
+        domain = email_lower.split('@')[-1] if '@' in email_lower else ''
+
+        cursor.execute('''
+            SELECT id FROM blocked_email_senders
+            WHERE is_active = TRUE AND (
+                email_pattern = %s
+                OR domain_pattern = %s
+                OR %s LIKE REPLACE(email_pattern, '%%', '%%%%')
+            )
+            LIMIT 1
+        ''', (email_lower, domain, email_lower))
+
+        return cursor.fetchone() is not None
+    except Exception as e:
+        # Table might not exist - don't block on error
+        return False
+
+
+def try_auto_match_receipt(conn, receipt_id, receipt_data):
+    """Attempt to auto-match a new receipt with unmatched transactions."""
+    try:
+        from smart_auto_matcher import find_best_match_for_receipt
+
+        amount = receipt_data.get('amount')
+        date_str = receipt_data.get('received_date')
+        merchant = receipt_data.get('merchant')
+
+        if not amount:
+            return None
+
+        # Find the best matching transaction
+        match = find_best_match_for_receipt(conn, {
+            'amount': float(amount) if amount else 0,
+            'date': date_str,
+            'merchant': merchant
+        })
+
+        if match and match.get('confidence', 0) >= 0.75:  # 75% confidence threshold
+            # Auto-attach this receipt to the transaction
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE incoming_receipts
+                SET matched_transaction_id = %s, status = 'auto_matched',
+                    match_type = 'auto', reviewed_at = NOW()
+                WHERE id = %s
+            ''', (match['transaction_id'], receipt_id))
+            conn.commit()
+            print(f"   🔗 Auto-matched receipt to transaction {match['transaction_id']} ({match['confidence']*100:.0f}% confidence)")
+            return match['transaction_id']
+    except Exception as e:
+        print(f"   ℹ️  Auto-match skipped: {e}")
+    return None
+
+
 def save_incoming_receipt(receipt_data):
-    """Save incoming receipt to database (MySQL)"""
+    """Save incoming receipt to database (MySQL) with auto-blocking and auto-matching."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
+        # Check if sender is blocked (user has rejected their emails before)
+        from_email = receipt_data.get('from_email', '')
+        if is_sender_blocked(conn, from_email):
+            print(f"   🚫 Blocked sender: {from_email} - skipping")
+            return None
+
         # MySQL version - includes category, ai_notes, receipt_image_url and thumbnail_url for Vision AI data
         cursor.execute('''
             INSERT INTO incoming_receipts (
@@ -3004,6 +3072,10 @@ def save_incoming_receipt(receipt_data):
         conn.commit()
         receipt_id = cursor.lastrowid
         print(f"   💾 Saved incoming receipt: {receipt_data['subject'][:40]}")
+
+        # Try to auto-match this receipt immediately
+        try_auto_match_receipt(conn, receipt_id, receipt_data)
+
         return receipt_id
 
     except pymysql.err.IntegrityError:
