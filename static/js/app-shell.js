@@ -65,11 +65,12 @@
       const criticalStyle = document.createElement('style');
       criticalStyle.id = 'app-shell-critical-css';
       criticalStyle.textContent = `
-        /* Critical CSS - minimal styles, defer to unified-header.css for full styles */
+        /* Critical CSS - minimal styles matching unified-header.css to prevent FOUC */
         .app-header { position: fixed; top: 0; left: 0; right: 0; height: 64px; background: #0b0d10; border-bottom: 1px solid rgba(255,255,255,0.08); z-index: 1000; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
         .app-header__logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-        .app-header__logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, #00ffa3, #5b7fff); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .app-header__logo-icon { width: 32px; height: 32px; background: #00ff88; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
         .app-header__logo-icon svg { width: 20px; height: 20px; color: #000; }
+        .app-header__logo-text { font-size: 18px; font-weight: 700; color: #ffffff; }
         .app-header__nav { display: flex; align-items: center; gap: 4px; }
         .app-header__nav-link { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: #9ca3af; text-decoration: none; border-radius: 12px; font-size: 14px; }
         .app-header__nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }

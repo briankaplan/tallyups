@@ -80,10 +80,14 @@ def api_library_receipts():
     conn = None
     try:
         source = request.args.get('source', 'all')
-        search = request.args.get('search', '')
+        search = request.args.get('search', '') or request.args.get('q', '')
         merchant = request.args.get('merchant', '')
         date_from = request.args.get('date_from', '')
         date_to = request.args.get('date_to', '')
+        business_type = request.args.get('business_type', '')
+        status = request.args.get('status', '')
+        amount_min = request.args.get('amount_min', '')
+        amount_max = request.args.get('amount_max', '')
         limit = min(int(request.args.get('limit', 100)), 500)
         offset = int(request.args.get('offset', 0))
 
@@ -112,6 +116,22 @@ def api_library_receipts():
                 where_clauses.append("chase_date <= %s")
                 params.append(date_to)
 
+            if business_type:
+                where_clauses.append("business_type = %s")
+                params.append(business_type)
+
+            if status:
+                where_clauses.append("review_status = %s")
+                params.append(status)
+
+            if amount_min:
+                where_clauses.append("ABS(chase_amount) >= %s")
+                params.append(float(amount_min))
+
+            if amount_max:
+                where_clauses.append("ABS(chase_amount) <= %s")
+                params.append(float(amount_max))
+
             where_sql = " AND ".join(where_clauses)
             params.extend([limit, offset])
 
@@ -135,6 +155,17 @@ def api_library_receipts():
                     date_val = date_val.isoformat()
                 image_url = r.get('r2_url') or ''
 
+                # Map review_status to frontend-expected status
+                review_status = r.get('review_status') or ''
+                if review_status in ('good', 'verified'):
+                    display_status = 'verified'
+                elif review_status == 'needs_review':
+                    display_status = 'needs_review'
+                elif review_status == 'mismatch':
+                    display_status = 'mismatch'
+                else:
+                    display_status = 'matched'  # Default for receipts with images
+
                 receipts.append({
                     'id': f"tx_{r['_index']}",
                     'uuid': f"tx_{r['_index']}",
@@ -152,7 +183,8 @@ def api_library_receipts():
                     'business_type': r.get('business_type') or 'Personal',
                     'notes': '',
                     'ai_notes': r.get('ai_note') or '',
-                    'status': 'matched',
+                    'status': display_status,
+                    'review_status': review_status,
                     'ocr_merchant': r.get('ai_receipt_merchant') or '',
                     'ocr_amount': float(r.get('ai_receipt_total') or 0) if r.get('ai_receipt_total') else None,
                     'ocr_confidence': float(r.get('ai_confidence') or 0) if r.get('ai_confidence') else 0,
@@ -517,6 +549,22 @@ def api_library_stats():
         ''')
         incoming_count = cursor.fetchone()['count']
 
+        # Count by review_status for verified badges
+        cursor = db_execute(conn, db_type, '''
+            SELECT review_status, COUNT(*) as count
+            FROM transactions
+            WHERE r2_url IS NOT NULL AND r2_url != ''
+            GROUP BY review_status
+        ''')
+        by_status = {}
+        for row in cursor.fetchall():
+            status = row['review_status'] or 'pending'
+            by_status[status] = row['count']
+
+        # Calculate verified count (good or verified status)
+        verified_count = by_status.get('good', 0) + by_status.get('verified', 0)
+        needs_review_count = by_status.get('needs_review', 0)
+
         return_db_connection(conn)
 
         # Build counts object for frontend
@@ -530,9 +578,9 @@ def api_library_stats():
             'ceo': by_business.get('CEO', 0),
             'favorites': 0,
             'recent': total_receipts,
-            'needs_review': 0,
-            'verified': total_receipts,
-            'matched': total_receipts,
+            'needs_review': needs_review_count,
+            'verified': verified_count,
+            'matched': total_receipts - needs_review_count,
             'processing': 0,
             'duplicates': 0,
             'gmail': incoming_count,

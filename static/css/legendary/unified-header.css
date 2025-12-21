@@ -61,7 +61,7 @@ body.has-app-header {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--brand-primary, #00ffa3), var(--brand-secondary, #5b7fff));
+  background: #00ff88;  /* Solid green matching login screen */
   border-radius: var(--radius-lg, 12px);
 }
 
@@ -75,10 +75,7 @@ body.has-app-header {
   font-family: var(--font-display, -apple-system, BlinkMacSystemFont, sans-serif);
   font-size: var(--text-lg, 18px);
   font-weight: var(--weight-bold, 700);
-  background: linear-gradient(135deg, var(--brand-primary, #00ffa3), var(--brand-secondary, #5b7fff));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #ffffff;  /* Solid white text, no gradient */
 }
 
 /* ═══════════════════════════════════════════════════════════════

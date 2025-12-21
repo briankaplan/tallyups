@@ -1328,7 +1328,7 @@
     // Load dashboard statistics
     async function loadDashboardStats() {
       try {
-        const response = await fetch('/api/dashboard/stats');
+        const response = await fetch('/api/dashboard/stats', { credentials: 'include' });
         if (!response.ok) throw new Error('Failed to fetch stats');
 
         const data = await response.json();
@@ -1556,7 +1556,7 @@
     // Load recent activity
     async function loadRecentActivity() {
       try {
-        const response = await fetch('/api/receipts/recent?limit=5');
+        const response = await fetch('/api/receipts/recent?limit=5', { credentials: 'include' });
         if (!response.ok) throw new Error('Failed to fetch activity');
 
         const data = await response.json();
@@ -1588,7 +1588,7 @@
     // Load draft reports
     async function loadDraftReports() {
       try {
-        const response = await fetch('/api/reports?status=draft');
+        const response = await fetch('/api/reports?status=draft', { credentials: 'include' });
         if (!response.ok) throw new Error('Failed to fetch reports');
 
         const data = await response.json();
@@ -1639,6 +1639,7 @@
       try {
         const response = await fetch(`/reports/${reportId}/delete`, {
           method: 'DELETE',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' }
         });
 
