@@ -2979,7 +2979,7 @@ def dashboard_stats():
                     'index': row['_index'],
                     'merchant': (row['merchant'] or 'Unknown')[:30],
                     'date': str(row['date']),
-                    'amount': round(float(row['amount'] or 0), 2),
+                    'amount': round(abs(float(row['amount'] or 0)), 2),
                     'business': row['business_type'] or 'Personal'
                 })
             cursor.close()
