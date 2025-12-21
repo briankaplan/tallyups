@@ -3505,7 +3505,7 @@
       try {
         // Just hit the frequency-stats endpoint - the before_request hook will trigger sync if needed
         // This is a lightweight GET that returns quickly
-        const response = await fetch('/api/atlas/contacts/frequency-stats');
+        const response = await fetch('/api/atlas/contacts/frequency-stats', { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           console.log('📊 Interaction stats:', data.total_with_interactions, 'contacts have interactions');
@@ -3617,7 +3617,7 @@
       }
 
       try {
-        const response = await fetch(`/api/atlas/contacts?limit=5000&offset=0`);
+        const response = await fetch(`/api/atlas/contacts?limit=5000&offset=0`, { credentials: 'include' });
         const data = await response.json();
 
         if (data.contacts && data.contacts.length > 0) {
@@ -3678,7 +3678,9 @@
 
       try {
         isLoading = true;
-        const response = await fetch(`/api/atlas/contacts?limit=${BATCH_SIZE}&offset=0&sort=${currentSort}`);
+        const response = await fetch(`/api/atlas/contacts?limit=${BATCH_SIZE}&offset=0&sort=${currentSort}`, {
+          credentials: 'include'
+        });
         const data = await response.json();
 
         if (data.contacts && data.contacts.length > 0) {
@@ -3710,7 +3712,9 @@
         isLoading = true;
         showLoadingMore();
 
-        const response = await fetch(`/api/atlas/contacts?limit=${BATCH_SIZE}&offset=${currentOffset}`);
+        const response = await fetch(`/api/atlas/contacts?limit=${BATCH_SIZE}&offset=${currentOffset}`, {
+          credentials: 'include'
+        });
         const data = await response.json();
 
         if (data.contacts && data.contacts.length > 0) {
@@ -4136,7 +4140,7 @@
 
       // Try to load full details
       try {
-        const response = await fetch(`/api/atlas/contacts/${contactId}`);
+        const response = await fetch(`/api/atlas/contacts/${contactId}`, { credentials: 'include' });
         const data = await response.json();
         if (data.contact) {
           currentContact = { ...currentContact, ...data.contact };
@@ -4448,7 +4452,7 @@
     // Check sync status
     async function checkSyncStatus() {
       try {
-        const response = await fetch('/api/atlas/sync/status');
+        const response = await fetch('/api/atlas/sync/status', { credentials: 'include' });
         const data = await response.json();
 
         // Update sync status bar counts
@@ -4502,7 +4506,7 @@
       document.getElementById('googleStatus').textContent = 'Syncing...';
 
       try {
-        const response = await fetch('/api/atlas/sync/google', { method: 'POST' });
+        const response = await fetch('/api/atlas/sync/google', { method: 'POST', credentials: 'include' });
         const data = await response.json();
 
         if (data.success || data.ok) {
@@ -4530,7 +4534,7 @@
       document.getElementById('appleStatus').textContent = 'Syncing...';
 
       try {
-        const response = await fetch('/api/atlas/sync/apple', { method: 'POST' });
+        const response = await fetch('/api/atlas/sync/apple', { method: 'POST', credentials: 'include' });
         const data = await response.json();
 
         if (data.success || data.ok) {
@@ -4558,7 +4562,7 @@
       document.getElementById('googleStatus').textContent = 'Pulling...';
 
       try {
-        const response = await fetch('/api/atlas/sync/google/pull', { method: 'POST' });
+        const response = await fetch('/api/atlas/sync/google/pull', { method: 'POST', credentials: 'include' });
         const data = await response.json();
 
         if (data.ok) {
@@ -4586,7 +4590,7 @@
       document.getElementById('googleStatus').textContent = 'Pushing...';
 
       try {
-        const response = await fetch('/api/atlas/sync/google/push', { method: 'POST' });
+        const response = await fetch('/api/atlas/sync/google/push', { method: 'POST', credentials: 'include' });
         const data = await response.json();
 
         if (data.ok) {
@@ -4614,11 +4618,11 @@
 
       try {
         // First pull from Google
-        const pullResponse = await fetch('/api/atlas/sync/google/pull', { method: 'POST' });
+        const pullResponse = await fetch('/api/atlas/sync/google/pull', { method: 'POST', credentials: 'include' });
         const pullData = await pullResponse.json();
 
         // Then push local changes
-        const pushResponse = await fetch('/api/atlas/sync/google/push', { method: 'POST' });
+        const pushResponse = await fetch('/api/atlas/sync/google/push', { method: 'POST', credentials: 'include' });
         const pushData = await pushResponse.json();
 
         if (pullData.ok || pushData.ok) {
@@ -4647,7 +4651,7 @@
         showToast('Preparing vCard export...', 'info');
 
         // Get all contacts
-        const response = await fetch('/api/atlas/contacts?limit=10000');
+        const response = await fetch('/api/atlas/contacts?limit=10000', { credentials: 'include' });
         const data = await response.json();
         const contacts = data.contacts || [];
 
@@ -5172,7 +5176,7 @@
       btn.querySelector('.ai-action-title').textContent = 'Generating...';
 
       try {
-        const response = await fetch('/api/atlas/ai/smart-filters');
+        const response = await fetch('/api/atlas/ai/smart-filters', { credentials: 'include' });
         const data = await response.json();
 
         if (data.ok && data.filters) {
@@ -5518,7 +5522,7 @@
     // Load relationship health from API
     async function loadRelationshipHealth(contactId) {
       try {
-        const response = await fetch(`/api/atlas/relationship/${contactId}`);
+        const response = await fetch(`/api/atlas/relationship/${contactId}`, { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           if (data.health) {
@@ -5666,7 +5670,7 @@
       const timeline = document.getElementById('modalTimeline');
 
       try {
-        const response = await fetch(`/api/atlas/contacts/${contactId}`);
+        const response = await fetch(`/api/atlas/contacts/${contactId}`, { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           const interactions = data.interactions || [];
@@ -5851,7 +5855,7 @@
 
       // Fetch incomplete contacts
       try {
-        const response = await fetch('/api/atlas/contacts/find-incomplete', { method: 'POST' });
+        const response = await fetch('/api/atlas/contacts/find-incomplete', { method: 'POST', credentials: 'include' });
         cleanupData = await response.json();
 
         if (cleanupData.ok) {
