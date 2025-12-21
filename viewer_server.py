@@ -484,11 +484,12 @@ def add_security_headers(response):
     # Allow inline scripts for legacy compat, but block external untrusted sources
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdn.plaid.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: https: blob:; "
-        "connect-src 'self' https://*.cloudflare.com https://*.r2.cloudflarestorage.com; "
+        "connect-src 'self' https://*.cloudflare.com https://*.r2.cloudflarestorage.com https://*.plaid.com; "
+        "frame-src https://*.plaid.com; "
         "frame-ancestors 'none';"
     )
     # Prevent browsers from caching sensitive pages and HTML
