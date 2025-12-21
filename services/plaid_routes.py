@@ -906,6 +906,377 @@ def plaid_status():
 
 
 # =============================================================================
+# TRANSACTION-RECEIPT MATCHING (NEW)
+# =============================================================================
+
+@plaid_bp.route('/transactions/match', methods=['POST'])
+@require_auth
+def match_transactions_to_receipts():
+    """
+    Match transactions to receipts in the database.
+
+    Request Body:
+        {
+            "transaction_ids": ["txn_123", ...],  // Optional: specific transactions
+            "date_range": {"start": "2024-01-01", "end": "2024-12-31"},  // Optional
+            "auto_link": true  // Whether to automatically link matches
+        }
+
+    Response:
+        {
+            "success": true,
+            "matches": [
+                {
+                    "transaction_id": "txn_123",
+                    "receipt_id": "rec_456",
+                    "confidence": 0.95,
+                    "match_type": "exact_amount_date"
+                }
+            ],
+            "unmatched": 5,
+            "auto_linked": 10
+        }
+    """
+    try:
+        data = request.get_json() or {}
+        transaction_ids = data.get('transaction_ids')
+        date_range = data.get('date_range', {})
+        auto_link = data.get('auto_link', False)
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        # Get transactions to match
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            query = """
+                SELECT pt.transaction_id, pt.amount, pt.date, pt.merchant_name, pt.account_id
+                FROM plaid_transactions pt
+                WHERE pt.user_id = %s
+                AND pt.receipt_id IS NULL
+            """
+            params = [get_user_id()]
+
+            if transaction_ids:
+                placeholders = ','.join(['%s'] * len(transaction_ids))
+                query += f" AND pt.transaction_id IN ({placeholders})"
+                params.extend(transaction_ids)
+
+            if date_range.get('start'):
+                query += " AND pt.date >= %s"
+                params.append(date_range['start'])
+            if date_range.get('end'):
+                query += " AND pt.date <= %s"
+                params.append(date_range['end'])
+
+            cursor.execute(query, params)
+            transactions = cursor.fetchall()
+
+            matches = []
+            unmatched = 0
+            auto_linked = 0
+
+            for txn in transactions:
+                txn_id, amount, txn_date, merchant, account_id = txn
+
+                # Find matching receipt by amount and date (within 3 days)
+                cursor.execute("""
+                    SELECT id, chase_amount, chase_date, chase_description
+                    FROM transactions
+                    WHERE ABS(chase_amount) = ABS(%s)
+                    AND chase_date BETWEEN DATE_SUB(%s, INTERVAL 3 DAY) AND DATE_ADD(%s, INTERVAL 3 DAY)
+                    AND r2_url IS NOT NULL
+                    LIMIT 1
+                """, (abs(amount), txn_date, txn_date))
+
+                receipt = cursor.fetchone()
+
+                if receipt:
+                    confidence = 0.95 if receipt[2] == txn_date else 0.85
+                    match_type = 'exact_amount_date' if receipt[2] == txn_date else 'amount_fuzzy_date'
+
+                    matches.append({
+                        'transaction_id': txn_id,
+                        'receipt_id': receipt[0],
+                        'confidence': confidence,
+                        'match_type': match_type,
+                        'amount': float(amount),
+                        'merchant': merchant
+                    })
+
+                    if auto_link and confidence >= 0.85:
+                        cursor.execute("""
+                            UPDATE plaid_transactions SET receipt_id = %s WHERE transaction_id = %s
+                        """, (receipt[0], txn_id))
+                        auto_linked += 1
+                else:
+                    unmatched += 1
+
+            if auto_link:
+                conn.commit()
+
+        return jsonify({
+            'success': True,
+            'matches': matches,
+            'unmatched': unmatched,
+            'auto_linked': auto_linked
+        })
+
+    except Exception as e:
+        logger.error(f"Transaction matching error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@plaid_bp.route('/transactions/duplicates', methods=['GET'])
+@require_auth
+def detect_duplicate_transactions():
+    """
+    Detect potential duplicate transactions across accounts.
+
+    Response:
+        {
+            "success": true,
+            "duplicates": [
+                {
+                    "transactions": ["txn_1", "txn_2"],
+                    "amount": -50.00,
+                    "date": "2024-12-20",
+                    "confidence": 0.90
+                }
+            ]
+        }
+    """
+    try:
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Find transactions with same amount on same day across different accounts
+            cursor.execute("""
+                SELECT pt1.transaction_id, pt2.transaction_id,
+                       pt1.amount, pt1.date, pt1.merchant_name,
+                       pt1.account_id, pt2.account_id
+                FROM plaid_transactions pt1
+                JOIN plaid_transactions pt2 ON pt1.amount = pt2.amount
+                    AND pt1.date = pt2.date
+                    AND pt1.transaction_id < pt2.transaction_id
+                    AND pt1.account_id != pt2.account_id
+                WHERE pt1.user_id = %s
+                ORDER BY pt1.date DESC
+                LIMIT 100
+            """, (get_user_id(),))
+
+            duplicates = []
+            for row in cursor.fetchall():
+                duplicates.append({
+                    'transactions': [row[0], row[1]],
+                    'amount': float(row[2]),
+                    'date': str(row[3]),
+                    'merchant': row[4],
+                    'accounts': [row[5], row[6]],
+                    'confidence': 0.90
+                })
+
+        return jsonify({
+            'success': True,
+            'duplicates': duplicates,
+            'count': len(duplicates)
+        })
+
+    except Exception as e:
+        logger.error(f"Duplicate detection error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@plaid_bp.route('/accounts/<account_id>/balance/history', methods=['GET'])
+@require_auth
+def get_balance_history(account_id):
+    """
+    Get balance history for an account.
+
+    Query Params:
+        days: Number of days of history (default 30)
+
+    Response:
+        {
+            "success": true,
+            "history": [
+                {"date": "2024-12-20", "balance": 1500.00},
+                ...
+            ]
+        }
+    """
+    try:
+        days = int(request.args.get('days', 30))
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Get daily ending balances from transaction history
+            cursor.execute("""
+                SELECT DATE(date) as txn_date,
+                       SUM(amount) OVER (ORDER BY date, transaction_id) as running_balance
+                FROM plaid_transactions
+                WHERE account_id = %s
+                AND date >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+                ORDER BY date DESC
+            """, (account_id, days))
+
+            history = []
+            seen_dates = set()
+            for row in cursor.fetchall():
+                date_str = str(row[0])
+                if date_str not in seen_dates:
+                    history.append({
+                        'date': date_str,
+                        'balance': float(row[1]) if row[1] else 0
+                    })
+                    seen_dates.add(date_str)
+
+        return jsonify({
+            'success': True,
+            'account_id': account_id,
+            'history': history[:days]  # Limit to requested days
+        })
+
+    except Exception as e:
+        logger.error(f"Balance history error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@plaid_bp.route('/sync/schedule', methods=['GET', 'PUT'])
+@require_auth
+def sync_schedule():
+    """
+    Get or update sync schedule configuration.
+
+    PUT Request Body:
+        {
+            "frequency": "hourly|daily|manual",
+            "enabled": true
+        }
+
+    Response:
+        {
+            "success": true,
+            "schedule": {
+                "frequency": "daily",
+                "enabled": true,
+                "last_sync": "2024-12-20T10:30:00Z",
+                "next_sync": "2024-12-21T10:30:00Z"
+            }
+        }
+    """
+    try:
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        if request.method == 'PUT':
+            data = request.get_json() or {}
+
+            with db._pool.connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO plaid_sync_config (user_id, frequency, enabled, updated_at)
+                    VALUES (%s, %s, %s, NOW())
+                    ON DUPLICATE KEY UPDATE frequency = VALUES(frequency),
+                                            enabled = VALUES(enabled),
+                                            updated_at = NOW()
+                """, (get_user_id(), data.get('frequency', 'daily'), data.get('enabled', True)))
+
+        # Get current schedule
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT frequency, enabled, last_sync, next_sync
+                FROM plaid_sync_config
+                WHERE user_id = %s
+            """, (get_user_id(),))
+
+            row = cursor.fetchone()
+            if row:
+                schedule = {
+                    'frequency': row[0],
+                    'enabled': bool(row[1]),
+                    'last_sync': str(row[2]) if row[2] else None,
+                    'next_sync': str(row[3]) if row[3] else None
+                }
+            else:
+                schedule = {
+                    'frequency': 'daily',
+                    'enabled': True,
+                    'last_sync': None,
+                    'next_sync': None
+                }
+
+        return jsonify({
+            'success': True,
+            'schedule': schedule
+        })
+
+    except Exception as e:
+        logger.error(f"Sync schedule error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@plaid_bp.route('/institution/<institution_id>', methods=['GET'])
+@require_auth
+def get_institution_details(institution_id):
+    """
+    Get institution details from Plaid.
+
+    Response:
+        {
+            "success": true,
+            "institution": {
+                "name": "Chase",
+                "institution_id": "ins_123",
+                "products": ["transactions", "auth"],
+                "logo": "base64...",
+                "primary_color": "#1a73e8"
+            }
+        }
+    """
+    try:
+        plaid = get_plaid()
+
+        # Get institution from Plaid API
+        from plaid.model.institutions_get_by_id_request import InstitutionsGetByIdRequest
+        from plaid.model.country_code import CountryCode
+
+        request_data = InstitutionsGetByIdRequest(
+            institution_id=institution_id,
+            country_codes=[CountryCode('US')],
+            options={'include_optional_metadata': True}
+        )
+
+        response = plaid.client.institutions_get_by_id(request_data)
+        inst = response.institution
+
+        return jsonify({
+            'success': True,
+            'institution': {
+                'name': inst.name,
+                'institution_id': inst.institution_id,
+                'products': [str(p) for p in inst.products],
+                'logo': inst.logo if hasattr(inst, 'logo') else None,
+                'primary_color': inst.primary_color if hasattr(inst, 'primary_color') else None,
+                'url': inst.url if hasattr(inst, 'url') else None
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Institution details error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# =============================================================================
 # OAUTH REDIRECT HANDLER
 # =============================================================================
 

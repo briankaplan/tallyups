@@ -1,0 +1,848 @@
+"""
+================================================================================
+Contacts/ATLAS API Routes
+================================================================================
+Flask Blueprint for Contact Management and Relationship Intelligence.
+
+ENDPOINTS:
+----------
+Contact Management:
+    GET  /api/contacts                 - List all contacts
+    POST /api/contacts                 - Create contact
+    GET  /api/contacts/<id>            - Get contact details
+    PUT  /api/contacts/<id>            - Update contact
+    DELETE /api/contacts/<id>          - Delete contact
+
+Sync & Conflicts:
+    GET  /api/contacts/sync/status     - Get sync status for all sources
+    POST /api/contacts/sync            - Trigger sync from sources
+    GET  /api/contacts/sync/conflicts  - Get pending conflicts
+    POST /api/contacts/sync/conflicts/<id>/resolve - Resolve a conflict
+    POST /api/contacts/merge           - Merge duplicate contacts
+
+Relationship Intelligence:
+    GET  /api/contacts/<id>/relationship - Get relationship health score
+    GET  /api/contacts/relationship-graph - Get network graph data
+    GET  /api/contacts/nudges          - Get proactive engagement suggestions
+
+================================================================================
+"""
+
+import logging
+from datetime import datetime, timedelta
+from flask import Blueprint, request, jsonify
+
+# Create blueprint
+contacts_bp = Blueprint('contacts', __name__, url_prefix='/api/contacts')
+
+# Logger
+try:
+    from logging_config import get_logger
+    logger = get_logger(__name__)
+except ImportError:
+    logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# CONTACT CRUD OPERATIONS
+# =============================================================================
+
+@contacts_bp.route('', methods=['GET'])
+def list_contacts():
+    """
+    List all contacts with optional filtering.
+
+    Query Params:
+        search: Search term for name/email
+        source: Filter by source (google, apple, linkedin)
+        limit: Max results (default 50)
+        offset: Pagination offset
+
+    Response:
+        {
+            "success": true,
+            "contacts": [...],
+            "total": 500
+        }
+    """
+    try:
+        search = request.args.get('search')
+        source = request.args.get('source')
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            query = """
+                SELECT id, name, email, phone, company, title,
+                       source, last_interaction, relationship_score,
+                       created_at, updated_at
+                FROM contacts
+                WHERE 1=1
+            """
+            params = []
+
+            if search:
+                query += " AND (name LIKE %s OR email LIKE %s OR company LIKE %s)"
+                search_term = f"%{search}%"
+                params.extend([search_term, search_term, search_term])
+
+            if source:
+                query += " AND source = %s"
+                params.append(source)
+
+            query += " ORDER BY name LIMIT %s OFFSET %s"
+            params.extend([limit, offset])
+
+            cursor.execute(query, params)
+
+            contacts = []
+            for row in cursor.fetchall():
+                contacts.append({
+                    'id': row[0],
+                    'name': row[1],
+                    'email': row[2],
+                    'phone': row[3],
+                    'company': row[4],
+                    'title': row[5],
+                    'source': row[6],
+                    'last_interaction': str(row[7]) if row[7] else None,
+                    'relationship_score': float(row[8]) if row[8] else None,
+                    'created_at': str(row[9]),
+                    'updated_at': str(row[10])
+                })
+
+            # Get total
+            cursor.execute("SELECT COUNT(*) FROM contacts")
+            total = cursor.fetchone()[0]
+
+        return jsonify({
+            'success': True,
+            'contacts': contacts,
+            'total': total,
+            'limit': limit,
+            'offset': offset
+        })
+
+    except Exception as e:
+        logger.error(f"List contacts error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('', methods=['POST'])
+def create_contact():
+    """
+    Create a new contact.
+
+    Request Body:
+        {
+            "name": "John Doe",
+            "email": "john@example.com",
+            "phone": "+1234567890",
+            "company": "Acme Inc",
+            "title": "CEO",
+            "notes": "Met at conference"
+        }
+    """
+    try:
+        data = request.get_json() or {}
+
+        if not data.get('name') and not data.get('email'):
+            return jsonify({
+                'success': False,
+                'error': 'Name or email is required'
+            }), 400
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO contacts (name, email, phone, company, title, notes, source, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, 'manual', NOW(), NOW())
+            """, (
+                data.get('name'),
+                data.get('email'),
+                data.get('phone'),
+                data.get('company'),
+                data.get('title'),
+                data.get('notes')
+            ))
+
+            contact_id = cursor.lastrowid
+
+        return jsonify({
+            'success': True,
+            'contact_id': contact_id
+        }), 201
+
+    except Exception as e:
+        logger.error(f"Create contact error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/<int:contact_id>', methods=['GET'])
+def get_contact(contact_id):
+    """Get detailed contact information."""
+    try:
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, name, email, phone, company, title, notes,
+                       source, last_interaction, relationship_score,
+                       interaction_count, created_at, updated_at
+                FROM contacts
+                WHERE id = %s
+            """, (contact_id,))
+
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'success': False, 'error': 'Contact not found'}), 404
+
+            contact = {
+                'id': row[0],
+                'name': row[1],
+                'email': row[2],
+                'phone': row[3],
+                'company': row[4],
+                'title': row[5],
+                'notes': row[6],
+                'source': row[7],
+                'last_interaction': str(row[8]) if row[8] else None,
+                'relationship_score': float(row[9]) if row[9] else None,
+                'interaction_count': row[10],
+                'created_at': str(row[11]),
+                'updated_at': str(row[12])
+            }
+
+        return jsonify({
+            'success': True,
+            'contact': contact
+        })
+
+    except Exception as e:
+        logger.error(f"Get contact error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/<int:contact_id>', methods=['PUT'])
+def update_contact(contact_id):
+    """Update a contact."""
+    try:
+        data = request.get_json() or {}
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            updates = []
+            params = []
+
+            for field in ['name', 'email', 'phone', 'company', 'title', 'notes']:
+                if field in data:
+                    updates.append(f"{field} = %s")
+                    params.append(data[field])
+
+            if not updates:
+                return jsonify({'success': False, 'error': 'No updates provided'}), 400
+
+            updates.append("updated_at = NOW()")
+            params.append(contact_id)
+
+            cursor.execute(f"""
+                UPDATE contacts SET {', '.join(updates)} WHERE id = %s
+            """, params)
+
+        return jsonify({
+            'success': True,
+            'message': 'Contact updated'
+        })
+
+    except Exception as e:
+        logger.error(f"Update contact error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/<int:contact_id>', methods=['DELETE'])
+def delete_contact(contact_id):
+    """Delete a contact."""
+    try:
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM contacts WHERE id = %s", (contact_id,))
+
+        return jsonify({
+            'success': True,
+            'message': 'Contact deleted'
+        })
+
+    except Exception as e:
+        logger.error(f"Delete contact error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# =============================================================================
+# SYNC & CONFLICT RESOLUTION
+# =============================================================================
+
+@contacts_bp.route('/sync/status', methods=['GET'])
+def get_sync_status():
+    """
+    Get sync status for all contact sources.
+
+    Response:
+        {
+            "success": true,
+            "sources": [
+                {
+                    "name": "google",
+                    "connected": true,
+                    "last_sync": "2024-12-20T10:30:00Z",
+                    "contacts_synced": 250,
+                    "pending_conflicts": 3
+                },
+                ...
+            ]
+        }
+    """
+    try:
+        sources = [
+            {'name': 'google', 'display_name': 'Google Contacts'},
+            {'name': 'apple', 'display_name': 'Apple Contacts'},
+            {'name': 'linkedin', 'display_name': 'LinkedIn'},
+            {'name': 'carddav', 'display_name': 'CardDAV'}
+        ]
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            result = []
+            for source in sources:
+                # Count contacts from this source
+                cursor.execute("""
+                    SELECT COUNT(*), MAX(updated_at)
+                    FROM contacts WHERE source = %s
+                """, (source['name'],))
+
+                row = cursor.fetchone()
+
+                # Count pending conflicts
+                cursor.execute("""
+                    SELECT COUNT(*) FROM contact_conflicts
+                    WHERE source = %s AND resolved = FALSE
+                """, (source['name'],))
+
+                conflicts = cursor.fetchone()[0] if cursor.fetchone() else 0
+
+                result.append({
+                    'name': source['name'],
+                    'display_name': source['display_name'],
+                    'connected': row[0] > 0,
+                    'last_sync': str(row[1]) if row and row[1] else None,
+                    'contacts_synced': row[0] if row else 0,
+                    'pending_conflicts': conflicts
+                })
+
+        return jsonify({
+            'success': True,
+            'sources': result
+        })
+
+    except Exception as e:
+        logger.error(f"Sync status error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/sync', methods=['POST'])
+def trigger_sync():
+    """
+    Trigger contact sync from specified sources.
+
+    Request Body:
+        {
+            "sources": ["google", "apple"],  // Optional, defaults to all
+            "full_sync": false  // Full sync vs incremental
+        }
+    """
+    try:
+        data = request.get_json() or {}
+        sources = data.get('sources', ['google', 'apple', 'linkedin'])
+        full_sync = data.get('full_sync', False)
+
+        # For now, return success - actual sync would be async
+        return jsonify({
+            'success': True,
+            'message': 'Sync initiated',
+            'sources': sources,
+            'full_sync': full_sync
+        })
+
+    except Exception as e:
+        logger.error(f"Trigger sync error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/sync/conflicts', methods=['GET'])
+def list_conflicts():
+    """
+    Get pending sync conflicts.
+
+    Response:
+        {
+            "success": true,
+            "conflicts": [
+                {
+                    "id": 1,
+                    "contact_id": 123,
+                    "source": "google",
+                    "field": "phone",
+                    "local_value": "+1234567890",
+                    "remote_value": "+0987654321",
+                    "detected_at": "2024-12-20T10:30:00Z"
+                },
+                ...
+            ]
+        }
+    """
+    try:
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT cc.id, cc.contact_id, cc.source, cc.field_name,
+                       cc.local_value, cc.remote_value, cc.detected_at,
+                       c.name, c.email
+                FROM contact_conflicts cc
+                JOIN contacts c ON cc.contact_id = c.id
+                WHERE cc.resolved = FALSE
+                ORDER BY cc.detected_at DESC
+            """)
+
+            conflicts = []
+            for row in cursor.fetchall():
+                conflicts.append({
+                    'id': row[0],
+                    'contact_id': row[1],
+                    'source': row[2],
+                    'field': row[3],
+                    'local_value': row[4],
+                    'remote_value': row[5],
+                    'detected_at': str(row[6]),
+                    'contact_name': row[7],
+                    'contact_email': row[8]
+                })
+
+        return jsonify({
+            'success': True,
+            'conflicts': conflicts,
+            'count': len(conflicts)
+        })
+
+    except Exception as e:
+        logger.error(f"List conflicts error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/sync/conflicts/<int:conflict_id>/resolve', methods=['POST'])
+def resolve_conflict(conflict_id):
+    """
+    Resolve a sync conflict.
+
+    Request Body:
+        {
+            "resolution": "local|remote|manual",
+            "manual_value": "..."  // Required if resolution is "manual"
+        }
+    """
+    try:
+        data = request.get_json() or {}
+        resolution = data.get('resolution', 'local')
+        manual_value = data.get('manual_value')
+
+        if resolution not in ['local', 'remote', 'manual']:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid resolution type'
+            }), 400
+
+        if resolution == 'manual' and not manual_value:
+            return jsonify({
+                'success': False,
+                'error': 'manual_value required for manual resolution'
+            }), 400
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Get conflict details
+            cursor.execute("""
+                SELECT contact_id, field_name, local_value, remote_value
+                FROM contact_conflicts WHERE id = %s
+            """, (conflict_id,))
+
+            conflict = cursor.fetchone()
+            if not conflict:
+                return jsonify({'success': False, 'error': 'Conflict not found'}), 404
+
+            contact_id, field, local_val, remote_val = conflict
+
+            # Determine final value
+            if resolution == 'local':
+                final_value = local_val
+            elif resolution == 'remote':
+                final_value = remote_val
+            else:
+                final_value = manual_value
+
+            # Update contact
+            cursor.execute(f"""
+                UPDATE contacts SET {field} = %s, updated_at = NOW() WHERE id = %s
+            """, (final_value, contact_id))
+
+            # Mark conflict as resolved
+            cursor.execute("""
+                UPDATE contact_conflicts
+                SET resolved = TRUE, resolution = %s, resolved_value = %s, resolved_at = NOW()
+                WHERE id = %s
+            """, (resolution, final_value, conflict_id))
+
+        return jsonify({
+            'success': True,
+            'message': 'Conflict resolved',
+            'resolution': resolution,
+            'final_value': final_value
+        })
+
+    except Exception as e:
+        logger.error(f"Resolve conflict error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/merge', methods=['POST'])
+def merge_contacts():
+    """
+    Merge duplicate contacts.
+
+    Request Body:
+        {
+            "primary_id": 123,  // Contact to keep
+            "merge_ids": [124, 125],  // Contacts to merge into primary
+            "merge_strategy": "keep_primary|combine"
+        }
+    """
+    try:
+        data = request.get_json() or {}
+        primary_id = data.get('primary_id')
+        merge_ids = data.get('merge_ids', [])
+        strategy = data.get('merge_strategy', 'keep_primary')
+
+        if not primary_id or not merge_ids:
+            return jsonify({
+                'success': False,
+                'error': 'primary_id and merge_ids are required'
+            }), 400
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Get primary contact
+            cursor.execute("SELECT * FROM contacts WHERE id = %s", (primary_id,))
+            primary = cursor.fetchone()
+
+            if not primary:
+                return jsonify({'success': False, 'error': 'Primary contact not found'}), 404
+
+            if strategy == 'combine':
+                # Combine data from merge contacts
+                for merge_id in merge_ids:
+                    cursor.execute("SELECT phone, company, title, notes FROM contacts WHERE id = %s", (merge_id,))
+                    merge_data = cursor.fetchone()
+
+                    if merge_data:
+                        # Fill in missing fields from merged contact
+                        updates = []
+                        params = []
+
+                        if merge_data[0] and not primary[3]:  # phone
+                            updates.append("phone = %s")
+                            params.append(merge_data[0])
+
+                        if merge_data[1] and not primary[4]:  # company
+                            updates.append("company = %s")
+                            params.append(merge_data[1])
+
+                        if merge_data[2] and not primary[5]:  # title
+                            updates.append("title = %s")
+                            params.append(merge_data[2])
+
+                        if updates:
+                            params.append(primary_id)
+                            cursor.execute(f"""
+                                UPDATE contacts SET {', '.join(updates)} WHERE id = %s
+                            """, params)
+
+            # Delete merged contacts
+            placeholders = ','.join(['%s'] * len(merge_ids))
+            cursor.execute(f"DELETE FROM contacts WHERE id IN ({placeholders})", merge_ids)
+
+            # Log the merge
+            cursor.execute("""
+                INSERT INTO contact_merge_log (primary_id, merged_ids, strategy, merged_at)
+                VALUES (%s, %s, %s, NOW())
+            """, (primary_id, ','.join(map(str, merge_ids)), strategy))
+
+        return jsonify({
+            'success': True,
+            'message': f'Merged {len(merge_ids)} contacts into {primary_id}',
+            'primary_id': primary_id,
+            'merged_count': len(merge_ids)
+        })
+
+    except Exception as e:
+        logger.error(f"Merge contacts error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# =============================================================================
+# RELATIONSHIP INTELLIGENCE
+# =============================================================================
+
+@contacts_bp.route('/<int:contact_id>/relationship', methods=['GET'])
+def get_relationship_health(contact_id):
+    """
+    Get relationship health score and details for a contact.
+
+    Response:
+        {
+            "success": true,
+            "relationship": {
+                "score": 0.85,
+                "trend": "improving",
+                "last_interaction": "2024-12-20",
+                "interaction_count": 15,
+                "channels": {"email": 10, "meeting": 3, "call": 2},
+                "suggestions": ["Schedule follow-up call"]
+            }
+        }
+    """
+    try:
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Get contact relationship data
+            cursor.execute("""
+                SELECT relationship_score, last_interaction, interaction_count
+                FROM contacts WHERE id = %s
+            """, (contact_id,))
+
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'success': False, 'error': 'Contact not found'}), 404
+
+            score, last_interaction, count = row
+
+            # Determine trend based on recent activity
+            days_since = (datetime.now() - last_interaction).days if last_interaction else 999
+            if days_since < 7:
+                trend = 'strong'
+            elif days_since < 30:
+                trend = 'stable'
+            elif days_since < 90:
+                trend = 'cooling'
+            else:
+                trend = 'dormant'
+
+            # Generate suggestions
+            suggestions = []
+            if days_since > 30:
+                suggestions.append('Schedule a check-in call')
+            if days_since > 90:
+                suggestions.append('Send a reconnection email')
+
+            relationship = {
+                'score': float(score) if score else 0.5,
+                'trend': trend,
+                'last_interaction': str(last_interaction) if last_interaction else None,
+                'days_since_contact': days_since,
+                'interaction_count': count or 0,
+                'suggestions': suggestions
+            }
+
+        return jsonify({
+            'success': True,
+            'relationship': relationship
+        })
+
+    except Exception as e:
+        logger.error(f"Get relationship error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/relationship-graph', methods=['GET'])
+def get_relationship_graph():
+    """
+    Get network graph data for contact visualization.
+
+    Response:
+        {
+            "success": true,
+            "nodes": [...],
+            "edges": [...],
+            "clusters": [...]
+        }
+    """
+    try:
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Get contacts as nodes
+            cursor.execute("""
+                SELECT id, name, company, relationship_score
+                FROM contacts
+                ORDER BY relationship_score DESC
+                LIMIT 100
+            """)
+
+            nodes = []
+            for row in cursor.fetchall():
+                nodes.append({
+                    'id': row[0],
+                    'label': row[1],
+                    'group': row[2] or 'unknown',
+                    'value': float(row[3]) if row[3] else 0.5
+                })
+
+            # Get connections (same company = connected)
+            edges = []
+            companies = {}
+            for node in nodes:
+                company = node['group']
+                if company not in companies:
+                    companies[company] = []
+                companies[company].append(node['id'])
+
+            for company, contact_ids in companies.items():
+                if len(contact_ids) > 1:
+                    for i, id1 in enumerate(contact_ids):
+                        for id2 in contact_ids[i+1:]:
+                            edges.append({
+                                'from': id1,
+                                'to': id2,
+                                'label': company
+                            })
+
+        return jsonify({
+            'success': True,
+            'nodes': nodes,
+            'edges': edges,
+            'clusters': list(companies.keys())
+        })
+
+    except Exception as e:
+        logger.error(f"Relationship graph error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/nudges', methods=['GET'])
+def get_nudges():
+    """
+    Get proactive engagement suggestions.
+
+    Response:
+        {
+            "success": true,
+            "nudges": [
+                {
+                    "contact_id": 123,
+                    "contact_name": "John Doe",
+                    "reason": "No contact in 45 days",
+                    "suggested_action": "Send check-in email",
+                    "priority": "high"
+                },
+                ...
+            ]
+        }
+    """
+    try:
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Find contacts that need attention
+            cursor.execute("""
+                SELECT id, name, email, last_interaction, relationship_score
+                FROM contacts
+                WHERE last_interaction < DATE_SUB(NOW(), INTERVAL 30 DAY)
+                   OR last_interaction IS NULL
+                ORDER BY relationship_score DESC
+                LIMIT 20
+            """)
+
+            nudges = []
+            for row in cursor.fetchall():
+                contact_id, name, email, last_int, score = row
+
+                if last_int:
+                    days = (datetime.now() - last_int).days
+                    reason = f"No contact in {days} days"
+                    priority = 'high' if days > 60 else 'medium'
+                else:
+                    reason = "Never contacted"
+                    priority = 'low'
+
+                nudges.append({
+                    'contact_id': contact_id,
+                    'contact_name': name,
+                    'contact_email': email,
+                    'reason': reason,
+                    'suggested_action': 'Send check-in email',
+                    'priority': priority
+                })
+
+        return jsonify({
+            'success': True,
+            'nudges': nudges,
+            'count': len(nudges)
+        })
+
+    except Exception as e:
+        logger.error(f"Get nudges error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def register_contacts_routes(app):
+    """Register contacts routes with the Flask app."""
+    app.register_blueprint(contacts_bp)
+    logger.info("Contacts routes registered at /api/contacts/*")
