@@ -1981,7 +1981,7 @@ def find_matching_transaction(merchant, amount, transaction_date):
     if amount and amount > 0:
         # Allow small tolerance for rounding (within 1 cent)
         cursor.execute('''
-            SELECT _index, chase_description, chase_amount, chase_date, receipt_file, receipt_url, mi_merchant
+            SELECT _index, chase_description, chase_amount, chase_date, receipt_file, r2_url, mi_merchant
             FROM transactions
             WHERE ABS(chase_amount - %s) < 0.02
               AND chase_date BETWEEN %s AND %s
@@ -2120,9 +2120,9 @@ def find_matching_transaction(merchant, amount, transaction_date):
         trans_id = best_match['_index']
         trans_amount = float(best_match['chase_amount'] or 0)
         receipt_file = best_match.get('receipt_file', '')
-        receipt_url = best_match.get('receipt_url', '')
+        r2_url = best_match.get('r2_url', '')
         has_receipt = (receipt_file and str(receipt_file).strip() not in ('', 'None', 'null')) or \
-                      (receipt_url and str(receipt_url).strip() not in ('', 'None', 'null'))
+                      (r2_url and str(r2_url).strip() not in ('', 'None', 'null'))
 
         # STRICT amount matching - amounts MUST be close
         amount_match = False

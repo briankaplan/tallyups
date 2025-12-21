@@ -3143,6 +3143,7 @@ def dashboard_stats():
 @app.route("/api/settings/business-types", methods=["GET"])
 def get_business_types():
     """Get all configured business types"""
+    import pymysql
     conn = None
     try:
         conn, db_type = get_db_connection()
@@ -3182,6 +3183,7 @@ def get_business_types():
 @app.route("/api/settings/business-types", methods=["POST"])
 def add_business_type():
     """Add a new business type"""
+    import pymysql
     conn = None
     try:
         data = request.get_json()
@@ -3238,6 +3240,7 @@ def add_business_type():
 @app.route("/api/settings/business-types/<name>", methods=["DELETE"])
 def delete_business_type(name):
     """Delete a business type"""
+    import pymysql
     conn = None
     try:
         force = request.args.get('force', 'false').lower() == 'true'
@@ -3305,6 +3308,7 @@ def delete_business_type(name):
 @app.route("/api/settings/business-types/<name>", methods=["PUT"])
 def update_business_type(name):
     """Update a business type's color"""
+    import pymysql
     conn = None
     try:
         data = request.get_json()
@@ -5192,11 +5196,11 @@ def link_receipt_to_transaction(tx_id):
         if not receipt_url:
             try:
                 cursor.execute('''
-                    SELECT r2_url, receipt_url FROM transactions WHERE _index = %s
+                    SELECT r2_url FROM transactions WHERE _index = %s
                 ''', (int(receipt_id),))
                 tx = cursor.fetchone()
                 if tx:
-                    receipt_url = tx.get('r2_url') or tx.get('receipt_url')
+                    receipt_url = tx.get('r2_url')
             except ValueError:
                 pass
 
@@ -5309,7 +5313,7 @@ def unlink_receipt_from_transaction(tx_id):
         # Clear the receipt URL from the transaction
         cursor.execute('''
             UPDATE transactions
-            SET r2_url = NULL, receipt_url = NULL, review_status = 'pending'
+            SET r2_url = NULL, review_status = 'pending'
             WHERE _index = %s
         ''', (tx_id,))
 
@@ -12337,13 +12341,13 @@ def detach_receipt():
 
             # Get transaction by _index first, then by id
             cursor = db_execute(conn, db_type,
-                'SELECT id, _index, receipt_file, receipt_url, r2_url, chase_description FROM transactions WHERE _index = ?',
+                'SELECT id, _index, receipt_file, r2_url, chase_description FROM transactions WHERE _index = ?',
                 (idx,))
             row = cursor.fetchone()
 
             if not row:
                 cursor = db_execute(conn, db_type,
-                    'SELECT id, _index, receipt_file, receipt_url, r2_url, chase_description FROM transactions WHERE id = ?',
+                    'SELECT id, _index, receipt_file, r2_url, chase_description FROM transactions WHERE id = ?',
                     (idx,))
                 row = cursor.fetchone()
 
@@ -12354,17 +12358,16 @@ def detach_receipt():
             row_dict = dict(row)
             actual_index = row_dict.get('_index', idx)
             filename = row_dict.get('receipt_file') or ''
-            receipt_url = row_dict.get('receipt_url') or ''
             r2_url = row_dict.get('r2_url') or ''
             transaction_desc = row_dict.get('chase_description') or ''
 
-            if not filename and not receipt_url and not r2_url:
+            if not filename and not r2_url:
                 return_db_connection(conn)
                 # Return success - nothing to detach but that's fine
                 return jsonify({'ok': True, 'message': f'No receipt attached to transaction #{idx}', 'already_empty': True})
 
             # AUDIT LOG: Save what we're about to detach so it can be restored
-            detached_url = r2_url or receipt_url or filename
+            detached_url = r2_url or filename
             ocr_status = row_dict.get('ocr_verification_status') or ''
             try:
                 db_execute(conn, db_type, '''
@@ -19998,7 +20001,7 @@ def attach_incoming_receipt_to_transaction():
         # NOTE: transaction_id is actually the _index field (from matching)
         if receipt_file or receipt_url:
             db_execute(conn, db_type,
-                'UPDATE transactions SET receipt_file = ?, receipt_url = ? WHERE _index = ?',
+                'UPDATE transactions SET receipt_file = ?, r2_url = ? WHERE _index = ?',
                 (receipt_file, receipt_url or receipt_file, transaction_id))
             print(f"   ✅ Updated transaction #{transaction_id} with receipt")
 
@@ -23099,26 +23102,24 @@ def cleanup_broken_receipt_urls():
         # 1. Clear NO_RECEIPT placeholder URLs
         cursor.execute("""
             UPDATE transactions
-            SET receipt_url = NULL, r2_url = NULL
-            WHERE (receipt_url LIKE '%NO_RECEIPT%' OR r2_url LIKE '%NO_RECEIPT%')
+            SET r2_url = NULL
+            WHERE r2_url LIKE '%NO_RECEIPT%'
         """)
         cleanup_results['no_receipt_placeholders'] = cursor.rowcount
 
         # 2. Clear Screenshot URLs with unicode characters (broken uploads)
         cursor.execute("""
             UPDATE transactions
-            SET receipt_url = NULL, r2_url = NULL
-            WHERE (receipt_url LIKE '%Screenshot%%' AND receipt_url LIKE '%%E2%%80%%')
-               OR (r2_url LIKE '%Screenshot%%' AND r2_url LIKE '%%E2%%80%%')
+            SET r2_url = NULL
+            WHERE r2_url LIKE '%Screenshot%%' AND r2_url LIKE '%%E2%%80%%'
         """)
         cleanup_results['screenshot_urls'] = cursor.rowcount
 
         # 3. Clear truncated URLs ending with /receipts
         cursor.execute("""
             UPDATE transactions
-            SET receipt_url = NULL, r2_url = NULL
-            WHERE receipt_url LIKE '%/receipts'
-               OR r2_url LIKE '%/receipts'
+            SET r2_url = NULL
+            WHERE r2_url LIKE '%/receipts'
         """)
         cleanup_results['truncated_urls'] = cursor.rowcount
 
@@ -23222,9 +23223,9 @@ def sync_receipt_urls():
                 try:
                     cursor.execute("""
                         UPDATE transactions
-                        SET receipt_url = %s, r2_url = %s
+                        SET r2_url = %s
                         WHERE _index = %s
-                    """, (mapping['receipt_url'], mapping['receipt_url'], mapping['_index']))
+                    """, (mapping['receipt_url'], mapping['_index']))
 
                     if cursor.rowcount > 0:
                         updated += 1
@@ -23320,18 +23321,18 @@ def fix_missing_receipt_urls():
                     filename = filename[9:]
 
                 # Build R2 URL
-                receipt_url = f"{R2_PUBLIC_URL}/receipts/{filename}"
+                r2_url = f"{R2_PUBLIC_URL}/receipts/{filename}"
 
                 # Update the transaction
                 cursor = db_execute(conn, db_type, '''
                     UPDATE transactions
-                    SET receipt_url = ?
+                    SET r2_url = ?
                     WHERE _index = ?
-                ''', (receipt_url, idx))
+                ''', (r2_url, idx))
 
                 fixed += 1
                 if fixed <= 10:
-                    print(f"   ✓ #{idx}: {receipt_file} → {receipt_url}")
+                    print(f"   ✓ #{idx}: {receipt_file} → {r2_url}")
 
             except Exception as e:
                 errors.append(f"#{row.get('_index', '?')}: {str(e)}")

@@ -624,7 +624,6 @@ class ReceiptPreview {
         try {
             await this.updateField('Receipt File', '');
             await this.updateField('r2_url', '');
-            await this.updateField('receipt_url', '');
             await this.updateField('Review Status', '');
 
             this.showEmpty();

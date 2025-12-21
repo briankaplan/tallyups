@@ -984,7 +984,7 @@ async function detachReceipt() {
     // Clear all receipt-related fields in local data
     selectedRow['Receipt File'] = '';
     selectedRow.receipt_file = '';
-    selectedRow.receipt_url = '';
+    selectedRow.r2_url = '';
     selectedRow['Review Status'] = '';  // This moves it to "Missing Receipt"
     selectedRow['AI Confidence'] = '';
     selectedRow.ai_receipt_merchant = '';
@@ -2116,39 +2116,34 @@ function updateDashboard() {
     needsReview: csvData.filter(r => {
       const status = (r['Review Status'] || '').toLowerCase().trim();
       const receiptFile = (r['Receipt File'] || '').trim();
-      const receiptUrl = (r.receipt_url || '').trim();
       const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-      const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+      const hasReceipt = receiptFile !== '' || r2Url !== '';
       return hasReceipt && (!status || (status !== 'good' && status !== 'bad' && status !== 'not needed'));
     }).length,
     // ✅ Good/Bad must have receipts
     good: csvData.filter(r => {
       const receiptFile = (r['Receipt File'] || '').trim();
-      const receiptUrl = (r.receipt_url || '').trim();
       const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-      const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+      const hasReceipt = receiptFile !== '' || r2Url !== '';
       return hasReceipt && r['Review Status'] === 'good';
     }).length,
     bad: csvData.filter(r => {
       const receiptFile = (r['Receipt File'] || '').trim();
-      const receiptUrl = (r.receipt_url || '').trim();
       const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-      const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+      const hasReceipt = receiptFile !== '' || r2Url !== '';
       return hasReceipt && r['Review Status'] === 'bad';
     }).length,
     missing: csvData.filter(r => {
       const receiptFile = (r['Receipt File'] || '').trim();
-      const receiptUrl = (r.receipt_url || '').trim();
       const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
       const status = (r['Review Status'] || '').toLowerCase().trim();
-      const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+      const hasReceipt = receiptFile !== '' || r2Url !== '';
       return !hasReceipt && status !== 'not needed';
     }).length,
     withReceipts: csvData.filter(r => {
       const receiptFile = (r['Receipt File'] || '').trim();
-      const receiptUrl = (r.receipt_url || '').trim();
       const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-      return receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+      return receiptFile !== '' || r2Url !== '';
     }).length,
     notNeeded: csvData.filter(r => r['Review Status'] === 'not needed' || r['Receipt File'] === 'NO_RECEIPT_NEEDED').length,
     // ✅ Refunds = negative amounts OR review_status = refund
@@ -2242,12 +2237,11 @@ function openQuickViewer() {
   if (!selectedRow) return;
 
   // Build list of ALL receipts (filtered or all, depending on view)
-  // Check all receipt sources: Receipt File, receipt_url, r2_url
+  // Check all receipt sources: Receipt File, r2_url
   quickViewerReceipts = filteredData.filter(r => {
     const receiptFile = (r['Receipt File'] || '').trim();
-    const receiptUrl = (r.receipt_url || '').trim();
     const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-    return receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+    return receiptFile !== '' || r2Url !== '';
   });
 
   if (quickViewerReceipts.length === 0) {
@@ -3668,7 +3662,7 @@ async function submitManualEntry(event) {
       console.log('Including receipt file:', lastOCRReceiptFilename);
     }
     if (lastOCRReceiptR2Url) {
-      requestBody.receipt_url = lastOCRReceiptR2Url;
+      requestBody.r2_url = lastOCRReceiptR2Url;
       console.log('Including R2 URL:', lastOCRReceiptR2Url);
     }
 
@@ -3744,9 +3738,8 @@ function applyFilters() {
       filtered = filtered.filter(r => {
         const status = (r['Review Status'] || '').toLowerCase().trim();
         const receiptFile = (r['Receipt File'] || '').trim();
-        const receiptUrl = (r.receipt_url || '').trim();
         const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-        const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+        const hasReceipt = receiptFile !== '' || r2Url !== '';
         return hasReceipt && (!status || (status !== 'good' && status !== 'bad' && status !== 'not needed'));
       });
     }
@@ -3754,9 +3747,8 @@ function applyFilters() {
       // ✅ MUST have a receipt to be marked good - no receipt = missing receipts
       filtered = filtered.filter(r => {
         const receiptFile = (r['Receipt File'] || '').trim();
-        const receiptUrl = (r.receipt_url || '').trim();
         const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-        const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+        const hasReceipt = receiptFile !== '' || r2Url !== '';
         return hasReceipt && r['Review Status'] === 'good';
       });
     }
@@ -3764,30 +3756,27 @@ function applyFilters() {
       // ✅ MUST have a receipt to be marked bad - no receipt = missing receipts
       filtered = filtered.filter(r => {
         const receiptFile = (r['Receipt File'] || '').trim();
-        const receiptUrl = (r.receipt_url || '').trim();
         const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-        const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+        const hasReceipt = receiptFile !== '' || r2Url !== '';
         return hasReceipt && r['Review Status'] === 'bad';
       });
     }
     else if (filter === 'missing') {
-      // Missing = no receipt (file, url, or r2) AND not marked as "not needed"
+      // Missing = no receipt (file or r2) AND not marked as "not needed"
       filtered = filtered.filter(r => {
         const receiptFile = (r['Receipt File'] || '').trim();
-        const receiptUrl = (r.receipt_url || '').trim();
         const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
         const status = (r['Review Status'] || '').toLowerCase().trim();
-        const hasReceipt = receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+        const hasReceipt = receiptFile !== '' || r2Url !== '';
         return !hasReceipt && status !== 'not needed';
       });
     }
     else if (filter === 'with-receipts') {
-      // With receipts = has a receipt file, receipt_url, or r2_url
+      // With receipts = has a receipt file or r2_url
       filtered = filtered.filter(r => {
         const receiptFile = (r['Receipt File'] || '').trim();
-        const receiptUrl = (r.receipt_url || '').trim();
         const r2Url = (r.r2_url || r['R2 URL'] || '').trim();
-        return receiptFile !== '' || receiptUrl !== '' || r2Url !== '';
+        return receiptFile !== '' || r2Url !== '';
       });
     }
     else if (filter === 'not-needed') filtered = filtered.filter(r => r['Review Status'] === 'not needed');
@@ -4098,12 +4087,13 @@ function setupDragDrop() {
         const data = await res.json();
         if (data.ok) {
           selectedRow['Receipt File'] = data.filename;
-          if (data.receipt_url) {
-            selectedRow.receipt_url = data.receipt_url;
+          const r2Url = data.r2_url || data.receipt_url;
+          if (r2Url) {
+            selectedRow.r2_url = r2Url;
           }
           applyFilters();  // Re-filter to update counts
           loadReceipt();
-          const cloudIcon = data.receipt_url ? '☁️' : '📎';
+          const cloudIcon = r2Url ? '☁️' : '📎';
           showToast(`${cloudIcon} Receipt attached`, '✓');
         }
       } catch (e) {

@@ -1322,8 +1322,9 @@ async function attachSelectedReceipt() {
 
     // Update local data
     const exp = expenses.find(e => e._index === currentTransactionIndex);
-    if (exp && data.receipt_url) {
-      exp.receipt_url = data.receipt_url;
+    const r2Url = data.r2_url || data.receipt_url;
+    if (exp && r2Url) {
+      exp.r2_url = r2Url;
     }
 
     closeReceiptPicker();

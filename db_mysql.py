@@ -707,7 +707,6 @@ class MySQLReceiptDatabase:
                 chase_category VARCHAR(255),
                 chase_type VARCHAR(100),
                 receipt_file VARCHAR(500),
-                receipt_url VARCHAR(1000),
                 r2_url VARCHAR(1000),
                 business_type VARCHAR(255),
                 notes TEXT,
@@ -1103,7 +1102,6 @@ class MySQLReceiptDatabase:
                 migrations = [
                     ("deleted", "ALTER TABLE transactions ADD COLUMN deleted BOOLEAN DEFAULT FALSE"),
                     ("deleted_by_user", "ALTER TABLE transactions ADD COLUMN deleted_by_user BOOLEAN DEFAULT FALSE"),
-                    ("receipt_url", "ALTER TABLE transactions ADD COLUMN receipt_url VARCHAR(1000)"),
                     ("r2_url", "ALTER TABLE transactions ADD COLUMN r2_url VARCHAR(1000)"),
                     # OCR extraction columns
                     ("ocr_merchant", "ALTER TABLE transactions ADD COLUMN ocr_merchant VARCHAR(255)"),
@@ -1144,12 +1142,11 @@ class MySQLReceiptDatabase:
                     ("idx_chase_description", "CREATE INDEX idx_chase_description ON transactions(chase_description(100))"),
                     ("idx_chase_amount", "CREATE INDEX idx_chase_amount ON transactions(chase_amount)"),
                     ("idx_r2_url", "CREATE INDEX idx_r2_url ON transactions(r2_url(200))"),
-                    ("idx_receipt_url", "CREATE INDEX idx_receipt_url ON transactions(receipt_url(200))"),
                     ("idx_business_type", "CREATE INDEX idx_business_type ON transactions(business_type)"),
                     ("idx_source", "CREATE INDEX idx_source ON transactions(source)"),
                     # Composite indexes for common filter combinations
                     ("idx_date_deleted", "CREATE INDEX idx_date_deleted ON transactions(chase_date, deleted)"),
-                    ("idx_has_receipt", "CREATE INDEX idx_has_receipt ON transactions(r2_url(50), receipt_url(50), receipt_file(50))"),
+                    ("idx_has_receipt", "CREATE INDEX idx_has_receipt ON transactions(r2_url(50), receipt_file(50))"),
                     # OCR verification indexes - CRITICAL for dashboard performance
                     ("idx_ocr_verified", "CREATE INDEX idx_ocr_verified ON transactions(ocr_verified)"),
                     ("idx_ocr_verification_status", "CREATE INDEX idx_ocr_verification_status ON transactions(ocr_verification_status)"),
@@ -1752,6 +1749,29 @@ class MySQLReceiptDatabase:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
 
+        # Create app_settings table for storing application configuration
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS app_settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                setting_key VARCHAR(255) NOT NULL UNIQUE,
+                setting_value JSON,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+
+        # Insert default business types if not exists
+        cursor.execute("""
+            INSERT IGNORE INTO app_settings (setting_key, setting_value)
+            VALUES ('business_types', JSON_ARRAY(
+                JSON_OBJECT('name', 'Personal', 'color', '#4a9eff'),
+                JSON_OBJECT('name', 'Down Home', 'color', '#00ff88'),
+                JSON_OBJECT('name', 'Music City Rodeo', 'color', '#ff66aa'),
+                JSON_OBJECT('name', 'EM.co', 'color', '#00d4ff')
+            ))
+        """)
+        conn.commit()
+
     def get_all_transactions(self) -> pd.DataFrame:
         """Get all transactions as DataFrame (with UI-friendly column names)"""
         if not self.use_mysql or not self._pool:
@@ -1792,7 +1812,6 @@ class MySQLReceiptDatabase:
             'already_submitted': 'Already Submitted',
             'deleted': 'deleted',
             'deleted_by_user': 'deleted_by_user',
-            'receipt_url': 'Receipt URL',
             'r2_url': 'R2 URL'
         }
 
@@ -1823,7 +1842,7 @@ class MySQLReceiptDatabase:
         'chase_date', 'chase_description', 'chase_amount', 'chase_category',
         'chase_type', 'receipt_file', 'business_type', 'notes', 'ai_note',
         'ai_confidence', 'ai_receipt_merchant', 'ai_receipt_date', 'ai_receipt_total',
-        'review_status', 'category', 'report_id', 'source', 'r2_url', 'receipt_url',
+        'review_status', 'category', 'report_id', 'source', 'r2_url',
         'mi_merchant', 'mi_category', 'mi_description', 'mi_confidence',
         'mi_is_subscription', 'mi_subscription_name', 'mi_processed_at',
         'is_refund', 'already_submitted', 'deleted', 'deleted_by_user',

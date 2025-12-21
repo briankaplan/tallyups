@@ -17,6 +17,8 @@
 <link rel="preconnect" href="https://unpkg.com">
 <link rel="stylesheet" href="/static/css/reconciler-extracted.css">
 <script src="/static/js/image-utils.js"></script>
+<script src="/static/js/business-types.js"></script>
+<script src="/static/js/unified-header.js"></script>
 <script src="/static/js/app-shell.js" defer></script>
 <script src="/static/js/keyboard.js" defer></script>
 <script src="/static/js/bulk-actions.js" defer></script>
@@ -175,10 +177,7 @@
           <button class="btn-ghost btn-sm" onclick="clearSelection()">Clear</button>
           <select id="batch-business-select" class="input" style="width:140px;font-size:12px" onchange="batchSetBusiness(this.value)">
             <option value="">Set Business...</option>
-            <option value="Music City Rodeo">MCR</option>
-            <option value="Down Home">Down Home</option>
-            <option value="EM.co">EM.co</option>
-            <option value="Personal">Personal</option>
+            <!-- Populated dynamically by BusinessTypes.populateSelect() -->
           </select>
           <select id="batch-status-select" class="input" style="width:130px;font-size:12px" onchange="batchSetStatus(this.value)">
             <option value="">Set Status...</option>
@@ -271,17 +270,8 @@
       </div>
       <div class="toolbar-divider"></div>
       <span style="font-size:12px;color:var(--muted);font-weight:600">BUSINESS:</span>
-      <div class="chip chip-with-badge" data-biz="Music City Rodeo">
-        MCR <span class="notification-badge" id="mcr-count">0</span>
-      </div>
-      <div class="chip chip-with-badge" data-biz="Down Home">
-        Down Home <span class="notification-badge" id="downhome-count">0</span>
-      </div>
-      <div class="chip chip-with-badge" data-biz="EM.co">
-        EM.co <span class="notification-badge" id="emco-count">0</span>
-      </div>
-      <div class="chip chip-with-badge" data-biz="Personal">
-        Personal <span class="notification-badge" id="personal-count">0</span>
+      <div id="business-type-chips" style="display:contents">
+        <!-- Populated dynamically by initBusinessTypeChips() -->
       </div>
       <div class="chip chip-with-badge" data-biz="Unassigned">
         Unassigned <span class="notification-badge" id="unassigned-count">0</span>
@@ -1048,10 +1038,7 @@
           <label class="settings-label" style="display:block;margin-bottom:6px">Business Type *</label>
           <select id="manual-business-type" class="input" style="width:100%" required onchange="updateCategoryOptions()">
             <option value="">Select Business Type</option>
-            <option value="Music City Rodeo">Music City Rodeo</option>
-            <option value="Down Home">Down Home</option>
-            <option value="EM.co">EM.co</option>
-            <option value="Personal">Personal</option>
+            <!-- Populated dynamically by BusinessTypes.populateSelect() -->
           </select>
         </div>
 
@@ -1198,10 +1185,7 @@
           <div class="data-label">Business Type</div>
           <select id="quick-business" class="quick-field-select" onchange="quickUpdateField('Business Type', this.value)">
             <option value="">—</option>
-            <option value="Music City Rodeo">Music City Rodeo</option>
-            <option value="Down Home">Down Home</option>
-            <option value="EM.co">EM.co</option>
-            <option value="Personal">Personal</option>
+            <!-- Populated dynamically by BusinessTypes.populateSelect() -->
           </select>
         </div>
         <div class="data-row">
@@ -1455,9 +1439,7 @@
         <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Business</label>
         <select id="quick-edit-business" class="input" style="width:100%;padding:10px">
           <option value="">Select...</option>
-          <option value="Down Home">Down Home</option>
-          <option value="Music City Rodeo">Music City Rodeo</option>
-          <option value="Personal">Personal</option>
+          <!-- Populated dynamically by BusinessTypes.populateSelect() -->
         </select>
       </div>
     </div>
@@ -1541,9 +1523,7 @@
       <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Business</label>
       <select id="preview-business" class="input" style="width:100%;padding:10px;font-size:14px" onchange="updateSpeedBusiness(this.value)">
         <option value="">Select business...</option>
-        <option value="Down Home">Down Home</option>
-        <option value="Music City Rodeo">Music City Rodeo</option>
-        <option value="Personal">Personal</option>
+        <!-- Populated dynamically by BusinessTypes.populateSelect() -->
       </select>
     </div>
   </div>
@@ -1690,8 +1670,65 @@ async function loadDraftReportsFromDatabase() {
   }
 }
 
+// Initialize business type dropdowns and chips
+async function initBusinessTypes() {
+  try {
+    const types = await BusinessTypes.getAll();
+
+    // Populate all business type select dropdowns
+    const selects = [
+      'batch-business-select',
+      'manual-business-type',
+      'quick-business',
+      'quick-edit-business',
+      'preview-business'
+    ];
+
+    for (const selectId of selects) {
+      const select = document.getElementById(selectId);
+      if (select) {
+        // Keep the first option (placeholder)
+        const placeholder = select.options[0];
+        select.innerHTML = '';
+        select.appendChild(placeholder);
+
+        // Add business type options
+        types.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.name;
+          opt.textContent = t.name;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    // Populate business type filter chips
+    const chipsContainer = document.getElementById('business-type-chips');
+    if (chipsContainer) {
+      chipsContainer.innerHTML = '';
+      types.forEach(t => {
+        const chipId = t.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, '');
+        const chip = document.createElement('div');
+        chip.className = 'chip chip-with-badge';
+        chip.dataset.biz = t.name;
+        chip.innerHTML = `${t.name} <span class="notification-badge" id="${chipId}-count">0</span>`;
+        chip.onclick = () => filterByBusiness(t.name);
+        chipsContainer.appendChild(chip);
+      });
+    }
+
+    // Store color map for use in rendering
+    window.businessTypeColors = {};
+    types.forEach(t => { window.businessTypeColors[t.name] = t.color; });
+
+  } catch (error) {
+    console.warn('Failed to initialize business types:', error);
+  }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  await initBusinessTypes();  // Load business types first
   await loadCSV();
   setupEventListeners();
   setupDragDrop();
@@ -2823,7 +2860,6 @@ async function detachReceipt() {
     // Clear all receipt-related fields in local data
     selectedRow['Receipt File'] = '';
     selectedRow.receipt_file = '';
-    selectedRow.receipt_url = '';
     selectedRow.r2_url = '';
     selectedRow['Review Status'] = '';  // This moves it to "Missing Receipt"
     selectedRow['AI Confidence'] = '';
@@ -5488,7 +5524,7 @@ async function submitManualEntry(event) {
       console.log('Including receipt file:', lastOCRReceiptFilename);
     }
     if (lastOCRReceiptR2Url) {
-      requestBody.receipt_url = lastOCRReceiptR2Url;
+      requestBody.r2_url = lastOCRReceiptR2Url;
       console.log('Including R2 URL:', lastOCRReceiptR2Url);
     }
 
@@ -5941,12 +5977,13 @@ function setupDragDrop() {
         const data = await res.json();
         if (data.ok) {
           selectedRow['Receipt File'] = data.filename;
-          if (data.receipt_url) {
-            selectedRow.receipt_url = data.receipt_url;
+          const r2Url = data.r2_url || data.receipt_url;
+          if (r2Url) {
+            selectedRow.r2_url = r2Url;
           }
           applyFilters();  // Re-filter to update counts
           loadReceipt();
-          const cloudIcon = data.receipt_url ? '☁️' : '📎';
+          const cloudIcon = r2Url ? '☁️' : '📎';
           showToast(`${cloudIcon} Receipt attached`, '✓');
         }
       } catch (e) {
@@ -6468,7 +6505,7 @@ function renderStats(stats) {
       businessContainer.innerHTML = businessEntries.map(([name, data]) => {
         const pct = Math.round((data.total / maxBusiness) * 100);
         const submittedPct = data.submitted > 0 ? Math.round((data.submitted / data.total) * 100) : 0;
-        const color = name === 'Down Home' ? '#00ff88' : name === 'Music City Rodeo' ? '#ffd85e' : name === 'EM.co' ? '#a855f7' : name === 'Personal' ? '#6eb5ff' : '#888';
+        const color = window.businessTypeColors?.[name] || BusinessTypes.getColorSync(name);
         const unreported = data.total - (data.submitted || 0);
         const hasSubmitted = data.submitted > 0;
         return `
@@ -6918,14 +6955,9 @@ async function loadArchivedReports() {
         `;
       } else {
         container.innerHTML = data.reports.map(report => {
-          // Get business type color/gradient
-          const businessColors = {
-            'Music City Rodeo': 'linear-gradient(135deg, #f59e0b, #d97706)',
-            'Down Home': 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-            'EM.co': 'linear-gradient(135deg, #a855f7, #9333ea)',
-            'Personal': 'linear-gradient(135deg, #10b981, #059669)'
-          };
-          const businessGradient = businessColors[report.business_type] || 'linear-gradient(135deg, #6b7280, #4b5563)';
+          // Get business type color/gradient (using dynamic colors)
+          const typeColor = window.businessTypeColors?.[report.business_type] || '#6b7280';
+          const businessGradient = BusinessTypes.getGradient(report.business_type);
 
           return `
           <div class="report-card" style="background:linear-gradient(145deg, var(--panel2), rgba(11,17,23,.8));padding:0;border-radius:14px;border:1px solid var(--edge);overflow:hidden;transition:all .2s ease;cursor:pointer"

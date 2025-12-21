@@ -338,7 +338,7 @@ def test_data_integrity():
         print(f"   ✅ Transactions: {tx_count}")
 
         # Check receipts
-        cursor.execute("SELECT COUNT(*) as cnt FROM transactions WHERE receipt_url IS NOT NULL")
+        cursor.execute("SELECT COUNT(*) as cnt FROM transactions WHERE r2_url IS NOT NULL")
         receipt_count = cursor.fetchone()['cnt']
         print(f"   ✅ With Receipts: {receipt_count}")
 

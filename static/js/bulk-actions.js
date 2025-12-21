@@ -447,12 +447,10 @@ class BulkActions {
                     await this.updateTransaction(tx._index, {
                         'Receipt File': '',
                         'r2_url': '',
-                        'receipt_url': '',
                         'Review Status': ''
                     });
                     tx['Receipt File'] = '';
                     tx['r2_url'] = '';
-                    tx['receipt_url'] = '';
                     tx['Review Status'] = '';
                 }
             );
