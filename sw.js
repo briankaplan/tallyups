@@ -1,7 +1,7 @@
-// Service Worker for Tallyups PWA - v4
-const CACHE_NAME = 'tallyups-v4';
-const STATIC_CACHE = 'tallyups-static-v4';
-const DYNAMIC_CACHE = 'tallyups-dynamic-v4';
+// Service Worker for Tallyups PWA - v5
+const CACHE_NAME = 'tallyups-v5';
+const STATIC_CACHE = 'tallyups-static-v5';
+const DYNAMIC_CACHE = 'tallyups-dynamic-v5';
 const OFFLINE_QUEUE = 'tallyups-offline-queue';
 
 // Core app shell to cache
