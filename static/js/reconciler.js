@@ -2058,8 +2058,11 @@ function updateDashboard() {
   const getDesc = (r) => (r['Chase Description'] || r['chase_description'] || '').toLowerCase();
   const isPaymentTxn = (desc) => desc.includes('payment thank you') || desc.includes('payment - web');
 
+  // Helper to get business type (checks both Title Case and snake_case)
+  const getBizType = (r) => (r['Business Type'] || r['business_type'] || '').trim();
+
   const downHomeTotal = dataToUse
-    .filter(r => r['Business Type'] === 'Down Home')
+    .filter(r => getBizType(r) === 'Down Home' || getBizType(r) === 'Down_Home')
     .reduce((sum, r) => {
       const amt = getAmount(r);
       const desc = getDesc(r);
@@ -2069,7 +2072,7 @@ function updateDashboard() {
     }, 0);
 
   const mcrTotal = dataToUse
-    .filter(r => r['Business Type'] === 'Music City Rodeo')
+    .filter(r => getBizType(r) === 'Music City Rodeo' || getBizType(r) === 'Music_City_Rodeo' || getBizType(r) === 'MCR')
     .reduce((sum, r) => {
       const amt = getAmount(r);
       const desc = getDesc(r);
@@ -2078,7 +2081,7 @@ function updateDashboard() {
     }, 0);
 
   const personalTotal = dataToUse
-    .filter(r => r['Business Type'] === 'Personal')
+    .filter(r => getBizType(r) === 'Personal')
     .reduce((sum, r) => {
       const amt = getAmount(r);
       const desc = getDesc(r);
@@ -2088,7 +2091,7 @@ function updateDashboard() {
 
   // EM.co total
   const emcoTotal = dataToUse
-    .filter(r => r['Business Type'] === 'EM.co' || r['Business Type'] === 'EM Co')
+    .filter(r => getBizType(r) === 'EM.co' || getBizType(r) === 'EM Co' || getBizType(r) === 'EM_co')
     .reduce((sum, r) => {
       const amt = getAmount(r);
       const desc = getDesc(r);
@@ -2205,15 +2208,16 @@ function updateDashboard() {
   updateBadge('receipt-error-count', counts.receiptError);
 }
 
-// Dashboard toggle - collapse/expand stats
-let dashboardExpanded = false;
+// Dashboard toggle - collapse/expand stats (starts expanded by default)
+let dashboardExpanded = true;
 function toggleDashboard() {
   const dashboard = document.getElementById('dashboard');
   const arrow = document.getElementById('dashboard-arrow');
   if (!dashboard) return;
 
   dashboardExpanded = !dashboardExpanded;
-  dashboard.classList.toggle('expanded', dashboardExpanded);
+  // Use 'collapsed' class instead of 'expanded' since it's expanded by default
+  dashboard.classList.toggle('collapsed', !dashboardExpanded);
   if (arrow) arrow.classList.toggle('expanded', dashboardExpanded);
 }
 

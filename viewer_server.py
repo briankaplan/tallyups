@@ -2890,12 +2890,19 @@ def dashboard_stats():
         # ========== BUSINESS BREAKDOWN ==========
         # Note: Data has mixed sign conventions - some sources use positive, some negative for expenses
         # We exclude payments by description and use ABS for all amounts
+        # Valid business types only (filter out categories that incorrectly got into business_type field)
+        VALID_BUSINESS_TYPES = ('Down Home', 'Down_Home', 'Music City Rodeo', 'Music_City_Rodeo', 'MCR', 'Personal', 'EM.co', 'EM Co', 'EM_co')
         business_breakdown = []
         by_business = {}  # Object format for frontend compatibility
         try:
             cursor = db_execute(conn, db_type, """
                 SELECT
-                    COALESCE(business_type, 'Personal') AS business,
+                    CASE
+                        WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
+                        WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        ELSE 'Personal'
+                    END AS business,
                     COUNT(*) AS tx_count,
                     COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total_spent,
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS has_receipt
@@ -2904,7 +2911,13 @@ def dashboard_stats():
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
-                GROUP BY COALESCE(business_type, 'Personal')
+                GROUP BY
+                    CASE
+                        WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
+                        WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        ELSE 'Personal'
+                    END
                 ORDER BY total_spent DESC
             """)
             for row in cursor.fetchall():
@@ -17401,7 +17414,8 @@ def get_library_receipts():
                 'amount': float(amount or 0),
                 'date': str(date_val),
                 'receipt_date': str(date_val),  # Alias for JS compatibility
-                'receipt_url': receipt_image,
+                'r2_url': receipt_image,  # Primary field for cloud storage
+                'receipt_url': receipt_image,  # Alias for compatibility
                 'thumbnail_url': receipt_image,  # Use same URL as receipt (no thumbnail column)
                 'source': receipt_source,
                 'business_type': tx.get('business_type') or 'Personal',
@@ -17541,6 +17555,7 @@ def get_library_receipts():
                         'amount': float(inc_amount or 0),
                         'date': str(receipt_date),
                         'receipt_date': str(receipt_date),  # Alias for JS compatibility
+                        'r2_url': inc.get('receipt_image_url') or receipt_file,  # Primary field for cloud storage
                         'receipt_url': inc.get('receipt_image_url') or receipt_file,
                         'thumbnail_url': thumbnail,
                         'source': receipt_source,
@@ -17590,7 +17605,7 @@ def get_library_receipts():
 
         if has_image:
             all_receipts = [r for r in all_receipts
-                          if is_valid_receipt_url(r.get('receipt_url')) or is_valid_receipt_url(r.get('thumbnail'))]
+                          if is_valid_receipt_url(r.get('r2_url')) or is_valid_receipt_url(r.get('receipt_url')) or is_valid_receipt_url(r.get('thumbnail_url'))]
 
         # Filter out non-receipt transactions (interest charges, fees, etc.)
         non_receipt_keywords = ['INTEREST CHARGE', 'LATE FEE', 'ANNUAL FEE', 'FINANCE CHARGE', 'FOREIGN TRANSACTION FEE']

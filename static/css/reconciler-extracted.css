@@ -254,7 +254,7 @@ html,body{
   height:100%;margin:0;background:var(--bg);color:var(--ink);
   font:13px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial;
   padding-top: calc(var(--header-height, 64px) + var(--safe-top));
-  padding-bottom: calc(100px + var(--safe-bottom));
+  padding-bottom: calc(60px + var(--safe-bottom));
 }
 
 /* Buttons */
@@ -413,15 +413,14 @@ header:not(.app-header){
 .dashboard{
   padding:16px 20px;background:var(--panel);
   display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;
-  /* Collapsible animation */
-  max-height: 0;
+  /* Show expanded by default */
+  max-height: 200px;
   overflow: hidden;
-  padding: 0 20px;
   transition: max-height 0.3s ease, padding 0.3s ease;
 }
-.dashboard.expanded{
-  max-height: 200px;
-  padding: 16px 20px;
+.dashboard.collapsed{
+  max-height: 0;
+  padding: 0 20px;
 }
 /* Auto-expand on hover for quick glance */
 .dashboard-container:hover .dashboard {
@@ -2770,7 +2769,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 }
 
 /* Ensure page content has proper spacing for app shell */
-body { padding-bottom: 80px; }
+body { padding-bottom: 60px; }
 @media (max-width: 768px) {
   header { top: 0 !important; } /* Keep existing header on mobile */
 }
