@@ -681,6 +681,35 @@ if CSRF_AVAILABLE:
     except ImportError:
         pass
 
+    # Exempt all API blueprints (they use admin_key or session auth, AJAX requests from JS)
+    try:
+        from routes.reports import reports_bp
+        csrf.exempt(reports_bp)
+        logger.info("Reports blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
+    try:
+        from routes.library import library_bp
+        csrf.exempt(library_bp)
+        logger.info("Library blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
+    try:
+        from routes.incoming import incoming_bp
+        csrf.exempt(incoming_bp)
+        logger.info("Incoming blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
+    try:
+        from routes.notes import notes_bp
+        csrf.exempt(notes_bp)
+        logger.info("Notes blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
     # Exempt API endpoints that use API key authentication (they don't use sessions)
     # These are already protected by api_key_required decorator
     CSRF_EXEMPT_ENDPOINTS = [
