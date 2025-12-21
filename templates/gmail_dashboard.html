@@ -2,10 +2,13 @@
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0a0a0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Gmail & Payments | Tallyups</title>
     <link rel="stylesheet" href="/static/css/design-system.css">
+    <script src="/static/js/app-shell.js" defer></script>
     <style>
         :root {
             --bg-primary: #0a0a0f;
@@ -27,6 +30,8 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
+            padding-top: calc(60px + env(safe-area-inset-top, 0px));
+            padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
         }
 
         .container {
@@ -597,7 +602,7 @@
 
         .toast {
             position: fixed;
-            bottom: 24px;
+            bottom: 100px;
             right: 24px;
             padding: 16px 24px;
             background: var(--bg-card);
@@ -684,9 +689,7 @@
                 <div class="section-header">
                     <h2>Quick Cleanup</h2>
                     <select id="cleanup-account" class="filter-select" onchange="loadCleanupStats()">
-                        <option value="kaplan.brian@gmail.com">kaplan.brian@gmail.com</option>
-                        <option value="brian@downhome.com">brian@downhome.com</option>
-                        <option value="brian@musiccityrodeo.com">brian@musiccityrodeo.com</option>
+                        <option value="">Select account...</option>
                     </select>
                 </div>
 
@@ -886,12 +889,22 @@
             document.getElementById('stat-amount').textContent = 'N/A';
         }
 
+        let connectedAccounts = [];
+
         async function loadAccounts() {
             const health = await apiCall('/api/health');
             const container = document.getElementById('account-list');
+            const accountDropdown = document.getElementById('cleanup-account');
 
             if (health.services?.gmail?.accounts) {
-                container.innerHTML = health.services.gmail.accounts.map(acc => `
+                connectedAccounts = health.services.gmail.accounts;
+
+                // Populate the cleanup account dropdown
+                accountDropdown.innerHTML = connectedAccounts.map((acc, i) => `
+                    <option value="${acc.email}" ${i === 0 ? 'selected' : ''}>${acc.email}</option>
+                `).join('');
+
+                container.innerHTML = connectedAccounts.map(acc => `
                     <div class="account-item">
                         <div class="account-avatar">${acc.email[0].toUpperCase()}</div>
                         <div class="account-info">
@@ -907,10 +920,24 @@
                             <div class="count">✓</div>
                             <div class="label">Active</div>
                         </div>
+                        <button class="btn btn-secondary" onclick="refreshAccount('${acc.email}')" style="margin-left: 12px;">🔄 Refresh</button>
                     </div>
                 `).join('');
             } else {
-                container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No accounts connected</p></div>';
+                connectedAccounts = [];
+                accountDropdown.innerHTML = '<option value="">No accounts connected</option>';
+                container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No accounts connected</p><p style="font-size: 13px; margin-top: 8px;">Go to Settings to connect Gmail accounts</p></div>';
+            }
+        }
+
+        async function refreshAccount(email) {
+            showToast(`🔄 Refreshing ${email}...`);
+            const data = await apiCall(`/settings/gmail/refresh/${encodeURIComponent(email)}`, { method: 'POST' });
+            if (data.ok) {
+                showToast(`✅ Refreshed ${email}!`);
+                loadStats();
+            } else {
+                showToast(`❌ Failed to refresh: ${data.error || 'Unknown'}`, true);
             }
         }
 
@@ -1092,7 +1119,11 @@
         // =============================================
 
         function getCleanupAccount() {
-            return document.getElementById('cleanup-account')?.value || 'kaplan.brian@gmail.com';
+            const val = document.getElementById('cleanup-account')?.value;
+            if (!val && connectedAccounts.length > 0) {
+                return connectedAccounts[0].email;
+            }
+            return val || '';
         }
 
         async function loadCleanupStats() {
