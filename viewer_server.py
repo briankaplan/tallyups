@@ -3240,8 +3240,23 @@ def delete_business_type(name):
     """Delete a business type"""
     conn = None
     try:
+        force = request.args.get('force', 'false').lower() == 'true'
         conn, db_type = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        # Check if there are transactions using this business type
+        cursor.execute("""
+            SELECT COUNT(*) as count FROM transactions
+            WHERE business_type = %s
+        """, (name,))
+        tx_count = cursor.fetchone()['count']
+
+        if tx_count > 0 and not force:
+            return jsonify({
+                "error": f"Cannot delete '{name}': {tx_count} transactions are using this business type. Use force=true to delete anyway.",
+                "transaction_count": tx_count,
+                "requires_force": True
+            }), 400
 
         # Get current business types
         cursor.execute("""
@@ -3274,7 +3289,7 @@ def delete_business_type(name):
         """, (json.dumps(types),))
         conn.commit()
 
-        return jsonify({"ok": True, "types": types})
+        return jsonify({"ok": True, "types": types, "transactions_affected": tx_count})
 
     except Exception as e:
         print(f"Error deleting business type: {e}")
