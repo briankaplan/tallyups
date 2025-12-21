@@ -2259,31 +2259,34 @@ class MySQLReceiptDatabase:
         if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM reports ORDER BY created_at DESC")
-        return cursor.fetchall()
+        with self._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM reports ORDER BY created_at DESC")
+            return cursor.fetchall()
 
     def get_report(self, report_id: str) -> Optional[Dict]:
         """Get a single report by ID"""
         if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM reports WHERE report_id = %s", (report_id,))
-        return cursor.fetchone()
+        with self._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM reports WHERE report_id = %s", (report_id,))
+            return cursor.fetchone()
 
     def get_report_expenses(self, report_id: str) -> List[Dict]:
         """Get all expenses for a specific report"""
         if not self.use_mysql or not self._pool:
             raise RuntimeError("MySQL not available")
 
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT * FROM transactions
-            WHERE report_id = %s
-            ORDER BY chase_date DESC
-        """, (report_id,))
-        return cursor.fetchall()
+        with self._pool.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM transactions
+                WHERE report_id = %s
+                ORDER BY chase_date DESC
+            """, (report_id,))
+            return cursor.fetchall()
 
     def delete_report(self, report_id: str) -> bool:
         """Delete a report and unassign all expenses from it"""
@@ -2295,33 +2298,31 @@ class MySQLReceiptDatabase:
             return False
 
         try:
-            cursor = self.conn.cursor()
+            with self._pool.connection() as conn:
+                cursor = conn.cursor()
 
-            cursor.execute("SELECT * FROM reports WHERE report_id = %s", (report_id,))
-            report = cursor.fetchone()
+                cursor.execute("SELECT * FROM reports WHERE report_id = %s", (report_id,))
+                report = cursor.fetchone()
 
-            if not report:
-                print(f"⚠️  Report {report_id} not found", flush=True)
-                return False
+                if not report:
+                    print(f"⚠️  Report {report_id} not found", flush=True)
+                    return False
 
-            cursor.execute("""
-                UPDATE transactions
-                SET report_id = NULL, already_submitted = NULL
-                WHERE report_id = %s
-            """, (report_id,))
+                cursor.execute("""
+                    UPDATE transactions
+                    SET report_id = NULL, already_submitted = NULL
+                    WHERE report_id = %s
+                """, (report_id,))
 
-            affected_count = cursor.rowcount
+                affected_count = cursor.rowcount
 
-            cursor.execute("DELETE FROM reports WHERE report_id = %s", (report_id,))
+                cursor.execute("DELETE FROM reports WHERE report_id = %s", (report_id,))
 
-            self.conn.commit()
-
-            print(f"✅ Report {report_id} deleted. {affected_count} expenses returned to available pool.", flush=True)
-            return True
+                print(f"✅ Report {report_id} deleted. {affected_count} expenses returned to available pool.", flush=True)
+                return True
 
         except Exception as e:
             print(f"❌ Failed to delete report {report_id}: {e}", flush=True)
-            self.conn.rollback()
             return False
 
     # =========================================================================

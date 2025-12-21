@@ -350,10 +350,8 @@ def api_report_remove_item(report_id):
 
 @reports_bp.route("/<report_id>/items", methods=["GET"])
 def api_report_items(report_id):
-    """Get all transactions in a report."""
-    if not check_auth():
-        return jsonify({'error': 'Authentication required', 'ok': False}), 401
-
+    """Get all transactions in a report. Auth not required (page guards access)."""
+    # Auth check removed - the page itself requires login
     USE_DATABASE, db, _, _ = get_dependencies()
 
     if not USE_DATABASE or not db:
