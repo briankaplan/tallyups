@@ -66,11 +66,13 @@ actor APIClient {
     }
 
     func setAdminKey(_ key: String) {
-        KeychainService.shared.save(key: "admin_api_key", value: key)
+        // Use enhanced security for sensitive API keys
+        KeychainService.shared.saveSensitive(key: "admin_api_key", value: key)
     }
 
     func setSessionToken(_ token: String) {
-        KeychainService.shared.save(key: "session_token", value: token)
+        // Use enhanced security for session tokens
+        KeychainService.shared.saveSensitive(key: "session_token", value: token)
     }
 
     func clearCredentials() {

@@ -4,16 +4,17 @@ Reports API Blueprint
 Expense report management, generation, and export.
 
 Routes:
-- GET  /api/reports - List all reports
-- POST /api/reports - Create new report
-- PATCH /api/reports/<id> - Update report
-- POST /api/reports/<id>/add - Add transaction to report
-- POST /api/reports/<id>/remove - Remove transaction from report
-- GET  /api/reports/<id>/items - Get report items
-- GET  /api/reports/stats - Report statistics
-- GET  /api/reports/dashboard - Dashboard data
-- POST /api/reports/generate - Generate report with AI notes
-- GET  /api/reports/<id>/export/<format> - Export report
+- GET    /api/reports - List all reports
+- POST   /api/reports - Create new report
+- PATCH  /api/reports/<id> - Update report (rename, change status)
+- DELETE /api/reports/<id> - Delete report (returns transactions to main table)
+- POST   /api/reports/<id>/add - Add transaction to report
+- POST   /api/reports/<id>/remove - Remove transaction from report
+- GET    /api/reports/<id>/items - Get report items
+- GET    /api/reports/stats - Report statistics
+- GET    /api/reports/dashboard - Dashboard data
+- POST   /api/reports/generate - Generate report with AI notes
+- GET    /api/reports/<id>/export/<format> - Export report
 
 This blueprint handles expense report workflows.
 """
@@ -200,6 +201,62 @@ def api_report_update(report_id):
 
     except Exception as e:
         logger.error(f"API report update error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            db.return_connection(conn)
+
+
+@reports_bp.route("/<report_id>", methods=["DELETE"])
+def api_report_delete(report_id):
+    """Delete a report and return all transactions to the main reconciliation table."""
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    USE_DATABASE, db, _, _ = get_dependencies()
+
+    if not USE_DATABASE or not db:
+        return jsonify({'ok': False, 'error': 'Database not available'}), 503
+
+    conn = None
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # First, count how many transactions will be returned to main table
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM transactions WHERE report_id = %s
+        ''', (report_id,))
+        result = cursor.fetchone()
+        transaction_count = result['count'] if result else 0
+
+        # Return all transactions to main reconciliation table (clear report_id)
+        cursor.execute('''
+            UPDATE transactions SET report_id = NULL WHERE report_id = %s
+        ''', (report_id,))
+
+        # Delete the report record
+        cursor.execute('''
+            DELETE FROM reports WHERE report_id = %s
+        ''', (report_id,))
+
+        if cursor.rowcount == 0:
+            db.return_connection(conn)
+            return jsonify({'ok': False, 'error': 'Report not found'}), 404
+
+        conn.commit()
+
+        logger.info(f"Deleted report {report_id}, returned {transaction_count} transactions to main table")
+
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            'transactions_returned': transaction_count,
+            'message': f'Report deleted. {transaction_count} transaction(s) returned to reconciliation.'
+        })
+
+    except Exception as e:
+        logger.error(f"API report delete error: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
     finally:
         if conn:

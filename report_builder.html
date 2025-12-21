@@ -2,16 +2,18 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="description" content="Tallyups Reports Dashboard - Track and manage your expense reports">
 <meta name="theme-color" content="#0a0f14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Reports - Tallyups</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="manifest" href="/static/manifest.json">
 <link rel="stylesheet" href="/static/css/design-system.css">
 <link rel="stylesheet" href="/static/tallyups-design.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 /* ============================================
    WORLD-CLASS REPORTS DASHBOARD
@@ -217,6 +219,138 @@ body {
 .quick-action-desc {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+/* ============================================
+   COMPACT QUICK STATS BAR (New - Reports First UX)
+   ============================================ */
+.quick-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.quick-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quick-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.quick-stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quick-create-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.quick-create-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.quick-create-btn:hover {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+
+.quick-create-btn svg {
+  opacity: 0.7;
+}
+
+.quick-create-btn:hover svg {
+  opacity: 1;
+}
+
+/* Analytics Section (Collapsible) */
+.analytics-section {
+  margin-top: 32px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.analytics-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.analytics-toggle:hover {
+  color: var(--text);
+}
+
+.analytics-toggle svg {
+  opacity: 0.6;
+}
+
+.toggle-hint {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+.analytics-section[open] .toggle-hint {
+  display: none;
+}
+
+.analytics-content {
+  padding: 0 20px 20px;
+}
+
+@media (max-width: 768px) {
+  .quick-stats-bar {
+    gap: 16px;
+    padding: 12px 16px;
+  }
+
+  .quick-stat-value {
+    font-size: 16px;
+  }
+
+  .quick-create-actions {
+    margin-left: 0;
+    width: 100%;
+    margin-top: 12px;
+  }
+
+  .quick-create-btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 /* ============================================
@@ -1429,6 +1563,7 @@ body {
 body { padding-bottom: 80px; }
 </style>
 <!-- App Shell (design-system.css already loaded in head) -->
+<script src="/static/js/unified-header.js"></script>
 <script src="/static/js/app-shell.js" defer></script>
 <script src="/static/js/design-system.js"></script>
 </head>
@@ -1491,31 +1626,86 @@ body { padding-bottom: 80px; }
       </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="quick-actions">
-      <div class="quick-action-card" onclick="createQuickReport('month')">
-        <div class="quick-action-icon">📅</div>
-        <div class="quick-action-title">This Month</div>
-        <div class="quick-action-desc">Generate report for current month</div>
+    <!-- Compact Quick Stats Bar -->
+    <div class="quick-stats-bar">
+      <div class="quick-stat">
+        <span class="quick-stat-value" id="stat-total-amount">$0</span>
+        <span class="quick-stat-label">Total Expenses</span>
       </div>
-      <div class="quick-action-card" onclick="createQuickReport('quarter')">
-        <div class="quick-action-icon">📊</div>
-        <div class="quick-action-title">Q4 2025</div>
-        <div class="quick-action-desc">Quarterly expense summary</div>
+      <div class="quick-stat">
+        <span class="quick-stat-value" id="stat-report-count">0</span>
+        <span class="quick-stat-label">Reports</span>
       </div>
-      <div class="quick-action-card" onclick="showTemplatesModal()">
-        <div class="quick-action-icon">📋</div>
-        <div class="quick-action-title">Templates</div>
-        <div class="quick-action-desc">Use a pre-built report template</div>
+      <div class="quick-stat">
+        <span class="quick-stat-value" id="stat-coverage">0%</span>
+        <span class="quick-stat-label">Coverage</span>
       </div>
-      <div class="quick-action-card" onclick="showExportModal()">
-        <div class="quick-action-icon">📤</div>
-        <div class="quick-action-title">Bulk Export</div>
-        <div class="quick-action-desc">Export multiple reports at once</div>
+      <div class="quick-stat">
+        <span class="quick-stat-value" id="stat-pending">0</span>
+        <span class="quick-stat-label">Pending</span>
+      </div>
+      <div class="quick-create-actions">
+        <button class="quick-create-btn" onclick="createQuickReport('month')" title="Create report for this month">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          This Month
+        </button>
+        <button class="quick-create-btn" onclick="createQuickReport('quarter')" title="Create quarterly report">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Q4 2025
+        </button>
       </div>
     </div>
 
-    <!-- Stats Grid -->
+    <!-- REPORTS LIST - PRIMARY CONTENT (moved to top) -->
+    <div class="reports-section">
+      <div class="reports-header">
+        <div class="reports-title">Your Reports</div>
+        <div class="reports-tabs">
+          <button class="reports-tab active" data-tab="all">All <span class="count" id="tab-all-count">0</span></button>
+          <button class="reports-tab" data-tab="draft">Drafts <span class="count" id="tab-draft-count">0</span></button>
+          <button class="reports-tab" data-tab="submitted">Submitted <span class="count" id="tab-submitted-count">0</span></button>
+          <button class="reports-tab" data-tab="approved">Approved <span class="count" id="tab-approved-count">0</span></button>
+        </div>
+      </div>
+      <div class="reports-toolbar">
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" placeholder="Search reports..." id="search-input" oninput="filterReports()">
+        </div>
+        <div class="toolbar-actions">
+          <button class="toolbar-btn" onclick="showFilterModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Filter
+          </button>
+          <button class="toolbar-btn" onclick="toggleSort()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="10" y2="18"/></svg>
+            Sort
+          </button>
+          <button class="toolbar-btn" onclick="bulkExport()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
+      <div class="reports-table-container">
+        <div id="reports-list-container">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Section (Collapsible) -->
+    <details class="analytics-section">
+      <summary class="analytics-toggle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics & Insights
+        <span class="toggle-hint">Click to expand</span>
+      </summary>
+      <div class="analytics-content">
+
+    <!-- Stats Grid (now inside collapsible) -->
     <div class="stats-grid">
       <div class="stat-card highlight">
         <div class="stat-header">
@@ -1779,46 +1969,8 @@ body { padding-bottom: 80px; }
         </div>
       </div>
     </div>
-
-    <!-- Reports List -->
-    <div class="reports-section">
-      <div class="reports-header">
-        <div class="reports-title">All Reports</div>
-        <div class="reports-tabs">
-          <button class="reports-tab active" data-tab="all">All <span class="count" id="tab-all-count">0</span></button>
-          <button class="reports-tab" data-tab="draft">Drafts <span class="count" id="tab-draft-count">0</span></button>
-          <button class="reports-tab" data-tab="submitted">Submitted <span class="count" id="tab-submitted-count">0</span></button>
-          <button class="reports-tab" data-tab="approved">Approved <span class="count" id="tab-approved-count">0</span></button>
-        </div>
-      </div>
-      <div class="reports-toolbar">
-        <div class="search-box">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input type="text" placeholder="Search reports by name, date, or amount..." id="search-input" oninput="filterReports()">
-        </div>
-        <div class="toolbar-actions">
-          <button class="toolbar-btn" onclick="showFilterModal()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-            Filter
-          </button>
-          <button class="toolbar-btn" onclick="toggleSort()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="10" y2="18"/></svg>
-            Sort
-          </button>
-          <button class="toolbar-btn" onclick="bulkExport()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export Selected
-          </button>
-        </div>
-      </div>
-      <div class="reports-table-container">
-        <div id="reports-list-container">
-          <div class="loading-spinner">
-            <div class="spinner"></div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </div><!-- /.analytics-content -->
+    </details><!-- /.analytics-section -->
 
     <!-- Integrations -->
     <div class="section-header">
@@ -2500,6 +2652,9 @@ function renderReportsList() {
             <button class="action-btn" onclick="event.stopPropagation(); viewReport('${report.report_id}')" title="View">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
+            <button class="action-btn" onclick="event.stopPropagation(); renameReport('${report.report_id}', '${(report.name || '').replace(/'/g, "\\'")}')" title="Rename">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
             <button class="action-btn" onclick="event.stopPropagation(); exportSingleReport('${report.report_id}')" title="Export">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
@@ -2669,15 +2824,41 @@ function viewReport(reportId) {
 }
 
 async function deleteReport(reportId) {
-  if (!confirm('Are you sure you want to delete this report?\n\nThis action cannot be undone.')) return;
+  if (!confirm('Delete this report?\n\nAll transactions will be returned to the main reconciliation table for reassignment.\n\nThis cannot be undone.')) return;
 
   try {
     const response = await fetch(`/api/reports/${reportId}`, { method: 'DELETE' });
-    if (!response.ok) throw new Error('Failed to delete');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to delete');
+
+    // Show success message with transaction count
+    const msg = data.transactions_returned > 0
+      ? `Report deleted. ${data.transactions_returned} transaction(s) returned to reconciliation.`
+      : 'Report deleted.';
+    showToast(msg, 'success');
     loadDashboard();
   } catch (error) {
     console.error('Delete error:', error);
-    alert('Failed to delete report');
+    showToast('Failed to delete report: ' + error.message, 'error');
+  }
+}
+
+async function renameReport(reportId, currentName) {
+  const newName = prompt('Enter new report name:', currentName);
+  if (!newName || newName === currentName) return;
+
+  try {
+    const response = await fetch(`/api/reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName })
+    });
+    if (!response.ok) throw new Error('Failed to rename');
+    showToast('Report renamed', 'success');
+    loadDashboard();
+  } catch (error) {
+    console.error('Rename error:', error);
+    showToast('Failed to rename report', 'error');
   }
 }
 
@@ -2766,6 +2947,31 @@ function showErrorState() {
       <button class="btn-primary" onclick="location.reload()">Refresh Page</button>
     </div>
   `;
+}
+
+// Toast notification
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    background: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--error)' : 'var(--bg-elevated)'};
+    color: white;
+    border-radius: 8px;
+    z-index: 10000;
+    animation: slideUp 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'slideDown 0.3s ease forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 // Utilities
