@@ -1,0 +1,11 @@
+/**
+ * TALLYUPS LEGENDARY DESIGN SYSTEM
+ * Main entry point - imports all components
+ *
+ * Usage: <link rel="stylesheet" href="/static/css/legendary/index.css">
+ */
+
+@import url('./legendary-design-system.css');
+@import url('./unified-header.css');
+@import url('./components-buttons.css');
+@import url('./components-receipt-card.css');

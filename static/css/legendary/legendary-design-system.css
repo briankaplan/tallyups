@@ -1,0 +1,601 @@
+/**
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  TALLYUPS LEGENDARY DESIGN SYSTEM v2.0                          ║
+ * ║  Award-winning fintech UI - Best of 2025                        ║
+ * ║  Engineered for perfection                                      ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ */
+
+/* =================================================================
+   FOUNDATIONAL RESET
+   ================================================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* =================================================================
+   DESIGN TOKENS - THE LEGENDARY PALETTE
+   ================================================================= */
+:root {
+  /* ────────────────────────────────────────────────────────────
+     BRAND COLORS - Sophisticated & Modern
+     ──────────────────────────────────────────────────────────── */
+  --brand-primary: #00FFA3;
+  --brand-primary-50: #E6FFF5;
+  --brand-primary-100: #CCFFEB;
+  --brand-primary-200: #99FFD6;
+  --brand-primary-300: #66FFC2;
+  --brand-primary-400: #33FFAD;
+  --brand-primary-500: #00FFA3;  /* Main */
+  --brand-primary-600: #00CC82;
+  --brand-primary-700: #009962;
+  --brand-primary-800: #006641;
+  --brand-primary-900: #003321;
+  
+  --brand-secondary: #5B7FFF;
+  --brand-secondary-50: #EEF2FF;
+  --brand-secondary-100: #DDE5FF;
+  --brand-secondary-200: #BBC8FF;
+  --brand-secondary-300: #99ACFF;
+  --brand-secondary-400: #7795FF;
+  --brand-secondary-500: #5B7FFF;  /* Main */
+  --brand-secondary-600: #4966CC;
+  --brand-secondary-700: #374C99;
+  --brand-secondary-800: #253366;
+  --brand-secondary-900: #121933;
+
+  /* ────────────────────────────────────────────────────────────
+     SEMANTIC COLORS - Status & Feedback
+     ──────────────────────────────────────────────────────────── */
+  --success: #10B981;
+  --success-dim: rgba(16, 185, 129, 0.12);
+  --success-glow: rgba(16, 185, 129, 0.4);
+  
+  --warning: #F59E0B;
+  --warning-dim: rgba(245, 158, 11, 0.12);
+  --warning-glow: rgba(245, 158, 11, 0.4);
+  
+  --error: #EF4444;
+  --error-dim: rgba(239, 68, 68, 0.12);
+  --error-glow: rgba(239, 68, 68, 0.4);
+  
+  --info: #3B82F6;
+  --info-dim: rgba(59, 130, 246, 0.12);
+  --info-glow: rgba(59, 130, 246, 0.4);
+
+  /* ────────────────────────────────────────────────────────────
+     GRAYSCALE - Perfect neutrals for both themes
+     ──────────────────────────────────────────────────────────── */
+  --gray-50: #FAFAFA;
+  --gray-100: #F5F5F5;
+  --gray-200: #E5E5E5;
+  --gray-300: #D4D4D4;
+  --gray-400: #A3A3A3;
+  --gray-500: #737373;
+  --gray-600: #525252;
+  --gray-700: #404040;
+  --gray-800: #262626;
+  --gray-900: #171717;
+  --gray-950: #0A0A0A;
+
+  /* ────────────────────────────────────────────────────────────
+     TYPOGRAPHY - SF Pro System
+     ──────────────────────────────────────────────────────────── */
+  --font-display: 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-text: 'SF Pro Text', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-rounded: 'SF Pro Rounded', -apple-system-ui-rounded, system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Consolas', 'Monaco', monospace;
+
+  /* Type Scale (Perfect Fourth - 1.333) */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 2rem;        /* 32px */
+  --text-4xl: 2.5rem;      /* 40px */
+  --text-5xl: 3rem;        /* 48px */
+  --text-6xl: 4rem;        /* 64px */
+
+  /* Font Weights */
+  --weight-thin: 100;
+  --weight-light: 300;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 900;
+
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+
+  /* Letter Spacing */
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* ────────────────────────────────────────────────────────────
+     SPACING - 4px Grid System
+     ──────────────────────────────────────────────────────────── */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem;   /* 2px */
+  --space-1: 0.25rem;      /* 4px */
+  --space-1-5: 0.375rem;   /* 6px */
+  --space-2: 0.5rem;       /* 8px */
+  --space-2-5: 0.625rem;   /* 10px */
+  --space-3: 0.75rem;      /* 12px */
+  --space-3-5: 0.875rem;   /* 14px */
+  --space-4: 1rem;         /* 16px */
+  --space-5: 1.25rem;      /* 20px */
+  --space-6: 1.5rem;       /* 24px */
+  --space-7: 1.75rem;      /* 28px */
+  --space-8: 2rem;         /* 32px */
+  --space-9: 2.25rem;      /* 36px */
+  --space-10: 2.5rem;      /* 40px */
+  --space-11: 2.75rem;     /* 44px */
+  --space-12: 3rem;        /* 48px */
+  --space-14: 3.5rem;      /* 56px */
+  --space-16: 4rem;        /* 64px */
+  --space-20: 5rem;        /* 80px */
+  --space-24: 6rem;        /* 96px */
+  --space-32: 8rem;        /* 128px */
+
+  /* ────────────────────────────────────────────────────────────
+     BORDER RADIUS - Smooth Curves
+     ──────────────────────────────────────────────────────────── */
+  --radius-none: 0;
+  --radius-sm: 0.25rem;    /* 4px */
+  --radius-base: 0.5rem;   /* 8px */
+  --radius-md: 0.75rem;    /* 12px */
+  --radius-lg: 1rem;       /* 16px */
+  --radius-xl: 1.25rem;    /* 20px */
+  --radius-2xl: 1.5rem;    /* 24px */
+  --radius-3xl: 2rem;      /* 32px */
+  --radius-full: 9999px;
+
+  /* ────────────────────────────────────────────────────────────
+     SHADOWS - 6-Level Elevation System
+     ──────────────────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-2xl: 0 40px 70px -15px rgba(0, 0, 0, 0.3);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+
+  /* Glow Effects */
+  --glow-sm: 0 0 10px var(--brand-primary-glow, rgba(0, 255, 163, 0.3));
+  --glow-md: 0 0 20px var(--brand-primary-glow, rgba(0, 255, 163, 0.4));
+  --glow-lg: 0 0 40px var(--brand-primary-glow, rgba(0, 255, 163, 0.5));
+
+  /* ────────────────────────────────────────────────────────────
+     Z-INDEX LAYERS - Organized stacking
+     ──────────────────────────────────────────────────────────── */
+  --z-base: 0;
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-header: 150;
+  --z-overlay: 200;
+  --z-modal: 250;
+  --z-popover: 300;
+  --z-tooltip: 350;
+  --z-toast: 400;
+
+  /* ────────────────────────────────────────────────────────────
+     ANIMATIONS - Smooth & Natural
+     ──────────────────────────────────────────────────────────── */
+  --duration-instant: 0ms;
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-moderate: 300ms;
+  --duration-slow: 500ms;
+  --duration-slower: 700ms;
+
+  /* Easing Functions */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ────────────────────────────────────────────────────────────
+     SAFE AREAS & LAYOUT - iOS Notch Support
+     ──────────────────────────────────────────────────────────── */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --header-height: 64px;
+  --bottom-nav-height: 0px;
+
+  /* ────────────────────────────────────────────────────────────
+     BLUR EFFECTS - Glassmorphism
+     ──────────────────────────────────────────────────────────── */
+  --blur-none: blur(0);
+  --blur-sm: blur(4px);
+  --blur-base: blur(8px);
+  --blur-md: blur(12px);
+  --blur-lg: blur(16px);
+  --blur-xl: blur(24px);
+  --blur-2xl: blur(40px);
+  --blur-3xl: blur(64px);
+}
+
+/* =================================================================
+   DARK THEME - Primary (Default)
+   ================================================================= */
+:root,
+[data-theme="dark"] {
+  /* Background Layers */
+  --bg-canvas: #000000;
+  --bg-primary: #0A0A0A;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1A1A1A;
+  --bg-elevated: #1F1F1F;
+  --bg-overlay: #242424;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 255, 255, 0.1);
+
+  /* Text Colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: #A3A3A3;
+  --text-tertiary: #737373;
+  --text-quaternary: #525252;
+  --text-disabled: #404040;
+  --text-inverse: #000000;
+
+  /* Border Colors */
+  --border-primary: rgba(255, 255, 255, 0.1);
+  --border-secondary: rgba(255, 255, 255, 0.08);
+  --border-tertiary: rgba(255, 255, 255, 0.05);
+  --border-focus: var(--brand-primary);
+  --border-error: var(--error);
+
+  /* Input States */
+  --input-bg: rgba(255, 255, 255, 0.06);
+  --input-border: rgba(255, 255, 255, 0.12);
+  --input-hover: rgba(255, 255, 255, 0.08);
+  --input-focus: var(--brand-primary);
+  --input-disabled: rgba(255, 255, 255, 0.03);
+
+  /* Glassmorphism */
+  --glass-strong: rgba(255, 255, 255, 0.12);
+  --glass-medium: rgba(255, 255, 255, 0.08);
+  --glass-subtle: rgba(255, 255, 255, 0.04);
+
+  /* Scrollbar */
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+
+  /* ────────────────────────────────────────────────────────────
+     BACKWARD COMPATIBILITY ALIASES
+     These map old variable names used in legacy pages to new system
+     ──────────────────────────────────────────────────────────── */
+  --bg: var(--bg-primary);
+  --bg-card: var(--bg-secondary);
+  --bg-elevated: var(--bg-elevated);
+  --accent: var(--brand-primary);
+  --accent-dim: rgba(0, 255, 163, 0.12);
+  --accent-glow: rgba(0, 255, 163, 0.4);
+  --brand: var(--brand-primary);
+  --brand-dim: rgba(0, 255, 163, 0.12);
+  --brand-glow: rgba(0, 255, 163, 0.4);
+  --text: var(--text-primary);
+  --text-dim: var(--text-quaternary);
+  --text-secondary: var(--text-secondary);
+  --text-muted: var(--text-tertiary);
+  --border: var(--border-primary);
+  --border-light: var(--border-secondary);
+
+  /* Business colors - unified palette */
+  --downhome: #10B981;
+  --mcr: #6366F1;
+  --personal: #8B5CF6;
+  --emco: #3B82F6;
+  --ceo: #F59E0B;
+
+  /* Legacy color mappings */
+  --positive: var(--success);
+  --negative: var(--error);
+  --purple: #A855F7;
+  --pink: #EC4899;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* =================================================================
+   LIGHT THEME - Clean & Professional
+   ================================================================= */
+[data-theme="light"] {
+  /* Background Layers */
+  --bg-canvas: #FFFFFF;
+  --bg-primary: #FAFAFA;
+  --bg-secondary: #F5F5F5;
+  --bg-tertiary: #E5E5E5;
+  --bg-elevated: #FFFFFF;
+  --bg-overlay: #F5F5F5;
+  --bg-hover: rgba(0, 0, 0, 0.05);
+  --bg-active: rgba(0, 0, 0, 0.1);
+
+  /* Text Colors */
+  --text-primary: #0A0A0A;
+  --text-secondary: #525252;
+  --text-tertiary: #737373;
+  --text-quaternary: #A3A3A3;
+  --text-disabled: #D4D4D4;
+  --text-inverse: #FFFFFF;
+
+  /* Border Colors */
+  --border-primary: rgba(0, 0, 0, 0.1);
+  --border-secondary: rgba(0, 0, 0, 0.08);
+  --border-tertiary: rgba(0, 0, 0, 0.05);
+  --border-focus: var(--brand-primary);
+  --border-error: var(--error);
+
+  /* Input States */
+  --input-bg: #FFFFFF;
+  --input-border: rgba(0, 0, 0, 0.15);
+  --input-hover: rgba(0, 0, 0, 0.05);
+  --input-focus: var(--brand-primary);
+  --input-disabled: rgba(0, 0, 0, 0.05);
+
+  /* Glassmorphism */
+  --glass-strong: rgba(255, 255, 255, 0.9);
+  --glass-medium: rgba(255, 255, 255, 0.7);
+  --glass-subtle: rgba(255, 255, 255, 0.5);
+
+  /* Scrollbar */
+  --scrollbar-track: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+
+  /* Shadows (lighter in light mode) */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.12), 0 1px 2px -1px rgba(0, 0, 0, 0.08);
+  --shadow-base: 0 4px 6px -1px rgba(0, 0, 0, 0.12), 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+  --shadow-2xl: 0 40px 70px -15px rgba(0, 0, 0, 0.25);
+
+  /* Backward Compatibility Aliases (Light Theme) */
+  --bg: var(--bg-primary);
+  --bg-card: var(--bg-secondary);
+  --accent: var(--brand-primary);
+  --accent-dim: rgba(0, 255, 163, 0.12);
+  --accent-glow: rgba(0, 255, 163, 0.25);
+  --brand: var(--brand-primary);
+  --brand-dim: rgba(0, 255, 163, 0.12);
+  --text: var(--text-primary);
+  --text-dim: var(--text-quaternary);
+  --border: var(--border-primary);
+  --border-light: var(--border-secondary);
+}
+
+/* =================================================================
+   BASE STYLES
+   ================================================================= */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-text);
+  font-size: var(--text-base);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* =================================================================
+   SCROLLBAR STYLING
+   ================================================================= */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* =================================================================
+   SELECTION
+   ================================================================= */
+::selection {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+}
+
+::-moz-selection {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+}
+
+/* =================================================================
+   FOCUS STYLES - Accessible & Beautiful
+   ================================================================= */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/* =================================================================
+   UTILITY CLASSES
+   ================================================================= */
+
+/* Display */
+.hidden { display: none !important; }
+.block { display: block !important; }
+.inline-block { display: inline-block !important; }
+.flex { display: flex !important; }
+.inline-flex { display: inline-flex !important; }
+.grid { display: grid !important; }
+
+/* Flexbox */
+.flex-row { flex-direction: row; }
+.flex-col { flex-direction: column; }
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+.gap-8 { gap: var(--space-8); }
+
+/* Text */
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Spacing */
+.p-0 { padding: 0 !important; }
+.p-2 { padding: var(--space-2); }
+.p-4 { padding: var(--space-4); }
+.p-6 { padding: var(--space-6); }
+.m-0 { margin: 0 !important; }
+.m-2 { margin: var(--space-2); }
+.m-4 { margin: var(--space-4); }
+
+/* Borders */
+.rounded { border-radius: var(--radius-base); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-full { border-radius: var(--radius-full); }
+
+/* Shadows */
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow { box-shadow: var(--shadow-base); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+
+/* =================================================================
+   ANIMATIONS
+   ================================================================= */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+/* =================================================================
+   ACCESSIBILITY
+   ================================================================= */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =================================================================
+   END OF LEGENDARY DESIGN SYSTEM
+   Next: Component Library (buttons.css, cards.css, forms.css, etc.)
+   ================================================================= */

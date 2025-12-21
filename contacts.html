@@ -1,54 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#0A0A0A">
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-  <link rel="stylesheet" href="/static/css/design-system.css">
+  <!-- Legendary Design System -->
+  <link rel="stylesheet" href="/static/css/legendary/index.css">
   <script src="/static/js/unified-header.js"></script>
   <script src="/static/js/design-system.js"></script>
   <script src="/static/js/app-shell.js" defer></script>
   <title>ATLAS - Contact Intelligence</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    :root {
-      --bg: #000000;
-      --bg-card: #111111;
-      --bg-elevated: #1a1a1a;
-      --accent: #00ff88;
-      --accent-dim: rgba(0, 255, 136, 0.15);
-      --accent-glow: rgba(0, 255, 136, 0.3);
-      --text: #ffffff;
-      --text-dim: #666666;
-      --text-secondary: #999999;
-      --border: #222222;
-      --success: #00ff88;
-      --warning: #ffaa00;
-      --error: #ff4444;
-      --info: #4488ff;
-      --purple: #aa66ff;
-      --pink: #ff66aa;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-    }
-
+    /* Page-specific styles - use design system variables */
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-      padding-top: calc(60px + var(--safe-top)); /* Space for app-shell header */
-      padding-bottom: calc(100px + var(--safe-bottom)); /* Space for bottom nav */
+      padding-top: calc(var(--header-height, 64px) + var(--safe-top));
+      padding-bottom: calc(100px + var(--safe-bottom));
     }
 
     /* Header */

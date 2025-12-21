@@ -2535,7 +2535,6 @@ def settings_page():
 
 @app.route("/settings/bank-accounts")
 @app.route("/bank-accounts")
-@login_required
 def bank_accounts_page():
     """Serve the Bank Accounts settings page (Plaid integration)."""
     return send_from_directory(BASE_DIR, "bank_accounts.html")
@@ -5461,54 +5460,58 @@ def get_transactions():
 
             # Use MySQL-specific or SQLite-specific code path
             if hasattr(db, 'use_mysql') and db.use_mysql:
-                # MySQL path - get a new connection (caller responsible for closing)
-                conn = db.get_connection()
-                cursor = conn.cursor()  # Already uses DictCursor from get_connection()
-
-                # Build WHERE clause based on filters
-                where_clauses = []
-
-                # By default, hide transactions that are in a report (have report_id)
-                # unless show_in_report=true is passed
-                show_in_report = request.args.get('show_in_report', 'false').lower() == 'true'
-                if not show_in_report:
-                    where_clauses.append("(report_id IS NULL OR report_id = '')")
-
-                if unreported_only:
-                    # unreported_only already implies no report_id, but also filter rejected
-                    where_clauses.append("(review_status IS NULL OR review_status != 'rejected')")
-                    where_clauses.append("(already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')")
-                elif not show_submitted:
-                    where_clauses.append("(already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')")
-
-                where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
-
-                # Get total count for pagination
-                count_query = f"SELECT COUNT(*) as total FROM transactions {where_sql}"
-                cursor.execute(count_query)
-                total_count = cursor.fetchone()['total']
-
-                # Build main query with pagination
-                query = f'''
-                    SELECT * FROM transactions
-                    {where_sql}
-                    ORDER BY chase_date DESC, _index DESC
-                '''
-                if not return_all:
-                    query += f' LIMIT {int(per_page)} OFFSET {int(offset)}'
-                cursor.execute(query)
-                rows = cursor.fetchall()
-
-                # Get rejected receipts (safely handle if table doesn't exist yet)
-                rejected_paths = set()
+                # MySQL path - get a new connection with proper cleanup
+                conn = None
                 try:
-                    cursor.execute('SELECT receipt_path FROM rejected_receipts')
-                    rejected_paths = {r['receipt_path'] for r in cursor.fetchall() if r.get('receipt_path')}
-                except Exception as e:
-                    print(f"ℹ️  rejected_receipts table not found, skipping: {e}", flush=True)
+                    conn = db.get_connection()
+                    cursor = conn.cursor()  # Already uses DictCursor from get_connection()
 
-                cursor.close()
-                return_db_connection(conn)  # Close the NEW connection we got
+                    # Build WHERE clause based on filters
+                    where_clauses = []
+
+                    # By default, hide transactions that are in a report (have report_id)
+                    # unless show_in_report=true is passed
+                    show_in_report = request.args.get('show_in_report', 'false').lower() == 'true'
+                    if not show_in_report:
+                        where_clauses.append("(report_id IS NULL OR report_id = '')")
+
+                    if unreported_only:
+                        # unreported_only already implies no report_id, but also filter rejected
+                        where_clauses.append("(review_status IS NULL OR review_status != 'rejected')")
+                        where_clauses.append("(already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')")
+                    elif not show_submitted:
+                        where_clauses.append("(already_submitted IS NULL OR already_submitted = '' OR already_submitted != 'yes')")
+
+                    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+                    # Get total count for pagination
+                    count_query = f"SELECT COUNT(*) as total FROM transactions {where_sql}"
+                    cursor.execute(count_query)
+                    total_count = cursor.fetchone()['total']
+
+                    # Build main query with pagination
+                    query = f'''
+                        SELECT * FROM transactions
+                        {where_sql}
+                        ORDER BY chase_date DESC, _index DESC
+                    '''
+                    if not return_all:
+                        query += f' LIMIT {int(per_page)} OFFSET {int(offset)}'
+                    cursor.execute(query)
+                    rows = cursor.fetchall()
+
+                    # Get rejected receipts (safely handle if table doesn't exist yet)
+                    rejected_paths = set()
+                    try:
+                        cursor.execute('SELECT receipt_path FROM rejected_receipts')
+                        rejected_paths = {r['receipt_path'] for r in cursor.fetchall() if r.get('receipt_path')}
+                    except Exception as e:
+                        print(f"ℹ️  rejected_receipts table not found, skipping: {e}", flush=True)
+
+                    cursor.close()
+                finally:
+                    if conn:
+                        return_db_connection(conn)  # Always return connection
 
                 db_type = "MySQL"
 
@@ -12561,12 +12564,16 @@ def add_manual_expense():
             if hasattr(db, 'use_mysql') and db.use_mysql:
                 placeholders = ", ".join(["%s"] * len(columns))
                 sql = f"INSERT INTO transactions ({col_names}) VALUES ({placeholders})"
-                conn = db.get_connection()
-                cursor = conn.cursor()
-                cursor.execute(sql, values)
-                conn.commit()
-                cursor.close()
-                return_db_connection(conn)
+                conn = None
+                try:
+                    conn = db.get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute(sql, values)
+                    conn.commit()
+                    cursor.close()
+                finally:
+                    if conn:
+                        return_db_connection(conn)
             else:
                 # SQLite path
                 placeholders = ", ".join(["?"] * len(columns))
@@ -12670,6 +12677,7 @@ def bulk_import_transactions():
         "deleted_by_user": "deleted_by_user"
     }
 
+    conn = None
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
@@ -12722,7 +12730,6 @@ def bulk_import_transactions():
 
         conn.commit()
         cursor.close()
-        return_db_connection(conn)
 
         # Reload DataFrame
         df = db.get_all_transactions()
@@ -12734,9 +12741,11 @@ def bulk_import_transactions():
             "failed": failed,
             "total_now": len(df)
         })
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            return_db_connection(conn)
 
 
 # =============================================================================
@@ -17924,9 +17933,8 @@ def api_report_remove_item(report_id):
 
 
 @app.route("/api/reports/<report_id>/items", methods=["GET"])
-@login_required
 def api_report_items(report_id):
-    """Get all items in a report."""
+    """Get all items in a report. No login required (page itself requires login)."""
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 

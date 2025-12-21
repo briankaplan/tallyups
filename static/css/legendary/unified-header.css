@@ -1,0 +1,354 @@
+/**
+ * TALLYUPS UNIFIED HEADER
+ * Styles for the header created by unified-header.js
+ * Matches class names: .app-header, .app-header__*, .mobile-menu, .mobile-menu__*
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   BODY PADDING
+   ═══════════════════════════════════════════════════════════════ */
+body.has-app-header {
+  padding-top: 64px;
+}
+
+@media (max-width: 768px) {
+  body.has-app-header {
+    padding-top: 56px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER CONTAINER
+   ═══════════════════════════════════════════════════════════════ */
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6, 24px);
+  background: var(--bg-primary, #0b0d10);
+  border-bottom: 1px solid var(--border-primary, rgba(255,255,255,0.08));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    height: 56px;
+    padding: 0 var(--space-4, 16px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOGO & BRAND
+   ═══════════════════════════════════════════════════════════════ */
+.app-header__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.app-header__logo-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--brand-primary, #00ffa3), var(--brand-secondary, #5b7fff));
+  border-radius: var(--radius-lg, 12px);
+}
+
+.app-header__logo-icon svg {
+  width: 20px;
+  height: 20px;
+  color: #000;
+}
+
+.app-header__logo-text {
+  font-family: var(--font-display, -apple-system, BlinkMacSystemFont, sans-serif);
+  font-size: var(--text-lg, 18px);
+  font-weight: var(--weight-bold, 700);
+  background: linear-gradient(135deg, var(--brand-primary, #00ffa3), var(--brand-secondary, #5b7fff));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════════════ */
+.app-header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+}
+
+.app-header__nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  font-size: var(--text-sm, 14px);
+  font-weight: var(--weight-medium, 500);
+  color: var(--text-secondary, #9ca3af);
+  text-decoration: none;
+  border-radius: var(--radius-lg, 12px);
+  transition: all 0.15s ease-out;
+  cursor: pointer;
+}
+
+.app-header__nav-link:hover {
+  color: var(--text-primary, #ffffff);
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+}
+
+.app-header__nav-link.active {
+  color: var(--brand-primary, #00ffa3);
+  background: rgba(0, 255, 163, 0.1);
+}
+
+.app-header__nav-link svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.app-header__nav-link:hover svg,
+.app-header__nav-link.active svg {
+  opacity: 1;
+}
+
+/* Hide labels on smaller screens */
+@media (max-width: 1200px) {
+  .app-header__nav-link span {
+    display: none;
+  }
+  .app-header__nav-link {
+    padding: var(--space-2, 8px);
+  }
+}
+
+/* Hide nav on mobile */
+@media (max-width: 768px) {
+  .app-header__nav {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER CONTROLS (Right Side)
+   ═══════════════════════════════════════════════════════════════ */
+.app-header__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  flex-shrink: 0;
+}
+
+/* Search Box */
+.app-header__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.app-header__search svg {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary, #666);
+  pointer-events: none;
+}
+
+.app-header__search input {
+  width: 200px;
+  height: 36px;
+  padding: 0 var(--space-4, 16px) 0 36px;
+  font-size: var(--text-sm, 14px);
+  color: var(--text-primary, #fff);
+  background: var(--bg-secondary, #1a1d24);
+  border: 1px solid var(--border-primary, rgba(255,255,255,0.08));
+  border-radius: var(--radius-xl, 16px);
+  outline: none;
+  transition: all 0.15s ease-out;
+}
+
+.app-header__search input::placeholder {
+  color: var(--text-tertiary, #666);
+}
+
+.app-header__search input:focus {
+  border-color: var(--brand-primary, #00ffa3);
+  box-shadow: 0 0 0 3px rgba(0, 255, 163, 0.15);
+}
+
+@media (max-width: 1024px) {
+  .app-header__search {
+    display: none;
+  }
+}
+
+/* Action Buttons */
+.app-header__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--text-secondary, #9ca3af);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg, 12px);
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  text-decoration: none;
+}
+
+.app-header__btn:hover {
+  color: var(--text-primary, #fff);
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+}
+
+.app-header__btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Hamburger Menu Button */
+.app-header__hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--text-secondary, #9ca3af);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg, 12px);
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+}
+
+.app-header__hamburger:hover {
+  color: var(--text-primary, #fff);
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+}
+
+.app-header__hamburger svg {
+  width: 24px;
+  height: 24px;
+}
+
+@media (max-width: 768px) {
+  .app-header__hamburger {
+    display: flex;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE MENU
+   ═══════════════════════════════════════════════════════════════ */
+.mobile-menu {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  background: var(--bg-primary, #0b0d10);
+  border-top: 1px solid var(--border-primary, rgba(255,255,255,0.08));
+  transform: translateY(-100%);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease-out;
+  overflow-y: auto;
+}
+
+.mobile-menu.open {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.mobile-menu__nav {
+  padding: var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.mobile-menu__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+  font-size: var(--text-base, 16px);
+  font-weight: var(--weight-medium, 500);
+  color: var(--text-secondary, #9ca3af);
+  text-decoration: none;
+  border-radius: var(--radius-xl, 16px);
+  transition: all 0.15s ease-out;
+}
+
+.mobile-menu__link:hover,
+.mobile-menu__link.active {
+  color: var(--text-primary, #fff);
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+}
+
+.mobile-menu__link.active {
+  color: var(--brand-primary, #00ffa3);
+  background: rgba(0, 255, 163, 0.1);
+}
+
+.mobile-menu__link svg {
+  width: 22px;
+  height: 22px;
+  opacity: 0.7;
+}
+
+.mobile-menu__link:hover svg,
+.mobile-menu__link.active svg {
+  opacity: 1;
+}
+
+.mobile-menu__divider {
+  height: 1px;
+  background: var(--border-primary, rgba(255,255,255,0.08));
+  margin: var(--space-2, 8px) 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ACCESSIBILITY
+   ═══════════════════════════════════════════════════════════════ */
+.app-header__nav-link:focus-visible,
+.app-header__btn:focus-visible,
+.mobile-menu__link:focus-visible {
+  outline: 2px solid var(--brand-primary, #00ffa3);
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT STYLES
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+  .app-header,
+  .mobile-menu {
+    display: none !important;
+  }
+
+  body.has-app-header {
+    padding-top: 0;
+  }
+}
