@@ -3,6 +3,16 @@
  * Theme management, toast notifications, and shared utilities
  */
 
+// CRITICAL: Set theme IMMEDIATELY to prevent flash of unstyled content (FOUC)
+// This runs synchronously before page renders
+(function() {
+  var theme = localStorage.getItem('tallyups-theme');
+  if (!theme) {
+    theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+
 // THEME MANAGEMENT
 const ThemeManager = {
   STORAGE_KEY: 'tallyups-theme',
