@@ -717,24 +717,24 @@
         const data = await response.json();
 
         // Gmail status
-        const gmailConnected = data.gmail_service || data.services?.gmail;
+        const gmailConnected = data.services?.gmail?.connected_count > 0 || data.gmail_service;
         updateStatus('gmail', gmailConnected ? 'Connected' : 'Not configured', gmailConnected);
         document.getElementById('gmail-account').textContent = gmailConnected ? 'Receipts syncing' : 'Not connected';
 
         // Calendar status
-        const calendarConnected = data.calendar_service || data.services?.calendar;
+        const calendarConnected = data.calendar_connected || data.services?.calendar?.connected;
         updateStatus('calendar', calendarConnected ? 'Connected' : 'Not configured', calendarConnected);
 
-        // AI status
-        const aiConnected = data.gemini_available || data.services?.gemini;
+        // AI status (Gemini)
+        const aiConnected = data.gemini_configured || data.services?.gemini_ai?.status === 'configured';
         updateStatus('ai', aiConnected ? 'Active' : 'Not configured', aiConnected);
 
-        // Storage status
-        const storageConnected = data.r2_available || data.services?.r2;
+        // Storage status (R2)
+        const storageConnected = data.r2_connected || data.services?.r2_storage?.status === 'connected';
         updateStatus('storage', storageConnected ? 'Active' : 'Not configured', storageConnected);
 
         // Database status
-        const dbConnected = data.mysql_connected || data.database?.connected;
+        const dbConnected = data.database === 'connected' || data.services?.database?.status === 'connected';
         updateStatus('db', dbConnected ? 'Connected' : 'Not connected', dbConnected);
 
       } catch (error) {
