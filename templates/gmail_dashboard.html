@@ -355,6 +355,276 @@
             .tabs { overflow-x: auto; }
             .filter-bar { flex-wrap: wrap; }
         }
+
+        /* Cleanup Tab Styles */
+        .cleanup-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .action-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            color: var(--text-primary);
+        }
+
+        .action-card:hover {
+            border-color: var(--accent-green);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 170, 0.15);
+        }
+
+        .action-card:active {
+            transform: translateY(0);
+        }
+
+        .action-icon {
+            font-size: 32px;
+            min-width: 48px;
+            text-align: center;
+        }
+
+        .action-text h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .action-text p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .sender-list, .filter-list, .label-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sender-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            gap: 16px;
+        }
+
+        .sender-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .sender-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sender-name {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sender-email {
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sender-count {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-orange);
+            margin-right: 16px;
+        }
+
+        .sender-badges {
+            display: flex;
+            gap: 6px;
+            margin-right: 16px;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge.promo { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+        .badge.newsletter { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+        .sender-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .sender-actions .btn {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border: none;
+        }
+
+        .btn-danger:hover {
+            opacity: 0.9;
+        }
+
+        .filter-item, .label-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            gap: 12px;
+        }
+
+        .filter-info, .label-info {
+            flex: 1;
+        }
+
+        .filter-criteria {
+            font-weight: 500;
+        }
+
+        .filter-action {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .label-name {
+            font-weight: 500;
+        }
+
+        .label-count {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .delete-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-btn:hover {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid var(--border-color);
+        }
+
+        .modal h3 {
+            margin-bottom: 20px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 16px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--accent-green);
+            border-radius: 12px;
+            color: var(--accent-green);
+            font-weight: 500;
+            z-index: 1001;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.error {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .cleanup-stats { grid-template-columns: repeat(2, 1fr); }
+            .quick-actions { grid-template-columns: 1fr; }
+            .sender-item { flex-wrap: wrap; }
+            .sender-count { order: -1; }
+        }
     </style>
 </head>
 <body>
@@ -369,6 +639,7 @@
 
         <div class="tabs">
             <div class="tab active" data-tab="accounts">📬 Accounts</div>
+            <div class="tab" data-tab="cleanup">🧹 Inbox Cleanup</div>
             <div class="tab" data-tab="payments">💳 Payments</div>
             <div class="tab" data-tab="receipts">🧾 Receipt URLs</div>
             <div class="tab" data-tab="pending">⏳ Pending</div>
@@ -401,6 +672,104 @@
                     <button class="btn btn-secondary" onclick="syncAllAccounts()">🔄 Sync All</button>
                 </div>
                 <div class="account-list" id="account-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cleanup Tab -->
+        <div class="tab-content hidden" id="tab-cleanup">
+            <!-- Quick Actions -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>Quick Cleanup</h2>
+                    <select id="cleanup-account" class="filter-select" onchange="loadCleanupStats()">
+                        <option value="kaplan.brian@gmail.com">kaplan.brian@gmail.com</option>
+                        <option value="brian@downhome.com">brian@downhome.com</option>
+                        <option value="brian@musiccityrodeo.com">brian@musiccityrodeo.com</option>
+                    </select>
+                </div>
+
+                <div class="cleanup-stats" id="cleanup-stats">
+                    <div class="stat-card">
+                        <div class="label">Inbox</div>
+                        <div class="value blue" id="stat-inbox">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Unread</div>
+                        <div class="value orange" id="stat-unread">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Promotions</div>
+                        <div class="value purple" id="stat-promotions">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Social</div>
+                        <div class="value green" id="stat-social">-</div>
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <button class="action-card" onclick="quickClean('promotions')">
+                        <div class="action-icon">🗑️</div>
+                        <div class="action-text">
+                            <h3>Clean Promotions</h3>
+                            <p>Delete promotional emails older than 7 days</p>
+                        </div>
+                    </button>
+                    <button class="action-card" onclick="quickClean('social')">
+                        <div class="action-icon">👥</div>
+                        <div class="action-text">
+                            <h3>Clean Social</h3>
+                            <p>Delete social notifications older than 7 days</p>
+                        </div>
+                    </button>
+                    <button class="action-card" onclick="quickClean('newsletters')">
+                        <div class="action-icon">📰</div>
+                        <div class="action-text">
+                            <h3>Clean Newsletters</h3>
+                            <p>Delete old newsletters (keeps starred)</p>
+                        </div>
+                    </button>
+                    <button class="action-card" onclick="quickClean('old_unread')">
+                        <div class="action-icon">📧</div>
+                        <div class="action-text">
+                            <h3>Clean Old Unread</h3>
+                            <p>Delete unread emails older than 30 days</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Top Senders -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>Top Senders (Last 30 Days)</h2>
+                    <button class="btn btn-secondary" onclick="loadTopSenders()">🔄 Refresh</button>
+                </div>
+                <div class="sender-list" id="sender-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>Active Filters</h2>
+                    <button class="btn btn-primary" onclick="showCreateFilter()">➕ New Filter</button>
+                </div>
+                <div class="filter-list" id="filter-list">
+                    <div class="loading"><div class="spinner"></div></div>
+                </div>
+            </div>
+
+            <!-- Labels -->
+            <div class="section">
+                <div class="section-header">
+                    <h2>Labels</h2>
+                    <button class="btn btn-primary" onclick="showCreateLabel()">➕ New Label</button>
+                </div>
+                <div class="label-list" id="label-list">
                     <div class="loading"><div class="spinner"></div></div>
                 </div>
             </div>
@@ -717,6 +1086,259 @@
             loadReceipts();
             loadPending();
         }
+
+        // =============================================
+        // INBOX CLEANUP FUNCTIONS
+        // =============================================
+
+        function getCleanupAccount() {
+            return document.getElementById('cleanup-account')?.value || 'kaplan.brian@gmail.com';
+        }
+
+        async function loadCleanupStats() {
+            const account = getCleanupAccount();
+            const data = await apiCall(`/api/gmail/cleanup/inbox-stats?account=${encodeURIComponent(account)}`);
+
+            if (data.ok) {
+                document.getElementById('stat-inbox').textContent = data.stats.inbox?.toLocaleString() || '0';
+                document.getElementById('stat-unread').textContent = data.stats.unread?.toLocaleString() || '0';
+                document.getElementById('stat-promotions').textContent = data.stats.promotions?.toLocaleString() || '0';
+                document.getElementById('stat-social').textContent = data.stats.social?.toLocaleString() || '0';
+            }
+        }
+
+        async function loadTopSenders() {
+            const account = getCleanupAccount();
+            const container = document.getElementById('sender-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            const data = await apiCall(`/api/gmail/cleanup/top-senders?account=${encodeURIComponent(account)}&days=30&limit=20`);
+
+            if (data.ok && data.senders?.length) {
+                container.innerHTML = data.senders.map(sender => `
+                    <div class="sender-item">
+                        <div class="sender-avatar">${(sender.name || sender.email)[0].toUpperCase()}</div>
+                        <div class="sender-info">
+                            <div class="sender-name">${escapeHtml(sender.name || 'Unknown')}</div>
+                            <div class="sender-email">${escapeHtml(sender.email)}</div>
+                        </div>
+                        <div class="sender-badges">
+                            ${sender.is_promotional ? '<span class="badge promo">Promo</span>' : ''}
+                            ${sender.is_newsletter ? '<span class="badge newsletter">Newsletter</span>' : ''}
+                        </div>
+                        <div class="sender-count">${sender.count}</div>
+                        <div class="sender-actions">
+                            <button class="btn btn-secondary" onclick="bulkDelete('${escapeHtml(sender.email)}')">🗑️ Delete All</button>
+                            <button class="btn btn-danger" onclick="unsubscribe('${escapeHtml(sender.email)}')">🚫 Block</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No senders found or unable to load</p></div>';
+            }
+        }
+
+        async function loadFilters() {
+            const account = getCleanupAccount();
+            const container = document.getElementById('filter-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            const data = await apiCall(`/api/gmail/cleanup/filters?account=${encodeURIComponent(account)}`);
+
+            if (data.ok && data.filters?.length) {
+                container.innerHTML = data.filters.map(filter => `
+                    <div class="filter-item">
+                        <div class="filter-info">
+                            <div class="filter-criteria">
+                                ${filter.from ? `From: ${escapeHtml(filter.from)}` : ''}
+                                ${filter.subject ? `Subject: ${escapeHtml(filter.subject)}` : ''}
+                                ${filter.query ? `Query: ${escapeHtml(filter.query)}` : ''}
+                            </div>
+                            <div class="filter-action">
+                                ${filter.action_delete ? '→ Delete' : ''}
+                                ${filter.action_archive ? '→ Archive' : ''}
+                            </div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteFilter('${filter.id}')" title="Delete filter">✕</button>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No filters found</p></div>';
+            }
+        }
+
+        async function loadLabels() {
+            const account = getCleanupAccount();
+            const container = document.getElementById('label-list');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            const data = await apiCall(`/api/gmail/cleanup/labels?account=${encodeURIComponent(account)}`);
+
+            if (data.ok && data.labels?.length) {
+                // Only show user labels, not system ones
+                const userLabels = data.labels.filter(l => l.type === 'user');
+                container.innerHTML = userLabels.map(label => `
+                    <div class="label-item">
+                        <div class="label-info">
+                            <div class="label-name">📁 ${escapeHtml(label.name)}</div>
+                            <div class="label-count">${label.messages_total || 0} messages (${label.messages_unread || 0} unread)</div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteLabel('${label.id}', '${escapeHtml(label.name)}')" title="Delete label">✕</button>
+                    </div>
+                `).join('') || '<div class="empty-state"><p>No custom labels</p></div>';
+            } else {
+                container.innerHTML = '<div class="empty-state"><div class="icon">🏷️</div><p>No labels found</p></div>';
+            }
+        }
+
+        async function quickClean(type) {
+            const account = getCleanupAccount();
+            const btn = event.target.closest('.action-card');
+            btn.style.opacity = '0.5';
+            btn.style.pointerEvents = 'none';
+
+            try {
+                const data = await apiCall('/api/gmail/cleanup/quick-clean', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ account, type, days: 7 })
+                });
+
+                if (data.ok) {
+                    showToast(`✅ Deleted ${data.deleted} emails!`);
+                    loadCleanupStats();
+                } else {
+                    showToast(`❌ ${data.error || 'Failed'}`, true);
+                }
+            } finally {
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+            }
+        }
+
+        async function bulkDelete(sender) {
+            if (!confirm(`Delete ALL emails from ${sender}?`)) return;
+
+            const account = getCleanupAccount();
+            showToast('🔄 Deleting...');
+
+            const data = await apiCall('/api/gmail/cleanup/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ account, sender, trash: true })
+            });
+
+            if (data.ok) {
+                showToast(`✅ Deleted ${data.deleted} emails from ${sender}`);
+                loadTopSenders();
+                loadCleanupStats();
+            } else {
+                showToast(`❌ ${data.error || 'Failed'}`, true);
+            }
+        }
+
+        async function unsubscribe(sender) {
+            if (!confirm(`Block ALL future emails from ${sender}? This creates a filter to auto-delete.`)) return;
+
+            const account = getCleanupAccount();
+            showToast('🔄 Creating filter...');
+
+            const data = await apiCall('/api/gmail/cleanup/unsubscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ account, sender, action: 'delete' })
+            });
+
+            if (data.ok) {
+                showToast(`✅ Blocked! Future emails from ${sender} will be auto-deleted`);
+                loadFilters();
+            } else {
+                showToast(`❌ ${data.error || 'Failed'}`, true);
+            }
+        }
+
+        async function deleteFilter(filterId) {
+            if (!confirm('Delete this filter?')) return;
+
+            const account = getCleanupAccount();
+            const data = await apiCall(`/api/gmail/cleanup/filters/${filterId}?account=${encodeURIComponent(account)}`, {
+                method: 'DELETE'
+            });
+
+            if (data.ok) {
+                showToast('✅ Filter deleted');
+                loadFilters();
+            } else {
+                showToast(`❌ ${data.error || 'Failed'}`, true);
+            }
+        }
+
+        async function deleteLabel(labelId, labelName) {
+            if (!confirm(`Delete label "${labelName}"? Emails will not be deleted.`)) return;
+
+            const account = getCleanupAccount();
+            const data = await apiCall(`/api/gmail/cleanup/labels/${labelId}?account=${encodeURIComponent(account)}`, {
+                method: 'DELETE'
+            });
+
+            if (data.ok) {
+                showToast('✅ Label deleted');
+                loadLabels();
+            } else {
+                showToast(`❌ ${data.error || 'Failed'}`, true);
+            }
+        }
+
+        function showCreateFilter() {
+            const sender = prompt('Enter sender email or domain to block:');
+            if (sender) unsubscribe(sender);
+        }
+
+        function showCreateLabel() {
+            const name = prompt('Enter new label name:');
+            if (name) createLabel(name);
+        }
+
+        async function createLabel(name) {
+            const account = getCleanupAccount();
+            const data = await apiCall('/api/gmail/cleanup/labels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ account, name })
+            });
+
+            if (data.ok) {
+                showToast(`✅ Created label "${name}"`);
+                loadLabels();
+            } else {
+                showToast(`❌ ${data.error || 'Failed'}`, true);
+            }
+        }
+
+        function showToast(message, isError = false) {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // Load cleanup data when tab is clicked
+        document.querySelector('[data-tab="cleanup"]')?.addEventListener('click', () => {
+            loadCleanupStats();
+            loadTopSenders();
+            loadFilters();
+            loadLabels();
+        });
     </script>
 </body>
 </html>

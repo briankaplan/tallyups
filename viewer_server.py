@@ -4894,6 +4894,191 @@ def attach_receipt_to_transaction():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+# =============================================================================
+# iOS APP - TRANSACTION MANAGEMENT ENDPOINTS
+# =============================================================================
+
+@csrf_exempt_route
+@app.route("/api/transactions/<int:tx_id>/link", methods=["POST"])
+@login_required
+def link_receipt_to_transaction(tx_id):
+    """
+    Link a receipt to a transaction (iOS app endpoint).
+
+    Body:
+    {
+        "receipt_id": "abc123"  // Receipt ID from library
+    }
+    """
+    try:
+        data = request.get_json() or {}
+        receipt_id = data.get('receipt_id')
+
+        if not receipt_id:
+            return jsonify({'ok': False, 'error': 'Missing receipt_id'}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get the receipt's URL from the receipts table or incoming_receipts
+        receipt_url = None
+
+        # Try incoming_receipts first
+        cursor.execute('''
+            SELECT receipt_image_url, r2_url FROM incoming_receipts WHERE id = %s
+        ''', (receipt_id,))
+        receipt = cursor.fetchone()
+        if receipt:
+            receipt_url = receipt.get('r2_url') or receipt.get('receipt_image_url')
+
+        # If not found, try by transaction _index (receipt_id might be a transaction index)
+        if not receipt_url:
+            try:
+                cursor.execute('''
+                    SELECT r2_url, receipt_url FROM transactions WHERE _index = %s
+                ''', (int(receipt_id),))
+                tx = cursor.fetchone()
+                if tx:
+                    receipt_url = tx.get('r2_url') or tx.get('receipt_url')
+            except ValueError:
+                pass
+
+        if not receipt_url:
+            cursor.close()
+            return_db_connection(conn)
+            return jsonify({'ok': False, 'error': 'Receipt not found'}), 404
+
+        # Update the transaction with the receipt URL
+        cursor.execute('''
+            UPDATE transactions
+            SET r2_url = %s, review_status = 'matched'
+            WHERE _index = %s
+        ''', (receipt_url, tx_id))
+
+        # If this was an incoming receipt, mark it as matched
+        cursor.execute('''
+            UPDATE incoming_receipts
+            SET status = 'matched', matched_transaction_id = %s
+            WHERE id = %s
+        ''', (tx_id, receipt_id))
+
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'message': f'Receipt linked to transaction {tx_id}',
+            'receipt_url': receipt_url
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@csrf_exempt_route
+@app.route("/api/transactions/<int:tx_id>/exclude", methods=["POST"])
+@login_required
+def exclude_transaction(tx_id):
+    """
+    Exclude or unexclude a transaction from receipt matching (iOS app endpoint).
+
+    Body:
+    {
+        "excluded": true,              // Whether to exclude
+        "exclusion_reason": "optional" // Reason for exclusion
+    }
+    """
+    try:
+        data = request.get_json() or {}
+        excluded = data.get('excluded', True)
+        reason = data.get('exclusion_reason', '')
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        if excluded:
+            # Mark as excluded
+            cursor.execute('''
+                UPDATE transactions
+                SET review_status = 'excluded', notes = CONCAT(COALESCE(notes, ''), %s)
+                WHERE _index = %s
+            ''', (f' [Excluded: {reason}]' if reason else ' [Excluded]', tx_id))
+        else:
+            # Unexclude - set back to pending or matched based on receipt
+            cursor.execute('''
+                UPDATE transactions
+                SET review_status = CASE WHEN r2_url IS NOT NULL THEN 'matched' ELSE 'pending' END
+                WHERE _index = %s
+            ''', (tx_id,))
+
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'message': f'Transaction {tx_id} {"excluded" if excluded else "unexcluded"}',
+            'excluded': excluded
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@csrf_exempt_route
+@app.route("/api/transactions/<int:tx_id>/unlink", methods=["POST"])
+@login_required
+def unlink_receipt_from_transaction(tx_id):
+    """
+    Unlink a receipt from a transaction (iOS app endpoint).
+
+    Body:
+    {
+        "receipt_id": "abc123"  // Receipt ID to unlink (optional, clears all if not provided)
+    }
+    """
+    try:
+        data = request.get_json() or {}
+        receipt_id = data.get('receipt_id')
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Clear the receipt URL from the transaction
+        cursor.execute('''
+            UPDATE transactions
+            SET r2_url = NULL, receipt_url = NULL, review_status = 'pending'
+            WHERE _index = %s
+        ''', (tx_id,))
+
+        # If a specific receipt was mentioned, unlink it in incoming_receipts too
+        if receipt_id:
+            cursor.execute('''
+                UPDATE incoming_receipts
+                SET status = 'pending', matched_transaction_id = NULL
+                WHERE id = %s AND matched_transaction_id = %s
+            ''', (receipt_id, tx_id))
+
+        conn.commit()
+        cursor.close()
+        return_db_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'message': f'Receipt unlinked from transaction {tx_id}'
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @app.route("/api/transaction/update", methods=["POST"])
 @login_required
 def update_transaction_field():
@@ -6478,6 +6663,73 @@ def api_ai_apple_split_all():
 # =============================================================================
 # CONTACT MANAGEMENT ENDPOINTS
 # =============================================================================
+
+@app.route("/api/contacts", methods=["GET"])
+def api_contacts_list():
+    """
+    List contacts with optional search (iOS app endpoint).
+
+    Query params:
+    - search: Optional search query
+    - limit: Max results (default 100)
+
+    Returns: { contacts: [...], total: N }
+    """
+    # Auth check
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if admin_key != expected_key:
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Authentication required'}), 401
+
+    search = request.args.get('search', '')
+    limit = request.args.get('limit', 100, type=int)
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        if search:
+            search_pattern = f'%{search}%'
+            cursor.execute('''
+                SELECT id, name, first_name, last_name, email, phone, company, job_title, category
+                FROM contacts
+                WHERE name LIKE %s OR email LIKE %s OR company LIKE %s
+                ORDER BY name
+                LIMIT %s
+            ''', (search_pattern, search_pattern, search_pattern, limit))
+        else:
+            cursor.execute('''
+                SELECT id, name, first_name, last_name, email, phone, company, job_title, category
+                FROM contacts
+                ORDER BY name
+                LIMIT %s
+            ''', (limit,))
+
+        rows = cursor.fetchall()
+        cursor.close()
+        return_db_connection(conn)
+
+        contacts = []
+        for row in rows:
+            contacts.append({
+                'id': str(row.get('id', '')),
+                'name': row.get('name') or f"{row.get('first_name', '')} {row.get('last_name', '')}".strip(),
+                'email': row.get('email'),
+                'phone': row.get('phone'),
+                'company': row.get('company'),
+                'tags': [row.get('category')] if row.get('category') else []
+            })
+
+        return jsonify({
+            'contacts': contacts,
+            'total': len(contacts)
+        })
+
+    except Exception as e:
+        print(f"Contacts list error: {e}")
+        return jsonify({'contacts': [], 'total': 0, 'error': str(e)})
+
 
 @app.route("/api/contacts/search", methods=["GET"])
 def api_contacts_search():
@@ -15422,6 +15674,479 @@ def gmail_disconnect(account_email):
 
 
 # =============================================================================
+# GMAIL INBOX CLEANUP API
+# =============================================================================
+
+def get_gmail_service_for_account(account_email):
+    """Get authenticated Gmail service for an account."""
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+    from google.auth.transport.requests import Request
+    from pathlib import Path
+    import json
+
+    if account_email not in GMAIL_ACCOUNTS:
+        return None
+
+    account_info = GMAIL_ACCOUNTS[account_email]
+    token_file = account_info['token_file']
+
+    # Try multiple token locations
+    token_dirs = [
+        Path('gmail_tokens'),
+        Path('receipt-system/gmail_tokens'),
+        Path('../Task/receipt-system/gmail_tokens'),
+    ]
+
+    creds = None
+    for token_dir in token_dirs:
+        token_path = token_dir / token_file
+        if token_path.exists():
+            try:
+                with open(token_path, 'r') as f:
+                    token_data = json.load(f)
+                creds = Credentials.from_authorized_user_info(token_data)
+                break
+            except Exception as e:
+                logger.warning(f"Could not load token from {token_path}: {e}")
+                continue
+
+    if not creds:
+        return None
+
+    # Refresh if expired
+    if creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+            # Save refreshed token
+            for token_dir in token_dirs:
+                token_path = token_dir / token_file
+                if token_path.parent.exists():
+                    with open(token_path, 'w') as f:
+                        f.write(creds.to_json())
+                    break
+        except Exception as e:
+            logger.warning(f"Could not refresh token: {e}")
+            return None
+
+    try:
+        return build('gmail', 'v1', credentials=creds, cache_discovery=False)
+    except Exception as e:
+        logger.error(f"Could not build Gmail service: {e}")
+        return None
+
+
+@app.route("/api/gmail/cleanup/top-senders", methods=["GET"])
+@login_required
+def gmail_top_senders():
+    """Get top email senders by volume for cleanup analysis."""
+    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+    days = int(request.args.get('days', 30))
+    limit = int(request.args.get('limit', 50))
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        # Search for emails in the last N days
+        import datetime
+        after_date = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%Y/%m/%d')
+        query = f"after:{after_date}"
+
+        # Get message list
+        results = service.users().messages().list(
+            userId='me', q=query, maxResults=500
+        ).execute()
+
+        messages = results.get('messages', [])
+        sender_counts = {}
+        sender_details = {}
+
+        # Analyze senders
+        for msg in messages[:500]:
+            try:
+                msg_data = service.users().messages().get(
+                    userId='me', id=msg['id'], format='metadata',
+                    metadataHeaders=['From', 'List-Unsubscribe']
+                ).execute()
+
+                headers = {h['name']: h['value'] for h in msg_data.get('payload', {}).get('headers', [])}
+                from_header = headers.get('From', 'Unknown')
+                unsubscribe = headers.get('List-Unsubscribe', '')
+
+                # Parse email from "Name <email@domain.com>" format
+                import re
+                email_match = re.search(r'<([^>]+)>', from_header)
+                email = email_match.group(1) if email_match else from_header
+                domain = email.split('@')[-1] if '@' in email else 'unknown'
+
+                if email not in sender_counts:
+                    sender_counts[email] = 0
+                    sender_details[email] = {
+                        'email': email,
+                        'name': from_header.split('<')[0].strip().strip('"'),
+                        'domain': domain,
+                        'unsubscribe': unsubscribe,
+                        'labels': msg_data.get('labelIds', [])
+                    }
+                sender_counts[email] += 1
+            except:
+                continue
+
+        # Sort by count and return top senders
+        top_senders = []
+        for email, count in sorted(sender_counts.items(), key=lambda x: -x[1])[:limit]:
+            details = sender_details[email]
+            details['count'] = count
+            details['is_promotional'] = any(label in details['labels'] for label in ['CATEGORY_PROMOTIONS', 'CATEGORY_SOCIAL', 'CATEGORY_UPDATES'])
+            details['is_newsletter'] = 'newsletter' in email.lower() or 'noreply' in email.lower() or bool(details['unsubscribe'])
+            top_senders.append(details)
+
+        return jsonify({
+            'ok': True,
+            'account': account_email,
+            'days': days,
+            'total_analyzed': len(messages),
+            'senders': top_senders
+        })
+
+    except Exception as e:
+        logger.error(f"Gmail top senders error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/gmail/cleanup/bulk-delete", methods=["POST"])
+@login_required
+def gmail_bulk_delete():
+    """Bulk delete emails from a sender or matching a query."""
+    data = request.get_json() or {}
+    account_email = data.get('account', 'kaplan.brian@gmail.com')
+    sender = data.get('sender')
+    query = data.get('query')
+    trash = data.get('trash', True)
+
+    if not sender and not query:
+        return jsonify({'ok': False, 'error': 'sender or query required'}), 400
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        search_query = f"from:{sender}" if sender else query
+        all_message_ids = []
+        page_token = None
+
+        while True:
+            results = service.users().messages().list(
+                userId='me', q=search_query, maxResults=500, pageToken=page_token
+            ).execute()
+            messages = results.get('messages', [])
+            all_message_ids.extend([m['id'] for m in messages])
+            page_token = results.get('nextPageToken')
+            if not page_token or len(all_message_ids) >= 5000:
+                break
+
+        if not all_message_ids:
+            return jsonify({'ok': True, 'deleted': 0, 'message': 'No matching emails found'})
+
+        deleted_count = 0
+        for i in range(0, len(all_message_ids), 100):
+            batch_ids = all_message_ids[i:i+100]
+            try:
+                if trash:
+                    service.users().messages().batchModify(
+                        userId='me',
+                        body={'ids': batch_ids, 'addLabelIds': ['TRASH'], 'removeLabelIds': ['INBOX']}
+                    ).execute()
+                else:
+                    service.users().messages().batchDelete(userId='me', body={'ids': batch_ids}).execute()
+                deleted_count += len(batch_ids)
+            except Exception as e:
+                logger.warning(f"Batch delete error: {e}")
+
+        return jsonify({'ok': True, 'deleted': deleted_count, 'query': search_query})
+
+    except Exception as e:
+        logger.error(f"Gmail bulk delete error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/gmail/cleanup/unsubscribe", methods=["POST"])
+@login_required
+def gmail_unsubscribe():
+    """Create a filter to auto-delete future emails from a sender."""
+    data = request.get_json() or {}
+    account_email = data.get('account', 'kaplan.brian@gmail.com')
+    sender = data.get('sender')
+    action = data.get('action', 'delete')
+
+    if not sender:
+        return jsonify({'ok': False, 'error': 'sender required'}), 400
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        filter_action = {'removeLabelIds': ['INBOX']}
+        if action == 'delete':
+            filter_action['addLabelIds'] = ['TRASH']
+
+        filter_body = {'criteria': {'from': sender}, 'action': filter_action}
+        created_filter = service.users().settings().filters().create(userId='me', body=filter_body).execute()
+
+        return jsonify({
+            'ok': True,
+            'filter_id': created_filter.get('id'),
+            'sender': sender,
+            'message': f'Future emails from {sender} will be auto-deleted'
+        })
+
+    except Exception as e:
+        logger.error(f"Gmail unsubscribe error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/gmail/cleanup/filters", methods=["GET"])
+@login_required
+def gmail_list_filters():
+    """List all Gmail filters."""
+    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        results = service.users().settings().filters().list(userId='me').execute()
+        filters = results.get('filter', [])
+
+        enriched = []
+        for f in filters:
+            criteria = f.get('criteria', {})
+            action = f.get('action', {})
+            enriched.append({
+                'id': f.get('id'),
+                'from': criteria.get('from'),
+                'to': criteria.get('to'),
+                'subject': criteria.get('subject'),
+                'query': criteria.get('query'),
+                'action_delete': 'TRASH' in action.get('addLabelIds', []),
+                'action_archive': 'INBOX' in action.get('removeLabelIds', []),
+            })
+
+        return jsonify({'ok': True, 'filters': enriched, 'count': len(enriched)})
+
+    except Exception as e:
+        logger.error(f"Gmail list filters error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/gmail/cleanup/filters/<filter_id>", methods=["DELETE"])
+@login_required
+def gmail_delete_filter(filter_id):
+    """Delete a Gmail filter."""
+    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        service.users().settings().filters().delete(userId='me', id=filter_id).execute()
+        return jsonify({'ok': True, 'deleted': filter_id})
+
+    except Exception as e:
+        logger.error(f"Gmail delete filter error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/gmail/cleanup/labels", methods=["GET"])
+@login_required
+def gmail_list_labels():
+    """List all Gmail labels with message counts."""
+    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        results = service.users().labels().list(userId='me').execute()
+        labels = []
+        for label in results.get('labels', []):
+            try:
+                info = service.users().labels().get(userId='me', id=label['id']).execute()
+                labels.append({
+                    'id': label['id'],
+                    'name': label['name'],
+                    'type': label.get('type', 'user'),
+                    'messages_total': info.get('messagesTotal', 0),
+                    'messages_unread': info.get('messagesUnread', 0),
+                })
+            except:
+                labels.append({'id': label['id'], 'name': label['name'], 'type': label.get('type', 'user')})
+
+        labels.sort(key=lambda x: (0 if x['type'] == 'system' else 1, x['name']))
+        return jsonify({'ok': True, 'labels': labels})
+
+    except Exception as e:
+        logger.error(f"Gmail list labels error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/gmail/cleanup/labels", methods=["POST"])
+@login_required
+def gmail_create_label():
+    """Create a new Gmail label."""
+    data = request.get_json() or {}
+    account_email = data.get('account', 'kaplan.brian@gmail.com')
+    label_name = data.get('name')
+
+    if not label_name:
+        return jsonify({'ok': False, 'error': 'name required'}), 400
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        label = service.users().labels().create(userId='me', body={
+            'name': label_name,
+            'labelListVisibility': 'labelShow',
+            'messageListVisibility': 'show'
+        }).execute()
+
+        return jsonify({'ok': True, 'label': {'id': label['id'], 'name': label['name']}})
+
+    except Exception as e:
+        if 'Label name exists' in str(e):
+            return jsonify({'ok': False, 'error': 'Label already exists'}), 409
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/gmail/cleanup/labels/<label_id>", methods=["DELETE"])
+@login_required
+def gmail_delete_label(label_id):
+    """Delete a Gmail label."""
+    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        service.users().labels().delete(userId='me', id=label_id).execute()
+        return jsonify({'ok': True, 'deleted': label_id})
+
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/gmail/cleanup/inbox-stats", methods=["GET"])
+@login_required
+def gmail_inbox_stats():
+    """Get inbox statistics for cleanup dashboard."""
+    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        categories = {
+            'inbox': 'in:inbox',
+            'unread': 'is:unread',
+            'promotions': 'category:promotions',
+            'social': 'category:social',
+            'updates': 'category:updates',
+            'spam': 'in:spam',
+            'trash': 'in:trash'
+        }
+
+        stats = {}
+        for name, query in categories.items():
+            try:
+                result = service.users().messages().list(userId='me', q=query, maxResults=1).execute()
+                stats[name] = result.get('resultSizeEstimate', 0)
+            except:
+                stats[name] = 0
+
+        profile = service.users().getProfile(userId='me').execute()
+
+        return jsonify({
+            'ok': True,
+            'account': account_email,
+            'email': profile.get('emailAddress'),
+            'total_messages': profile.get('messagesTotal', 0),
+            'stats': stats
+        })
+
+    except Exception as e:
+        logger.error(f"Gmail inbox stats error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/gmail/cleanup/quick-clean", methods=["POST"])
+@login_required
+def gmail_quick_clean():
+    """One-click cleanup for common spam patterns."""
+    data = request.get_json() or {}
+    account_email = data.get('account', 'kaplan.brian@gmail.com')
+    clean_type = data.get('type', 'promotions')
+    days_old = data.get('days', 7)
+
+    try:
+        service = get_gmail_service_for_account(account_email)
+        if not service:
+            return jsonify({'ok': False, 'error': 'Gmail not connected'}), 401
+
+        queries = {
+            'promotions': f'category:promotions older_than:{days_old}d',
+            'social': f'category:social older_than:{days_old}d',
+            'old_unread': f'is:unread older_than:30d -is:starred',
+            'newsletters': f'(from:newsletter OR from:noreply OR list:) older_than:{days_old}d -is:starred'
+        }
+
+        query = queries.get(clean_type, queries['promotions'])
+        all_message_ids = []
+        page_token = None
+
+        while len(all_message_ids) < 5000:
+            results = service.users().messages().list(
+                userId='me', q=query, maxResults=500, pageToken=page_token
+            ).execute()
+            messages = results.get('messages', [])
+            all_message_ids.extend([m['id'] for m in messages])
+            page_token = results.get('nextPageToken')
+            if not page_token:
+                break
+
+        if not all_message_ids:
+            return jsonify({'ok': True, 'deleted': 0, 'message': 'No matching emails found'})
+
+        deleted_count = 0
+        for i in range(0, len(all_message_ids), 100):
+            batch_ids = all_message_ids[i:i+100]
+            try:
+                service.users().messages().batchModify(
+                    userId='me',
+                    body={'ids': batch_ids, 'addLabelIds': ['TRASH'], 'removeLabelIds': ['INBOX']}
+                ).execute()
+                deleted_count += len(batch_ids)
+            except Exception as e:
+                logger.warning(f"Batch trash error: {e}")
+
+        return jsonify({'ok': True, 'deleted': deleted_count, 'type': clean_type})
+
+    except Exception as e:
+        logger.error(f"Gmail quick clean error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# =============================================================================
 # MERCHANT INTELLIGENCE PROCESSING ENDPOINT
 # =============================================================================
 
@@ -23840,6 +24565,66 @@ def api_contact_hub_suggest_contacts(transaction_index):
     except Exception as e:
         print(f"Suggest contacts error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/contact-hub/suggest", methods=["GET"])
+@login_required
+def api_contact_hub_suggest_by_merchant():
+    """
+    Suggest contacts based on merchant name (iOS app endpoint).
+
+    Query params:
+    - merchant: Merchant name to search for
+    - date: Optional date (YYYY-MM-DD) for context
+
+    Returns: { contacts: [...], total: N }
+    """
+    merchant = request.args.get('merchant', '')
+    date_str = request.args.get('date', '')
+    limit = int(request.args.get('limit', 10))
+
+    if not merchant:
+        return jsonify({'contacts': [], 'total': 0})
+
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+
+        # Search contacts whose company matches the merchant
+        search_pattern = f'%{merchant}%'
+        cursor.execute('''
+            SELECT id, name, first_name, last_name, email, phone, company, job_title, category
+            FROM contacts
+            WHERE company LIKE %s OR name LIKE %s
+            ORDER BY
+                CASE WHEN company LIKE %s THEN 0 ELSE 1 END,
+                name
+            LIMIT %s
+        ''', (search_pattern, search_pattern, search_pattern, limit))
+
+        rows = cursor.fetchall()
+        cursor.close()
+        return_db_connection(conn)
+
+        contacts = []
+        for row in rows:
+            contacts.append({
+                'id': str(row.get('id', '')),
+                'name': row.get('name') or f"{row.get('first_name', '')} {row.get('last_name', '')}".strip(),
+                'email': row.get('email'),
+                'phone': row.get('phone'),
+                'company': row.get('company'),
+                'tags': [row.get('category')] if row.get('category') else []
+            })
+
+        return jsonify({
+            'contacts': contacts,
+            'total': len(contacts)
+        })
+
+    except Exception as e:
+        print(f"Suggest contacts error: {e}")
+        return jsonify({'contacts': [], 'total': 0, 'error': str(e)})
 
 
 @app.route("/api/contact-hub/expense-contacts/<int:transaction_index>", methods=["GET"])
