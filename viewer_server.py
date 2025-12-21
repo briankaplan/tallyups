@@ -17,7 +17,7 @@ import zipfile
 import io
 from pathlib import Path
 from difflib import SequenceMatcher
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from flask import Flask, send_from_directory, jsonify, request, abort, Response, make_response, send_file, g
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -2638,7 +2638,7 @@ def health_check():
 
     health_data = {
         "status": "ok",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         "version": APP_VERSION,
         "build_time": APP_BUILD_TIME,
         "services": {}
@@ -3137,6 +3137,216 @@ def dashboard_stats():
             return_db_connection(conn)
         except Exception:
             pass
+
+
+# ===== Business Types Settings API =====
+@app.route("/api/settings/business-types", methods=["GET"])
+def get_business_types():
+    """Get all configured business types"""
+    conn = None
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        cursor.execute("""
+            SELECT setting_value FROM app_settings
+            WHERE setting_key = 'business_types'
+        """)
+        result = cursor.fetchone()
+
+        if result and result.get('setting_value'):
+            import json
+            types = json.loads(result['setting_value']) if isinstance(result['setting_value'], str) else result['setting_value']
+            return jsonify({"types": types, "ok": True})
+        else:
+            # Return defaults if not found
+            default_types = [
+                {"name": "Personal", "color": "#4a9eff"},
+                {"name": "Down Home", "color": "#00ff88"},
+                {"name": "Music City Rodeo", "color": "#ff66aa"},
+                {"name": "EM.co", "color": "#00d4ff"}
+            ]
+            return jsonify({"types": default_types, "ok": True})
+
+    except Exception as e:
+        print(f"Error getting business types: {e}")
+        return jsonify({"error": str(e), "types": []}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/settings/business-types", methods=["POST"])
+def add_business_type():
+    """Add a new business type"""
+    conn = None
+    try:
+        data = request.get_json()
+        name = data.get('name', '').strip()
+        color = data.get('color', '#00d4ff')
+
+        if not name:
+            return jsonify({"error": "Name is required"}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        # Get current business types
+        cursor.execute("""
+            SELECT setting_value FROM app_settings
+            WHERE setting_key = 'business_types'
+        """)
+        result = cursor.fetchone()
+
+        import json
+        if result and result.get('setting_value'):
+            types = json.loads(result['setting_value']) if isinstance(result['setting_value'], str) else result['setting_value']
+        else:
+            types = []
+
+        # Check for duplicate
+        if any(t['name'].lower() == name.lower() for t in types):
+            return jsonify({"error": f"Business type '{name}' already exists"}), 400
+
+        # Add new type
+        types.append({"name": name, "color": color})
+
+        # Update database
+        cursor.execute("""
+            INSERT INTO app_settings (setting_key, setting_value)
+            VALUES ('business_types', %s)
+            ON DUPLICATE KEY UPDATE setting_value = %s
+        """, (json.dumps(types), json.dumps(types)))
+        conn.commit()
+
+        return jsonify({"ok": True, "types": types})
+
+    except Exception as e:
+        print(f"Error adding business type: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/settings/business-types/<name>", methods=["DELETE"])
+def delete_business_type(name):
+    """Delete a business type"""
+    conn = None
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        # Get current business types
+        cursor.execute("""
+            SELECT setting_value FROM app_settings
+            WHERE setting_key = 'business_types'
+        """)
+        result = cursor.fetchone()
+
+        import json
+        if result and result.get('setting_value'):
+            types = json.loads(result['setting_value']) if isinstance(result['setting_value'], str) else result['setting_value']
+        else:
+            return jsonify({"error": "No business types found"}), 404
+
+        # Check if type exists
+        original_count = len(types)
+        types = [t for t in types if t['name'].lower() != name.lower()]
+
+        if len(types) == original_count:
+            return jsonify({"error": f"Business type '{name}' not found"}), 404
+
+        # Prevent deleting all types
+        if len(types) == 0:
+            return jsonify({"error": "Cannot delete all business types"}), 400
+
+        # Update database
+        cursor.execute("""
+            UPDATE app_settings SET setting_value = %s
+            WHERE setting_key = 'business_types'
+        """, (json.dumps(types),))
+        conn.commit()
+
+        return jsonify({"ok": True, "types": types})
+
+    except Exception as e:
+        print(f"Error deleting business type: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/settings/business-types/<name>", methods=["PUT"])
+def update_business_type(name):
+    """Update a business type's color"""
+    conn = None
+    try:
+        data = request.get_json()
+        new_color = data.get('color')
+        new_name = data.get('name')
+
+        if not new_color and not new_name:
+            return jsonify({"error": "Nothing to update"}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        # Get current business types
+        cursor.execute("""
+            SELECT setting_value FROM app_settings
+            WHERE setting_key = 'business_types'
+        """)
+        result = cursor.fetchone()
+
+        import json
+        if result and result.get('setting_value'):
+            types = json.loads(result['setting_value']) if isinstance(result['setting_value'], str) else result['setting_value']
+        else:
+            return jsonify({"error": "No business types found"}), 404
+
+        # Find and update
+        found = False
+        for t in types:
+            if t['name'].lower() == name.lower():
+                if new_color:
+                    t['color'] = new_color
+                if new_name:
+                    t['name'] = new_name
+                found = True
+                break
+
+        if not found:
+            return jsonify({"error": f"Business type '{name}' not found"}), 404
+
+        # Update database
+        cursor.execute("""
+            UPDATE app_settings SET setting_value = %s
+            WHERE setting_key = 'business_types'
+        """, (json.dumps(types),))
+        conn.commit()
+
+        return jsonify({"ok": True, "types": types})
+
+    except Exception as e:
+        print(f"Error updating business type: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
 
 
 @app.route("/api/location/nearby")
@@ -24973,7 +25183,7 @@ def api_atlas_calculate_relationship_scores():
                         last_interaction = None
 
                 if last_interaction:
-                    now = datetime.utcnow()
+                    now = datetime.now(timezone.utc).replace(tzinfo=None)
                     if hasattr(last_interaction, 'tzinfo') and last_interaction.tzinfo:
                         last_interaction = last_interaction.replace(tzinfo=None)
 
@@ -25055,8 +25265,8 @@ def api_atlas_sync_email_interactions():
                 accounts_checked.append(account_email)
 
                 # Get recent emails (last 30 days)
-                from datetime import datetime, timedelta
-                after_date = (datetime.utcnow() - timedelta(days=30)).strftime('%Y/%m/%d')
+                from datetime import datetime, timedelta, timezone as tz
+                after_date = (datetime.now(tz.utc) - timedelta(days=30)).strftime('%Y/%m/%d')
 
                 try:
                     results = service.users().messages().list(
@@ -25117,7 +25327,7 @@ def api_atlas_sync_email_interactions():
                                 import email.utils
                                 parsed_date = email.utils.parsedate_to_datetime(date_str)
                             except (ValueError, TypeError):
-                                parsed_date = datetime.utcnow()
+                                parsed_date = datetime.now(tz.utc)
 
                             # Check if interaction already exists
                             cursor.execute("""
