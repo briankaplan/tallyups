@@ -57,9 +57,31 @@
   }
 
   /**
-   * Inject design system CSS
+   * Inject design system CSS with critical inline styles to prevent FOUC
    */
   function injectDesignSystem() {
+    // Add critical inline styles IMMEDIATELY to prevent Flash of Unstyled Content
+    if (!document.querySelector('#app-shell-critical-css')) {
+      const criticalStyle = document.createElement('style');
+      criticalStyle.id = 'app-shell-critical-css';
+      criticalStyle.textContent = `
+        /* Critical CSS - prevents giant logo flash during page load */
+        .app-header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #12121a; border-bottom: 1px solid rgba(255,255,255,0.06); z-index: 150; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+        .app-header__logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: #f8fafc; font-weight: 600; font-size: 16px; }
+        .app-header__logo-icon { width: 32px; height: 32px; background: #00d4aa; color: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; }
+        .app-header__nav { display: none; }
+        .app-header__actions { display: flex; align-items: center; gap: 8px; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(18,18,26,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-around; padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 150; }
+        .bottom-nav__link { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 12px; color: #64748b; text-decoration: none; font-size: 10px; }
+        .bottom-nav__link.active { color: #00d4aa; }
+        .bottom-nav__icon { font-size: 20px; }
+        body { padding-top: 60px; padding-bottom: 80px; }
+        @media (min-width: 1024px) { .app-header__nav { display: flex; gap: 4px; } .bottom-nav { display: none; } body { padding-bottom: 0; } }
+      `;
+      document.head.insertBefore(criticalStyle, document.head.firstChild);
+    }
+
+    // Then load full design system CSS
     if (document.querySelector('link[href*="design-system.css"]')) return;
 
     const link = document.createElement('link');
