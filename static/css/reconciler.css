@@ -252,8 +252,8 @@ button:active{transform:translateY(0)}
 }
 .light .kbd{background:#eaf2ff;border-color:#c7d7f0;color:#2a4e88}
 
-/* Header */
-header{
+/* Header - Legacy styles, scoped to not affect .app-header */
+header:not(.app-header){
   display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:12px 20px;
   background:linear-gradient(180deg,#0e141a,#0a0f15);
@@ -261,7 +261,7 @@ header{
   position:sticky;top:0;z-index:100;
   box-shadow:0 2px 12px rgba(0,0,0,.5);
 }
-.light header{background:linear-gradient(180deg,#f6f9ff,#ffffff);box-shadow:0 2px 12px rgba(0,0,0,.1)}
+.light header:not(.app-header){background:linear-gradient(180deg,#f6f9ff,#ffffff);box-shadow:0 2px 12px rgba(0,0,0,.1)}
 
 .brand{display:flex;align-items:center;gap:12px}
 .brand h1{

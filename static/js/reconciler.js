@@ -6,10 +6,17 @@ let sortColumn = 'Chase Date';
 let sortAsc = true;
 let panzoomInstance = null;
 let currentRotation = 0;
+let wheelHandler = null; // Prevent duplicate wheel listeners
 
 // Undo system
 let undoStack = [];
 const MAX_UNDO_STACK = 50;
+
+// Debug mode - set to false in production
+const DEBUG_MODE = false;
+function debugLog(...args) {
+  if (DEBUG_MODE) console.log(...args);
+}
 
 // ============================================
 // Security: HTML escaping to prevent XSS
@@ -166,7 +173,7 @@ async function updateIncomingBadge() {
       badge.style.display = 'none';
     }
   } catch (e) {
-    console.log('Could not fetch incoming badge count:', e.message);
+    debugLog('Could not fetch incoming badge count:', e.message);
   }
 }
 
@@ -331,7 +338,7 @@ function saveUndoState(action, transactionIndex, oldData) {
     undoStack.shift(); // Remove oldest entry
   }
 
-  console.log(`Undo state saved: ${action} for transaction ${transactionIndex}`, undoEntry);
+  debugLog(`Undo state saved: ${action} for transaction ${transactionIndex}`, undoEntry);
 }
 
 async function undo() {
@@ -426,7 +433,7 @@ async function smartSearchMissing() {
     return;
   }
 
-  console.log(`🔍 Starting Smart Search: ${missingRows.length} receipts to find`);
+  debugLog(`🔍 Starting Smart Search: ${missingRows.length} receipts to find`);
 
   batchProcessCancelled = false;
 
@@ -570,7 +577,7 @@ async function smartSearchMissing() {
 
 function finishSmartSearch(found, total, startTime) {
   const elapsed = Math.round((Date.now() - startTime) / 1000);
-  console.log(`✅ Smart Search complete in ${elapsed}s: Found ${found} of ${total} receipts`);
+  debugLog(`✅ Smart Search complete in ${elapsed}s: Found ${found} of ${total} receipts`);
 
   addProgressLog(`\n✅ Smart Search complete! Found ${found} of ${total} receipts in ${elapsed}s`, 'ok');
   document.getElementById('progress-cancel-btn').style.display = 'none';
@@ -598,7 +605,7 @@ async function searchGmailForMissing() {
     return;
   }
 
-  console.log(`📧 Starting Gmail search: ${missingRows.length} receipts to find`);
+  debugLog(`📧 Starting Gmail search: ${missingRows.length} receipts to find`);
 
   batchProcessCancelled = false;
 
@@ -616,7 +623,7 @@ async function searchGmailForMissing() {
 
   for (const row of missingRows) {
     if (batchProcessCancelled) {
-      console.log('❌ Gmail search cancelled');
+      debugLog('❌ Gmail search cancelled');
       addProgressLog(`\n⚠️ Cancelled! Searched ${processed} of ${total}`, 'bad');
       document.getElementById('progress-cancel-btn').style.display = 'none';
       document.getElementById('progress-close-btn').style.display = 'block';
@@ -629,7 +636,7 @@ async function searchGmailForMissing() {
       const percent = Math.round((processed / total) * 100);
       updateProgress(processed, found, percent, total);
 
-      console.log(`[${processed}/${total}] Searching Gmail: ${row['Chase Description']?.substring(0, 40) || 'Unknown'}`);
+      debugLog(`[${processed}/${total}] Searching Gmail: ${row['Chase Description']?.substring(0, 40) || 'Unknown'}`);
 
       const res = await fetch('/search_gmail_receipt', {
         method: 'POST',
@@ -654,10 +661,10 @@ async function searchGmailForMissing() {
         row._newlyMatched = true;
 
         const merchant = row['Chase Description'] || 'Unknown';
-        console.log(`  ✓ Found in Gmail`);
+        debugLog(`  ✓ Found in Gmail`);
         addProgressLog(`✓ ${merchant.substring(0, 30)} → Found in email`, 'ok');
       } else {
-        console.log(`  ⊘ Not found in Gmail`);
+        debugLog(`  ⊘ Not found in Gmail`);
         addProgressLog(`⊘ ${(row['Chase Description'] || 'Unknown').substring(0, 30)} → Not found`, 'muted');
       }
 
@@ -670,7 +677,7 @@ async function searchGmailForMissing() {
   }
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);
-  console.log(`✅ Gmail search complete in ${elapsed}s: Found ${found} of ${total} receipts`);
+  debugLog(`✅ Gmail search complete in ${elapsed}s: Found ${found} of ${total} receipts`);
 
   addProgressLog(`\n✅ Complete! Found ${found} receipts in ${elapsed}s`, 'ok');
   document.getElementById('progress-cancel-btn').style.display = 'none';
@@ -696,7 +703,7 @@ async function searchIMessageForMissing() {
     return;
   }
 
-  console.log(`💬 Starting iMessage search: ${missingRows.length} receipts to find`);
+  debugLog(`💬 Starting iMessage search: ${missingRows.length} receipts to find`);
 
   batchProcessCancelled = false;
 
@@ -714,7 +721,7 @@ async function searchIMessageForMissing() {
 
   for (const row of missingRows) {
     if (batchProcessCancelled) {
-      console.log('❌ iMessage search cancelled');
+      debugLog('❌ iMessage search cancelled');
       addProgressLog(`\n⚠️ Cancelled! Searched ${processed} of ${total}`, 'bad');
       document.getElementById('progress-cancel-btn').style.display = 'none';
       document.getElementById('progress-close-btn').style.display = 'block';
@@ -727,7 +734,7 @@ async function searchIMessageForMissing() {
       const percent = Math.round((processed / total) * 100);
       updateProgress(processed, found, percent, total);
 
-      console.log(`[${processed}/${total}] Searching iMessage: ${row['Chase Description']?.substring(0, 40) || 'Unknown'}`);
+      debugLog(`[${processed}/${total}] Searching iMessage: ${row['Chase Description']?.substring(0, 40) || 'Unknown'}`);
 
       const res = await fetch('/search_imessage_receipt', {
         method: 'POST',
@@ -752,10 +759,10 @@ async function searchIMessageForMissing() {
         row._newlyMatched = true;
 
         const merchant = row['Chase Description'] || 'Unknown';
-        console.log(`  ✓ Found in iMessage`);
+        debugLog(`  ✓ Found in iMessage`);
         addProgressLog(`✓ ${merchant.substring(0, 30)} → Found in messages`, 'ok');
       } else {
-        console.log(`  ⊘ Not found in iMessage`);
+        debugLog(`  ⊘ Not found in iMessage`);
         addProgressLog(`⊘ ${(row['Chase Description'] || 'Unknown').substring(0, 30)} → Not found`, 'muted');
       }
 
@@ -768,7 +775,7 @@ async function searchIMessageForMissing() {
   }
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);
-  console.log(`✅ iMessage search complete in ${elapsed}s: Found ${found} of ${total} receipts`);
+  debugLog(`✅ iMessage search complete in ${elapsed}s: Found ${found} of ${total} receipts`);
 
   addProgressLog(`\n✅ Complete! Found ${found} receipts in ${elapsed}s`, 'ok');
   document.getElementById('progress-cancel-btn').style.display = 'none';
@@ -818,24 +825,24 @@ async function findMissingReceipts() {
     return;
   }
 
-  console.log(`🚀 Starting batch process: ${missingRows.length} receipts to process`);
+  debugLog(`🚀 Starting batch process: ${missingRows.length} receipts to process`);
 
   // Reset cancel flag
   batchProcessCancelled = false;
 
   // Show progress modal
   const modal = document.getElementById('progress-modal');
-  console.log('📊 Showing progress modal...');
+  debugLog('📊 Showing progress modal...');
   modal.classList.add('active');
-  console.log('📊 Modal classList:', modal.classList.toString());
-  console.log('📊 Modal display:', window.getComputedStyle(modal).display);
-  console.log('📊 Modal z-index:', window.getComputedStyle(modal).zIndex);
+  debugLog('📊 Modal classList:', modal.classList.toString());
+  debugLog('📊 Modal display:', window.getComputedStyle(modal).display);
+  debugLog('📊 Modal z-index:', window.getComputedStyle(modal).zIndex);
 
   document.getElementById('progress-close-btn').style.display = 'none';
   document.getElementById('progress-cancel-btn').style.display = 'block';
   document.getElementById('progress-log').innerHTML = '<div style="color:var(--muted)">Starting batch process...</div>';
 
-  console.log('✅ Progress modal configuration complete!');
+  debugLog('✅ Progress modal configuration complete!');
 
   let processed = 0;
   let found = 0;
@@ -846,7 +853,7 @@ async function findMissingReceipts() {
   for (const row of missingRows) {
     // Check if cancelled
     if (batchProcessCancelled) {
-      console.log('❌ Batch process cancelled by user');
+      debugLog('❌ Batch process cancelled by user');
       addProgressLog(`\n⚠️ Cancelled! Processed ${processed} of ${total}`, 'bad');
       document.getElementById('progress-cancel-btn').style.display = 'none';
       document.getElementById('progress-close-btn').style.display = 'block';
@@ -860,7 +867,7 @@ async function findMissingReceipts() {
       const percent = Math.round((processed / total) * 100);
       updateProgress(processed, found, percent, total);
 
-      console.log(`[${processed}/${total}] Processing: ${row['Chase Description']?.substring(0, 40) || 'Unknown'}`);
+      debugLog(`[${processed}/${total}] Processing: ${row['Chase Description']?.substring(0, 40) || 'Unknown'}`);
 
       // Call AI match endpoint for this row
       const res = await fetch('/ai_match', {
@@ -886,10 +893,10 @@ async function findMissingReceipts() {
         // Log the match
         const merchant = row['Chase Description'] || 'Unknown';
         const confidence = data.result.ai_confidence || 0;
-        console.log(`  ✓ Found receipt: ${confidence}% confidence`);
+        debugLog(`  ✓ Found receipt: ${confidence}% confidence`);
         addProgressLog(`✓ ${merchant.substring(0, 30)} → ${confidence}% match`, 'ok');
       } else {
-        console.log(`  ⊘ No match found`);
+        debugLog(`  ⊘ No match found`);
         addProgressLog(`⊘ ${(row['Chase Description'] || 'Unknown').substring(0, 30)} → No match`, 'muted');
       }
 
@@ -904,7 +911,7 @@ async function findMissingReceipts() {
 
   // Calculate time
   const elapsed = Math.round((Date.now() - startTime) / 1000);
-  console.log(`✅ Batch complete in ${elapsed}s: Found ${found} of ${total} receipts`);
+  debugLog(`✅ Batch complete in ${elapsed}s: Found ${found} of ${total} receipts`);
 
   // Complete - hide cancel, show close button
   document.getElementById('progress-cancel-btn').style.display = 'none';
@@ -923,14 +930,14 @@ async function findMissingReceipts() {
       }
     });
     renderTable();
-    console.log('🎨 Removed newly-matched highlighting');
+    debugLog('🎨 Removed newly-matched highlighting');
   }, 30000);
 }
 
 function cancelBatchProcess() {
   if (confirm('Cancel batch processing?')) {
     batchProcessCancelled = true;
-    console.log('🛑 Cancelling batch process...');
+    debugLog('🛑 Cancelling batch process...');
   }
 }
 
@@ -2004,10 +2011,15 @@ function loadReceipt() {
       contain: 'inside'
     });
 
-    wrap.addEventListener('wheel', (e) => {
+    // Remove old wheel handler before adding new one to prevent memory leak
+    if (wheelHandler) {
+      wrap.removeEventListener('wheel', wheelHandler);
+    }
+    wheelHandler = (e) => {
       e.preventDefault();
       panzoomInstance.zoomWithWheel(e);
-    });
+    };
+    wrap.addEventListener('wheel', wheelHandler);
   };
 
   // Error handling - try fallback if R2 URL fails
@@ -2563,7 +2575,7 @@ async function quickUpdateField(field, value) {
     // Show success toast
     showToast(`${field} updated`, '✓');
 
-    console.log(`✅ Quick Viewer: Updated ${field} = "${value}" for transaction #${rowIndex}`);
+    debugLog(`✅ Quick Viewer: Updated ${field} = "${value}" for transaction #${rowIndex}`);
   } catch (e) {
     showToast(`Failed to update ${field}: ${e.message}`, '❌');
     console.error(`❌ Quick Viewer update failed:`, e);
@@ -2952,7 +2964,7 @@ async function loadCalendarSettings() {
       }
     }
   } catch (err) {
-    console.log('No saved calendar settings found, using defaults');
+    debugLog('No saved calendar settings found, using defaults');
   }
 }
 
@@ -3536,12 +3548,12 @@ async function processReceiptImage(file) {
       // IMPORTANT: Store the filename and R2 URL for later use when submitting the form
       if (result.filename) {
         lastOCRReceiptFilename = result.filename;
-        console.log('Receipt saved as:', result.filename);
+        debugLog('Receipt saved as:', result.filename);
       }
       // Store R2 URL (check both field names for compatibility)
       if (result.receipt_url || result.r2_url) {
         lastOCRReceiptR2Url = result.receipt_url || result.r2_url;
-        console.log('Receipt uploaded to R2:', lastOCRReceiptR2Url);
+        debugLog('Receipt uploaded to R2:', lastOCRReceiptR2Url);
       }
 
       // Show success with confidence
@@ -3659,11 +3671,11 @@ async function submitManualEntry(event) {
     // Include the receipt file and R2 URL from OCR if available
     if (lastOCRReceiptFilename) {
       requestBody.receipt_file = lastOCRReceiptFilename;
-      console.log('Including receipt file:', lastOCRReceiptFilename);
+      debugLog('Including receipt file:', lastOCRReceiptFilename);
     }
     if (lastOCRReceiptR2Url) {
       requestBody.r2_url = lastOCRReceiptR2Url;
-      console.log('Including R2 URL:', lastOCRReceiptR2Url);
+      debugLog('Including R2 URL:', lastOCRReceiptR2Url);
     }
 
     const res = await fetch('/add_manual_expense', {
@@ -4121,9 +4133,9 @@ function setupDragDrop() {
       if (data.ok && data.matched && data.auto_attached) {
         // Success! Auto-matched and attached to existing transaction
         showToast(`✅ ${data.message}`, '✓');
-        await loadData();
+        await loadCSV();
 
-        const matchedRow = allRows.find(r => r._index === data.transaction._index);
+        const matchedRow = csvData.find(r => r._index === data.transaction._index);
         if (matchedRow) {
           selectRow(matchedRow);
         }
@@ -4131,7 +4143,7 @@ function setupDragDrop() {
         // Found possible match but confidence too low
         showToast(`🤔 ${data.message}`, '⚠️');
 
-        const matchedRow = allRows.find(r => r._index === data.transaction._index);
+        const matchedRow = csvData.find(r => r._index === data.transaction._index);
         if (matchedRow) {
           selectRow(matchedRow);
         }
@@ -4151,10 +4163,10 @@ function setupDragDrop() {
 
         if (newData.ok) {
           showToast(`✅ ${newData.message}`, '✓');
-          await loadData();
+          await loadCSV();
 
           // Select the new transaction
-          const newRow = allRows.find(r => r._index === newData.transaction._index);
+          const newRow = csvData.find(r => r._index === newData.transaction._index);
           if (newRow) {
             selectRow(newRow);
           }
@@ -4279,7 +4291,7 @@ function switchPage(page) {
 // =============================================================================
 
 async function loadStatsPage() {
-  console.log('📊 Loading stats page...');
+  debugLog('📊 Loading stats page...');
 
   // Show loading state for key containers
   const containerIds = ['stats-business-breakdown', 'stats-top-merchants', 'stats-top-categories', 'stats-subscriptions', 'stats-receipt-sources'];
@@ -4291,26 +4303,26 @@ async function loadStatsPage() {
   try {
     // Fetch fresh data from database
     let transactions = [];
-    console.log('Fetching transactions from /api/transactions...');
+    debugLog('Fetching transactions from /api/transactions...');
 
     try {
       // Stats needs ALL transactions including already submitted ones
       const res = await fetch('/api/transactions?show_submitted=true', { credentials: 'same-origin' });
-      console.log('Transactions response status:', res.status);
+      debugLog('Transactions response status:', res.status);
 
       if (res.ok) {
         const contentType = res.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           transactions = await res.json();
-          console.log('Loaded', transactions.length, 'transactions from database');
+          debugLog('Loaded', transactions.length, 'transactions from database');
         } else {
-          console.log('Response is not JSON - likely redirected to login');
+          debugLog('Response is not JSON - likely redirected to login');
         }
       } else {
-        console.log('Transaction fetch failed:', res.status);
+        debugLog('Transaction fetch failed:', res.status);
       }
     } catch (e) {
-      console.log('Could not fetch transaction data for stats:', e);
+      debugLog('Could not fetch transaction data for stats:', e);
     }
 
     // If no data, show helpful message
@@ -4331,20 +4343,20 @@ async function loadStatsPage() {
       if (receiptsRes.ok) {
         const receiptsData = await receiptsRes.json();
         receipts = receiptsData.receipts || [];
-        console.log('Loaded', receipts.length, 'incoming receipts');
+        debugLog('Loaded', receipts.length, 'incoming receipts');
       }
     } catch (e) {
-      console.log('Could not fetch receipts for stats');
+      debugLog('Could not fetch receipts for stats');
     }
 
     // Calculate stats
-    console.log('Calculating stats with', transactions.length, 'transactions');
+    debugLog('Calculating stats with', transactions.length, 'transactions');
     const stats = calculateStats(transactions, receipts);
-    console.log('Stats calculated:', stats);
+    debugLog('Stats calculated:', stats);
 
     // Update UI
     renderStats(stats);
-    console.log('Stats rendered');
+    debugLog('Stats rendered');
   } catch (e) {
     console.error('Error loading stats:', e);
     // Show error state
@@ -4545,7 +4557,7 @@ function calculateStats(transactions, receipts) {
 }
 
 function renderStats(stats) {
-  console.log('🎨 renderStats called with:', stats);
+  debugLog('🎨 renderStats called with:', stats);
   const fmt = (n) => '$' + Math.abs(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Helper to safely set text content
@@ -4586,7 +4598,7 @@ function renderStats(stats) {
 
     setText('stats-payments', fmt(stats.payments?.total || 0));
     setText('stats-payment-count', `${stats.payments?.count || 0} transactions`);
-    console.log('✓ Overview cards rendered');
+    debugLog('✓ Overview cards rendered');
   } catch (e) {
     console.error('Error rendering overview cards:', e);
   }
@@ -4597,7 +4609,7 @@ function renderStats(stats) {
     setText('stats-fees-total', fmt(stats.fees));
     setText('stats-late-total', fmt(stats.lateCharges));
     setText('stats-total-fees', fmt((stats.interest || 0) + (stats.fees || 0) + (stats.lateCharges || 0)));
-    console.log('✓ Interest & Fees rendered');
+    debugLog('✓ Interest & Fees rendered');
   } catch (e) {
     console.error('Error rendering interest/fees:', e);
   }
@@ -4637,7 +4649,7 @@ function renderStats(stats) {
         `;
       }).join('');
     }
-    console.log('✓ Business breakdown rendered');
+    debugLog('✓ Business breakdown rendered');
   } catch (e) {
     console.error('Error rendering business breakdown:', e);
   }
@@ -4672,7 +4684,7 @@ function renderStats(stats) {
         `;
       }).join('');
     }
-    console.log('✓ Top merchants rendered');
+    debugLog('✓ Top merchants rendered');
   } catch (e) {
     console.error('Error rendering top merchants:', e);
   }
@@ -4706,7 +4718,7 @@ function renderStats(stats) {
         `;
       }).join('');
     }
-    console.log('✓ Top categories rendered');
+    debugLog('✓ Top categories rendered');
   } catch (e) {
     console.error('Error rendering top categories:', e);
   }
@@ -4734,7 +4746,7 @@ function renderStats(stats) {
         </div>
       `).join('');
     }
-    console.log('✓ Subscriptions rendered');
+    debugLog('✓ Subscriptions rendered');
   } catch (e) {
     console.error('Error rendering subscriptions:', e);
   }
@@ -4769,12 +4781,12 @@ function renderStats(stats) {
         `;
       }).join('');
     }
-    console.log('✓ Receipt sources rendered');
+    debugLog('✓ Receipt sources rendered');
   } catch (e) {
     console.error('Error rendering receipt sources:', e);
   }
 
-  console.log('✅ renderStats complete');
+  debugLog('✅ renderStats complete');
 }
 
 // =============================================================================
@@ -5982,6 +5994,6 @@ const ReviewInterface = {
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof KeyboardHandler !== 'undefined') {
     window.keyboardHandler = new KeyboardHandler(ReviewInterface);
-    console.log('Keyboard shortcuts enabled. Press ? for help.');
+    debugLog('Keyboard shortcuts enabled. Press ? for help.');
   }
 });

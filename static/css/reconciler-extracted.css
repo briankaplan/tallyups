@@ -1,40 +1,41 @@
-/* Light Mode Support - Added by design system */
-[data-theme="light"] {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
-  --bg-hover: #e2e8f0;
-  --bg: #ffffff;
-  --panel: #f8fafc;
-  --panel2: #f1f5f9;
-  --edge: #e2e8f0;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
-  --ink: #0f172a;
-  --muted: #64748b;
-  --border: rgba(0, 0, 0, 0.1);
-  --border-light: rgba(0, 0, 0, 0.06);
-  --accent: #00b377;
-  --brand: #00b377;
-  --accent-dim: rgba(0, 179, 119, 0.12);
-}
-
-<script src="https://unpkg.com/@panzoom/panzoom/dist/panzoom.min.js"></script>
-<style>
-:root{
-  --bg:#000000; --panel:#111111; --panel2:#0a0a0a; --edge:#222;
+/* Tallyups Reconciler Dark Theme (Default) */
+:root, [data-theme="dark"] {
+  --bg:#0b0d10; --panel:#111318; --panel2:#0a0c0f; --edge:#1e2128;
   --ink:#f0f0f0; --muted:#888; --brand:#00ff88;
   --ok:#00ff88; --bad:#ff4e6a; --warn:#ffd85e;
   --glow:rgba(0,255,136,.35); --pos:#00ff88; --neg:#ff8ea4;
   --chip:#111; --chipOn:#003322; --chipL:#f0f0f0;
+  --bg-primary: #0b0d10;
+  --bg-secondary: #111318;
+  --bg-tertiary: #161a21;
+  --bg-hover: #1e2128;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a8b8;
+  --text-muted: #6b7280;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-light: rgba(255, 255, 255, 0.06);
+  --accent: #00ff88;
+  --accent-dim: rgba(0, 255, 136, 0.12);
 }
-.light{
+
+/* Light Mode (only when explicitly set) */
+[data-theme="light"], .light {
   --bg:#f8f9fa; --panel:#ffffff; --panel2:#f5f5f5; --edge:#e0e0e0;
   --ink:#111111; --muted:#666; --brand:#00cc6a;
   --ok:#00cc6a; --bad:#e04863; --warn:#ffd14a;
   --glow:rgba(0,204,106,.25); --pos:#00aa55; --neg:#b9475b;
   --chip:#f0fff0; --chipOn:#d0ffd0; --chipL:#004422;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border: rgba(0, 0, 0, 0.1);
+  --border-light: rgba(0, 0, 0, 0.06);
+  --accent: #00b377;
+  --accent-dim: rgba(0, 179, 119, 0.12);
 }
 
 /* ============================================
@@ -278,8 +279,9 @@ button:active{transform:translateY(0)}
 }
 .light .kbd{background:#eaf2ff;border-color:#c7d7f0;color:#2a4e88}
 
-/* Header */
-header{
+/* Header - DEPRECATED: Now using unified-header.js with .app-header class */
+/* Legacy header styles kept for backwards compatibility but scoped to not affect .app-header */
+header:not(.app-header){
   display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:12px 20px;
   background:linear-gradient(180deg,#0e141a,#0a0f15);
@@ -287,7 +289,7 @@ header{
   position:sticky;top:0;z-index:100;
   box-shadow:0 2px 12px rgba(0,0,0,.5);
 }
-.light header{background:linear-gradient(180deg,#f6f9ff,#ffffff);box-shadow:0 2px 12px rgba(0,0,0,.1)}
+.light header:not(.app-header){background:linear-gradient(180deg,#f6f9ff,#ffffff);box-shadow:0 2px 12px rgba(0,0,0,.1)}
 
 .brand{display:flex;align-items:center;gap:12px}
 .brand h1{

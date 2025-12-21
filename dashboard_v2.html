@@ -10,9 +10,11 @@
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
   <title>TallyUps - Dashboard</title>
-  <link rel="stylesheet" href="/static/css/design-system.css">
+  <!-- Legendary Design System -->
+  <link rel="stylesheet" href="/static/css/legendary/index.css">
   <script src="/static/js/business-types.js"></script>
   <script src="/static/js/unified-header.js"></script>
+  <script src="/static/js/app-shell.js" defer></script>
   <script src="/static/js/design-system.js"></script>
   <style>
     /* Light Theme Override */
@@ -532,11 +534,15 @@
 
     .report-item__info {
       flex: 1;
+      min-width: 0;
     }
 
     .report-item__name {
       font-size: var(--text-sm);
       font-weight: var(--font-medium);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .report-item__meta {
@@ -548,6 +554,33 @@
       font-size: var(--text-sm);
       font-weight: var(--font-semibold);
       color: var(--brand);
+      margin-right: var(--space-2);
+    }
+
+    .report-item__delete {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      cursor: pointer;
+      opacity: 0;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .report-item:hover .report-item__delete {
+      opacity: 1;
+    }
+
+    .report-item__delete:hover {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #ef4444;
     }
 
     /* Loading skeleton */
@@ -1576,19 +1609,62 @@
           return;
         }
 
-        container.innerHTML = reports.slice(0, 3).map(r => `
-          <li class="report-item" onclick="window.location='/reports/${r.report_id || r.id}'">
-            <div class="report-item__icon">📋</div>
-            <div class="report-item__info">
+        container.innerHTML = reports.slice(0, 4).map(r => `
+          <li class="report-item" data-report-id="${r.report_id || r.id}">
+            <div class="report-item__icon" onclick="window.location='/reports/${r.report_id || r.id}'">📋</div>
+            <div class="report-item__info" onclick="window.location='/reports/${r.report_id || r.id}'">
               <div class="report-item__name">${r.report_name || r.name}</div>
               <div class="report-item__meta">${r.count || 0} items</div>
             </div>
             <div class="report-item__amount">${formatCurrency(r.total || 0)}</div>
+            <button class="report-item__delete" onclick="event.stopPropagation(); deleteDraftReport('${r.report_id || r.id}', '${(r.report_name || r.name).replace(/'/g, "\\'")}')" title="Delete draft">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </button>
           </li>
         `).join('');
 
       } catch (error) {
         console.error('Error loading reports:', error);
+      }
+    }
+
+    // Delete draft report
+    async function deleteDraftReport(reportId, reportName) {
+      if (!confirm(`Delete draft report "${reportName}"? This cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/reports/${reportId}/delete`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete report');
+        }
+
+        // Remove from UI
+        const item = document.querySelector(`[data-report-id="${reportId}"]`);
+        if (item) {
+          item.style.opacity = '0';
+          item.style.transform = 'translateX(-20px)';
+          setTimeout(() => item.remove(), 200);
+        }
+
+        // Reload draft reports after a moment
+        setTimeout(loadDraftReports, 300);
+
+        if (window.TallyUps?.showToast) {
+          TallyUps.showToast('Draft report deleted', 'success');
+        }
+      } catch (error) {
+        console.error('Error deleting report:', error);
+        if (window.TallyUps?.showToast) {
+          TallyUps.showToast('Failed to delete report', 'error');
+        }
       }
     }
 

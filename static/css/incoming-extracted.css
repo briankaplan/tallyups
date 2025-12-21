@@ -44,8 +44,8 @@ html, body {
   font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Helvetica, Arial;
 }
 
-/* Header */
-header {
+/* Header - Legacy styles, scoped to not affect .app-header */
+header:not(.app-header) {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 12px 20px;
   background: linear-gradient(180deg, #0e141a, #0a0f15);

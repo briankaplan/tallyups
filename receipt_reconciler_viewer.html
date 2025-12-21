@@ -2,6 +2,11 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8"/>
+<script>
+// Force dark mode immediately - prevent flash of light mode
+document.documentElement.setAttribute('data-theme', 'dark');
+localStorage.setItem('theme', 'dark');
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="AI-powered receipt management and expense tracking system">
 <meta name="theme-color" content="#0b0d10">
@@ -9,13 +14,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/manifest.json">
-<link rel="stylesheet" href="/static/css/design-system.css">
-<title>Tallyups - Expense Management</title>
-<!-- Favicon (brain emoji as SVG) -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
-<link rel="preconnect" href="https://unpkg.com">
+<!-- Legendary Design System -->
+<link rel="stylesheet" href="/static/css/legendary/index.css">
 <link rel="stylesheet" href="/static/css/reconciler-extracted.css">
+<title>Tallyups - Expense Management</title>
+<link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="preconnect" href="https://unpkg.com">
 <script src="/static/js/image-utils.js"></script>
 <script src="/static/js/business-types.js"></script>
 <script src="/static/js/unified-header.js"></script>
@@ -26,15 +31,7 @@
 </head>
 <body>
 
-<!-- Page Toolbar - page-specific actions (header handled by unified-header.js) -->
-<div class="page-toolbar" style="display:flex; align-items:center; gap:8px; padding:8px 20px; background:var(--bg-secondary); border-bottom:1px solid var(--border-primary);">
-  <h2 style="margin:0; font-size:1.125rem; font-weight:600; color:var(--text-primary);">🔄 Reconcile</h2>
-  <div style="flex:1;"></div>
-  <button class="btn btn-ghost btn-sm" id="bulk-actions-btn" onclick="openBulkActionsFromHeader()" title="Bulk Actions (Ctrl+Shift+A)">📦 Bulk</button>
-  <button class="btn btn-ghost btn-sm" onclick="toggleHotkeyMenu()" title="Keyboard Shortcuts (?)">⌨️ Hotkeys</button>
-  <button class="btn btn-ghost btn-sm" onclick="toggleSettings()" title="Settings">⚙️</button>
-  <span class="status" id="status"></span>
-</div>
+<!-- Header injected by unified-header.js -->
 
 <!-- Main Layout -->
 <!-- Home Page (default) -->
@@ -5503,23 +5500,30 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Theme - uses unified 'tallyups-theme' key and data-theme attribute
+// Theme - Legendary Design System compatible
 function toggleTheme() {
-  const root = document.documentElement;
-  const currentTheme = root.getAttribute('data-theme') || 'dark';
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  root.setAttribute('data-theme', newTheme);
-  // Also toggle body class for legacy CSS
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  const newTheme = isLight ? 'dark' : 'light';
+
+  html.setAttribute('data-theme', newTheme);
   document.body.classList.toggle('light', newTheme === 'light');
-  localStorage.setItem('tallyups-theme', newTheme);
-  showToast('Theme changed', '🎨');
+  localStorage.setItem('theme', newTheme);
+  showToast('Theme: ' + newTheme, '🎨');
 }
 
 function loadTheme() {
-  const savedTheme = localStorage.getItem('tallyups-theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', savedTheme);
+  // Default to dark mode for legendary design
+  const savedTheme = localStorage.getItem('theme');
+  // Only apply light if explicitly saved as light, otherwise stay dark
   if (savedTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
     document.body.classList.add('light');
+  } else {
+    // Ensure dark mode is set
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.body.classList.remove('light');
+    localStorage.setItem('theme', 'dark');
   }
 }
 
