@@ -132,8 +132,13 @@ def create_link_token():
         data = request.get_json() or {}
         update_item_id = data.get('update_item_id')
 
-        # Get redirect URI from request or use default
+        # Get redirect URI - REQUIRED for OAuth banks (Chase, BofA, etc.)
+        # Use the configured OAuth redirect endpoint
         redirect_uri = data.get('redirect_uri')
+        if not redirect_uri:
+            # Build default redirect URI from request host
+            host = request.host_url.rstrip('/')
+            redirect_uri = f"{host}/api/plaid/oauth"
 
         result = plaid.create_link_token(
             user_id=get_user_id(),
