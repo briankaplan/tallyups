@@ -1416,7 +1416,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 
 /* Toast Notifications */
 .toast{
-  position:fixed;bottom:24px;right:24px;
+  position:fixed;bottom:100px;right:24px;
   background:var(--panel);padding:16px 20px;border-radius:12px;
   border:1px solid var(--edge);box-shadow:0 8px 24px rgba(0,0,0,.3);
   display:none;align-items:center;gap:12px;
@@ -1633,9 +1633,9 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   /* Shortcuts hide on mobile */
   .quick-shortcuts{display:none}
 
-  /* Toast mobile */
+  /* Toast mobile - positioned above bottom nav */
   .toast{
-    left:12px;right:12px;bottom:calc(12px + var(--safe-bottom));
+    left:12px;right:12px;bottom:calc(90px + var(--safe-bottom));
     border-radius:10px;
   }
 
@@ -2295,9 +2295,9 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
     height: calc(100vh - 60px - var(--safe-bottom));
   }
 
-  /* Toast position */
+  /* Toast position - above bottom nav */
   .toast {
-    bottom: calc(20px + var(--safe-bottom));
+    bottom: calc(90px + var(--safe-bottom));
   }
 
   /* Hide desktop filter row on mobile - use filter sheet instead */

@@ -2970,6 +2970,7 @@ def dashboard_stats():
                   AND CAST(chase_amount AS DECIMAL(10,2)) < 0
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
+                  AND chase_description NOT LIKE '%Thank You%'
                 ORDER BY ABS(CAST(chase_amount AS DECIMAL(10,2))) DESC
                 LIMIT 10
             """)
@@ -3075,11 +3076,14 @@ def dashboard_stats():
                     YEARWEEK(chase_date, 1) AS week,
                     MIN(chase_date) AS week_start,
                     COUNT(*) AS tx_count,
-                    COALESCE(SUM(CAST(chase_amount AS DECIMAL(10,2))), 0) AS total,
+                    COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total,
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt
                 FROM transactions
                 WHERE chase_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 4 WEEK)
-                AND CAST(chase_amount AS DECIMAL(10,2)) > 0
+                  AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND chase_description NOT LIKE '%Payment%'
+                  AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
+                  AND chase_description NOT LIKE '%Thank You%'
                 GROUP BY YEARWEEK(chase_date, 1)
                 ORDER BY week DESC
             """)
@@ -13611,22 +13615,22 @@ def reports_standalone_page(report_id):
 
         # Calculate totals - use metadata if no expenses linked
         if expenses:
-            # Chase convention: POSITIVE amounts = charges (purchases), NEGATIVE amounts = refunds/credits
-            # IMPORTANT: Credit card payments (PAYMENT THANK YOU) are NOT refunds - exclude them
+            # Chase convention: NEGATIVE amounts = charges/expenses (debits), POSITIVE = credits/refunds
+            # IMPORTANT: Credit card payments (PAYMENT THANK YOU) are NOT charges - exclude them
             def is_payment(desc):
                 d = (desc or '').lower()
-                return 'payment thank you' in d or 'payment - web' in d
+                return 'payment thank you' in d or 'payment - web' in d or 'automatic payment' in d
 
-            # Charges = positive amounts (actual purchases)
-            total_charges = sum(float(e.get("chase_amount", 0) or 0) for e in expenses
-                              if float(e.get("chase_amount", 0) or 0) > 0)
-
-            # Refunds = negative amounts that are NOT credit card payments
-            total_refunds = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses
+            # Charges = negative amounts that are NOT payments (actual purchases/expenses)
+            total_charges = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses
                               if float(e.get("chase_amount", 0) or 0) < 0
                               and not is_payment(e.get("chase_description", "")))
 
-            # Credit card payments = negative amounts with "PAYMENT" in description
+            # Refunds/Credits = positive amounts
+            total_refunds = sum(float(e.get("chase_amount", 0) or 0) for e in expenses
+                              if float(e.get("chase_amount", 0) or 0) > 0)
+
+            # Credit card payments = negative amounts with "PAYMENT" in description (excluded from expenses)
             total_payments = sum(abs(float(e.get("chase_amount", 0) or 0)) for e in expenses
                                if float(e.get("chase_amount", 0) or 0) < 0
                                and is_payment(e.get("chase_description", "")))
@@ -14188,14 +14192,14 @@ tr:hover .row-actions {{
             date = format_date(exp.get("chase_date", ""))
             merchant = exp.get("chase_description", "")
             raw_amount = float(exp.get("chase_amount", 0) or 0)
-            # Chase convention: POSITIVE = charge (purchase), NEGATIVE = refund/credit
-            if raw_amount > 0:
-                # Charge/purchase - show as expense
-                amount_str = f"${raw_amount:,.2f}"
+            # Chase convention: NEGATIVE = charge/expense (debit), POSITIVE = refund/credit
+            if raw_amount < 0:
+                # Charge/purchase - show as expense (use absolute value for display)
+                amount_str = f"${abs(raw_amount):,.2f}"
                 amount_class = "charge"
-            elif raw_amount < 0:
+            elif raw_amount > 0:
                 # Refund/credit - show as credit
-                amount_str = f"-${abs(raw_amount):,.2f}"
+                amount_str = f"-${raw_amount:,.2f}"
                 amount_class = "refund"
             else:
                 amount_str = "$0.00"
@@ -17850,19 +17854,22 @@ def api_report_audit(report_id):
         """, (report_id, business_type))
         transactions = cursor.fetchall()
 
-        # Calculate totals - Chase convention: POSITIVE = charges (purchases), NEGATIVE = refunds/credits
-        charges = []  # Positive amounts (purchases)
-        refunds = []  # Negative amounts (credits/returns)
+        # Calculate totals - Chase convention: NEGATIVE = charges/expenses (debits), POSITIVE = refunds/credits
+        charges = []  # Negative amounts (purchases/expenses)
+        refunds = []  # Positive amounts (credits/returns)
 
         for t in transactions:
             amount = float(t.get('chase_amount', 0) or 0)
-            if amount > 0:
+            desc = (t.get('chase_description', '') or '').lower()
+            # Exclude payments from charges
+            is_payment = 'payment' in desc or 'thank you' in desc
+            if amount < 0 and not is_payment:
                 charges.append(t)
-            elif amount < 0:
+            elif amount > 0:
                 refunds.append(t)
 
-        total_charges = sum(float(t['chase_amount']) for t in charges)
-        total_refunds = sum(abs(float(t['chase_amount'])) for t in refunds)
+        total_charges = sum(abs(float(t['chase_amount'])) for t in charges)
+        total_refunds = sum(float(t['chase_amount']) for t in refunds)
         net_total = total_charges - total_refunds  # Positive = net spent
 
         # Find duplicates (same date + amount)
