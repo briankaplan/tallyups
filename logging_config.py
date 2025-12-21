@@ -20,7 +20,7 @@ import logging
 import traceback
 import functools
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, Callable
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
@@ -53,7 +53,7 @@ class JSONFormatter(logging.Formatter):
         }
 
         if self.include_timestamp:
-            log_data["timestamp"] = datetime.utcnow().isoformat() + "Z"
+            log_data["timestamp"] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
         # Add context from thread-local storage
         if self.include_context and hasattr(_context, 'data'):

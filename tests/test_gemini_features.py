@@ -40,11 +40,12 @@ def test_gemini_connection():
         response = generate_content_with_fallback("Say 'Hello, I am working!' in 5 words")
         print(f"✅ Gemini Connected!")
         print(f"   Response: {response}")
-        return True
+        assert response is not None, "Response should not be None"
     except Exception as e:
         print(f"❌ Gemini Connection Failed: {e}")
-        return False
+        pytest.fail(f"Gemini Connection Failed: {e}")
 
+@pytest.mark.skipif(not HAS_TRANSACTIONS_TABLE, reason="transactions table not available")
 def test_receipt_ocr():
     """Test 2: Receipt OCR with Gemini Vision"""
     print("\n" + "="*80)
@@ -57,13 +58,13 @@ def test_receipt_ocr():
 
     if not receipts:
         print("⚠️  No receipt images found in receipts/ folder")
-        return False
+        pytest.skip("No receipt images found in receipts/ folder")
 
     test_receipt = receipts[0]
     print(f"   Testing with: {test_receipt}")
 
     try:
-        processor = ReceiptProcessorService()
+        processor = ReceiptProcessorService(db_path='receipts.db')
         result = processor.process_receipt(test_receipt)
 
         print(f"   ✅ OCR Successful!")
@@ -72,10 +73,10 @@ def test_receipt_ocr():
         print(f"      Date: {result.get('date', 'N/A')}")
         print(f"      Category: {result.get('category', 'N/A')}")
         print(f"      Confidence: {result.get('confidence', 0)}%")
-        return True
+        assert result is not None, "OCR result should not be None"
     except Exception as e:
         print(f"   ❌ OCR Failed: {e}")
-        return False
+        pytest.fail(f"OCR Failed: {e}")
 
 @pytest.mark.skipif(not HAS_TRANSACTIONS_TABLE, reason="transactions table not available")
 def test_auto_description():
@@ -100,7 +101,7 @@ def test_auto_description():
 
     if not row:
         print("⚠️  No transactions found")
-        return False
+        pytest.skip("No transactions found in database")
 
     desc, amount, date, business = row
     print(f"   Transaction: {desc} - ${amount} on {date}")
@@ -118,10 +119,10 @@ Provide a 1-sentence description suitable for an expense report (5-10 words)."""
         description = generate_content_with_fallback(prompt)
         print(f"   ✅ Generated Description:")
         print(f"      {description}")
-        return True
+        assert description is not None, "Description should not be None"
     except Exception as e:
         print(f"   ❌ Failed: {e}")
-        return False
+        pytest.fail(f"Auto description generation failed: {e}")
 
 def test_intelligent_categorization():
     """Test 4: AI-Powered Merchant Categorization"""
@@ -155,11 +156,10 @@ Reply with ONLY the category name, nothing else."""
             category = generate_content_with_fallback(prompt)
             print(f"   ✅ {merchant}")
             print(f"      → {category.strip()}")
+            assert category is not None, f"Category for {merchant} should not be None"
         except Exception as e:
             print(f"   ❌ {merchant}: {e}")
-            return False
-
-    return True
+            pytest.fail(f"Categorization failed for {merchant}: {e}")
 
 @pytest.mark.skipif(not HAS_TRANSACTIONS_TABLE, reason="transactions table not available")
 def test_receipt_matching():
@@ -185,7 +185,7 @@ def test_receipt_matching():
 
     if not matches:
         print("   ⚠️  No transactions with receipts found")
-        return False
+        pytest.skip("No transactions with receipts found")
 
     try:
         matcher = ReceiptMatcherService()
@@ -206,11 +206,10 @@ def test_receipt_matching():
             })
 
             print(f"      ✅ Match Quality Score: {match_quality}%")
-
-        return True
+            assert match_quality is not None, "Match quality should not be None"
     except Exception as e:
         print(f"   ❌ Failed: {e}")
-        return False
+        pytest.fail(f"Receipt matching failed: {e}")
 
 def test_tag_generation():
     """Test 6: Auto-Tag Generation"""
@@ -237,12 +236,12 @@ Provide tags as comma-separated values (e.g., travel, meals, client-meeting)"""
             tags = generate_content_with_fallback(prompt)
             print(f"   ✅ {merchant} (${amount})")
             print(f"      Tags: {tags.strip()}")
+            assert tags is not None, f"Tags for {merchant} should not be None"
         except Exception as e:
             print(f"   ❌ Failed: {e}")
-            return False
+            pytest.fail(f"Tag generation failed for {merchant}: {e}")
 
-    return True
-
+@pytest.mark.skipif(not HAS_TRANSACTIONS_TABLE, reason="transactions table not available")
 def test_report_generation():
     """Test 7: AI-Powered Report Generation"""
     print("\n" + "="*80)
@@ -250,7 +249,7 @@ def test_report_generation():
     print("="*80)
 
     try:
-        report_service = ExpenseReportService()
+        report_service = ExpenseReportService(csv_path='receipts.db')
 
         # Get recent transactions for a report
         conn = sqlite3.connect('receipts.db')
@@ -269,7 +268,7 @@ def test_report_generation():
 
         if not transactions:
             print("   ⚠️  No recent transactions found")
-            return False
+            pytest.skip("No recent transactions found")
 
         print(f"   Found {len(transactions)} recent transactions")
 
@@ -289,11 +288,12 @@ def test_report_generation():
         for cat, amt in sorted(by_category.items(), key=lambda x: -x[1]):
             print(f"         {cat}: ${amt:,.2f}")
 
-        return True
+        assert total >= 0, "Total should be non-negative"
     except Exception as e:
         print(f"   ❌ Failed: {e}")
-        return False
+        pytest.fail(f"Report generation failed: {e}")
 
+@pytest.mark.skipif(not HAS_TRANSACTIONS_TABLE, reason="transactions table not available")
 def test_data_integrity():
     """Test 8: Database Integrity"""
     print("\n" + "="*80)
@@ -327,10 +327,10 @@ def test_data_integrity():
             print(f"      {cat or 'Uncategorized'}: {count}")
 
         conn.close()
-        return True
+        assert tx_count >= 0, "Transaction count should be non-negative"
     except Exception as e:
         print(f"   ❌ Failed: {e}")
-        return False
+        pytest.fail(f"Database integrity check failed: {e}")
 
 def run_all_tests():
     """Run complete test suite"""

@@ -7,11 +7,20 @@ Tests that the Donut model is properly integrated into all system components.
 
 import sys
 import json
+import pytest
 from pathlib import Path
+
+# Check if torch is available (required for Donut)
+try:
+    import torch
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
 
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
 
+@pytest.mark.skipif(not HAS_TORCH, reason="torch not installed (required for Donut OCR)")
 def test_donut_extractor():
     """Test the core Donut extractor module"""
     print("\n" + "="*60)
@@ -27,12 +36,13 @@ def test_donut_extractor():
         extractor.load()
         print(f"   Device: {extractor.device}")
         print(f"✅ Donut extractor loaded successfully")
-        return True
+        assert extractor is not None, "Extractor should be loaded"
     except Exception as e:
         print(f"❌ Failed: {e}")
-        return False
+        pytest.fail(f"Donut extractor failed: {e}")
 
 
+@pytest.mark.skipif(not HAS_TORCH, reason="torch not installed (required for Donut OCR)")
 def test_main_extractor():
     """Test the main extractor function"""
     print("\n" + "="*60)
@@ -46,12 +56,12 @@ def test_main_extractor():
         receipts_dir = BASE_DIR / "receipts"
         if not receipts_dir.exists():
             print("⚠️  No receipts directory found")
-            return False
+            pytest.skip("No receipts directory found")
 
         test_files = list(receipts_dir.glob("*.jpg")) + list(receipts_dir.glob("*.png"))
         if not test_files:
             print("⚠️  No receipt images found")
-            return False
+            pytest.skip("No receipt images found")
 
         test_file = test_files[0]
         print(f"   Testing with: {test_file.name}")
@@ -67,18 +77,19 @@ def test_main_extractor():
             print(f"   Tip: ${result.get('tip_amount', 0):.2f}")
             print(f"   Confidence: {result.get('confidence_score', 0):.0%}")
             print(f"   Method: {result.get('ocr_method', 'Unknown')}")
-            return True
+            assert result is not None, "Result should not be None"
         else:
             print(f"❌ Extraction failed: {result.get('error', 'Unknown')}")
-            return False
+            pytest.fail(f"Extraction failed: {result.get('error', 'Unknown')}")
 
     except Exception as e:
         print(f"❌ Failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(f"Main extractor failed: {e}")
 
 
+@pytest.mark.skipif(not HAS_TORCH, reason="torch not installed (required for Donut OCR)")
 def test_ai_receipt_locator():
     """Test the AI receipt locator"""
     print("\n" + "="*60)
@@ -95,7 +106,7 @@ def test_ai_receipt_locator():
         test_files = list(receipts_dir.glob("*.jpg")) + list(receipts_dir.glob("*.png"))
         if not test_files:
             print("⚠️  No receipt images found")
-            return False
+            pytest.skip("No receipt images found")
 
         test_file = test_files[0]
         print(f"   Testing with: {test_file.name}")
@@ -109,18 +120,19 @@ def test_ai_receipt_locator():
             print(f"   Date: {result.get('receipt_date', 'N/A')}")
             print(f"   Total: ${result.get('total_amount', 0):.2f}")
             print(f"   Source: {result.get('ocr_source', 'Unknown')}")
-            return True
+            assert result is not None, "Result should not be None"
         else:
             print(f"❌ Vision extract returned None")
-            return False
+            pytest.fail("Vision extract returned None")
 
     except Exception as e:
         print(f"❌ Failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(f"AI receipt locator failed: {e}")
 
 
+@pytest.mark.skipif(not HAS_TORCH, reason="torch not installed (required for Donut OCR)")
 def test_batch_processing():
     """Test batch processing capability"""
     print("\n" + "="*60)
@@ -136,7 +148,7 @@ def test_batch_processing():
 
         if len(test_files) < 2:
             print("⚠️  Not enough receipt images for batch test")
-            return True  # Not a failure
+            pytest.skip("Not enough receipt images for batch test")
 
         print(f"   Processing {len(test_files)} receipts...")
 
@@ -145,15 +157,16 @@ def test_batch_processing():
         success_count = sum(1 for r in results if r.get("success"))
         print(f"✅ Batch processing complete: {success_count}/{len(results)} successful")
 
-        return success_count > 0
+        assert success_count > 0, "At least one batch process should succeed"
 
     except Exception as e:
         print(f"❌ Failed: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        pytest.fail(f"Batch processing failed: {e}")
 
 
+@pytest.mark.skipif(not HAS_TORCH, reason="torch not installed (required for Donut OCR)")
 def test_config():
     """Test configuration options"""
     print("\n" + "="*60)
@@ -176,11 +189,11 @@ def test_config():
             print(f"      fallback_to_ensemble: {config.fallback_to_ensemble}")
 
         print(f"✅ Configuration working correctly")
-        return True
+        assert len(configs) == 3, "Should have 3 config options"
 
     except Exception as e:
         print(f"❌ Failed: {e}")
-        return False
+        pytest.fail(f"Config test failed: {e}")
 
 
 def main():
