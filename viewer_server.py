@@ -2813,14 +2813,14 @@ def dashboard_stats():
             print(f"Pending count error (table may not exist): {pe}")
             pending = 0
 
-        # This month's spending - sum expenses this month (negative amounts, exclude payments)
+        # This month's spending - sum all expenses this month (exclude payments)
         month_total = 0.0
         try:
             cursor = db_execute(conn, db_type, """
                 SELECT COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total
                 FROM transactions
                 WHERE chase_date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
-                  AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND CAST(chase_amount AS DECIMAL(10,2)) != 0
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
@@ -2860,8 +2860,8 @@ def dashboard_stats():
             print(f"Verification stats error: {ve}")
 
         # ========== BUSINESS BREAKDOWN ==========
-        # Note: In Chase CSVs, negative amounts = expenses (debits), positive = credits (refunds/payments)
-        # We filter for expenses (negative amounts) and exclude payments, then use ABS for display
+        # Note: Data has mixed sign conventions - some sources use positive, some negative for expenses
+        # We exclude payments by description and use ABS for all amounts
         business_breakdown = []
         by_business = {}  # Object format for frontend compatibility
         try:
@@ -2872,7 +2872,7 @@ def dashboard_stats():
                     COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total_spent,
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS has_receipt
                 FROM transactions
-                WHERE CAST(chase_amount AS DECIMAL(10,2)) < 0
+                WHERE CAST(chase_amount AS DECIMAL(10,2)) != 0
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
@@ -2907,7 +2907,7 @@ def dashboard_stats():
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt
                 FROM transactions
                 WHERE chase_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 MONTH)
-                  AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND CAST(chase_amount AS DECIMAL(10,2)) != 0
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
@@ -2936,7 +2936,7 @@ def dashboard_stats():
                     COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total_spent,
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt
                 FROM transactions
-                WHERE CAST(chase_amount AS DECIMAL(10,2)) < 0
+                WHERE CAST(chase_amount AS DECIMAL(10,2)) != 0
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
@@ -2967,7 +2967,7 @@ def dashboard_stats():
                     business_type
                 FROM transactions
                 WHERE (r2_url IS NULL OR r2_url = '')
-                  AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND CAST(chase_amount AS DECIMAL(10,2)) != 0
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
@@ -3056,7 +3056,7 @@ def dashboard_stats():
                     CASE WHEN business_type IS NOT NULL AND business_type != '' AND business_type != 'Personal' THEN 'business' ELSE 'personal' END AS category,
                     COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total
                 FROM transactions
-                WHERE CAST(chase_amount AS DECIMAL(10,2)) < 0
+                WHERE CAST(chase_amount AS DECIMAL(10,2)) != 0
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
@@ -3080,7 +3080,7 @@ def dashboard_stats():
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt
                 FROM transactions
                 WHERE chase_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 4 WEEK)
-                  AND CAST(chase_amount AS DECIMAL(10,2)) < 0
+                  AND CAST(chase_amount AS DECIMAL(10,2)) != 0
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
