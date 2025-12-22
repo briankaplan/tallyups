@@ -1511,7 +1511,9 @@ async function viewReport(id) {
   body.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
   try {
-    const res = await fetch(`/reports/${id}`);
+    const res = await fetch(`/reports/${id}`, {
+      headers: { 'Accept': 'application/json' }
+    });
     if (!res.ok) throw new Error('Failed');
     const data = await res.json();
 
