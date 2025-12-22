@@ -2618,6 +2618,11 @@ def library_page():
 @login_required
 def reports_page():
     """Serve the Reports page."""
+    # Serve the new reports dashboard template
+    template_path = BASE_DIR / "templates" / "reports_dashboard.html"
+    if template_path.exists():
+        return send_file(template_path)
+    # Fallback to old report builder
     return send_from_directory(BASE_DIR, "report_builder.html")
 
 
