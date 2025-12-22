@@ -295,10 +295,11 @@ def api_report_add_item(report_id):
             return jsonify({'ok': False, 'error': 'Transaction not found'}), 404
 
         # CRITICAL: Update report metadata (expense_count and total_amount)
+        # Exclude deleted transactions from counts
         cursor.execute('''
             UPDATE reports
-            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s),
-                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s)
+            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)),
+                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0))
             WHERE report_id = %s
         ''', (report_id, report_id, report_id))
 
@@ -355,10 +356,11 @@ def api_report_remove_item(report_id):
         ''', (transaction_index, report_id))
 
         # CRITICAL: Update report metadata (expense_count and total_amount)
+        # Exclude deleted transactions from counts
         cursor.execute('''
             UPDATE reports
-            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s),
-                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s)
+            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)),
+                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0))
             WHERE report_id = %s
         ''', (report_id, report_id, report_id))
 
@@ -404,9 +406,9 @@ def api_report_items(report_id):
 
         cursor.execute('''
             SELECT _index, chase_date, chase_description, chase_amount, chase_category,
-                   business_type, r2_url, ai_note, review_status
+                   business_type, r2_url, receipt_file, ai_note, review_status
             FROM transactions
-            WHERE report_id = %s
+            WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)
             ORDER BY chase_date DESC
         ''', (report_id,))
 
@@ -417,8 +419,8 @@ def api_report_items(report_id):
             # Serialize dates
             if item.get('chase_date') and hasattr(item['chase_date'], 'isoformat'):
                 item['chase_date'] = item['chase_date'].isoformat()
-            # Map r2_url to receipt_url for frontend compatibility
-            item['receipt_url'] = item.get('r2_url') or ''
+            # Map r2_url or receipt_file to receipt_url for frontend compatibility
+            item['receipt_url'] = item.get('r2_url') or item.get('receipt_file') or ''
             amount = float(item.get('chase_amount') or 0)
             total += abs(amount)
             items.append(item)

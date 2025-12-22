@@ -2143,13 +2143,24 @@ def find_best_receipt(row: dict) -> dict | None:
 # AUTHENTICATION ROUTES
 # =============================================================================
 
+def validate_next_url(url):
+    """Validate redirect URL to prevent open redirect attacks.
+    Only allows relative URLs starting with / and not containing protocol."""
+    if not url:
+        return '/'
+    # Must start with / and not contain protocol indicators
+    if not url.startswith('/') or url.startswith('//') or ':' in url.split('/')[0]:
+        return '/'
+    return url
+
+
 @csrf_exempt_route
 @app.route("/login", methods=["GET", "POST"])
 @rate_limit("5 per minute")  # Prevent brute force password attacks
 def login():
     """Login page with password authentication."""
     error = None
-    next_url = request.args.get('next', '/')
+    next_url = validate_next_url(request.args.get('next', '/'))
 
     # Check if this is an API request (iOS app, etc.)
     is_api_request = (
@@ -2187,7 +2198,7 @@ def login():
 @rate_limit("10 per minute")  # Prevent brute force PIN attacks
 def login_pin():
     """PIN entry page for quick mobile unlock."""
-    next_url = request.args.get('next', '/')
+    next_url = validate_next_url(request.args.get('next', '/'))
 
     if request.method == "POST":
         data = request.get_json() or {}
@@ -2815,17 +2826,18 @@ def dashboard_stats():
         })
 
     try:
-        # Total receipts with r2_url (canonical receipt image source)
+        # Total receipts with r2_url or receipt_file (canonical receipt image source)
         cursor = db_execute(conn, db_type, """
             SELECT COUNT(*) AS cnt FROM transactions
-            WHERE r2_url IS NOT NULL AND r2_url != ''
+            WHERE ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+            AND (deleted IS NULL OR deleted = 0)
         """)
         row = cursor.fetchone()
         total_matched = row['cnt'] if row else 0
         cursor.close()
 
-        # Total transactions
-        cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM transactions")
+        # Total transactions (excluding deleted)
+        cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM transactions WHERE (deleted IS NULL OR deleted = 0)")
         row = cursor.fetchone()
         total_transactions = row['cnt'] if row else 0
         cursor.close()
@@ -2841,7 +2853,7 @@ def dashboard_stats():
             print(f"Pending count error (table may not exist): {pe}")
             pending = 0
 
-        # This month's spending - sum all expenses this month (exclude payments)
+        # This month's spending - sum all expenses this month (exclude payments and deleted)
         month_total = 0.0
         try:
             cursor = db_execute(conn, db_type, """
@@ -2852,6 +2864,7 @@ def dashboard_stats():
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
+                  AND (deleted IS NULL OR deleted = 0)
             """)
             row = cursor.fetchone()
             month_total = float(row['total']) if row and row['total'] else 0.0
@@ -2874,6 +2887,7 @@ def dashboard_stats():
                     SUM(CASE WHEN ocr_verification_status = 'mismatch' THEN 1 ELSE 0 END) AS mismatch,
                     SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' AND COALESCE(ocr_verified, 0) = 0 AND COALESCE(ocr_verification_status, '') = '' THEN 1 ELSE 0 END) AS unverified
                 FROM transactions
+                WHERE (deleted IS NULL OR deleted = 0)
             """)
             row = cursor.fetchone()
             if row:
