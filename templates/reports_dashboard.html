@@ -12,6 +12,7 @@
 
 <!-- Legendary Design System -->
 <link rel="stylesheet" href="/static/css/legendary/index.css">
+<script src="/static/js/csrf.js"></script>
 <script src="/static/js/unified-header.js" defer></script>
 <script src="/static/js/app-shell.js" defer></script>
 
@@ -1027,7 +1028,7 @@ async function generateCustomReport(e) {
 async function generateReport(params) {
   showToast('Generating report...', 'info');
   try {
-    const res = await fetch('/api/reports/generate', {
+    const res = await csrfFetch('/api/reports/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params)
@@ -1118,10 +1119,10 @@ function closePreview() {
 function downloadReport(id, format) {
   const urls = {
     excel: `/api/reports/${id}/export/excel`,
-    csv: `/reports/${id}/export/downhome`,
+    csv: `/api/reports/${id}/export/csv`,
     pdf: `/api/reports/${id}/export/pdf`
   };
-  window.location.href = urls[format] || urls.csv;
+  window.location.href = urls[format] || urls.excel;
   showToast('Downloading...', 'info');
 }
 

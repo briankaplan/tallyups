@@ -294,11 +294,32 @@ def api_report_add_item(report_id):
             db.return_connection(conn)
             return jsonify({'ok': False, 'error': 'Transaction not found'}), 404
 
+        # CRITICAL: Update report metadata (expense_count and total_amount)
+        # Exclude deleted transactions from counts
+        cursor.execute('''
+            UPDATE reports
+            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)),
+                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0))
+            WHERE report_id = %s
+        ''', (report_id, report_id, report_id))
+
         conn.commit()
+
+        # Get updated counts for response
+        cursor.execute('''
+            SELECT expense_count, total_amount FROM reports WHERE report_id = %s
+        ''', (report_id,))
+        updated = cursor.fetchone()
 
         logger.info(f"Added transaction {transaction_index} to report {report_id}")
 
-        return jsonify({'ok': True, 'report_id': report_id, '_index': transaction_index})
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            '_index': transaction_index,
+            'expense_count': updated['expense_count'] if updated else 0,
+            'total_amount': float(updated['total_amount']) if updated else 0
+        })
 
     except Exception as e:
         logger.error(f"API report add item error: {e}")
@@ -334,11 +355,32 @@ def api_report_remove_item(report_id):
             UPDATE transactions SET report_id = NULL WHERE _index = %s AND report_id = %s
         ''', (transaction_index, report_id))
 
+        # CRITICAL: Update report metadata (expense_count and total_amount)
+        # Exclude deleted transactions from counts
+        cursor.execute('''
+            UPDATE reports
+            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)),
+                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0))
+            WHERE report_id = %s
+        ''', (report_id, report_id, report_id))
+
         conn.commit()
+
+        # Get updated counts for response
+        cursor.execute('''
+            SELECT expense_count, total_amount FROM reports WHERE report_id = %s
+        ''', (report_id,))
+        updated = cursor.fetchone()
 
         logger.info(f"Removed transaction {transaction_index} from report {report_id}")
 
-        return jsonify({'ok': True, 'report_id': report_id, '_index': transaction_index})
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            '_index': transaction_index,
+            'expense_count': updated['expense_count'] if updated else 0,
+            'total_amount': float(updated['total_amount']) if updated else 0
+        })
 
     except Exception as e:
         logger.error(f"API report remove item error: {e}")
@@ -364,9 +406,9 @@ def api_report_items(report_id):
 
         cursor.execute('''
             SELECT _index, chase_date, chase_description, chase_amount, chase_category,
-                   business_type, r2_url, ai_note, review_status
+                   business_type, r2_url, receipt_file, ai_note, review_status
             FROM transactions
-            WHERE report_id = %s
+            WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)
             ORDER BY chase_date DESC
         ''', (report_id,))
 
@@ -377,8 +419,8 @@ def api_report_items(report_id):
             # Serialize dates
             if item.get('chase_date') and hasattr(item['chase_date'], 'isoformat'):
                 item['chase_date'] = item['chase_date'].isoformat()
-            # Map r2_url to receipt_url for frontend compatibility
-            item['receipt_url'] = item.get('r2_url') or ''
+            # Map r2_url or receipt_file to receipt_url for frontend compatibility
+            item['receipt_url'] = item.get('r2_url') or item.get('receipt_file') or ''
             amount = float(item.get('chase_amount') or 0)
             total += abs(amount)
             items.append(item)

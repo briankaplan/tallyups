@@ -358,7 +358,7 @@ def accept_incoming_receipt():
         cursor = db_execute(conn, db_type, '''
             INSERT INTO transactions (
                 _index, chase_date, chase_description, chase_amount,
-                business_type, receipt_url, r2_url, source, review_status, created_at
+                business_type, receipt_file, r2_url, source, review_status, created_at
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
         ''', (
             next_index, trans_date, merchant, amount,
