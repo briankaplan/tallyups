@@ -549,7 +549,13 @@ try:
     app.register_blueprint(plaid_bp)
     logger.info("Registered blueprint: plaid (bank integration)")
 except ImportError as e:
-    logger.warning(f"Could not load plaid blueprint: {e}")
+    logger.error(f"PLAID IMPORT ERROR: Could not load plaid blueprint: {e}")
+    import traceback
+    logger.error(f"PLAID TRACEBACK: {traceback.format_exc()}")
+except Exception as e:
+    logger.error(f"PLAID ERROR: Unexpected error loading plaid: {e}")
+    import traceback
+    logger.error(f"PLAID TRACEBACK: {traceback.format_exc()}")
 
 # Set up API monitoring
 try:
@@ -2779,6 +2785,31 @@ def health_check():
         "provider": "gemini" if gemini_configured else "donut_fallback",
         "accuracy": "99%+" if gemini_configured else "97-98%"
     }
+
+    # Check Plaid integration
+    plaid_status = {"status": "not_configured", "routes_loaded": False}
+    try:
+        from services.plaid_service import is_plaid_configured, PLAID_SDK_AVAILABLE
+        plaid_status["sdk_available"] = PLAID_SDK_AVAILABLE
+        plaid_status["configured"] = is_plaid_configured()
+        # Check if routes are registered
+        plaid_status["routes_loaded"] = any(
+            rule.endpoint and 'plaid' in rule.endpoint.lower()
+            for rule in app.url_map.iter_rules()
+        )
+        if plaid_status["configured"] and plaid_status["routes_loaded"]:
+            plaid_status["status"] = "ready"
+        elif plaid_status["sdk_available"]:
+            plaid_status["status"] = "sdk_only"
+        else:
+            plaid_status["status"] = "sdk_missing"
+    except ImportError as e:
+        plaid_status["status"] = "import_error"
+        plaid_status["error"] = str(e)
+    except Exception as e:
+        plaid_status["status"] = "error"
+        plaid_status["error"] = str(e)
+    health_data["services"]["plaid"] = plaid_status
 
     # Check Calendar integration
     calendar_connected = False
@@ -19652,7 +19683,10 @@ def get_incoming_receipts():
     expected_key = os.getenv('ADMIN_API_KEY')
     if admin_key != expected_key:
         if not is_authenticated():
+            logger.warning(f"INCOMING API: Auth failed - no valid admin_key or session")
             return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    logger.info(f"INCOMING API: Request received - status={request.args.get('status', 'all')}, limit={request.args.get('limit', 500)}")
 
     try:
         if not USE_DATABASE or not db:
@@ -19691,6 +19725,11 @@ def get_incoming_receipts():
             cursor = db_execute(conn, db_type, query, (status, limit))
 
         receipts = [dict(row) for row in cursor.fetchall()]
+
+        # Log receipt count and image URL stats
+        with_img = sum(1 for r in receipts if r.get('receipt_image_url'))
+        with_thumb = sum(1 for r in receipts if r.get('thumbnail_url'))
+        logger.info(f"INCOMING API: Fetched {len(receipts)} receipts, {with_img} with receipt_image_url, {with_thumb} with thumbnail_url")
 
         # Get counts by status (apply same HTML filter for consistency)
         count_query = f'''
