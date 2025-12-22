@@ -294,11 +294,31 @@ def api_report_add_item(report_id):
             db.return_connection(conn)
             return jsonify({'ok': False, 'error': 'Transaction not found'}), 404
 
+        # CRITICAL: Update report metadata (expense_count and total_amount)
+        cursor.execute('''
+            UPDATE reports
+            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s),
+                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s)
+            WHERE report_id = %s
+        ''', (report_id, report_id, report_id))
+
         conn.commit()
+
+        # Get updated counts for response
+        cursor.execute('''
+            SELECT expense_count, total_amount FROM reports WHERE report_id = %s
+        ''', (report_id,))
+        updated = cursor.fetchone()
 
         logger.info(f"Added transaction {transaction_index} to report {report_id}")
 
-        return jsonify({'ok': True, 'report_id': report_id, '_index': transaction_index})
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            '_index': transaction_index,
+            'expense_count': updated['expense_count'] if updated else 0,
+            'total_amount': float(updated['total_amount']) if updated else 0
+        })
 
     except Exception as e:
         logger.error(f"API report add item error: {e}")
@@ -334,11 +354,31 @@ def api_report_remove_item(report_id):
             UPDATE transactions SET report_id = NULL WHERE _index = %s AND report_id = %s
         ''', (transaction_index, report_id))
 
+        # CRITICAL: Update report metadata (expense_count and total_amount)
+        cursor.execute('''
+            UPDATE reports
+            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s),
+                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s)
+            WHERE report_id = %s
+        ''', (report_id, report_id, report_id))
+
         conn.commit()
+
+        # Get updated counts for response
+        cursor.execute('''
+            SELECT expense_count, total_amount FROM reports WHERE report_id = %s
+        ''', (report_id,))
+        updated = cursor.fetchone()
 
         logger.info(f"Removed transaction {transaction_index} from report {report_id}")
 
-        return jsonify({'ok': True, 'report_id': report_id, '_index': transaction_index})
+        return jsonify({
+            'ok': True,
+            'report_id': report_id,
+            '_index': transaction_index,
+            'expense_count': updated['expense_count'] if updated else 0,
+            'total_amount': float(updated['total_amount']) if updated else 0
+        })
 
     except Exception as e:
         logger.error(f"API report remove item error: {e}")
