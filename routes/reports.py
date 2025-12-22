@@ -423,7 +423,7 @@ def api_reports_stats():
             SELECT
                 COUNT(*) as total,
                 SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts,
                 SUM(CASE WHEN review_status IS NULL OR review_status = '' THEN 1 ELSE 0 END) as pending
             FROM transactions
             WHERE YEAR(chase_date) = %s
@@ -479,26 +479,32 @@ def api_reports_dashboard():
             SELECT
                 COUNT(*) as total_transactions,
                 SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts
+                SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts
             FROM transactions
             WHERE YEAR(chase_date) = YEAR(NOW())
         ''')
         ytd = cursor.fetchone()
 
-        # By business type
+        # By business type - normalize different formats
         cursor.execute('''
             SELECT
-                business_type,
+                CASE
+                    WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
+                    WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                    WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                    WHEN business_type = 'Personal' THEN 'Personal'
+                    ELSE 'Personal'
+                END AS normalized_business_type,
                 COUNT(*) as count,
                 SUM(ABS(chase_amount)) as total
             FROM transactions
             WHERE YEAR(chase_date) = YEAR(NOW())
             AND business_type IS NOT NULL AND business_type != ''
-            GROUP BY business_type
+            GROUP BY normalized_business_type
         ''')
         by_business = {}
         for row in cursor.fetchall():
-            by_business[row['business_type']] = {
+            by_business[row['normalized_business_type']] = {
                 'count': row['count'],
                 'total': float(row['total'] or 0)
             }
@@ -614,20 +620,26 @@ def api_business_summary():
 
         cursor.execute('''
             SELECT
-                business_type,
+                CASE
+                    WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
+                    WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                    WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                    WHEN business_type = 'Personal' THEN 'Personal'
+                    ELSE 'Personal'
+                END AS normalized_business_type,
                 COUNT(*) as transaction_count,
                 SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) as with_receipts,
+                SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts,
                 SUM(CASE WHEN review_status = 'good' THEN 1 ELSE 0 END) as reviewed
             FROM transactions
             WHERE YEAR(chase_date) = %s
-            GROUP BY business_type
+            GROUP BY normalized_business_type
         ''', (year,))
 
         summary = []
         for row in cursor.fetchall():
             summary.append({
-                'business_type': row['business_type'] or 'Unassigned',
+                'business_type': row['normalized_business_type'] or 'Unassigned',
                 'transaction_count': row['transaction_count'],
                 'total_amount': float(row['total_amount'] or 0),
                 'with_receipts': row['with_receipts'],
