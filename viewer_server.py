@@ -5660,6 +5660,36 @@ def get_receipt(filename):
     abort(404, f"Receipt not found: {filename}")
 
 
+@app.route("/api/receipt-proxy/<path:key>")
+@login_required
+def receipt_proxy(key):
+    """Proxy R2 receipt images through the backend to handle CORS and auth."""
+    import requests
+
+    # Get R2 public URL
+    r2_public_url = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+
+    # Build the full R2 URL
+    r2_url = f"{r2_public_url}/{key}"
+
+    try:
+        # Fetch from R2
+        resp = requests.get(r2_url, timeout=30)
+        if resp.status_code != 200:
+            abort(resp.status_code, f"R2 returned {resp.status_code}")
+
+        # Return the image with proper content type
+        content_type = resp.headers.get('Content-Type', 'image/jpeg')
+        response = make_response(resp.content)
+        response.headers['Content-Type'] = content_type
+        response.headers['Cache-Control'] = 'public, max-age=86400'  # Cache for 1 day
+        return response
+
+    except requests.RequestException as e:
+        print(f"❌ Receipt proxy failed for {key}: {e}", flush=True)
+        abort(502, f"Failed to fetch from R2: {e}")
+
+
 @app.route("/update_row", methods=["POST"])
 @login_required
 def update_row():
@@ -12918,7 +12948,22 @@ def reports_list():
 
     try:
         reports = db.get_all_reports()
-        return jsonify(safe_json({"ok": True, "reports": reports}))
+
+        # Normalize business types for consistent display
+        normalized_reports = []
+        for r in reports:
+            report = dict(r) if hasattr(r, 'keys') else r
+            # Normalize business_type
+            bt = report.get('business_type', '')
+            if bt in ('Down_Home', 'Down Home'):
+                report['business_type'] = 'Down Home'
+            elif bt in ('Music_City_Rodeo', 'Music City Rodeo', 'MCR'):
+                report['business_type'] = 'Music City Rodeo'
+            elif bt in ('EM_co', 'EM.co', 'EM Co'):
+                report['business_type'] = 'EM.co'
+            normalized_reports.append(report)
+
+        return jsonify(safe_json({"ok": True, "reports": normalized_reports}))
 
     except Exception as e:
         print(f"❌ Report list failed: {e}", flush=True)
