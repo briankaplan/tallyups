@@ -906,8 +906,10 @@ class PlaidService:
                 category_primary = tx.personal_finance_category.primary
                 category_detailed = tx.personal_finance_category.detailed
 
-            # Payment channel
-            payment_channel = tx.payment_channel.value if tx.payment_channel else None
+            # Payment channel - may be enum or string depending on Plaid SDK version
+            payment_channel = None
+            if tx.payment_channel:
+                payment_channel = tx.payment_channel.value if hasattr(tx.payment_channel, 'value') else str(tx.payment_channel)
 
             # Location
             location_city = tx.location.city if tx.location else None
