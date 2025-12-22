@@ -784,11 +784,15 @@ class PlaidService:
 
             # Fetch all available transactions (handles pagination)
             while has_more:
-                request = TransactionsSyncRequest(
-                    access_token=item.access_token,
-                    cursor=cursor,
-                    count=self.config.sync_batch_size
-                )
+                # Build request - cursor is optional on first sync
+                request_params = {
+                    'access_token': item.access_token,
+                    'count': self.config.sync_batch_size
+                }
+                if cursor:  # Only include cursor if we have one
+                    request_params['cursor'] = cursor
+
+                request = TransactionsSyncRequest(**request_params)
                 response = self._api.transactions_sync(request)
 
                 # Process added transactions
