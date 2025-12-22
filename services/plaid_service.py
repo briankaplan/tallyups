@@ -456,6 +456,16 @@ class PlaidService:
             >>> link_token = result['link_token']
             >>> # Pass link_token to frontend for Plaid Link initialization
         """
+        # Lazy initialization - retry if client wasn't initialized earlier
+        if self._api is None:
+            logger.info("Plaid API not initialized, attempting to initialize now...")
+            self.config = PlaidConfig()  # Re-read config from env
+            valid, message = self.config.validate()
+            if valid:
+                self._initialize_client()
+            else:
+                raise ValueError(f"Plaid not configured: {message}")
+
         logger.info(f"Creating link token for user={user_id}, update_item={update_item_id}")
 
         # Build request
