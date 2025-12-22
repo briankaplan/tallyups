@@ -875,6 +875,12 @@ class PlaidService:
         operation: str
     ):
         """Process a single transaction from Plaid."""
+        # Filter: Skip transactions before September 2025
+        min_date = datetime(2025, 9, 1).date()
+        if tx.date and tx.date < min_date:
+            logger.debug(f"Skipping transaction {tx.transaction_id} - date {tx.date} before {min_date}")
+            return
+
         db = self._get_db()
         conn = db.get_connection()
         try:
