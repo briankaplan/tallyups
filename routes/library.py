@@ -117,8 +117,16 @@ def api_library_receipts():
                 params.append(date_to)
 
             if business_type:
-                where_clauses.append("business_type = %s")
-                params.append(business_type)
+                # Normalize business type filter to match both formats (spaces and underscores)
+                if business_type == 'Down Home':
+                    where_clauses.append("business_type IN ('Down Home', 'Down_Home')")
+                elif business_type == 'Music City Rodeo':
+                    where_clauses.append("business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR')")
+                elif business_type == 'EM.co':
+                    where_clauses.append("business_type IN ('EM.co', 'EM Co', 'EM_co')")
+                else:
+                    where_clauses.append("business_type = %s")
+                    params.append(business_type)
 
             if status:
                 where_clauses.append("review_status = %s")
@@ -434,15 +442,24 @@ def api_library_counts():
         ''')
         transaction_count = cursor.fetchone()['count']
 
-        # By business type
+        # By business type - normalize different formats to canonical names
         cursor = db_execute(conn, db_type, '''
-            SELECT business_type, COUNT(*) as count FROM transactions
+            SELECT
+                CASE
+                    WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
+                    WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                    WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                    WHEN business_type = 'Personal' THEN 'Personal'
+                    ELSE 'Personal'
+                END AS normalized_business_type,
+                COUNT(*) as count
+            FROM transactions
             WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
-            GROUP BY business_type
+            GROUP BY normalized_business_type
         ''')
         business_counts = {}
         for row in cursor.fetchall():
-            bt = row['business_type'] or 'unknown'
+            bt = row['normalized_business_type'] or 'Personal'
             business_counts[bt] = row['count']
 
         # Incoming receipts by status
@@ -512,15 +529,23 @@ def api_library_stats():
         ''')
         total_receipts = cursor.fetchone()['count']
 
-        # By business type
+        # By business type - normalize different formats to canonical names
         cursor = db_execute(conn, db_type, '''
-            SELECT business_type, COUNT(*) as count
+            SELECT
+                CASE
+                    WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
+                    WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                    WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                    WHEN business_type = 'Personal' THEN 'Personal'
+                    ELSE 'Personal'
+                END AS normalized_business_type,
+                COUNT(*) as count
             FROM transactions
             WHERE ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
             AND business_type IS NOT NULL AND business_type != ''
-            GROUP BY business_type
+            GROUP BY normalized_business_type
         ''')
-        by_business = {row['business_type']: row['count'] for row in cursor.fetchall()}
+        by_business = {row['normalized_business_type']: row['count'] for row in cursor.fetchall()}
 
         # By month (last 12 months)
         cursor = db_execute(conn, db_type, '''
