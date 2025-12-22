@@ -96,8 +96,8 @@ def api_library_receipts():
 
         # Query transactions with receipts
         if source in ('transaction', 'all'):
-            # Use r2_url as the canonical receipt image URL
-            where_clauses = ["(r2_url IS NOT NULL AND r2_url != '')"]
+            # Check both r2_url (cloud) and receipt_file (local) for receipt images
+            where_clauses = ["((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))"]
             params = []
 
             if search:
@@ -137,7 +137,7 @@ def api_library_receipts():
 
             cursor = db_execute(conn, db_type, f'''
                 SELECT _index, chase_date, chase_description, chase_amount,
-                       r2_url, ai_note, business_type, review_status,
+                       r2_url, receipt_file, ai_note, business_type, review_status,
                        ai_receipt_merchant, ai_receipt_total, ai_confidence
                 FROM transactions
                 WHERE {where_sql}
@@ -153,7 +153,8 @@ def api_library_receipts():
                 date_val = r.get('chase_date')
                 if date_val and hasattr(date_val, 'isoformat'):
                     date_val = date_val.isoformat()
-                image_url = r.get('r2_url') or ''
+                # Use r2_url first, then receipt_file as fallback
+                image_url = r.get('r2_url') or r.get('receipt_file') or ''
 
                 # Map review_status to frontend-expected status
                 review_status = r.get('review_status') or ''
@@ -313,11 +314,11 @@ def api_library_search():
         # Search transactions
         cursor = db_execute(conn, db_type, '''
             SELECT _index, chase_date, chase_description, chase_amount,
-                   r2_url, ai_note, business_type,
+                   r2_url, receipt_file, ai_note, business_type,
                    ai_receipt_merchant, ai_receipt_total, ai_confidence
             FROM transactions
             WHERE (chase_description LIKE %s OR ai_note LIKE %s OR ai_receipt_merchant LIKE %s)
-            AND (r2_url IS NOT NULL AND r2_url != '')
+            AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
             ORDER BY chase_date DESC
             LIMIT %s
         ''', (search_term, search_term, search_term, limit))
@@ -329,7 +330,8 @@ def api_library_search():
             date_val = r.get('chase_date')
             if date_val and hasattr(date_val, 'isoformat'):
                 date_val = date_val.isoformat()
-            image_url = r.get('r2_url') or ''
+            # Use r2_url first, then receipt_file as fallback
+            image_url = r.get('r2_url') or r.get('receipt_file') or ''
 
             results.append({
                 'id': f"tx_{r['_index']}",
@@ -425,17 +427,17 @@ def api_library_counts():
     try:
         conn, db_type = get_db_connection()
 
-        # Transaction receipts - use r2_url as canonical source
+        # Transaction receipts - check both r2_url and receipt_file
         cursor = db_execute(conn, db_type, '''
             SELECT COUNT(*) as count FROM transactions
-            WHERE r2_url IS NOT NULL AND r2_url != ''
+            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
         ''')
         transaction_count = cursor.fetchone()['count']
 
         # By business type
         cursor = db_execute(conn, db_type, '''
             SELECT business_type, COUNT(*) as count FROM transactions
-            WHERE r2_url IS NOT NULL AND r2_url != ''
+            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
             GROUP BY business_type
         ''')
         business_counts = {}
@@ -503,10 +505,10 @@ def api_library_stats():
     try:
         conn, db_type = get_db_connection()
 
-        # Total receipts - use r2_url as canonical source
+        # Total receipts - check both r2_url and receipt_file
         cursor = db_execute(conn, db_type, '''
             SELECT COUNT(*) as count FROM transactions
-            WHERE r2_url IS NOT NULL AND r2_url != ''
+            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
         ''')
         total_receipts = cursor.fetchone()['count']
 
@@ -514,7 +516,7 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT business_type, COUNT(*) as count
             FROM transactions
-            WHERE r2_url IS NOT NULL AND r2_url != ''
+            WHERE ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
             AND business_type IS NOT NULL AND business_type != ''
             GROUP BY business_type
         ''')
@@ -524,7 +526,7 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT DATE_FORMAT(chase_date, '%Y-%m') as month, COUNT(*) as count
             FROM transactions
-            WHERE r2_url IS NOT NULL AND r2_url != ''
+            WHERE ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
             AND chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
             GROUP BY DATE_FORMAT(chase_date, '%Y-%m')
             ORDER BY month
@@ -535,7 +537,7 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT chase_description as merchant, COUNT(*) as count
             FROM transactions
-            WHERE r2_url IS NOT NULL AND r2_url != ''
+            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
             GROUP BY chase_description
             ORDER BY count DESC
             LIMIT 10
@@ -553,7 +555,7 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT review_status, COUNT(*) as count
             FROM transactions
-            WHERE r2_url IS NOT NULL AND r2_url != ''
+            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
             GROUP BY review_status
         ''')
         by_status = {}
