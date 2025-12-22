@@ -442,6 +442,17 @@
   color: var(--brand-primary);
 }
 
+.action-btn--danger {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.action-btn--danger:hover {
+  background: var(--error);
+  border-color: var(--error);
+  color: white;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;
@@ -649,6 +660,66 @@
   padding: var(--space-4);
   background: var(--bg-tertiary);
   border-radius: var(--radius-lg);
+}
+
+/* Math Breakdown */
+.math-breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  padding: var(--space-4);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+}
+
+.math-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.math-row__label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.math-row__value {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.math-row--purchases .math-row__value { color: var(--error); }
+.math-row--returns .math-row__value { color: var(--success); }
+.math-row--payments .math-row__value { color: var(--brand-secondary); }
+
+.math-total {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, rgba(0, 255, 163, 0.1), rgba(91, 127, 255, 0.05));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--brand-primary);
+}
+
+.math-total__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.math-total__value {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--brand-primary);
 }
 
 .preview-stat {
@@ -972,6 +1043,7 @@ async function loadReports() {
         <div class="report-item__actions">
           <button class="action-btn" onclick="event.stopPropagation(); downloadReport('${r.report_id}', 'excel')">Excel</button>
           <button class="action-btn" onclick="event.stopPropagation(); downloadReport('${r.report_id}', 'csv')">CSV</button>
+          <button class="action-btn action-btn--danger" onclick="event.stopPropagation(); deleteReport('${r.report_id}', '${(r.report_name || r.report_id).replace(/'/g, "\\'")}')">Delete</button>
         </div>
       </div>
     `).join('');
@@ -1072,19 +1144,76 @@ async function viewReport(id) {
 
     document.getElementById('preview-title').textContent = data.report_name || id;
 
+    // Calculate math breakdown
+    let purchases = 0;  // Regular expenses (negative amounts, not payments)
+    let returns = 0;    // Refunds/credits (positive amounts, not payments)
+    let payments = 0;   // Credit card payments
+    let purchaseCount = 0;
+    let returnCount = 0;
+    let paymentCount = 0;
+
+    if (data.expenses?.length) {
+      data.expenses.forEach(e => {
+        const amount = parseFloat(e['Chase Amount'] || 0);
+        const desc = (e['Chase Description'] || '').toLowerCase();
+
+        // Payment detection: Chase payments, autopay, balance transfers
+        const isPayment = desc.includes('payment') ||
+                          desc.includes('autopay') ||
+                          desc.includes('automatic payment') ||
+                          desc.includes('thank you');
+
+        if (isPayment) {
+          payments += Math.abs(amount);
+          paymentCount++;
+        } else if (amount > 0) {
+          // Positive = return/refund
+          returns += amount;
+          returnCount++;
+        } else {
+          // Negative = purchase/charge
+          purchases += Math.abs(amount);
+          purchaseCount++;
+        }
+      });
+    }
+
+    const netTotal = purchases - returns;
+
     let html = `
       <div class="preview-summary">
         <div class="preview-stat">
           <div class="preview-stat__value">${data.count || 0}</div>
-          <div class="preview-stat__label">Expenses</div>
+          <div class="preview-stat__label">Transactions</div>
         </div>
         <div class="preview-stat">
-          <div class="preview-stat__value">$${(data.total_amount || 0).toLocaleString()}</div>
-          <div class="preview-stat__label">Total</div>
+          <div class="preview-stat__value">$${netTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+          <div class="preview-stat__label">Net Total</div>
         </div>
         <div class="preview-stat">
           <div class="preview-stat__value">${data.business_type || 'All'}</div>
           <div class="preview-stat__label">Business</div>
+        </div>
+      </div>
+
+      <div class="math-breakdown">
+        <div class="math-row math-row--purchases">
+          <span class="math-row__label">Purchases (${purchaseCount})</span>
+          <span class="math-row__value">-$${purchases.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+        </div>
+        <div class="math-row math-row--returns">
+          <span class="math-row__label">Returns (${returnCount})</span>
+          <span class="math-row__value">+$${returns.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+        </div>
+        ${payments > 0 ? `
+        <div class="math-row math-row--payments">
+          <span class="math-row__label">Payments (${paymentCount})</span>
+          <span class="math-row__value">$${payments.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+        </div>
+        ` : ''}
+        <div class="math-total">
+          <span class="math-total__label">Net Expenses</span>
+          <span class="math-total__value">$${netTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
         </div>
       </div>
     `;
@@ -1094,13 +1223,16 @@ async function viewReport(id) {
         <table class="preview-table">
           <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
           <tbody>
-            ${data.expenses.slice(0, 15).map(e => `
+            ${data.expenses.slice(0, 15).map(e => {
+              const amount = parseFloat(e['Chase Amount'] || 0);
+              const amountClass = amount > 0 ? 'color: var(--success)' : '';
+              return `
               <tr>
                 <td>${e['Chase Date'] || ''}</td>
                 <td>${(e['Chase Description'] || '').substring(0, 35)}${(e['Chase Description'] || '').length > 35 ? '...' : ''}</td>
-                <td style="text-align:right">$${Math.abs(e['Chase Amount'] || 0).toFixed(2)}</td>
+                <td style="text-align:right; ${amountClass}">${amount > 0 ? '+' : '-'}$${Math.abs(amount).toFixed(2)}</td>
               </tr>
-            `).join('')}
+            `}).join('')}
           </tbody>
         </table>
         ${data.expenses.length > 15 ? `<div class="preview-more">Showing 15 of ${data.expenses.length}</div>` : ''}
@@ -1124,6 +1256,30 @@ function downloadReport(id, format) {
   };
   window.location.href = urls[format] || urls.excel;
   showToast('Downloading...', 'info');
+}
+
+async function deleteReport(id, name) {
+  if (!confirm(`Delete report "${name}"?\n\nThis will unlink all transactions from this report. The transactions themselves will NOT be deleted.`)) {
+    return;
+  }
+
+  showToast('Deleting report...', 'info');
+  try {
+    const res = await csrfFetch(`/api/reports/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Failed to delete report');
+    }
+
+    showToast('Report deleted!', 'success');
+    loadReports();
+    loadStats();
+  } catch (e) {
+    showToast(e.message || 'Failed to delete', 'error');
+  }
 }
 
 document.getElementById('preview-download-btn').addEventListener('click', () => {
