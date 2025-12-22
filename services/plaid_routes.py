@@ -155,10 +155,13 @@ def create_link_token():
         }), 400
 
     except Exception as e:
+        import traceback
         logger.error(f"Link token creation error: {e}")
+        logger.error(f"Link token traceback: {traceback.format_exc()}")
         return jsonify({
             'success': False,
-            'error': 'Failed to create link token'
+            'error': f'Failed to create link token: {str(e)}',
+            'details': str(type(e).__name__)
         }), 500
 
 
