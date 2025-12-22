@@ -102,6 +102,24 @@ def get_plaid():
 # LINK TOKEN ENDPOINTS
 # =============================================================================
 
+@plaid_bp.route('/debug-config', methods=['GET'])
+def debug_plaid_config():
+    """Debug endpoint to check Plaid configuration (no secrets exposed)."""
+    import os
+    from services.plaid_service import PlaidConfig, is_plaid_configured, PLAID_SDK_AVAILABLE
+    config = PlaidConfig()
+    return jsonify({
+        'sdk_available': PLAID_SDK_AVAILABLE,
+        'configured': is_plaid_configured(),
+        'client_id_prefix': config.client_id[:8] + '...' if config.client_id else None,
+        'secret_prefix': config.secret[:8] + '...' if config.secret else None,
+        'environment': config.environment,
+        'env_client_id': os.environ.get('PLAID_CLIENT_ID', '')[:8] + '...' if os.environ.get('PLAID_CLIENT_ID') else 'NOT SET',
+        'env_secret': os.environ.get('PLAID_SECRET', '')[:8] + '...' if os.environ.get('PLAID_SECRET') else 'NOT SET',
+        'env_plaid_env': os.environ.get('PLAID_ENV', 'NOT SET')
+    })
+
+
 @plaid_bp.route('/link-token', methods=['POST'])
 @require_auth
 def create_link_token():
