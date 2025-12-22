@@ -5645,6 +5645,11 @@ def get_transactions():
 
             return jsonify(safe_json({
                 'transactions': records,
+                # iOS app expects these at root level
+                'total': total_count,
+                'offset': offset,
+                'limit': per_page,
+                # Also include pagination object for web compatibility
                 'pagination': {
                     'page': page,
                     'per_page': per_page,

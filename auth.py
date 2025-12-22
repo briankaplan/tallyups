@@ -103,7 +103,18 @@ def is_authenticated() -> bool:
             logging.error("SECURITY: No AUTH_PASSWORD configured in production!")
             return False
         return True
-    return session.get('authenticated', False)
+
+    # Check Flask session first (handles browser and properly formatted cookies)
+    if session.get('authenticated', False):
+        return True
+
+    # Check for admin API key (for iOS app and API clients)
+    admin_key = request.headers.get('X-Admin-Key') or request.args.get('admin_key')
+    expected_key = os.environ.get('ADMIN_API_KEY')
+    if expected_key and admin_key == expected_key:
+        return True
+
+    return False
 
 
 def login_required(f):
