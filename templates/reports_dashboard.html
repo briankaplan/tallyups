@@ -772,6 +772,205 @@
   color: var(--text-tertiary);
   font-size: var(--text-sm);
 }
+
+/* Section Actions */
+.section-actions {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-3);
+}
+
+.search-input {
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  width: 200px;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  width: 280px;
+}
+
+.search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Report List Footer */
+.report-list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border-secondary);
+}
+
+.btn-load-more {
+  padding: var(--space-2) var(--space-5);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-load-more:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+
+.report-count {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge--draft {
+  background: rgba(255, 170, 0, 0.15);
+  color: var(--warning);
+}
+
+.status-badge--submitted {
+  background: rgba(0, 255, 163, 0.15);
+  color: var(--success);
+}
+
+/* Rename Input */
+.rename-input {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--brand-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  padding: var(--space-1) var(--space-2);
+  width: 200px;
+}
+
+.rename-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 255, 163, 0.2);
+}
+
+/* Tip Cards */
+.tip-card {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-3);
+}
+
+.tip-card:last-child {
+  margin-bottom: 0;
+}
+
+.tip-icon {
+  font-size: var(--text-xl);
+  flex-shrink: 0;
+}
+
+.tip-content {
+  flex: 1;
+}
+
+.tip-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.tip-text {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+/* Date Range in Preview */
+.preview-date-range {
+  text-align: center;
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* Modal Download Options */
+.download-options {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.download-btn {
+  flex: 1;
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  text-align: center;
+}
+
+.download-btn:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+
+.download-btn.primary {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #000;
+}
+
+/* Receipt indicator in preview */
+.receipt-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.receipt-indicator--yes {
+  background: rgba(0, 255, 163, 0.15);
+  color: var(--success);
+}
+
+.receipt-indicator--no {
+  background: rgba(255, 68, 68, 0.15);
+  color: var(--error);
+}
 </style>
 </head>
 <body>
@@ -829,22 +1028,29 @@
       </button>
     </div>
 
-    <!-- Content Grid -->
-    <div class="content-grid">
-
-      <!-- Recent Reports -->
-      <div class="section-card">
-        <div class="section-header">
-          <div class="section-icon">📋</div>
-          <h2 class="section-title">Recent Reports</h2>
-        </div>
-        <div class="report-list" id="report-list">
-          <div class="loading">
-            <div class="spinner"></div>
-            Loading reports...
-          </div>
+    <!-- Reports Section (Full Width) -->
+    <div class="section-card" style="margin-bottom: var(--space-6);">
+      <div class="section-header">
+        <div class="section-icon">📋</div>
+        <h2 class="section-title">Your Reports</h2>
+        <div class="section-actions">
+          <input type="text" class="search-input" id="report-search" placeholder="Search reports..." oninput="filterReports(this.value)">
         </div>
       </div>
+      <div class="report-list" id="report-list">
+        <div class="loading">
+          <div class="spinner"></div>
+          Loading reports...
+        </div>
+      </div>
+      <div class="report-list-footer" id="report-list-footer" style="display:none;">
+        <button class="btn-load-more" id="load-more-btn" onclick="loadMoreReports()">Load More</button>
+        <span class="report-count" id="report-count-text"></span>
+      </div>
+    </div>
+
+    <!-- Content Grid -->
+    <div class="content-grid">
 
       <!-- Report Builder -->
       <div class="section-card">
@@ -862,6 +1068,7 @@
                 <button type="button" class="pill active" data-value="all">All</button>
                 <button type="button" class="pill" data-value="Down Home">Down Home</button>
                 <button type="button" class="pill" data-value="Music City Rodeo">MCR</button>
+                <button type="button" class="pill" data-value="EM.co">EM.co</button>
                 <button type="button" class="pill" data-value="Personal">Personal</button>
               </div>
               <input type="hidden" id="business-type" name="business_type" value="all">
@@ -903,9 +1110,9 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
                   CSV
                 </button>
-                <button type="button" class="format-btn" data-format="quickbooks">
-                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                  QB
+                <button type="button" class="format-btn" data-format="print">
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                  Print
                 </button>
               </div>
               <input type="hidden" id="format" name="format" value="excel">
@@ -921,6 +1128,37 @@
               Generate Report
             </button>
           </form>
+        </div>
+      </div>
+
+      <!-- Tips & Info Panel -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-icon">💡</div>
+          <h2 class="section-title">Tips</h2>
+        </div>
+        <div class="section-body">
+          <div class="tip-card">
+            <div class="tip-icon">📊</div>
+            <div class="tip-content">
+              <div class="tip-title">Quick Reports</div>
+              <div class="tip-text">Use the quick action buttons above for instant reports by business.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">📁</div>
+            <div class="tip-content">
+              <div class="tip-title">Export Options</div>
+              <div class="tip-text">Excel exports include all details. CSV is great for spreadsheets. PDF is perfect for sharing.</div>
+            </div>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🔍</div>
+            <div class="tip-content">
+              <div class="tip-title">Find Receipts</div>
+              <div class="tip-text">Click any report to preview transactions and verify receipt coverage.</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -945,8 +1183,12 @@
       </div>
     </div>
     <div class="modal__footer">
-      <button class="btn-secondary" onclick="closePreview()">Cancel</button>
-      <button class="btn-primary" id="preview-download-btn">Download</button>
+      <button class="btn-secondary" onclick="closePreview()">Close</button>
+      <div class="download-options">
+        <button class="download-btn" onclick="downloadReport(currentReportId, 'csv'); closePreview();">CSV</button>
+        <button class="download-btn primary" onclick="downloadReport(currentReportId, 'excel'); closePreview();">Excel</button>
+        <button class="download-btn" onclick="downloadReport(currentReportId, 'pdf'); closePreview();">PDF</button>
+      </div>
     </div>
   </div>
 </div>
@@ -956,6 +1198,9 @@
 let selectedBusiness = 'all';
 let selectedFormat = 'excel';
 let currentReportId = null;
+let allReports = [];
+let displayedReports = 0;
+const REPORTS_PER_PAGE = 10;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -1014,6 +1259,8 @@ async function loadStats() {
 
 async function loadReports() {
   const container = document.getElementById('report-list');
+  const footer = document.getElementById('report-list-footer');
+
   try {
     const res = await fetch('/reports/list');
     if (!res.ok) throw new Error('Failed');
@@ -1026,30 +1273,149 @@ async function loadReports() {
           <div class="empty-state__text">No reports yet. Create your first one!</div>
         </div>
       `;
+      footer.style.display = 'none';
       return;
     }
 
-    container.innerHTML = data.reports.slice(0, 8).map(r => `
-      <div class="report-item" onclick="viewReport('${r.report_id}')">
-        <div class="report-item__icon">📄</div>
-        <div class="report-item__info">
-          <div class="report-item__name">${r.report_name || r.report_id}</div>
-          <div class="report-item__meta">
-            <span>${r.business_type || 'All'}</span>
-            <span>${r.expense_count || 0} items</span>
-            <span>$${(r.total_amount || 0).toLocaleString()}</span>
-          </div>
-        </div>
-        <div class="report-item__actions">
-          <button class="action-btn" onclick="event.stopPropagation(); downloadReport('${r.report_id}', 'excel')">Excel</button>
-          <button class="action-btn" onclick="event.stopPropagation(); downloadReport('${r.report_id}', 'csv')">CSV</button>
-          <button class="action-btn action-btn--danger" onclick="event.stopPropagation(); deleteReport('${r.report_id}', '${(r.report_name || r.report_id).replace(/'/g, "\\'")}')">Delete</button>
-        </div>
-      </div>
-    `).join('');
+    allReports = data.reports;
+    displayedReports = 0;
+    container.innerHTML = '';
+    loadMoreReports();
   } catch (e) {
     console.error('Load error:', e);
     container.innerHTML = `<div class="empty-state"><div class="empty-state__text" style="color: var(--error);">Failed to load reports</div></div>`;
+  }
+}
+
+function loadMoreReports() {
+  const container = document.getElementById('report-list');
+  const footer = document.getElementById('report-list-footer');
+  const searchTerm = document.getElementById('report-search')?.value?.toLowerCase() || '';
+
+  // Filter reports
+  const filtered = searchTerm
+    ? allReports.filter(r =>
+        (r.report_name || '').toLowerCase().includes(searchTerm) ||
+        (r.business_type || '').toLowerCase().includes(searchTerm)
+      )
+    : allReports;
+
+  const toShow = filtered.slice(displayedReports, displayedReports + REPORTS_PER_PAGE);
+
+  toShow.forEach(r => {
+    container.innerHTML += renderReportItem(r);
+  });
+
+  displayedReports += toShow.length;
+
+  // Update footer
+  if (filtered.length > 0) {
+    footer.style.display = 'flex';
+    document.getElementById('report-count-text').textContent = `Showing ${Math.min(displayedReports, filtered.length)} of ${filtered.length} reports`;
+    document.getElementById('load-more-btn').style.display = displayedReports >= filtered.length ? 'none' : 'block';
+  } else {
+    footer.style.display = 'none';
+  }
+}
+
+function filterReports(searchTerm) {
+  const container = document.getElementById('report-list');
+  displayedReports = 0;
+  container.innerHTML = '';
+
+  const filtered = searchTerm
+    ? allReports.filter(r =>
+        (r.report_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r.business_type || '').toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : allReports;
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state__icon">🔍</div>
+        <div class="empty-state__text">No reports match "${searchTerm}"</div>
+      </div>
+    `;
+    document.getElementById('report-list-footer').style.display = 'none';
+    return;
+  }
+
+  loadMoreReports();
+}
+
+function renderReportItem(r) {
+  const statusClass = r.status === 'submitted' ? 'status-badge--submitted' : 'status-badge--draft';
+  const statusText = r.status === 'submitted' ? 'Submitted' : 'Draft';
+  const escapedName = (r.report_name || r.report_id).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+  return `
+    <div class="report-item" onclick="viewReport('${r.report_id}')">
+      <div class="report-item__icon">📄</div>
+      <div class="report-item__info">
+        <div class="report-item__name" id="name-${r.report_id}">
+          ${r.report_name || r.report_id}
+          <span class="status-badge ${statusClass}">${statusText}</span>
+        </div>
+        <div class="report-item__meta">
+          <span>${r.business_type || 'All'}</span>
+          <span>${r.expense_count || 0} items</span>
+          <span>$${(r.total_amount || 0).toLocaleString()}</span>
+        </div>
+      </div>
+      <div class="report-item__actions">
+        <button class="action-btn" onclick="event.stopPropagation(); startRename('${r.report_id}', '${escapedName}')" title="Rename">✏️</button>
+        <button class="action-btn" onclick="event.stopPropagation(); downloadReport('${r.report_id}', 'excel')">Excel</button>
+        <button class="action-btn action-btn--danger" onclick="event.stopPropagation(); deleteReport('${r.report_id}', '${escapedName}')">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+function startRename(reportId, currentName) {
+  const nameEl = document.getElementById(`name-${reportId}`);
+  if (!nameEl) return;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'rename-input';
+  input.value = currentName;
+  input.onclick = (e) => e.stopPropagation();
+  input.onkeydown = async (e) => {
+    if (e.key === 'Enter') {
+      await saveRename(reportId, input.value);
+    } else if (e.key === 'Escape') {
+      loadReports();
+    }
+  };
+  input.onblur = () => loadReports();
+
+  nameEl.innerHTML = '';
+  nameEl.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+async function saveRename(reportId, newName) {
+  if (!newName.trim()) {
+    showToast('Name cannot be empty', 'error');
+    return;
+  }
+
+  try {
+    const res = await csrfFetch(`/api/reports/${reportId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName.trim() })
+    });
+
+    if (!res.ok) throw new Error('Failed to rename');
+
+    showToast('Report renamed!', 'success');
+    loadReports();
+  } catch (e) {
+    showToast(e.message || 'Failed to rename', 'error');
+    loadReports();
   }
 }
 
@@ -1067,9 +1433,16 @@ async function generateQuickReport(period, business) {
       dateTo = today;
       break;
     case 'last_quarter':
-      const q = Math.floor(today.getMonth() / 3);
-      dateFrom = new Date(today.getFullYear(), (q - 1) * 3, 1);
-      dateTo = new Date(today.getFullYear(), q * 3, 0);
+      // Fixed: Handle Q1 by going to previous year's Q4
+      const currentQuarter = Math.floor(today.getMonth() / 3);
+      if (currentQuarter === 0) {
+        // We're in Q1, last quarter is Q4 of last year
+        dateFrom = new Date(today.getFullYear() - 1, 9, 1);  // Oct 1
+        dateTo = new Date(today.getFullYear() - 1, 11, 31); // Dec 31
+      } else {
+        dateFrom = new Date(today.getFullYear(), (currentQuarter - 1) * 3, 1);
+        dateTo = new Date(today.getFullYear(), currentQuarter * 3, 0);
+      }
       break;
     default:
       dateFrom = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -1144,6 +1517,9 @@ async function viewReport(id) {
 
     document.getElementById('preview-title').textContent = data.report_name || id;
 
+    // Calculate date range from expenses
+    let minDate = null, maxDate = null;
+
     // Calculate math breakdown
     let purchases = 0;  // Regular expenses (negative amounts, not payments)
     let returns = 0;    // Refunds/credits (positive amounts, not payments)
@@ -1156,6 +1532,14 @@ async function viewReport(id) {
       data.expenses.forEach(e => {
         const amount = parseFloat(e['Chase Amount'] || 0);
         const desc = (e['Chase Description'] || '').toLowerCase();
+        const dateStr = e['Chase Date'] || '';
+
+        // Track date range
+        if (dateStr) {
+          const d = new Date(dateStr);
+          if (!minDate || d < minDate) minDate = d;
+          if (!maxDate || d > maxDate) maxDate = d;
+        }
 
         // Payment detection: Chase payments, autopay, balance transfers
         const isPayment = desc.includes('payment') ||
@@ -1180,7 +1564,14 @@ async function viewReport(id) {
 
     const netTotal = purchases - returns;
 
+    // Format date range
+    const dateRangeText = minDate && maxDate
+      ? `${minDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})} - ${maxDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}`
+      : 'No transactions';
+
     let html = `
+      <div class="preview-date-range">📅 ${dateRangeText}</div>
+
       <div class="preview-summary">
         <div class="preview-stat">
           <div class="preview-stat__value">${data.count || 0}</div>
@@ -1221,16 +1612,18 @@ async function viewReport(id) {
     if (data.expenses?.length) {
       html += `
         <table class="preview-table">
-          <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+          <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th style="text-align:center">Receipt</th></tr></thead>
           <tbody>
             ${data.expenses.slice(0, 15).map(e => {
               const amount = parseFloat(e['Chase Amount'] || 0);
               const amountClass = amount > 0 ? 'color: var(--success)' : '';
+              const hasReceipt = e['r2_url'] || e['receipt_file'];
               return `
               <tr>
                 <td>${e['Chase Date'] || ''}</td>
-                <td>${(e['Chase Description'] || '').substring(0, 35)}${(e['Chase Description'] || '').length > 35 ? '...' : ''}</td>
+                <td>${(e['Chase Description'] || '').substring(0, 30)}${(e['Chase Description'] || '').length > 30 ? '...' : ''}</td>
                 <td style="text-align:right; ${amountClass}">${amount > 0 ? '+' : '-'}$${Math.abs(amount).toFixed(2)}</td>
+                <td style="text-align:center"><span class="receipt-indicator ${hasReceipt ? 'receipt-indicator--yes' : 'receipt-indicator--no'}">${hasReceipt ? '✓' : '✗'}</span></td>
               </tr>
             `}).join('')}
           </tbody>
@@ -1281,10 +1674,6 @@ async function deleteReport(id, name) {
     showToast(e.message || 'Failed to delete', 'error');
   }
 }
-
-document.getElementById('preview-download-btn').addEventListener('click', () => {
-  if (currentReportId) { downloadReport(currentReportId, 'excel'); closePreview(); }
-});
 
 function showToast(msg, type = 'info') {
   const container = document.getElementById('toast-container');
