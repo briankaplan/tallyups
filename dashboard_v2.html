@@ -217,6 +217,20 @@
       font-weight: var(--font-medium);
     }
 
+    /* Fix for alert links - remove blue styling */
+    .alert, .alert:link, .alert:visited, .alert:hover, .alert:active {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .alert__title, .alert__message {
+      color: var(--text-primary);
+    }
+
+    .alert__message {
+      color: var(--text-secondary);
+    }
+
     /* Section Title */
     .section-title {
       display: flex;
