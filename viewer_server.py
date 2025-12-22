@@ -557,6 +557,16 @@ except Exception as e:
     import traceback
     logger.error(f"PLAID TRACEBACK: {traceback.format_exc()}")
 
+# Two-Factor Authentication
+try:
+    from services.two_factor_routes import tfa_bp
+    app.register_blueprint(tfa_bp)
+    logger.info("Registered blueprint: 2fa (two-factor authentication)")
+except ImportError as e:
+    logger.warning(f"2FA not available: {e}")
+except Exception as e:
+    logger.warning(f"2FA error: {e}")
+
 # Set up API monitoring
 try:
     from monitoring import setup_flask_monitoring, get_monitor
