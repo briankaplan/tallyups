@@ -168,7 +168,7 @@ except Exception as e:
 
 # === R2 STORAGE ===
 try:
-    from r2_service import upload_to_r2, get_public_url, r2_status, R2_ENABLED
+    from r2_service import upload_to_r2, get_public_url, r2_status, R2_ENABLED, generate_standard_r2_key
     if R2_ENABLED:
         print(f"✅ R2 storage enabled")
     else:
@@ -4746,20 +4746,27 @@ def mobile_upload():
             file_path.rename(new_file_path)
             file_path = new_file_path
 
-        # Upload to R2 storage
+        # Upload to R2 storage using STANDARD naming convention
         receipt_image_url = None
         thumbnail_url = None
         try:
-            from r2_service import upload_to_r2, R2_ENABLED
+            from r2_service import upload_to_r2, R2_ENABLED, generate_standard_r2_key
             if R2_ENABLED:
-                # Upload full image to R2
-                r2_key = f"receipts/mobile/{timestamp}_{safe_merchant}{ext}"
+                # Generate standard R2 key for mobile uploads (goes to inbox/)
+                r2_key = generate_standard_r2_key(
+                    transaction_id=None,  # No transaction yet
+                    merchant=merchant,
+                    date=date_str,
+                    amount=amount_float,
+                    extension=ext.lstrip('.'),
+                    source='mobile_inbox'  # Goes to inbox/ prefix
+                )
                 success, url_or_error = upload_to_r2(file_path, r2_key)
                 if success:
                     receipt_image_url = url_or_error
                     print(f"☁️ Uploaded to R2: {receipt_image_url}")
 
-                    # Generate and upload thumbnail
+                    # Generate and upload thumbnail with standard naming
                     try:
                         from PIL import Image
                         thumb_path = incoming_dir / f"thumb_{filename}"
@@ -4768,7 +4775,8 @@ def mobile_upload():
                             img.thumbnail((400, 400), Image.Resampling.LANCZOS)
                             img.save(thumb_path, quality=85)
 
-                        thumb_key = f"receipts/mobile/thumbs/{timestamp}_{safe_merchant}_thumb{ext}"
+                        # Thumbnail key follows same pattern with _thumb suffix
+                        thumb_key = r2_key.rsplit('.', 1)[0] + '_thumb.' + r2_key.rsplit('.', 1)[1]
                         thumb_success, thumb_url = upload_to_r2(thumb_path, thumb_key)
                         if thumb_success:
                             thumbnail_url = thumb_url
@@ -12125,19 +12133,34 @@ def upload_receipt_auto():
         confidence = int(match["score"] * 100)
 
         if confidence >= 70:
-            # Rename file properly
-            idx = match["row"]["_index"]
-            final_filename = f"receipt_{idx}_{timestamp}{ext}"
+            # Get transaction details for standard naming
+            tx_row = match["row"]
+            tx_id = tx_row.get("id") or tx_row.get("_index")
+            merchant = ocr_data.get("merchant") or tx_row.get("Chase Description", "")
+            tx_date = ocr_data.get("date") or tx_row.get("Chase Date", "")
+            amount = ocr_data.get("total") or tx_row.get("Chase Amount", 0)
+            business_type = tx_row.get("business_type", "")
+
+            # Generate standard R2 key using LOCKED naming convention
+            r2_key = generate_standard_r2_key(
+                transaction_id=tx_id,
+                merchant=merchant,
+                date=tx_date,
+                amount=amount,
+                business_type=business_type,
+                extension=ext.lstrip('.')
+            )
+            final_filename = r2_key.split('/')[-1]  # Just the filename part
             final_path = RECEIPT_DIR / final_filename
 
             # Remove temp prefix
             temp_path.rename(final_path)
 
-            # Upload to R2 storage
+            # Upload to R2 storage with standard key
             r2_url = None
             if R2_ENABLED and upload_to_r2:
                 try:
-                    success, result = upload_to_r2(final_path)
+                    success, result = upload_to_r2(final_path, r2_key)
                     if success:
                         r2_url = result
                         print(f"☁️  Uploaded to R2: {r2_url}", flush=True)
@@ -12173,9 +12196,22 @@ def upload_receipt_auto():
             }))
         else:
             # Confidence too low for auto-attach, but KEEP the file for manual attachment
-            # Rename to a "pending" filename so user can attach manually
-            idx = match["row"]["_index"]
-            pending_filename = f"pending_{idx}_{timestamp}{ext}"
+            # Use standard naming for pending receipts (goes to inbox/ prefix)
+            tx_row = match["row"]
+            merchant = ocr_data.get("merchant") or tx_row.get("Chase Description", "")
+            tx_date = ocr_data.get("date") or tx_row.get("Chase Date", "")
+            amount = ocr_data.get("total") or tx_row.get("Chase Amount", 0)
+
+            # Generate standard R2 key for pending (inbox prefix, no transaction_id yet)
+            r2_key = generate_standard_r2_key(
+                transaction_id=None,  # No ID yet - pending review
+                merchant=merchant,
+                date=tx_date,
+                amount=amount,
+                extension=ext.lstrip('.'),
+                source='inbox'  # Goes to inbox/ prefix
+            )
+            pending_filename = r2_key.split('/')[-1]
             pending_path = RECEIPT_DIR / pending_filename
             temp_path.rename(pending_path)
 
@@ -12183,7 +12219,7 @@ def upload_receipt_auto():
             r2_url_pending = None
             if R2_ENABLED and upload_to_r2:
                 try:
-                    success, result = upload_to_r2(pending_path)
+                    success, result = upload_to_r2(pending_path, r2_key)
                     if success:
                         r2_url_pending = result
                         print(f"☁️  Uploaded pending to R2: {r2_url_pending}", flush=True)
