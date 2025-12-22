@@ -108,11 +108,21 @@ class ReceiptUploadService:
             if not jpg_path:
                 return {'success': False, 'error': 'Conversion to JPG failed'}
 
-            # Step 3: Generate R2 filename
+            # Step 3: Generate R2 filename with STANDARD naming
             r2_filename = self._generate_r2_filename(source, metadata)
 
-            # Step 4: Upload to R2
-            r2_key = f'receipts/{r2_filename}'
+            # Step 4: Determine prefix based on business_type
+            # STANDARD PREFIXES:
+            #   - downhome/ : Down Home business receipts
+            #   - receipts/ : Music City Rodeo and other business receipts
+            #   - inbox/    : Incoming unmatched receipts from Gmail/mobile
+            business_type = metadata.get('business_type', '') if metadata else ''
+            if business_type == 'Down Home':
+                r2_key = f'downhome/{r2_filename}'
+            elif source in ['gmail_inbox', 'mobile_inbox', 'inbox']:
+                r2_key = f'inbox/{r2_filename}'
+            else:
+                r2_key = f'receipts/{r2_filename}'
             upload_success = self._upload_to_r2(jpg_path, r2_key)
 
             if not upload_success:
@@ -307,30 +317,72 @@ class ReceiptUploadService:
             if driver:
                 driver.quit()
 
+    def _sanitize_merchant(self, merchant: str) -> str:
+        """
+        Convert merchant name to snake_case for filename.
+        STANDARD: lowercase, underscores, max 35 chars
+        """
+        import re
+        if not merchant:
+            return 'unknown'
+        # Remove special chars, keep alphanumeric and spaces
+        clean = re.sub(r'[^a-zA-Z0-9\s]', '', merchant)
+        # Convert to snake_case
+        clean = '_'.join(clean.lower().split())
+        # Limit length
+        return clean[:35] if clean else 'unknown'
+
+    def _format_amount(self, amount) -> str:
+        """
+        Format amount for filename: 123.45 -> 123_45
+        STANDARD: Replace decimal with underscore
+        """
+        try:
+            return f"{abs(float(amount)):.2f}".replace('.', '_')
+        except (ValueError, TypeError):
+            return '0_00'
+
     def _generate_r2_filename(self, source, metadata=None):
-        """Generate unique filename for R2 storage"""
-        timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
+        """
+        Generate R2 filename using STANDARD naming convention.
 
-        # Extract merchant/description if available
+        NAMING CONVENTION (LOCKED):
+        - With transaction_id: {transaction_id}_{merchant}_{date}_{amount}.{ext}
+        - Without transaction_id: {source}_{date}_{amount}_{hash}.{ext}
+
+        This ensures all receipts follow the same pattern for consistency.
+        """
+        timestamp = datetime.now().strftime('%Y-%m-%d')
+
         if metadata:
-            merchant = metadata.get('merchant', '').replace(' ', '_')[:30]
-            amount = metadata.get('amount', '')
-            date = metadata.get('date', '')
+            transaction_id = metadata.get('transaction_id')
+            merchant = self._sanitize_merchant(metadata.get('merchant', ''))
+            amount = self._format_amount(metadata.get('amount', 0))
+            date = metadata.get('date', timestamp)
 
-            if merchant:
-                base_name = f"{source}_{date or timestamp}_{merchant}_{amount}"
+            # Format date to YYYY-MM-DD if not already
+            if date and '/' in str(date):
+                try:
+                    parts = str(date).split('/')
+                    if len(parts) == 3:
+                        m, d, y = parts
+                        if len(y) == 2:
+                            y = f"20{y}"
+                        date = f"{y}-{m.zfill(2)}-{d.zfill(2)}"
+                except:
+                    pass
+
+            # STANDARD FORMAT: {transaction_id}_{merchant}_{date}_{amount}.jpg
+            if transaction_id:
+                return f"{transaction_id}_{merchant}_{date}_{amount}.jpg"
             else:
-                base_name = f"{source}_{timestamp}"
+                # No transaction_id yet - use hash for uniqueness
+                hash_suffix = hashlib.md5(f"{merchant}{date}{amount}{datetime.now()}".encode()).hexdigest()[:8]
+                return f"{merchant}_{date}_{amount}_{hash_suffix}.jpg"
         else:
-            base_name = f"{source}_{timestamp}"
-
-        # Add random hash for uniqueness
-        hash_suffix = hashlib.md5(f"{base_name}{datetime.now()}".encode()).hexdigest()[:8]
-
-        # Clean filename
-        clean_name = "".join(c if c.isalnum() or c in ['_', '-', '.'] else '_' for c in base_name)
-
-        return f"{clean_name}_{hash_suffix}.jpg"
+            # Fallback for receipts without metadata
+            hash_suffix = hashlib.md5(f"{source}{datetime.now()}".encode()).hexdigest()[:12]
+            return f"{source}_{timestamp}_{hash_suffix}.jpg"
 
     def _upload_to_r2(self, file_path, r2_key):
         """Upload file to R2 storage"""

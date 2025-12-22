@@ -2,12 +2,35 @@
 """
 R2 Upload Service
 Handles automatic upload of receipts to Cloudflare R2 storage
+
+=== RECEIPT NAMING CONVENTION (LOCKED) ===
+
+All receipts MUST follow this naming standard:
+  {prefix}/{transaction_id}_{merchant}_{date}_{amount}.{ext}
+
+Where:
+  - prefix: 'downhome/', 'receipts/', or 'inbox/'
+  - transaction_id: Database transaction ID (integer)
+  - merchant: snake_case merchant name (max 35 chars)
+  - date: YYYY-MM-DD format
+  - amount: Amount with underscore decimal (e.g., 123_45)
+  - ext: File extension (jpg, png, pdf)
+
+Examples:
+  - downhome/4287_soho_house_2025-12-02_3120_00.jpg
+  - receipts/1234_hive_co_2025-08-20_199_20.jpg
+  - inbox/uber_2025-12-10_36_95_a1b2c3d4.jpg
+
+Use generate_standard_r2_key() for all uploads!
 """
 
 import os
+import re
 import subprocess
 import mimetypes
+import hashlib
 from pathlib import Path
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -26,6 +49,123 @@ if not os.path.exists(CURL_PATH):
 
 # Check if R2 is configured
 R2_ENABLED = bool(R2_ACCESS_KEY and R2_SECRET_KEY)
+
+
+# =============================================================================
+# STANDARD NAMING CONVENTION FUNCTIONS (LOCKED)
+# =============================================================================
+
+def sanitize_merchant(merchant: str) -> str:
+    """
+    Convert merchant name to snake_case for filename.
+    STANDARD: lowercase, underscores, max 35 chars
+    """
+    if not merchant:
+        return 'unknown'
+    # Remove special chars, keep alphanumeric and spaces
+    clean = re.sub(r'[^a-zA-Z0-9\s]', '', str(merchant))
+    # Convert to snake_case
+    clean = '_'.join(clean.lower().split())
+    # Limit length
+    return clean[:35] if clean else 'unknown'
+
+
+def format_amount(amount) -> str:
+    """
+    Format amount for filename: 123.45 -> 123_45
+    STANDARD: Replace decimal with underscore
+    """
+    try:
+        return f"{abs(float(amount)):.2f}".replace('.', '_')
+    except (ValueError, TypeError):
+        return '0_00'
+
+
+def format_date(date_str) -> str:
+    """
+    Format date to YYYY-MM-DD standard.
+    Handles MM/DD/YY, YYYY-MM-DD, and datetime objects.
+    """
+    if not date_str:
+        return datetime.now().strftime('%Y-%m-%d')
+
+    # Already in correct format
+    if isinstance(date_str, str) and re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+        return date_str
+
+    # Handle datetime objects
+    if hasattr(date_str, 'strftime'):
+        return date_str.strftime('%Y-%m-%d')
+
+    # Handle MM/DD/YY or MM/DD/YYYY
+    if '/' in str(date_str):
+        try:
+            parts = str(date_str).split('/')
+            if len(parts) == 3:
+                m, d, y = parts
+                if len(y) == 2:
+                    y = f"20{y}"
+                return f"{y}-{m.zfill(2)}-{d.zfill(2)}"
+        except:
+            pass
+
+    return datetime.now().strftime('%Y-%m-%d')
+
+
+def generate_standard_r2_key(
+    transaction_id: int = None,
+    merchant: str = None,
+    date: str = None,
+    amount: float = None,
+    business_type: str = None,
+    extension: str = 'jpg',
+    source: str = None
+) -> str:
+    """
+    Generate a standardized R2 key following the LOCKED naming convention.
+
+    NAMING CONVENTION:
+      {prefix}/{transaction_id}_{merchant}_{date}_{amount}.{ext}
+
+    Args:
+        transaction_id: Database transaction ID (required for linked receipts)
+        merchant: Merchant/vendor name
+        date: Transaction date (any format, will be normalized)
+        amount: Transaction amount
+        business_type: 'Down Home', 'Music City Rodeo', etc. (determines prefix)
+        extension: File extension (default: jpg)
+        source: Source hint for prefix ('inbox', 'gmail_inbox', etc.)
+
+    Returns:
+        Standard R2 key like 'downhome/4287_soho_house_2025-12-02_3120_00.jpg'
+    """
+    # Determine prefix based on business_type or source
+    if business_type == 'Down Home':
+        prefix = 'downhome'
+    elif source in ('inbox', 'gmail_inbox', 'mobile_inbox', 'incoming'):
+        prefix = 'inbox'
+    else:
+        prefix = 'receipts'
+
+    # Sanitize components
+    merchant_clean = sanitize_merchant(merchant)
+    date_clean = format_date(date)
+    amount_clean = format_amount(amount)
+    ext = extension.lower().lstrip('.')
+
+    # Build filename
+    if transaction_id:
+        # Standard format with transaction ID
+        filename = f"{transaction_id}_{merchant_clean}_{date_clean}_{amount_clean}.{ext}"
+    else:
+        # Unlinked receipt - add hash for uniqueness
+        hash_suffix = hashlib.md5(
+            f"{merchant_clean}{date_clean}{amount_clean}{datetime.now()}".encode()
+        ).hexdigest()[:8]
+        filename = f"{merchant_clean}_{date_clean}_{amount_clean}_{hash_suffix}.{ext}"
+
+    return f"{prefix}/{filename}"
+
 
 def upload_to_r2(local_path: Path, key: str = None) -> tuple[bool, str]:
     """
