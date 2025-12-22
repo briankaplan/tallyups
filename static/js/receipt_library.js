@@ -13,7 +13,14 @@
   // ============================================
 
   // Cache buster for thumbnail URLs - ensures fresh load on session/page load
-  const cacheBuster = `cb=${Date.now()}`;
+  let cacheBuster = `cb=${Date.now()}`;
+
+  // Force refresh all images by updating cache buster
+  function refreshAllImages() {
+    cacheBuster = `cb=${Date.now()}`;
+    renderReceipts();
+    showToast('Images refreshed', 'success');
+  }
 
   // Helper to add cache buster to thumbnail URLs for fresh loading
   function getThumbnailUrl(url) {
@@ -1179,6 +1186,16 @@
     $('upload-btn')?.addEventListener('click', () => openModal(elements.uploadModal));
     $('empty-upload-btn')?.addEventListener('click', () => openModal(elements.uploadModal));
     $('theme-btn')?.addEventListener('click', toggleTheme);
+
+    // Refresh images button - force cache bust
+    const refreshBtn = $('refresh-images-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        refreshBtn.classList.add('loading');
+        refreshAllImages();
+        setTimeout(() => refreshBtn.classList.remove('loading'), 1000);
+      });
+    }
 
     // Detail modal
     elements.detailClose?.addEventListener('click', closeDetailModal);
