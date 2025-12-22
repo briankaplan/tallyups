@@ -123,9 +123,11 @@ class PlaidConfig:
     @property
     def plaid_env(self) -> str:
         """Get the Plaid environment host."""
+        # Note: Development uses sandbox.plaid.com endpoint
+        # The difference is in the credentials and item limits, not the host
         env_map = {
             'sandbox': 'https://sandbox.plaid.com',
-            'development': 'https://development.plaid.com',
+            'development': 'https://sandbox.plaid.com',  # Dev uses sandbox endpoint
             'production': 'https://production.plaid.com'
         }
         return env_map.get(self.environment, env_map['sandbox'])
