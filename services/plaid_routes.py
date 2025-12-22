@@ -145,12 +145,15 @@ def create_link_token():
         update_item_id = data.get('update_item_id')
 
         # Get redirect URI - REQUIRED for OAuth banks (Chase, BofA, etc.)
-        # Use the configured OAuth redirect endpoint
+        # Must match EXACTLY what's configured in Plaid Dashboard
         redirect_uri = data.get('redirect_uri')
         if not redirect_uri:
-            # Build default redirect URI from request host
-            host = request.host_url.rstrip('/')
-            redirect_uri = f"{host}/api/plaid/oauth"
+            # Use configured base URL or fall back to request host
+            base_url = os.environ.get('BASE_URL', '').rstrip('/')
+            if not base_url:
+                base_url = request.host_url.rstrip('/')
+            redirect_uri = f"{base_url}/api/plaid/oauth"
+            logger.info(f"Using redirect_uri: {redirect_uri}")
 
         result = plaid.create_link_token(
             user_id=get_user_id(),
