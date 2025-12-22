@@ -9,6 +9,7 @@ flask-wtf>=1.2.0  # CSRF protection
 bcrypt>=4.0.0  # Secure password hashing
 pyotp>=2.9.0  # TOTP for 2FA
 qrcode[pil]>=7.4.0  # QR code generation for 2FA setup
+PyJWT>=2.8.0  # JWT verification for Plaid webhooks
 
 # AI/OCR - Gemini (FREE tier!)
 google-generativeai>=0.8.0

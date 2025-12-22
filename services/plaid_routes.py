@@ -834,10 +834,20 @@ def webhook():
         body = request.get_data()
         signature = request.headers.get('Plaid-Verification')
 
-        # Verify signature (if configured)
-        if signature and not plaid.verify_webhook_signature(body, signature):
-            logger.warning("Invalid webhook signature")
-            return jsonify({'success': False, 'error': 'Invalid signature'}), 401
+        # Verify webhook signature (required in production)
+        is_production = os.environ.get('PLAID_ENV') == 'production'
+        if is_production:
+            if not signature:
+                logger.warning("Missing webhook signature in production")
+                return jsonify({'success': False, 'error': 'Missing signature'}), 401
+
+            if not plaid.verify_webhook_signature(body, signature):
+                logger.warning("Invalid webhook signature")
+                return jsonify({'success': False, 'error': 'Invalid signature'}), 401
+        elif signature:
+            # In non-production, verify if signature is provided
+            if not plaid.verify_webhook_signature(body, signature):
+                logger.warning("Invalid webhook signature (non-production)")
 
         # Parse webhook
         data = request.get_json()

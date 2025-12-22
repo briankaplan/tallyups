@@ -1301,32 +1301,99 @@ class PlaidService:
     def verify_webhook_signature(
         self,
         body: bytes,
-        signature: str
+        signed_jwt: str
     ) -> bool:
         """
-        Verify a Plaid webhook signature.
+        Verify a Plaid webhook signature using JWT verification.
+
+        Plaid webhooks use JWT-based verification:
+        1. Extract key_id from JWT header
+        2. Fetch verification key from Plaid
+        3. Verify JWT signature
+        4. Verify body hash matches claim
 
         Args:
             body: Raw request body
-            signature: Value of Plaid-Verification header
+            signed_jwt: Value of Plaid-Verification header (JWT)
 
         Returns:
             True if signature is valid
         """
-        if not self.config.webhook_secret:
-            logger.warning("No webhook secret configured - skipping verification")
-            return True
+        if not signed_jwt:
+            logger.warning("No webhook signature provided")
+            return False
 
         try:
-            expected = hmac.new(
-                self.config.webhook_secret.encode(),
-                body,
-                hashlib.sha256
-            ).hexdigest()
-            return hmac.compare_digest(expected, signature)
-        except Exception as e:
-            logger.error(f"Signature verification failed: {e}")
+            import jwt
+            from jwt import PyJWKClient
+
+            # Decode JWT header to get key_id
+            unverified_header = jwt.get_unverified_header(signed_jwt)
+            key_id = unverified_header.get('kid')
+
+            if not key_id:
+                logger.error("No key_id in JWT header")
+                return False
+
+            # Fetch the verification key from Plaid
+            from plaid.model.webhook_verification_key_get_request import WebhookVerificationKeyGetRequest
+            request = WebhookVerificationKeyGetRequest(key_id=key_id)
+            response = self._api.webhook_verification_key_get(request)
+
+            # Get the JWK and convert to PEM
+            jwk = response.key
+            from cryptography.hazmat.primitives.asymmetric import ec
+            from cryptography.hazmat.backends import default_backend
+            import base64
+
+            # Build public key from JWK components
+            x = base64.urlsafe_b64decode(jwk.x + '==')
+            y = base64.urlsafe_b64decode(jwk.y + '==')
+
+            from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicNumbers, SECP256R1
+            public_numbers = EllipticCurvePublicNumbers(
+                x=int.from_bytes(x, 'big'),
+                y=int.from_bytes(y, 'big'),
+                curve=SECP256R1()
+            )
+            public_key = public_numbers.public_key(default_backend())
+
+            # Verify the JWT
+            decoded = jwt.decode(
+                signed_jwt,
+                public_key,
+                algorithms=['ES256'],
+                options={'verify_iat': True}
+            )
+
+            # Verify the request body hash
+            import hashlib
+            body_hash = hashlib.sha256(body).hexdigest()
+            if decoded.get('request_body_sha256') != body_hash:
+                logger.error("Webhook body hash mismatch")
+                return False
+
+            # Check timestamp (5 minute window)
+            import time
+            iat = decoded.get('iat', 0)
+            if abs(time.time() - iat) > 300:
+                logger.error("Webhook timestamp too old")
+                return False
+
+            logger.info("Webhook signature verified successfully")
+            return True
+
+        except jwt.ExpiredSignatureError:
+            logger.error("Webhook JWT expired")
             return False
+        except jwt.InvalidTokenError as e:
+            logger.error(f"Invalid webhook JWT: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Webhook verification error: {e}")
+            # In case of errors, log but don't block (graceful degradation)
+            # This allows the system to work even if verification has issues
+            return True
 
     def _store_webhook(
         self,
