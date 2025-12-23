@@ -1976,17 +1976,18 @@ class PlaidService:
                         cursor.execute("""
                             INSERT INTO transactions
                             (_index, chase_date, chase_description, chase_amount, chase_category,
-                             business_type, receipt_source, notes,
+                             category, business_type, receipt_source, notes,
                              plaid_transaction_id, plaid_account_id,
                              source_institution, source_account_name, source_account_mask,
                              created_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, 'plaid', %s, %s, %s, %s, %s, %s, NOW())
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, 'plaid', %s, %s, %s, %s, %s, %s, NOW())
                         """, (
                             next_index,
                             tx['date'],
                             description,
                             amount,
                             category,
+                            category,  # Also set category column
                             business_type,
                             source_display,
                             transaction_id,
@@ -2000,14 +2001,15 @@ class PlaidService:
                         cursor.execute("""
                             INSERT INTO transactions
                             (_index, chase_date, chase_description, chase_amount, chase_category,
-                             business_type, receipt_source, notes, created_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, 'plaid', %s, NOW())
+                             category, business_type, receipt_source, notes, created_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, 'plaid', %s, NOW())
                         """, (
                             next_index,
                             tx['date'],
                             description,
                             amount,
                             category,
+                            category,  # Also set category column
                             business_type,
                             source_display
                         ))
