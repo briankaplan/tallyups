@@ -1896,20 +1896,30 @@ class PlaidService:
                 # Get business type from account default
                 business_type = tx['default_business_type'] or 'Personal'
 
-                # Build source info: "Regions Bank - Checking (...1234)"
-                institution = tx['institution_name'] or 'Unknown Bank'
-                account_name = tx['account_name'] or tx['account_type'] or 'Account'
-                account_mask = tx['account_mask'] or ''
-                source_info = f"{institution} - {account_name}"
-                if account_mask:
-                    source_info += f" (...{account_mask})"
+                # Structured source info
+                institution = tx['institution_name'] or None
+                account_name = tx['account_name'] or tx['account_type'] or None
+                account_mask = tx['account_mask'] or None
+                account_id = tx['account_id']
+                transaction_id = tx['transaction_id']
+
+                # Build display string for notes (backwards compatibility)
+                source_display = None
+                if institution:
+                    source_display = f"{institution} - {account_name or 'Account'}"
+                    if account_mask:
+                        source_display += f" (...{account_mask})"
 
                 try:
+                    # Use INSERT IGNORE to skip duplicates (plaid_transaction_id is unique)
                     cursor.execute("""
-                        INSERT INTO transactions
+                        INSERT IGNORE INTO transactions
                         (_index, chase_date, chase_description, chase_amount, chase_category,
-                         business_type, receipt_source, notes, created_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, 'plaid', %s, NOW())
+                         business_type, receipt_source, notes,
+                         plaid_transaction_id, plaid_account_id,
+                         source_institution, source_account_name, source_account_mask,
+                         created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'plaid', %s, %s, %s, %s, %s, %s, NOW())
                     """, (
                         next_index,
                         tx['date'],
@@ -1917,22 +1927,32 @@ class PlaidService:
                         amount,
                         category,
                         business_type,
-                        source_info
+                        source_display,
+                        transaction_id,
+                        account_id,
+                        institution,
+                        account_name,
+                        account_mask
                     ))
 
-                    # Mark as imported in plaid_transactions
-                    cursor.execute("""
-                        UPDATE plaid_transactions
-                        SET processing_status = 'matched',
-                            updated_at = NOW()
-                        WHERE transaction_id = %s
-                    """, (tx['transaction_id'],))
+                    # Check if row was actually inserted (not a duplicate)
+                    if cursor.rowcount > 0:
+                        # Mark as imported in plaid_transactions
+                        cursor.execute("""
+                            UPDATE plaid_transactions
+                            SET processing_status = 'matched',
+                                updated_at = NOW()
+                            WHERE transaction_id = %s
+                        """, (transaction_id,))
 
-                    next_index += 1
-                    imported += 1
+                        next_index += 1
+                        imported += 1
+                    else:
+                        # Duplicate - already imported
+                        skipped += 1
 
                 except Exception as e:
-                    logger.warning(f"Failed to import transaction {tx['transaction_id']}: {e}")
+                    logger.warning(f"Failed to import transaction {transaction_id}: {e}")
                     skipped += 1
                     continue
 
