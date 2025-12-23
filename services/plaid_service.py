@@ -796,14 +796,18 @@ class PlaidService:
                 response = self._api.transactions_sync(request)
 
                 # Process added transactions
+                batch_added = 0
                 for tx in response.added:
-                    self._process_transaction(tx, item_id, batch_id, 'added')
-                    added += 1
+                    if self._process_transaction(tx, item_id, batch_id, 'added'):
+                        added += 1
+                        batch_added += 1
 
                 # Process modified transactions
+                batch_modified = 0
                 for tx in response.modified:
-                    self._process_transaction(tx, item_id, batch_id, 'modified')
-                    modified += 1
+                    if self._process_transaction(tx, item_id, batch_id, 'modified'):
+                        modified += 1
+                        batch_modified += 1
 
                 # Process removed transactions
                 for tx in response.removed:
@@ -814,10 +818,13 @@ class PlaidService:
                 cursor = response.next_cursor
                 has_more = response.has_more
 
+                # Log batch results including filtered count
+                plaid_count = len(response.added) + len(response.modified)
+                saved_count = batch_added + batch_modified
+                filtered_count = plaid_count - saved_count
                 logger.info(
-                    f"Sync batch: added={len(response.added)}, "
-                    f"modified={len(response.modified)}, "
-                    f"removed={len(response.removed)}, has_more={has_more}"
+                    f"Sync batch: received={plaid_count}, saved={saved_count}, "
+                    f"filtered={filtered_count}, removed={len(response.removed)}, has_more={has_more}"
                 )
 
             # Update Item's cursor
@@ -877,13 +884,17 @@ class PlaidService:
         item_id: str,
         batch_id: str,
         operation: str
-    ):
-        """Process a single transaction from Plaid."""
+    ) -> bool:
+        """Process a single transaction from Plaid.
+
+        Returns:
+            True if transaction was saved, False if filtered/skipped
+        """
         # Filter: Skip transactions before September 2025
         min_date = datetime(2025, 9, 1).date()
         if tx.date and tx.date < min_date:
             logger.debug(f"Skipping transaction {tx.transaction_id} - date {tx.date} before {min_date}")
-            return
+            return False
 
         db = self._get_db()
         conn = db.get_connection()
@@ -949,6 +960,7 @@ class PlaidService:
             ))
 
             conn.commit()
+            return True
 
         finally:
             db.return_connection(conn)
