@@ -21,98 +21,99 @@
 
 <!-- Header injected by unified-header.js -->
 
-<!-- Inbox Action Bar -->
-<div class="inbox-actions" style="display:flex; gap:8px; padding:12px 20px; background:var(--bg-secondary); border-bottom:1px solid var(--border-primary); flex-wrap:wrap;">
-  <button class="btn btn-primary btn-sm" onclick="scanForNew()">🔄 Scan Now</button>
-  <button class="btn btn-success btn-sm" onclick="regenerateImages()">🖼️ Fix Images</button>
-  <button class="btn btn-danger btn-sm" onclick="clearDismissed()">🗑️ Clear Dismissed</button>
-  <button class="btn btn-ghost btn-sm" onclick="rematchAll()">🔗 Rematch</button>
-  <button class="btn btn-ghost btn-sm" onclick="cleanSpam()">🧹 Clean</button>
-</div>
-
-<!-- Stats Dashboard -->
-<div class="dashboard">
-  <div class="stat">
-    <div class="stat-label">In Inbox</div>
-    <div class="stat-value" id="stat-pending">0</div>
+<!-- Simplified Inbox Header -->
+<div class="inbox-header" style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:var(--bg-secondary); border-bottom:1px solid var(--border-primary);">
+  <div style="display:flex; align-items:center; gap:16px;">
+    <h1 style="font-size:20px; font-weight:600; margin:0;">📥 Inbox</h1>
+    <span class="inbox-count-badge" id="inbox-count-badge" style="background:var(--warning); color:#000; padding:4px 10px; border-radius:12px; font-size:13px; font-weight:600;">0 items</span>
   </div>
-  <div class="stat">
-    <div class="stat-label">Matched</div>
-    <div class="stat-value" id="stat-accepted">0</div>
-  </div>
-  <div class="stat">
-    <div class="stat-label">Dismissed</div>
-    <div class="stat-value" id="stat-rejected">0</div>
-  </div>
-  <div class="stat">
-    <div class="stat-label">Total</div>
-    <div class="stat-value" id="stat-total">0</div>
-  </div>
-</div>
-
-<!-- Search & Filters -->
-<div class="filters-bar">
-  <div class="search-box">
-    <span class="search-icon">🔍</span>
-    <input type="text" id="search-input" placeholder="Search merchants, emails, amounts..." oninput="handleSearch(this.value)">
-    <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
-  </div>
-  <div class="date-filter-row">
-    <button class="date-btn" onclick="setDateFilter('today')">Today</button>
-    <button class="date-btn" onclick="setDateFilter('week')">This Week</button>
-    <button class="date-btn" onclick="setDateFilter('month')">This Month</button>
-    <button class="date-btn active" onclick="setDateFilter('all')">All Time</button>
-    <div class="date-range">
-      <input type="date" id="date-from" onchange="applyDateRange()">
-      <span>to</span>
-      <input type="date" id="date-to" onchange="applyDateRange()">
+  <div style="display:flex; gap:8px;">
+    <button class="btn btn-primary btn-sm" onclick="scanForNew()">🔄 Refresh</button>
+    <div class="dropdown" style="position:relative;">
+      <button class="btn btn-ghost btn-sm" onclick="toggleMoreMenu()" id="more-menu-btn">⋯ More</button>
+      <div class="dropdown-menu" id="more-menu" style="display:none; position:absolute; right:0; top:100%; margin-top:4px; background:var(--bg-secondary); border:1px solid var(--border-primary); border-radius:8px; padding:4px; min-width:160px; z-index:100;">
+        <button class="dropdown-item" onclick="regenerateImages(); toggleMoreMenu();">🖼️ Fix Images</button>
+        <button class="dropdown-item" onclick="rematchAll(); toggleMoreMenu();">🔗 Rematch All</button>
+        <button class="dropdown-item" onclick="cleanSpam(); toggleMoreMenu();">🧹 Clean Spam</button>
+        <hr style="margin:4px 0; border:none; border-top:1px solid var(--border-primary);">
+        <button class="dropdown-item text-danger" onclick="clearDismissed(); toggleMoreMenu();">🗑️ Clear Dismissed</button>
+      </div>
     </div>
   </div>
 </div>
+<style>
+  .dropdown-item { display:block; width:100%; text-align:left; padding:8px 12px; background:none; border:none; color:var(--text-primary); cursor:pointer; border-radius:4px; font-size:14px; }
+  .dropdown-item:hover { background:var(--bg-hover); }
+  .dropdown-item.text-danger { color:var(--error); }
+</style>
+<script>
+  function toggleMoreMenu() {
+    const menu = document.getElementById('more-menu');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.dropdown')) {
+      document.getElementById('more-menu').style.display = 'none';
+    }
+  });
+</script>
 
-<!-- Status Filters -->
-<div class="filters">
-  <div class="chip active" onclick="filterStatus('pending')" data-filter="pending">
-    <span class="chip-icon">📥</span> Inbox
-    <span class="chip-count" id="chip-pending">0</span>
-  </div>
-  <div class="chip" onclick="filterStatus('matched')" data-filter="matched">
-    <span class="chip-icon">🔗</span> Matched
-    <span class="chip-count" id="chip-matched">0</span>
-  </div>
-  <div class="chip" onclick="filterStatus('accepted')" data-filter="accepted">
-    <span class="chip-icon">✓</span> Accepted
-    <span class="chip-count" id="chip-accepted">0</span>
-  </div>
-  <div class="chip" onclick="filterStatus('rejected')" data-filter="rejected">
-    <span class="chip-icon">✕</span> Dismissed
-    <span class="chip-count" id="chip-rejected">0</span>
-  </div>
-  <div class="chip" onclick="filterStatus('all')" data-filter="all">
-    <span class="chip-icon">📋</span> All
-  </div>
-
-  <!-- View Toggle -->
-  <div class="view-toggle" style="margin-left:auto">
-    <button class="view-toggle-btn active" onclick="setViewMode('list')" title="List View">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-        <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-      </svg>
-    </button>
-    <button class="view-toggle-btn" onclick="setViewMode('grid')" title="Grid View">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-      </svg>
-    </button>
-  </div>
-
-  <!-- Keyboard Help -->
-  <button class="btn-ghost btn-sm" onclick="showKeyboardHelp()" title="Keyboard Shortcuts" style="padding:8px 10px">
-    <kbd style="font-size:12px;background:var(--panel2);padding:2px 6px;border-radius:4px;border:1px solid var(--edge)">?</kbd>
-  </button>
+<!-- Hidden stats for JS compatibility -->
+<div style="display:none;">
+  <span id="stat-pending">0</span>
+  <span id="stat-accepted">0</span>
+  <span id="stat-rejected">0</span>
+  <span id="stat-total">0</span>
 </div>
+
+<!-- Simplified Search & Filter Bar -->
+<div class="filters-bar" style="display:flex; align-items:center; gap:12px; padding:12px 20px; background:var(--bg-tertiary); flex-wrap:wrap;">
+  <!-- Search -->
+  <div class="search-box" style="flex:1; min-width:200px; max-width:400px;">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Search..." oninput="handleSearch(this.value)">
+    <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
+  </div>
+
+  <!-- Simplified Status Tabs -->
+  <div class="status-tabs" style="display:flex; gap:4px; background:var(--bg-secondary); padding:4px; border-radius:8px;">
+    <button class="status-tab active" onclick="filterStatus('pending')" data-filter="pending" style="padding:8px 16px; border:none; background:var(--brand); color:#000; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer;">
+      Inbox <span id="chip-pending" style="margin-left:4px; opacity:0.8;">0</span>
+    </button>
+    <button class="status-tab" onclick="filterStatus('accepted')" data-filter="accepted" style="padding:8px 16px; border:none; background:transparent; color:var(--text-secondary); border-radius:6px; font-size:13px; cursor:pointer;">
+      Done <span id="chip-accepted" style="margin-left:4px; opacity:0.6;">0</span>
+    </button>
+    <button class="status-tab" onclick="filterStatus('all')" data-filter="all" style="padding:8px 16px; border:none; background:transparent; color:var(--text-secondary); border-radius:6px; font-size:13px; cursor:pointer;">
+      All
+    </button>
+  </div>
+
+  <!-- Hidden elements for JS compatibility -->
+  <span id="chip-matched" style="display:none">0</span>
+  <span id="chip-rejected" style="display:none">0</span>
+</div>
+
+<!-- Hidden date filters for JS compatibility -->
+<div style="display:none;">
+  <input type="date" id="date-from">
+  <input type="date" id="date-to">
+</div>
+
+<style>
+  .status-tab.active { background:var(--brand) !important; color:#000 !important; }
+  .status-tab:not(.active):hover { background:var(--bg-hover); color:var(--text-primary); }
+</style>
+<script>
+  // Update tab styling on click
+  document.querySelectorAll('.status-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+</script>
+
+<!-- Removed: date-filter-row, view-toggle, keyboard-help (simplification) -->
 
 <!-- Content -->
 <div class="content" id="content">
