@@ -749,9 +749,20 @@ def trigger_sync():
                             'error': str(e)
                         })
 
+        # Auto-import any new transactions to main table
+        import_result = None
+        total_added = sum(r.get('added', 0) for r in results if isinstance(r, dict))
+        if total_added > 0:
+            try:
+                import_result = plaid.import_to_transactions(user_id=get_user_id())
+                logger.info(f"Auto-imported {import_result.get('imported', 0)} transactions after manual sync")
+            except Exception as e:
+                logger.warning(f"Auto-import failed: {e}")
+
         return jsonify({
             'success': True,
-            'results': results
+            'results': results,
+            'import': import_result
         })
 
     except Exception as e:

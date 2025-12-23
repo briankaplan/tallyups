@@ -275,7 +275,8 @@ class PlaidSyncWorker:
                 'skipped': skipped,
                 'transactions_added': 0,
                 'transactions_modified': 0,
-                'transactions_removed': 0
+                'transactions_removed': 0,
+                'transactions_imported': 0
             }
 
             with ThreadPoolExecutor(max_workers=self.config.max_concurrent) as executor:
@@ -297,6 +298,7 @@ class PlaidSyncWorker:
                             results['transactions_added'] += result.get('added', 0)
                             results['transactions_modified'] += result.get('modified', 0)
                             results['transactions_removed'] += result.get('removed', 0)
+                            results['transactions_imported'] += result.get('imported', 0)
 
                             # Reset error count on success
                             self._error_counts[item_id] = 0
@@ -347,12 +349,18 @@ class PlaidSyncWorker:
             if result.added > 0:
                 self._classify_new_transactions(item_id)
 
+            # Auto-import to main transactions table
+            imported = 0
+            if result.added > 0:
+                imported = self._import_to_main_table(item['user_id'])
+
             return {
                 'success': result.success,
                 'item_id': item_id,
                 'added': result.added,
                 'modified': result.modified,
-                'removed': result.removed
+                'removed': result.removed,
+                'imported': imported
             }
 
         except Exception as e:
@@ -409,6 +417,35 @@ class PlaidSyncWorker:
         except Exception as e:
             logger.warning(f"Failed to classify transactions: {e}")
 
+    def _import_to_main_table(self, user_id: str) -> int:
+        """
+        Import new transactions from staging to main transactions table.
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            Number of transactions imported
+        """
+        try:
+            from services.plaid_service import get_plaid_service
+
+            plaid = get_plaid_service()
+            result = plaid.import_to_transactions(user_id)
+
+            if result.get('success'):
+                imported = result.get('imported', 0)
+                if imported > 0:
+                    logger.info(f"Auto-imported {imported} transactions to main table")
+                return imported
+            else:
+                logger.warning(f"Import failed: {result.get('message', 'Unknown error')}")
+                return 0
+
+        except Exception as e:
+            logger.error(f"Failed to import transactions: {e}")
+            return 0
+
 
 # =============================================================================
 # SIGNAL HANDLERS
@@ -462,6 +499,7 @@ def main():
         print(f"  Transactions Added:    {results.get('transactions_added', 0)}")
         print(f"  Transactions Modified: {results.get('transactions_modified', 0)}")
         print(f"  Transactions Removed:  {results.get('transactions_removed', 0)}")
+        print(f"  Transactions Imported: {results.get('transactions_imported', 0)}")
     else:
         # Run continuously
         _worker.start(daemon=args.daemon)

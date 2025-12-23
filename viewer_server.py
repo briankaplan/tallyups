@@ -466,6 +466,33 @@ flask_request_logger(app)
 logger.info("Flask application initialized")
 
 # =============================================================================
+# PLAID SYNC WORKER (Background transaction sync)
+# =============================================================================
+def start_plaid_sync_worker():
+    """Start the Plaid sync worker as a background daemon thread."""
+    try:
+        from services.plaid_service import is_plaid_configured
+        if not is_plaid_configured():
+            logger.info("Plaid not configured - sync worker disabled")
+            return
+
+        from services.plaid_sync_worker import PlaidSyncWorker, SyncWorkerConfig
+
+        config = SyncWorkerConfig()
+        # Set a reasonable interval for production (15 minutes)
+        config.sync_interval = int(os.environ.get('PLAID_SYNC_INTERVAL', 900))
+
+        worker = PlaidSyncWorker(config)
+        worker.start(daemon=True)
+        logger.info(f"Plaid sync worker started (interval={config.sync_interval}s)")
+    except Exception as e:
+        logger.warning(f"Failed to start Plaid sync worker: {e}")
+
+# Start sync worker in production (Railway) or if explicitly enabled
+if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('PLAID_SYNC_ENABLED', '').lower() == 'true':
+    start_plaid_sync_worker()
+
+# =============================================================================
 # SECURITY HEADERS (Prevent common web attacks)
 # =============================================================================
 @app.after_request
