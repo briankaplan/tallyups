@@ -27,6 +27,9 @@ Transactions:
     GET  /api/plaid/transactions     - List transactions
     POST /api/plaid/sync             - Trigger manual sync
     GET  /api/plaid/sync/status      - Get sync status
+    GET  /api/plaid/sync/diagnose    - Get detailed sync diagnostics
+    POST /api/plaid/sync/reset       - Reset sync cursor for fresh sync
+    POST /api/plaid/sync/refresh     - Reset cursor and trigger sync
 
 Webhooks:
     POST /api/plaid/webhook          - Receive Plaid webhooks
@@ -1454,6 +1457,183 @@ def plaid_oauth_redirect():
 </body>
 </html>
 '''
+
+
+# =============================================================================
+# DIAGNOSTIC ENDPOINTS
+# =============================================================================
+
+@plaid_bp.route('/sync/diagnose', methods=['GET'])
+@require_auth
+def sync_diagnose():
+    """
+    Get comprehensive sync diagnostics for troubleshooting.
+
+    Returns detailed information about all linked Items including:
+    - Item status and configuration
+    - Account details and sync settings
+    - Recent sync history with success/failure details
+    - Transaction counts and date ranges
+    - Detected issues and recommendations
+
+    Response:
+        {
+            "success": true,
+            "diagnostics": {
+                "summary": {
+                    "total_items": 1,
+                    "active_items": 1,
+                    "total_transactions": 150,
+                    "total_issues": 0
+                },
+                "date_filter": {
+                    "enabled": true,
+                    "min_date": "2025-09-01",
+                    "description": "..."
+                },
+                "items": [...]
+            }
+        }
+    """
+    try:
+        plaid = get_plaid()
+        diagnostics = plaid.get_sync_diagnostics(user_id=get_user_id())
+
+        return jsonify({
+            'success': True,
+            'diagnostics': diagnostics
+        })
+
+    except Exception as e:
+        logger.error(f"Diagnostics error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@plaid_bp.route('/sync/reset', methods=['POST'])
+@require_auth
+def sync_reset():
+    """
+    Reset the sync cursor to force a fresh transaction sync.
+
+    This clears the stored cursor so the next sync will fetch all
+    available transactions from Plaid (subject to date filters).
+    Use this when transactions seem to be missing or stuck.
+
+    Request Body:
+        {
+            "item_id": "xxx"  // Required - the Item to reset
+        }
+
+    Response:
+        {
+            "success": true,
+            "item_id": "xxx",
+            "institution": "Chase",
+            "message": "Sync cursor cleared. Next sync will fetch all available transactions."
+        }
+    """
+    try:
+        plaid = get_plaid()
+
+        data = request.get_json() or {}
+        item_id = data.get('item_id')
+
+        if not item_id:
+            return jsonify({
+                'success': False,
+                'error': 'item_id is required'
+            }), 400
+
+        # Verify ownership
+        items = plaid.get_items(user_id=get_user_id())
+        if not any(i.item_id == item_id for i in items):
+            return jsonify({
+                'success': False,
+                'error': 'Item not found'
+            }), 404
+
+        result = plaid.reset_sync_cursor(item_id)
+
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        logger.error(f"Reset sync error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@plaid_bp.route('/sync/refresh', methods=['POST'])
+@require_auth
+def sync_refresh():
+    """
+    Reset cursor and immediately trigger a fresh sync.
+
+    This is a convenience endpoint that combines reset + sync.
+    Use when you want to re-fetch all transactions for an Item.
+
+    Request Body:
+        {
+            "item_id": "xxx"  // Required - the Item to refresh
+        }
+
+    Response:
+        {
+            "success": true,
+            "reset": {...},
+            "sync": {...}
+        }
+    """
+    try:
+        plaid = get_plaid()
+
+        data = request.get_json() or {}
+        item_id = data.get('item_id')
+
+        if not item_id:
+            return jsonify({
+                'success': False,
+                'error': 'item_id is required'
+            }), 400
+
+        # Verify ownership
+        items = plaid.get_items(user_id=get_user_id())
+        if not any(i.item_id == item_id for i in items):
+            return jsonify({
+                'success': False,
+                'error': 'Item not found'
+            }), 404
+
+        # Reset cursor
+        reset_result = plaid.reset_sync_cursor(item_id)
+        if not reset_result['success']:
+            return jsonify({
+                'success': False,
+                'error': reset_result.get('error', 'Reset failed')
+            }), 400
+
+        # Trigger sync
+        sync_result = plaid.sync_transactions(item_id, sync_type='manual')
+
+        return jsonify({
+            'success': True,
+            'reset': reset_result,
+            'sync': sync_result.to_dict()
+        })
+
+    except Exception as e:
+        logger.error(f"Refresh sync error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 # =============================================================================
