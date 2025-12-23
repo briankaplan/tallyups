@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0f14">
+  <title>TallyUps</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>T</text></svg>">
+  <link rel="stylesheet" href="/static/css/tallyups-clean.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="clean-header">
+    <div class="clean-header__brand">
+      <div class="clean-header__logo">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="1"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="clean-header__title">TALLYUPS</div>
+        <div class="clean-header__subtitle">Smart Expense Tracking</div>
+      </div>
+    </div>
+    <div class="clean-header__actions">
+      <div class="clean-header__status">
+        <span class="clean-header__status-dot"></span>
+        <span>Synced</span>
+      </div>
+      <button class="clean-header__search" onclick="window.location='/library'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <span>Search</span>
+        <kbd>⌘K</kbd>
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Stats -->
+    <section class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-card__label">Match Rate</div>
+        <div class="stat-card__value stat-card__value--green" id="match-rate">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Missing Receipts</div>
+        <div class="stat-card__value" id="missing-count">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">This Month</div>
+        <div class="stat-card__value" id="month-total">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__label">Inbox Items</div>
+        <div class="stat-card__value stat-card__value--yellow" id="inbox-count">--</div>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <section class="action-grid">
+      <a href="/scanner" class="action-btn">
+        <svg class="action-btn__icon action-btn__icon--yellow" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <span class="action-btn__label">Scan Receipt</span>
+      </a>
+      <a href="/viewer" class="action-btn">
+        <svg class="action-btn__icon action-btn__icon--red" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+        </svg>
+        <span class="action-btn__label">Match</span>
+      </a>
+      <a href="/incoming" class="action-btn">
+        <svg class="action-btn__icon action-btn__icon--orange" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+          <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>
+        </svg>
+        <span class="action-btn__label">Inbox</span>
+      </a>
+      <a href="/library" class="action-btn">
+        <svg class="action-btn__icon action-btn__icon--purple" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+        </svg>
+        <span class="action-btn__label">Library</span>
+      </a>
+      <a href="/reports" class="action-btn">
+        <svg class="action-btn__icon action-btn__icon--blue" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        <span class="action-btn__label">Reports</span>
+      </a>
+      <a href="/settings" class="action-btn">
+        <svg class="action-btn__icon action-btn__icon--cyan" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        <span class="action-btn__label">Settings</span>
+      </a>
+    </section>
+
+    <!-- Content Grid -->
+    <section class="content-grid">
+      <!-- Recent Activity -->
+      <div class="content-card">
+        <div class="content-card__header">
+          <div class="content-card__title">
+            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Recent Activity
+          </div>
+          <div class="content-card__tabs">
+            <button class="content-card__tab active">Today</button>
+            <button class="content-card__tab">Week</button>
+            <button class="content-card__tab">Month</button>
+          </div>
+        </div>
+        <div id="activity-list">
+          <div class="list-item">
+            <div class="list-item__content">
+              <div class="list-item__title">Loading...</div>
+              <div class="list-item__meta">Please wait</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Business Types -->
+      <div class="content-card">
+        <div class="content-card__header">
+          <div class="content-card__title">
+            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Your Businesses
+          </div>
+        </div>
+        <div id="business-list">
+          <div class="project-item project-item--green" onclick="window.location='/viewer?business=Down Home'">
+            <div class="project-item__name">Down Home</div>
+            <div class="project-item__meta">Music & Events</div>
+          </div>
+          <div class="project-item project-item--purple" onclick="window.location='/viewer?business=Music City Rodeo'">
+            <div class="project-item__name">Music City Rodeo</div>
+            <div class="project-item__meta">2026 Event</div>
+          </div>
+          <div class="project-item project-item--blue" onclick="window.location='/viewer?business=EM.co'">
+            <div class="project-item__name">EM.co</div>
+            <div class="project-item__meta">Artist Management</div>
+          </div>
+          <div class="project-item project-item--orange" onclick="window.location='/viewer?business=Personal'">
+            <div class="project-item__name">Personal</div>
+            <div class="project-item__meta">Personal Expenses</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FAB for quick scan -->
+  <button class="fab" onclick="window.location='/scanner'" title="Scan Receipt" style="
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-green), #00cc6a);
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0, 255, 136, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: all 0.2s;
+  ">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  </button>
+  <style>
+    .fab:hover { transform: scale(1.1); box-shadow: 0 12px 32px rgba(0, 255, 136, 0.5); }
+    .fab:active { transform: scale(0.95); }
+  </style>
+
+  <script>
+    // Load dashboard data
+    async function loadDashboard() {
+      try {
+        const response = await fetch('/api/dashboard/stats');
+        if (!response.ok) throw new Error('Failed to fetch');
+        const data = await response.json();
+
+        // Update stats
+        const matchRate = data.match_rate || data.ytd?.receipt_coverage || 0;
+        document.getElementById('match-rate').textContent = Math.round(matchRate) + '%';
+
+        const missing = data.missing_receipts || data.ytd?.missing_receipts || 0;
+        document.getElementById('missing-count').textContent = missing;
+
+        const monthTotal = data.month_total || data.ytd?.total_amount || 0;
+        document.getElementById('month-total').textContent = formatCurrency(monthTotal);
+
+        const inbox = data.inbox_count || 0;
+        document.getElementById('inbox-count').textContent = inbox;
+
+        // Load recent activity
+        loadActivity();
+      } catch (e) {
+        console.error('Dashboard error:', e);
+      }
+    }
+
+    async function loadActivity() {
+      try {
+        const response = await fetch('/api/receipts/recent?limit=5');
+        if (!response.ok) throw new Error('Failed');
+        const data = await response.json();
+        const receipts = data.receipts || data.items || [];
+
+        const container = document.getElementById('activity-list');
+        if (receipts.length === 0) {
+          container.innerHTML = '<div class="list-item"><div class="list-item__content"><div class="list-item__title">No recent activity</div></div></div>';
+          return;
+        }
+
+        container.innerHTML = receipts.map(r => `
+          <div class="list-item">
+            <div class="list-item__content">
+              <div class="list-item__title">${r.merchant || r.description || 'Unknown'}</div>
+              <div class="list-item__meta">${formatDate(r.date)} &bull; ${formatCurrency(Math.abs(r.amount || 0))}</div>
+            </div>
+            <button class="list-item__action" onclick="window.location='/viewer?id=${r.id}'">View</button>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Activity error:', e);
+      }
+    }
+
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: 'USD',
+        minimumFractionDigits: 0, maximumFractionDigits: 0
+      }).format(amount);
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    // Init
+    loadDashboard();
+  </script>
+</body>
+</html>

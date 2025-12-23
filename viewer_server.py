@@ -2333,7 +2333,7 @@ def logout():
 @login_required
 def index():
     """Serve the Dashboard as the main landing page."""
-    return send_from_directory(BASE_DIR, "dashboard_v2.html")
+    return send_from_directory(BASE_DIR, "dashboard_clean.html")
 
 
 @app.route("/favicon.ico")
