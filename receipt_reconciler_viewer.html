@@ -86,24 +86,30 @@ localStorage.setItem('theme', 'dark');
           <span class="filter-count" id="mobile-filter-count" style="display:none">0</span>
         </button>
         <button class="btn-ghost" onclick="openManualEntryModal()" title="Add a manual expense entry">
-          ➕ Manual Entry
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Manual Entry
         </button>
         <button class="btn-primary" onclick="smartSearchMissing()" title="Find missing receipts automatically using AI, Gmail, and iMessage">
-          🔍 Find Receipts
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Find Receipts
         </button>
         <button class="btn-ghost" onclick="autoProcessAll()" title="Auto-categorize AND generate AI descriptions in one step">
-          🤖 Auto-Process
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="3"/></svg>
+          Auto-Process
         </button>
         <button class="btn-ghost" onclick="generateAllNotes()" title="Generate AI notes for all transactions missing them">
-          ✨ AI Notes
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          AI Notes
         </button>
         <button class="btn-success" onclick="saveCSV()" title="Save all changes to database">
-          💾 Save
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save
         </button>
         <div class="toolbar-divider"></div>
         <!-- Batch Operations -->
         <button class="btn-ghost" id="batch-select-btn" onclick="toggleBatchMode()" title="Select multiple transactions for bulk operations">
-          ☑️ Batch
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Batch
         </button>
         <div id="batch-actions" style="display:none;gap:6px" class="toolbar-group">
           <button class="btn-ghost btn-sm" onclick="selectAllVisible()">Select All</button>
@@ -120,7 +126,8 @@ localStorage.setItem('theme', 'dark');
           </select>
           <div class="toolbar-divider"></div>
           <button class="btn-primary btn-sm" onclick="addSelectedToReport()" title="Add selected transactions to current report">
-            📋 Add to Report
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+            Add to Report
           </button>
           <span id="batch-count" style="font-size:11px;color:var(--muted);margin-left:8px">0 selected</span>
         </div>
@@ -129,11 +136,11 @@ localStorage.setItem('theme', 'dark');
       <div class="toolbar-group" style="gap:8px">
         <!-- Advanced Search -->
         <div style="position:relative">
-          <input type="text" class="input" id="search" placeholder="/ Search..." style="width:200px;padding-left:28px">
-          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px">🔍</span>
+          <input type="text" class="input" id="search" placeholder="/ Search..." style="width:200px;padding-left:32px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </div>
         <button class="btn-ghost btn-sm" onclick="toggleAdvancedSearch()" title="Advanced Search Filters" id="advanced-search-btn">
-          ⚙️
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
         </button>
       </div>
     </div>

@@ -21,39 +21,151 @@
 
 <!-- Header injected by unified-header.js -->
 
-<!-- Simplified Inbox Header -->
-<div class="inbox-header" style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:var(--bg-secondary); border-bottom:1px solid var(--border-primary);">
-  <div style="display:flex; align-items:center; gap:16px;">
-    <h1 style="font-size:20px; font-weight:600; margin:0;">📥 Inbox</h1>
-    <span class="inbox-count-badge" id="inbox-count-badge" style="background:var(--warning); color:#000; padding:4px 10px; border-radius:12px; font-size:13px; font-weight:600;">0 items</span>
+<!-- Page Toolbar -->
+<div class="page-toolbar">
+  <div class="page-toolbar__left">
+    <span class="page-toolbar__count" id="inbox-count-badge">0 items</span>
   </div>
-  <div style="display:flex; gap:8px;">
-    <button class="btn btn-primary btn-sm" onclick="scanForNew()">🔄 Refresh</button>
-    <div class="dropdown" style="position:relative;">
-      <button class="btn btn-ghost btn-sm" onclick="toggleMoreMenu()" id="more-menu-btn">⋯ More</button>
-      <div class="dropdown-menu" id="more-menu" style="display:none; position:absolute; right:0; top:100%; margin-top:4px; background:var(--bg-secondary); border:1px solid var(--border-primary); border-radius:8px; padding:4px; min-width:160px; z-index:100;">
-        <button class="dropdown-item" onclick="regenerateImages(); toggleMoreMenu();">🖼️ Fix Images</button>
-        <button class="dropdown-item" onclick="rematchAll(); toggleMoreMenu();">🔗 Rematch All</button>
-        <button class="dropdown-item" onclick="cleanSpam(); toggleMoreMenu();">🧹 Clean Spam</button>
-        <hr style="margin:4px 0; border:none; border-top:1px solid var(--border-primary);">
-        <button class="dropdown-item text-danger" onclick="clearDismissed(); toggleMoreMenu();">🗑️ Clear Dismissed</button>
+  <div class="page-toolbar__actions">
+    <button class="tu-btn tu-btn--primary" onclick="scanForNew()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      <span>Refresh</span>
+    </button>
+    <div class="tu-dropdown">
+      <button class="tu-btn tu-btn--ghost" onclick="toggleMoreMenu()" id="more-menu-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      </button>
+      <div class="tu-dropdown__menu" id="more-menu">
+        <button class="tu-dropdown__item" onclick="regenerateImages(); toggleMoreMenu();">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          Fix Images
+        </button>
+        <button class="tu-dropdown__item" onclick="rematchAll(); toggleMoreMenu();">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          Rematch All
+        </button>
+        <button class="tu-dropdown__item" onclick="cleanSpam(); toggleMoreMenu();">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+          Clean Spam
+        </button>
+        <div class="tu-dropdown__divider"></div>
+        <button class="tu-dropdown__item tu-dropdown__item--danger" onclick="clearDismissed(); toggleMoreMenu();">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          Clear Dismissed
+        </button>
       </div>
     </div>
   </div>
 </div>
 <style>
-  .dropdown-item { display:block; width:100%; text-align:left; padding:8px 12px; background:none; border:none; color:var(--text-primary); cursor:pointer; border-radius:4px; font-size:14px; }
-  .dropdown-item:hover { background:var(--bg-hover); }
-  .dropdown-item.text-danger { color:var(--error); }
+  .page-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: #111820;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .page-toolbar__count {
+    background: #ffc107;
+    color: #000;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .page-toolbar__actions {
+    display: flex;
+    gap: 8px;
+  }
+  .tu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+  }
+  .tu-btn--primary {
+    background: #00ff88;
+    color: #000;
+    border-color: #00ff88;
+  }
+  .tu-btn--primary:hover {
+    background: #00e67a;
+  }
+  .tu-btn--ghost {
+    background: transparent;
+    color: #8b95a5;
+    border-color: rgba(255,255,255,0.1);
+  }
+  .tu-btn--ghost:hover {
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+  }
+  .tu-dropdown {
+    position: relative;
+  }
+  .tu-dropdown__menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: #1a2230;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 6px;
+    min-width: 180px;
+    z-index: 100;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .tu-dropdown__menu.open {
+    display: block;
+  }
+  .tu-dropdown__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: #c0c7d1;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s ease;
+  }
+  .tu-dropdown__item:hover {
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+  }
+  .tu-dropdown__item--danger {
+    color: #ff4e6a;
+  }
+  .tu-dropdown__item--danger:hover {
+    background: rgba(255,78,106,0.1);
+  }
+  .tu-dropdown__divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 6px 0;
+  }
 </style>
 <script>
   function toggleMoreMenu() {
     const menu = document.getElementById('more-menu');
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    menu.classList.toggle('open');
   }
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.dropdown')) {
-      document.getElementById('more-menu').style.display = 'none';
+    if (!e.target.closest('.tu-dropdown')) {
+      document.getElementById('more-menu').classList.remove('open');
     }
   });
 </script>
@@ -66,24 +178,26 @@
   <span id="stat-total">0</span>
 </div>
 
-<!-- Simplified Search & Filter Bar -->
-<div class="filters-bar" style="display:flex; align-items:center; gap:12px; padding:12px 20px; background:var(--bg-tertiary); flex-wrap:wrap;">
+<!-- Search & Filter Bar -->
+<div class="tu-filters">
   <!-- Search -->
-  <div class="search-box" style="flex:1; min-width:200px; max-width:400px;">
-    <span class="search-icon">🔍</span>
-    <input type="text" id="search-input" placeholder="Search..." oninput="handleSearch(this.value)">
-    <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">✕</button>
+  <div class="tu-search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="search-input" placeholder="Search receipts..." oninput="handleSearch(this.value)">
+    <button class="tu-search__clear" id="search-clear" onclick="clearSearch()" style="display:none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
   </div>
 
-  <!-- Simplified Status Tabs -->
-  <div class="status-tabs" style="display:flex; gap:4px; background:var(--bg-secondary); padding:4px; border-radius:8px;">
-    <button class="status-tab active" onclick="filterStatus('pending')" data-filter="pending" style="padding:8px 16px; border:none; background:var(--brand); color:#000; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer;">
-      Inbox <span id="chip-pending" style="margin-left:4px; opacity:0.8;">0</span>
+  <!-- Status Tabs -->
+  <div class="tu-tabs">
+    <button class="tu-tab active" onclick="filterStatus('pending')" data-filter="pending">
+      Inbox <span id="chip-pending">0</span>
     </button>
-    <button class="status-tab" onclick="filterStatus('accepted')" data-filter="accepted" style="padding:8px 16px; border:none; background:transparent; color:var(--text-secondary); border-radius:6px; font-size:13px; cursor:pointer;">
-      Done <span id="chip-accepted" style="margin-left:4px; opacity:0.6;">0</span>
+    <button class="tu-tab" onclick="filterStatus('accepted')" data-filter="accepted">
+      Done <span id="chip-accepted">0</span>
     </button>
-    <button class="status-tab" onclick="filterStatus('all')" data-filter="all" style="padding:8px 16px; border:none; background:transparent; color:var(--text-secondary); border-radius:6px; font-size:13px; cursor:pointer;">
+    <button class="tu-tab" onclick="filterStatus('all')" data-filter="all">
       All
     </button>
   </div>
@@ -92,6 +206,95 @@
   <span id="chip-matched" style="display:none">0</span>
   <span id="chip-rejected" style="display:none">0</span>
 </div>
+<style>
+  .tu-filters {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    background: #0d1218;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    flex-wrap: wrap;
+  }
+  .tu-search {
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #111820;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+  }
+  .tu-search svg {
+    color: #5a6577;
+    flex-shrink: 0;
+  }
+  .tu-search input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+  }
+  .tu-search input::placeholder {
+    color: #5a6577;
+  }
+  .tu-search__clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: #5a6577;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+  }
+  .tu-search__clear:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+  }
+  .tu-tabs {
+    display: flex;
+    gap: 4px;
+    background: #111820;
+    padding: 4px;
+    border-radius: 10px;
+  }
+  .tu-tab {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: #6b7688;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tu-tab span {
+    opacity: 0.7;
+    font-size: 12px;
+  }
+  .tu-tab:hover {
+    background: rgba(255,255,255,0.05);
+    color: #8b95a5;
+  }
+  .tu-tab.active {
+    background: #00ff88;
+    color: #000;
+  }
+  .tu-tab.active span {
+    opacity: 1;
+  }
+</style>
 
 <!-- Hidden date filters for JS compatibility -->
 <div style="display:none;">
@@ -99,15 +302,11 @@
   <input type="date" id="date-to">
 </div>
 
-<style>
-  .status-tab.active { background:var(--brand) !important; color:#000 !important; }
-  .status-tab:not(.active):hover { background:var(--bg-hover); color:var(--text-primary); }
-</style>
 <script>
   // Update tab styling on click
-  document.querySelectorAll('.status-tab').forEach(tab => {
+  document.querySelectorAll('.tu-tab').forEach(tab => {
     tab.addEventListener('click', function() {
-      document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tu-tab').forEach(t => t.classList.remove('active'));
       this.classList.add('active');
     });
   });

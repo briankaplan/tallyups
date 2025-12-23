@@ -1,44 +1,46 @@
 /**
- * Unified Header System for Tallyups
- * Injects consistent header/navigation across all pages
+ * TallyUps Unified Header & Navigation
+ * Clean Sentinel-inspired design with consistent navigation
  */
 
 (function() {
   'use strict';
 
-  // Navigation items configuration
+  // Navigation configuration
   const NAV_ITEMS = [
     { href: '/', label: 'Home', icon: 'home' },
-    { href: '/viewer', label: 'Reconcile', icon: 'check' },
-    { href: '/library', label: 'Library', icon: 'grid' },
-    { href: '/scanner', label: 'Scan', icon: 'camera' },
+    { href: '/viewer', label: 'Match', icon: 'link' },
     { href: '/incoming', label: 'Inbox', icon: 'inbox' },
-    { href: '/reports', label: 'Reports', icon: 'file' },
-    { href: '/gmail', label: 'Gmail', icon: 'mail' },
-    { href: '/contacts', label: 'Contacts', icon: 'users' }
+    { href: '/library', label: 'Library', icon: 'book' },
+    { href: '/reports', label: 'Reports', icon: 'file-text' }
   ];
 
-  // SVG Icons
+  const MOBILE_NAV_ITEMS = [
+    { href: '/', label: 'Home', icon: 'home' },
+    { href: '/viewer', label: 'Match', icon: 'link' },
+    { href: '/scanner', label: 'Scan', icon: 'camera' },
+    { href: '/incoming', label: 'Inbox', icon: 'inbox' },
+    { href: '/library', label: 'Library', icon: 'book' }
+  ];
+
+  // SVG Icons (Feather-style)
   const ICONS = {
-    home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>',
-    check: '<path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>',
-    grid: '<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>',
-    camera: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>',
-    inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>',
-    file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>',
-    mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>',
-    users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
-    search: '<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>',
-    sun: '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>',
-    moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>',
-    settings: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
-    menu: '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>',
-    x: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>',
-    logo: '<rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/><line x1="7" y1="17" x2="10" y2="17"/>'
+    home: '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+    link: '<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>',
+    inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>',
+    book: '<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>',
+    camera: '<path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>',
+    'file-text': '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>',
+    search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+    clipboard: '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/>',
+    menu: '<line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>',
+    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
   };
 
-  function createSvg(iconName) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[iconName] || ''}</svg>`;
+  function getIcon(name, size = 20) {
+    const path = ICONS[name] || ICONS.home;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
   }
 
   function getCurrentPath() {
@@ -51,166 +53,459 @@
     return path.startsWith(href);
   }
 
+  function getPageTitle() {
+    const path = getCurrentPath();
+    const titles = {
+      '/': 'Dashboard',
+      '/viewer': 'Match Receipts',
+      '/incoming': 'Inbox',
+      '/library': 'Library',
+      '/scanner': 'Scan',
+      '/reports': 'Reports',
+      '/settings': 'Settings',
+      '/gmail': 'Gmail',
+      '/contacts': 'Contacts'
+    };
+    return titles[path] || 'TallyUps';
+  }
+
   function createHeader() {
     const currentPath = getCurrentPath();
+    const pageTitle = getPageTitle();
 
-    // Build nav links
+    // Desktop nav links
     const navLinks = NAV_ITEMS.map(item => `
-      <a href="${item.href}" class="app-header__nav-link${isActive(item.href) ? ' active' : ''}">
-        ${createSvg(item.icon)}
+      <a href="${item.href}" class="tu-header__nav-item ${isActive(item.href) ? 'active' : ''}">
+        ${getIcon(item.icon, 18)}
         <span>${item.label}</span>
       </a>
     `).join('');
 
-    // Build mobile menu links
-    const mobileLinks = NAV_ITEMS.map(item => `
-      <a href="${item.href}" class="mobile-menu__link${isActive(item.href) ? ' active' : ''}">
-        ${createSvg(item.icon)}
-        <span>${item.label}</span>
-      </a>
-    `).join('');
-
-    const headerHTML = `
-      <header class="app-header">
-        <a href="/" class="app-header__logo">
-          <div class="app-header__logo-icon">
-            ${createSvg('logo')}
-          </div>
-          <span class="app-header__logo-text">Tallyups</span>
-        </a>
-
-        <nav class="app-header__nav">
+    return `
+      <header class="tu-header">
+        <div class="tu-header__left">
+          <a href="/" class="tu-header__brand">
+            <div class="tu-header__logo">
+              ${getIcon('clipboard', 24)}
+            </div>
+            <div class="tu-header__text">
+              <div class="tu-header__title">TALLYUPS</div>
+              <div class="tu-header__subtitle">${pageTitle}</div>
+            </div>
+          </a>
+        </div>
+        <nav class="tu-header__nav">
           ${navLinks}
         </nav>
-
-        <div class="app-header__controls">
-          <div class="app-header__search">
-            ${createSvg('search')}
-            <input type="text" placeholder="Search..." id="global-search">
+        <div class="tu-header__actions">
+          <div class="tu-header__status">
+            <span class="tu-header__status-dot"></span>
+            <span>Synced</span>
           </div>
-          <button class="app-header__btn" onclick="TallyupsHeader.toggleTheme()" title="Toggle theme">
-            ${createSvg('sun')}
-          </button>
-          <a href="/settings" class="app-header__btn" title="Settings">
-            ${createSvg('settings')}
+          <a href="/settings" class="tu-header__settings" title="Settings">
+            ${getIcon('settings', 18)}
           </a>
-          <button class="app-header__hamburger" onclick="TallyupsHeader.toggleMobileMenu()">
-            ${createSvg('menu')}
+          <button class="tu-header__hamburger" onclick="TallyupsHeader.toggleMobileMenu()">
+            ${getIcon('menu', 20)}
           </button>
         </div>
       </header>
-
-      <div class="mobile-menu" id="mobile-menu">
-        <nav class="mobile-menu__nav">
-          ${mobileLinks}
-          <div class="mobile-menu__divider"></div>
-          <a href="/settings" class="mobile-menu__link${currentPath === '/settings' ? ' active' : ''}">
-            ${createSvg('settings')}
-            <span>Settings</span>
-          </a>
-        </nav>
-      </div>
     `;
-
-    return headerHTML;
   }
 
-  function injectHeader() {
-    // Check if header already exists
-    if (document.querySelector('.app-header')) return;
+  function createBottomNav() {
+    const navItems = MOBILE_NAV_ITEMS.map(item => `
+      <a href="${item.href}" class="tu-bottom-nav__item ${isActive(item.href) ? 'active' : ''}">
+        ${getIcon(item.icon, 22)}
+        <span>${item.label}</span>
+      </a>
+    `).join('');
 
-    // Remove any existing headers
-    const existingHeaders = document.querySelectorAll('header:not(.app-header)');
-    existingHeaders.forEach(h => h.remove());
+    return `
+      <nav class="tu-bottom-nav">
+        ${navItems}
+      </nav>
+    `;
+  }
 
-    // Remove bottom navigation if exists
-    const bottomNav = document.querySelector('.bottom-nav, .mobile-nav, [class*="bottom-nav"]');
-    if (bottomNav) bottomNav.remove();
+  function createMobileMenu() {
+    const allItems = [
+      ...NAV_ITEMS,
+      { href: '/scanner', label: 'Scan', icon: 'camera' },
+      { href: '/settings', label: 'Settings', icon: 'settings' }
+    ];
 
-    // Inject new header at the start of body
-    document.body.insertAdjacentHTML('afterbegin', createHeader());
+    const menuLinks = allItems.map(item => `
+      <a href="${item.href}" class="tu-mobile-menu__item ${isActive(item.href) ? 'active' : ''}">
+        ${getIcon(item.icon, 20)}
+        <span>${item.label}</span>
+      </a>
+    `).join('');
 
-    // Add body class for padding
-    document.body.classList.add('has-app-header');
+    return `
+      <div class="tu-mobile-menu" id="tu-mobile-menu">
+        <div class="tu-mobile-menu__overlay" onclick="TallyupsHeader.toggleMobileMenu()"></div>
+        <div class="tu-mobile-menu__content">
+          <div class="tu-mobile-menu__header">
+            <span>Menu</span>
+            <button onclick="TallyupsHeader.toggleMobileMenu()">${getIcon('x', 20)}</button>
+          </div>
+          <nav class="tu-mobile-menu__nav">
+            ${menuLinks}
+          </nav>
+        </div>
+      </div>
+    `;
+  }
 
-    // Initialize theme icon
-    updateThemeIcon();
+  function injectStyles() {
+    if (document.getElementById('tu-header-styles')) return;
+
+    const styles = document.createElement('style');
+    styles.id = 'tu-header-styles';
+    styles.textContent = `
+      /* TallyUps Header - Sentinel-inspired clean design */
+      .tu-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        background: #0a0f14;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      }
+
+      .tu-header__left {
+        display: flex;
+        align-items: center;
+      }
+
+      .tu-header__brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .tu-header__logo {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #a855f7, #3b82f6);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+      }
+
+      .tu-header__title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.02em;
+      }
+
+      .tu-header__subtitle {
+        font-size: 12px;
+        color: #5a6577;
+      }
+
+      .tu-header__nav {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .tu-header__nav-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #8b95a5;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.15s ease;
+      }
+
+      .tu-header__nav-item:hover {
+        background: rgba(255,255,255,0.05);
+        color: #fff;
+      }
+
+      .tu-header__nav-item.active {
+        background: rgba(0,255,136,0.1);
+        color: #00ff88;
+      }
+
+      .tu-header__nav-item svg {
+        flex-shrink: 0;
+      }
+
+      .tu-header__actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .tu-header__status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: #111820;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 20px;
+        font-size: 13px;
+        color: #8b95a5;
+      }
+
+      .tu-header__status-dot {
+        width: 8px;
+        height: 8px;
+        background: #22c55e;
+        border-radius: 50%;
+        animation: tu-pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes tu-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      .tu-header__settings {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: #111820;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+        color: #8b95a5;
+        transition: all 0.15s ease;
+      }
+
+      .tu-header__settings:hover {
+        border-color: rgba(255,255,255,0.15);
+        background: #1a2230;
+        color: #fff;
+      }
+
+      .tu-header__hamburger {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: transparent;
+        border: none;
+        color: #fff;
+        cursor: pointer;
+      }
+
+      /* Bottom Navigation (Mobile) */
+      .tu-bottom-nav {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #0a0f14;
+        border-top: 1px solid rgba(255,255,255,0.06);
+        padding: 8px 0;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        z-index: 999;
+      }
+
+      .tu-bottom-nav__item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 8px 4px;
+        text-decoration: none;
+        color: #5a6577;
+        font-size: 10px;
+        font-weight: 500;
+        transition: color 0.15s ease;
+      }
+
+      .tu-bottom-nav__item:hover,
+      .tu-bottom-nav__item.active {
+        color: #00ff88;
+      }
+
+      .tu-bottom-nav__item svg {
+        transition: transform 0.15s ease;
+      }
+
+      .tu-bottom-nav__item.active svg {
+        transform: scale(1.1);
+      }
+
+      /* Mobile Menu */
+      .tu-mobile-menu {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+      }
+
+      .tu-mobile-menu.open {
+        display: block;
+      }
+
+      .tu-mobile-menu__overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+      }
+
+      .tu-mobile-menu__content {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 280px;
+        background: #111820;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.3);
+        overflow-y: auto;
+      }
+
+      .tu-mobile-menu__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .tu-mobile-menu__header button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: transparent;
+        border: none;
+        color: #8b95a5;
+        cursor: pointer;
+      }
+
+      .tu-mobile-menu__nav {
+        padding: 12px;
+      }
+
+      .tu-mobile-menu__item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #8b95a5;
+        font-size: 15px;
+        font-weight: 500;
+        transition: all 0.15s ease;
+      }
+
+      .tu-mobile-menu__item:hover {
+        background: rgba(255,255,255,0.05);
+        color: #fff;
+      }
+
+      .tu-mobile-menu__item.active {
+        background: rgba(0,255,136,0.1);
+        color: #00ff88;
+      }
+
+      /* Responsive */
+      @media (max-width: 900px) {
+        .tu-header__nav-item span { display: none; }
+        .tu-header__nav-item { padding: 8px; }
+        .tu-header__status span { display: none; }
+        .tu-header__text { display: none; }
+      }
+
+      @media (max-width: 640px) {
+        .tu-header { padding: 10px 16px; }
+        .tu-header__nav { display: none; }
+        .tu-header__status { display: none; }
+        .tu-header__settings { display: none; }
+        .tu-header__hamburger { display: flex; }
+        .tu-bottom-nav { display: flex; }
+        body.has-tu-header { padding-bottom: 72px; }
+      }
+
+      /* Body adjustments */
+      body.has-tu-header {
+        padding-top: 0;
+        margin: 0;
+        background: #0a0f14;
+        color: #fff;
+      }
+    `;
+    document.head.appendChild(styles);
   }
 
   function toggleMobileMenu() {
-    const menu = document.getElementById('mobile-menu');
-    const hamburger = document.querySelector('.app-header__hamburger');
-
-    if (menu.classList.contains('open')) {
-      menu.classList.remove('open');
-      hamburger.innerHTML = createSvg('menu');
-    } else {
-      menu.classList.add('open');
-      hamburger.innerHTML = createSvg('x');
+    const menu = document.getElementById('tu-mobile-menu');
+    if (menu) {
+      menu.classList.toggle('open');
     }
   }
 
-  function toggleTheme() {
-    const html = document.documentElement;
-    const currentTheme = html.getAttribute('data-theme') || 'dark';
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  function injectHeader() {
+    // Don't inject on dashboard (it has its own)
+    if (getCurrentPath() === '/' && document.querySelector('.clean-header')) return;
 
-    html.setAttribute('data-theme', newTheme);
-    localStorage.setItem('tallyups-theme', newTheme);
+    // Check if already injected
+    if (document.querySelector('.tu-header')) return;
 
-    updateThemeIcon();
+    // Remove old headers/navs
+    const oldHeaders = document.querySelectorAll('.app-header, header:not(.tu-header):not(.clean-header)');
+    oldHeaders.forEach(h => h.remove());
+
+    const oldBottomNav = document.querySelectorAll('.bottom-nav, .mobile-nav');
+    oldBottomNav.forEach(n => n.remove());
+
+    // Inject styles first
+    injectStyles();
+
+    // Inject header
+    document.body.insertAdjacentHTML('afterbegin', createHeader());
+
+    // Inject bottom nav
+    document.body.insertAdjacentHTML('beforeend', createBottomNav());
+
+    // Inject mobile menu
+    document.body.insertAdjacentHTML('beforeend', createMobileMenu());
+
+    // Add body class
+    document.body.classList.add('has-tu-header');
   }
 
-  function updateThemeIcon() {
-    const btn = document.querySelector('.app-header__controls .app-header__btn');
-    if (!btn) return;
-
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-    btn.innerHTML = createSvg(currentTheme === 'dark' ? 'sun' : 'moon');
-  }
-
-  function loadTheme() {
-    const saved = localStorage.getItem('tallyups-theme');
-    if (saved) {
-      document.documentElement.setAttribute('data-theme', saved);
-    }
-  }
-
-  // Global search handler
-  function initSearch() {
-    const searchInput = document.getElementById('global-search');
-    if (!searchInput) return;
-
-    searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const query = searchInput.value.trim();
-        if (query) {
-          // Navigate to viewer with search
-          window.location.href = `/viewer?search=${encodeURIComponent(query)}`;
-        }
-      }
-    });
-  }
-
-  // Initialize
   function init() {
-    loadTheme();
-
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        injectHeader();
-        initSearch();
-      });
+      document.addEventListener('DOMContentLoaded', injectHeader);
     } else {
       injectHeader();
-      initSearch();
     }
   }
 
-  // Expose to global scope
+  // Expose globally
   window.TallyupsHeader = {
     toggleMobileMenu,
-    toggleTheme,
     refresh: injectHeader
   };
 
