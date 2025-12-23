@@ -1840,6 +1840,15 @@ class PlaidService:
         try:
             cursor = conn.cursor()
 
+            # Check if new source tracking columns exist
+            has_source_columns = False
+            try:
+                cursor.execute("SELECT plaid_transaction_id FROM transactions LIMIT 1")
+                has_source_columns = True
+                logger.info("Source tracking columns available")
+            except Exception:
+                logger.info("Source tracking columns not yet available - using basic import")
+
             # Get the next available _index
             cursor.execute("SELECT COALESCE(MAX(_index), 0) + 1 as next_index FROM transactions")
             next_index = cursor.fetchone()['next_index']
@@ -1911,29 +1920,46 @@ class PlaidService:
                         source_display += f" (...{account_mask})"
 
                 try:
-                    # Use INSERT IGNORE to skip duplicates (plaid_transaction_id is unique)
-                    cursor.execute("""
-                        INSERT IGNORE INTO transactions
-                        (_index, chase_date, chase_description, chase_amount, chase_category,
-                         business_type, receipt_source, notes,
-                         plaid_transaction_id, plaid_account_id,
-                         source_institution, source_account_name, source_account_mask,
-                         created_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, 'plaid', %s, %s, %s, %s, %s, %s, NOW())
-                    """, (
-                        next_index,
-                        tx['date'],
-                        description,
-                        amount,
-                        category,
-                        business_type,
-                        source_display,
-                        transaction_id,
-                        account_id,
-                        institution,
-                        account_name,
-                        account_mask
-                    ))
+                    if has_source_columns:
+                        # Use full INSERT with source tracking columns
+                        cursor.execute("""
+                            INSERT IGNORE INTO transactions
+                            (_index, chase_date, chase_description, chase_amount, chase_category,
+                             business_type, receipt_source, notes,
+                             plaid_transaction_id, plaid_account_id,
+                             source_institution, source_account_name, source_account_mask,
+                             created_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, 'plaid', %s, %s, %s, %s, %s, %s, NOW())
+                        """, (
+                            next_index,
+                            tx['date'],
+                            description,
+                            amount,
+                            category,
+                            business_type,
+                            source_display,
+                            transaction_id,
+                            account_id,
+                            institution,
+                            account_name,
+                            account_mask
+                        ))
+                    else:
+                        # Use basic INSERT without source tracking columns
+                        cursor.execute("""
+                            INSERT INTO transactions
+                            (_index, chase_date, chase_description, chase_amount, chase_category,
+                             business_type, receipt_source, notes, created_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, 'plaid', %s, NOW())
+                        """, (
+                            next_index,
+                            tx['date'],
+                            description,
+                            amount,
+                            category,
+                            business_type,
+                            source_display
+                        ))
 
                     # Check if row was actually inserted (not a duplicate)
                     if cursor.rowcount > 0:
@@ -1948,7 +1974,7 @@ class PlaidService:
                         next_index += 1
                         imported += 1
                     else:
-                        # Duplicate - already imported
+                        # Duplicate - already imported (only with source columns)
                         skipped += 1
 
                 except Exception as e:
@@ -1969,6 +1995,67 @@ class PlaidService:
 
         except Exception as e:
             logger.error(f"Import failed: {e}")
+            conn.rollback()
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+        finally:
+            db.return_connection(conn)
+
+    def reset_import_status(self, user_id: str = 'default') -> dict:
+        """
+        Reset processing_status to 'new' for all transactions, allowing re-import.
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            Dictionary with reset results
+        """
+        db = self._get_db()
+        conn = db.get_connection()
+        try:
+            cursor = conn.cursor()
+
+            # Count how many will be reset
+            cursor.execute("""
+                SELECT COUNT(*) as cnt
+                FROM plaid_transactions pt
+                JOIN plaid_accounts pa ON pt.account_id = pa.account_id
+                JOIN plaid_items pi ON pa.item_id = pi.item_id
+                WHERE pi.user_id = %s AND pt.processing_status = 'matched'
+            """, (user_id,))
+            count = cursor.fetchone()['cnt']
+
+            if count == 0:
+                return {
+                    'success': True,
+                    'reset': 0,
+                    'message': 'No matched transactions to reset'
+                }
+
+            # Reset all matched back to new
+            cursor.execute("""
+                UPDATE plaid_transactions pt
+                JOIN plaid_accounts pa ON pt.account_id = pa.account_id
+                JOIN plaid_items pi ON pa.item_id = pi.item_id
+                SET pt.processing_status = 'new', pt.updated_at = NOW()
+                WHERE pi.user_id = %s AND pt.processing_status = 'matched'
+            """, (user_id,))
+
+            conn.commit()
+            logger.info(f"Reset {count} transactions to 'new' status")
+
+            return {
+                'success': True,
+                'reset': count,
+                'message': f'Reset {count} transactions for re-import'
+            }
+
+        except Exception as e:
+            logger.error(f"Reset failed: {e}")
             conn.rollback()
             return {
                 'success': False,
