@@ -1921,9 +1921,23 @@ class PlaidService:
 
                 try:
                     if has_source_columns:
+                        # Check if this transaction already exists
+                        cursor.execute("""
+                            SELECT _index FROM transactions
+                            WHERE plaid_transaction_id = %s
+                        """, (transaction_id,))
+                        existing = cursor.fetchone()
+
+                        if existing:
+                            # Already imported
+                            skipped += 1
+                            if skipped == 1:
+                                logger.info(f"First skip: {transaction_id} already exists at index {existing['_index']}")
+                            continue
+
                         # Use full INSERT with source tracking columns
                         cursor.execute("""
-                            INSERT IGNORE INTO transactions
+                            INSERT INTO transactions
                             (_index, chase_date, chase_description, chase_amount, chase_category,
                              business_type, receipt_source, notes,
                              plaid_transaction_id, plaid_account_id,
@@ -1961,24 +1975,23 @@ class PlaidService:
                             source_display
                         ))
 
-                    # Check if row was actually inserted (not a duplicate)
-                    if cursor.rowcount > 0:
-                        # Mark as imported in plaid_transactions
-                        cursor.execute("""
-                            UPDATE plaid_transactions
-                            SET processing_status = 'matched',
-                                updated_at = NOW()
-                            WHERE transaction_id = %s
-                        """, (transaction_id,))
+                    # Row inserted successfully
+                    # Mark as imported in plaid_transactions
+                    cursor.execute("""
+                        UPDATE plaid_transactions
+                        SET processing_status = 'matched',
+                            updated_at = NOW()
+                        WHERE transaction_id = %s
+                    """, (transaction_id,))
 
-                        next_index += 1
-                        imported += 1
-                    else:
-                        # Duplicate - already imported (only with source columns)
-                        skipped += 1
+                    next_index += 1
+                    imported += 1
 
                 except Exception as e:
                     logger.warning(f"Failed to import transaction {transaction_id}: {e}")
+                    if skipped == 0:
+                        # Log first error for diagnostics
+                        logger.error(f"First import error details: {type(e).__name__}: {e}")
                     skipped += 1
                     continue
 
@@ -1986,11 +1999,23 @@ class PlaidService:
 
             logger.info(f"Imported {imported} transactions from Plaid (skipped {skipped})")
 
+            # Get diagnostic info
+            diag = {'has_source_columns': has_source_columns}
+            try:
+                cursor.execute("SELECT COUNT(*) as cnt FROM transactions")
+                diag['total_in_transactions'] = cursor.fetchone()['cnt']
+                if has_source_columns:
+                    cursor.execute("SELECT COUNT(*) as cnt FROM transactions WHERE plaid_transaction_id IS NOT NULL")
+                    diag['with_plaid_id'] = cursor.fetchone()['cnt']
+            except Exception:
+                pass
+
             return {
                 'success': True,
                 'imported': imported,
                 'skipped': skipped,
-                'message': f'Imported {imported} transactions to viewer'
+                'message': f'Imported {imported} transactions to viewer',
+                'diagnostics': diag
             }
 
         except Exception as e:
