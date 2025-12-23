@@ -404,6 +404,13 @@ def api_report_items(report_id):
         conn = db.get_connection()
         cursor = conn.cursor()
 
+        # First get report info
+        cursor.execute('''
+            SELECT report_name, business_type, status FROM reports WHERE report_id = %s
+        ''', (report_id,))
+        report_info = cursor.fetchone()
+        report_name = report_info['report_name'] if report_info else report_id
+
         cursor.execute('''
             SELECT _index, chase_date, chase_description, chase_amount, chase_category,
                    business_type, r2_url, receipt_file, ai_note, review_status
@@ -428,6 +435,7 @@ def api_report_items(report_id):
         return jsonify({
             'ok': True,
             'report_id': report_id,
+            'report_name': report_name,
             'items': items,
             'count': len(items),
             'total': total
