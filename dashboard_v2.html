@@ -614,9 +614,134 @@
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
+    /* ========================================
+       FLOATING ACTION BUTTON (FAB)
+       ======================================== */
+    .fab-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .fab-container {
+        bottom: 20px;
+        right: 20px;
+      }
+    }
+
+    .fab {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00ff88, #00cc6a);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4);
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .fab:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 40px rgba(0, 255, 136, 0.5);
+    }
+
+    .fab:active {
+      transform: scale(0.95);
+    }
+
+    .fab-label {
+      position: absolute;
+      right: 76px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: translateX(10px);
+      transition: all 0.2s ease;
+      pointer-events: none;
+    }
+
+    .fab:hover .fab-label {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Pulse animation for FAB */
+    @keyframes fab-pulse {
+      0%, 100% { box-shadow: 0 8px 32px rgba(0, 255, 136, 0.4); }
+      50% { box-shadow: 0 8px 48px rgba(0, 255, 136, 0.6); }
+    }
+
+    .fab.pulse {
+      animation: fab-pulse 2s ease-in-out infinite;
+    }
+
+    /* Secondary FAB buttons */
+    .fab-secondary {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      opacity: 0;
+      transform: scale(0.5) translateY(20px);
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      position: relative;
+    }
+
+    .fab-container.expanded .fab-secondary {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    .fab-secondary:nth-child(1) { transition-delay: 0.05s; }
+    .fab-secondary:nth-child(2) { transition-delay: 0.1s; }
+    .fab-secondary:nth-child(3) { transition-delay: 0.15s; }
+
+    .fab-secondary:hover {
+      background: var(--bg-hover);
+      border-color: var(--brand);
+      transform: scale(1.1);
+    }
   </style>
 </head>
 <body>
+  <!-- FLOATING ACTION BUTTON - Quick Scan Access -->
+  <div class="fab-container" id="fab-container">
+    <button class="fab-secondary" onclick="window.location='/incoming'" title="Process Inbox">
+      <span class="fab-label">Inbox</span>
+      📥
+    </button>
+    <button class="fab-secondary" onclick="window.location='/viewer'" title="Reconcile">
+      <span class="fab-label">Match</span>
+      🔗
+    </button>
+    <button class="fab pulse" onclick="window.location='/scanner'" title="Scan Receipt">
+      <span class="fab-label">Scan Receipt</span>
+      📸
+    </button>
+  </div>
+
   <!-- Guided Reconciliation Modal -->
   <div class="reconcile-guide-overlay" id="reconcile-guide-overlay">
     <div class="reconcile-guide-modal">
@@ -1147,37 +1272,22 @@
         <!-- Alerts will be dynamically inserted -->
       </section>
 
-      <!-- Quick Actions -->
-      <section class="section-title">
-        <h2><span>⚡</span> Quick Actions</h2>
-      </section>
-      <section class="quick-actions">
-        <a href="/scanner" class="quick-action">
-          <div class="quick-action__icon">📸</div>
-          <div class="quick-action__label">Scan Receipt</div>
-        </a>
-        <a href="/viewer" class="quick-action">
-          <div class="quick-action__icon">🔄</div>
-          <div class="quick-action__label">Reconcile</div>
-        </a>
-        <a href="/incoming" class="quick-action">
-          <div class="quick-action__icon">📥</div>
-          <div class="quick-action__label">Process Inbox</div>
-          <div class="quick-action__badge" id="inbox-badge" style="display: none">0</div>
-        </a>
-        <a href="/gmail" class="quick-action">
-          <div class="quick-action__icon">📧</div>
-          <div class="quick-action__label">Gmail</div>
-        </a>
+      <!-- Quick Actions - Simplified to 3 main flows -->
+      <section class="quick-actions" style="grid-template-columns: repeat(3, 1fr); margin-bottom: var(--space-6);">
         <a href="/library" class="quick-action">
           <div class="quick-action__icon">📚</div>
-          <div class="quick-action__label">Library</div>
+          <div class="quick-action__label">Receipt Library</div>
         </a>
         <a href="/reports" class="quick-action">
           <div class="quick-action__icon">📊</div>
           <div class="quick-action__label">Reports</div>
         </a>
+        <a href="/settings" class="quick-action">
+          <div class="quick-action__icon">⚙️</div>
+          <div class="quick-action__label">Settings</div>
+        </a>
       </section>
+      <div id="inbox-badge" style="display: none">0</div>
 
       <!-- Dashboard Grid -->
       <section class="dashboard-grid">
@@ -1499,72 +1609,47 @@
       });
     }
 
-    // Update alerts
+    // Update alerts - SIMPLIFIED: Show only the most important action
     function updateAlerts(data) {
       const container = document.getElementById('alerts-container');
-      const alerts = [];
 
       const missingCount = data.missing_receipts || data.ytd?.missing_receipts || 0;
       const inboxCount = data.inbox_count || data.ytd?.pending_review || 0;
-      const pendingCount = data.pending_review || 0;
+      const totalActions = missingCount + inboxCount;
 
-      if (missingCount > 0) {
-        alerts.push({
-          type: 'error',
-          icon: '🧾',
-          title: `${missingCount} Missing Receipts`,
-          message: 'Transactions need receipts attached for expense tracking.',
-          action: 'Fix Now',
-          href: '#',
-          onclick: `event.preventDefault(); showReconcileGuide(${missingCount});`
-        });
-      }
-
-      if (inboxCount > 0) {
-        alerts.push({
-          type: 'warning',
-          icon: '📥',
-          title: `${inboxCount} Items in Inbox`,
-          message: 'New receipts waiting to be processed and matched.',
-          action: 'Process',
-          href: '/incoming'
-        });
-      }
-
-      if (pendingCount > 0) {
-        alerts.push({
-          type: 'info',
-          icon: '⏳',
-          title: `${pendingCount} Pending Review`,
-          message: 'Transactions need business category assignment.',
-          action: 'Review',
-          href: '/viewer?filter=pending'
-        });
-      }
-
-      if (alerts.length === 0) {
+      // No actions needed - show success
+      if (totalActions === 0) {
         container.innerHTML = `
           <div class="alert alert--success" style="cursor: default;">
             <div class="alert__icon">✓</div>
             <div class="alert__content">
               <div class="alert__title">All Caught Up!</div>
-              <div class="alert__message">No pending actions. Great work keeping your expenses organized!</div>
+              <div class="alert__message">No pending actions. Great work!</div>
             </div>
           </div>
         `;
         return;
       }
 
-      container.innerHTML = alerts.map(a => `
-        <a href="${a.href}" class="alert alert--${a.type}" ${a.onclick ? `onclick="${a.onclick}"` : ''}>
-          <div class="alert__icon">${a.icon}</div>
+      // Single unified alert showing total actions needed
+      const primaryAction = missingCount > 0 ?
+        { href: '#', onclick: `event.preventDefault(); showReconcileGuide(${missingCount});`, label: 'Fix Missing' } :
+        { href: '/incoming', onclick: '', label: 'Process Inbox' };
+
+      container.innerHTML = `
+        <a href="${primaryAction.href}" class="alert alert--warning" ${primaryAction.onclick ? `onclick="${primaryAction.onclick}"` : ''}>
+          <div class="alert__icon">⚡</div>
           <div class="alert__content">
-            <div class="alert__title">${a.title}</div>
-            <div class="alert__message">${a.message}</div>
+            <div class="alert__title">${totalActions} Action${totalActions > 1 ? 's' : ''} Needed</div>
+            <div class="alert__message">
+              ${missingCount > 0 ? `${missingCount} missing receipts` : ''}
+              ${missingCount > 0 && inboxCount > 0 ? ' • ' : ''}
+              ${inboxCount > 0 ? `${inboxCount} inbox items` : ''}
+            </div>
           </div>
-          <div class="alert__action">${a.action} →</div>
+          <div class="alert__action">${primaryAction.label} →</div>
         </a>
-      `).join('');
+      `;
     }
 
     // Load recent activity
