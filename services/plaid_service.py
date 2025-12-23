@@ -852,6 +852,14 @@ class PlaidService:
                 f"+{added} ~{modified} -{removed} in {duration_ms}ms"
             )
 
+            # Auto-import new transactions to main transactions table
+            if added > 0:
+                try:
+                    import_result = self.import_to_transactions(user_id=item.user_id)
+                    logger.info(f"Auto-import: {import_result.get('imported', 0)} transactions moved to viewer")
+                except Exception as import_err:
+                    logger.warning(f"Auto-import failed (non-fatal): {import_err}")
+
             return result
 
         except Exception as e:
@@ -1848,7 +1856,11 @@ class PlaidService:
                     pt.category_primary,
                     pt.category_detailed,
                     pt.pending,
-                    pa.default_business_type
+                    pa.default_business_type,
+                    pa.name as account_name,
+                    pa.mask as account_mask,
+                    pa.type as account_type,
+                    pi.institution_name
                 FROM plaid_transactions pt
                 JOIN plaid_accounts pa ON pt.account_id = pa.account_id
                 JOIN plaid_items pi ON pa.item_id = pi.item_id
@@ -1884,19 +1896,28 @@ class PlaidService:
                 # Get business type from account default
                 business_type = tx['default_business_type'] or 'Personal'
 
+                # Build source info: "Regions Bank - Checking (...1234)"
+                institution = tx['institution_name'] or 'Unknown Bank'
+                account_name = tx['account_name'] or tx['account_type'] or 'Account'
+                account_mask = tx['account_mask'] or ''
+                source_info = f"{institution} - {account_name}"
+                if account_mask:
+                    source_info += f" (...{account_mask})"
+
                 try:
                     cursor.execute("""
                         INSERT INTO transactions
                         (_index, chase_date, chase_description, chase_amount, chase_category,
-                         business_type, receipt_source, created_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, 'plaid', NOW())
+                         business_type, receipt_source, notes, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'plaid', %s, NOW())
                     """, (
                         next_index,
                         tx['date'],
                         description,
                         amount,
                         category,
-                        business_type
+                        business_type,
+                        source_info
                     ))
 
                     # Mark as imported in plaid_transactions
