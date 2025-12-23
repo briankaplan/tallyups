@@ -714,9 +714,43 @@ def setup_flask_monitoring(app):
 
     @app.route('/health')
     def health():
-        """Health check endpoint."""
+        """Health check endpoint with bank sync diagnostics."""
         from flask import jsonify
-        return jsonify(monitor.health_check())
+
+        # Start with basic monitoring health
+        health_data = monitor.health_check()
+
+        # Add bank sync diagnostics
+        try:
+            from services.plaid_service import is_plaid_configured, get_plaid_service
+            if is_plaid_configured():
+                plaid = get_plaid_service()
+                diagnostics = plaid.get_sync_diagnostics(user_id='default')
+
+                health_data["bank_sync"] = {
+                    "total_items": diagnostics['summary']['total_items'],
+                    "active_items": diagnostics['summary']['active_items'],
+                    "total_transactions": diagnostics['summary']['total_transactions'],
+                    "issues_detected": diagnostics['summary']['total_issues'],
+                    "date_filter": diagnostics['date_filter']['min_date'],
+                    "items": []
+                }
+
+                for item in diagnostics['items']:
+                    health_data["bank_sync"]["items"].append({
+                        "institution": item['institution'],
+                        "status": item['status'],
+                        "has_cursor": item['has_cursor'],
+                        "last_sync": item['last_successful_sync'],
+                        "transactions": item['transactions']['total'],
+                        "tx_range": f"{item['transactions']['earliest_date']} to {item['transactions']['latest_date']}" if item['transactions']['earliest_date'] else None,
+                        "issues": item['issues'],
+                        "recent_syncs": item['recent_syncs'][:3] if item.get('recent_syncs') else []
+                    })
+        except Exception as e:
+            health_data["bank_sync"] = {"error": str(e)}
+
+        return jsonify(health_data)
 
     @app.route('/metrics')
     def metrics():
