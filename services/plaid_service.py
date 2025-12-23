@@ -852,6 +852,14 @@ class PlaidService:
                 f"+{added} ~{modified} -{removed} in {duration_ms}ms"
             )
 
+            # Auto-import new transactions to main transactions table
+            if added > 0:
+                try:
+                    import_result = self.import_to_transactions(user_id=item.user_id)
+                    logger.info(f"Auto-import: {import_result.get('imported', 0)} transactions moved to viewer")
+                except Exception as import_err:
+                    logger.warning(f"Auto-import failed (non-fatal): {import_err}")
+
             return result
 
         except Exception as e:
@@ -1809,6 +1817,162 @@ class PlaidService:
                 'institution': item['institution_name'],
                 'had_cursor': had_cursor,
                 'message': 'Sync cursor cleared. Next sync will fetch all available transactions.'
+            }
+
+        finally:
+            db.return_connection(conn)
+
+    def import_to_transactions(self, user_id: str = 'default') -> dict:
+        """
+        Import transactions from plaid_transactions staging table to main transactions table.
+
+        This moves synced Plaid transactions into the main transactions table
+        so they appear in the viewer and can be matched with receipts.
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            Dictionary with import results
+        """
+        db = self._get_db()
+        conn = db.get_connection()
+        try:
+            cursor = conn.cursor()
+
+            # Get the next available _index
+            cursor.execute("SELECT COALESCE(MAX(_index), 0) + 1 as next_index FROM transactions")
+            next_index = cursor.fetchone()['next_index']
+
+            # Get unimported transactions (processing_status = 'new')
+            cursor.execute("""
+                SELECT
+                    pt.transaction_id,
+                    pt.account_id,
+                    pt.date,
+                    pt.merchant_name,
+                    pt.name,
+                    pt.amount,
+                    pt.category_primary,
+                    pt.category_detailed,
+                    pt.pending,
+                    pa.default_business_type,
+                    pa.name as account_name,
+                    pa.mask as account_mask,
+                    pa.type as account_type,
+                    pi.institution_name
+                FROM plaid_transactions pt
+                JOIN plaid_accounts pa ON pt.account_id = pa.account_id
+                JOIN plaid_items pi ON pa.item_id = pi.item_id
+                WHERE pi.user_id = %s
+                AND pt.processing_status = 'new'
+                AND pt.pending = FALSE
+                ORDER BY pt.date DESC
+            """, (user_id,))
+
+            transactions = cursor.fetchall()
+
+            if not transactions:
+                return {
+                    'success': True,
+                    'imported': 0,
+                    'message': 'No new transactions to import'
+                }
+
+            imported = 0
+            skipped = 0
+
+            for tx in transactions:
+                # Use merchant_name if available, otherwise use name
+                description = tx['merchant_name'] or tx['name'] or 'Unknown'
+
+                # Plaid amounts are positive for debits, negative for credits
+                # Chase format uses negative for purchases
+                amount = -float(tx['amount'])
+
+                # Map category
+                category = tx['category_primary'] or tx['category_detailed'] or ''
+
+                # Get business type from account default
+                business_type = tx['default_business_type'] or 'Personal'
+
+                # Structured source info
+                institution = tx['institution_name'] or None
+                account_name = tx['account_name'] or tx['account_type'] or None
+                account_mask = tx['account_mask'] or None
+                account_id = tx['account_id']
+                transaction_id = tx['transaction_id']
+
+                # Build display string for notes (backwards compatibility)
+                source_display = None
+                if institution:
+                    source_display = f"{institution} - {account_name or 'Account'}"
+                    if account_mask:
+                        source_display += f" (...{account_mask})"
+
+                try:
+                    # Use INSERT IGNORE to skip duplicates (plaid_transaction_id is unique)
+                    cursor.execute("""
+                        INSERT IGNORE INTO transactions
+                        (_index, chase_date, chase_description, chase_amount, chase_category,
+                         business_type, receipt_source, notes,
+                         plaid_transaction_id, plaid_account_id,
+                         source_institution, source_account_name, source_account_mask,
+                         created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'plaid', %s, %s, %s, %s, %s, %s, NOW())
+                    """, (
+                        next_index,
+                        tx['date'],
+                        description,
+                        amount,
+                        category,
+                        business_type,
+                        source_display,
+                        transaction_id,
+                        account_id,
+                        institution,
+                        account_name,
+                        account_mask
+                    ))
+
+                    # Check if row was actually inserted (not a duplicate)
+                    if cursor.rowcount > 0:
+                        # Mark as imported in plaid_transactions
+                        cursor.execute("""
+                            UPDATE plaid_transactions
+                            SET processing_status = 'matched',
+                                updated_at = NOW()
+                            WHERE transaction_id = %s
+                        """, (transaction_id,))
+
+                        next_index += 1
+                        imported += 1
+                    else:
+                        # Duplicate - already imported
+                        skipped += 1
+
+                except Exception as e:
+                    logger.warning(f"Failed to import transaction {transaction_id}: {e}")
+                    skipped += 1
+                    continue
+
+            conn.commit()
+
+            logger.info(f"Imported {imported} transactions from Plaid (skipped {skipped})")
+
+            return {
+                'success': True,
+                'imported': imported,
+                'skipped': skipped,
+                'message': f'Imported {imported} transactions to viewer'
+            }
+
+        except Exception as e:
+            logger.error(f"Import failed: {e}")
+            conn.rollback()
+            return {
+                'success': False,
+                'error': str(e)
             }
 
         finally:

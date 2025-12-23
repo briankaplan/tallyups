@@ -24,12 +24,14 @@ Account Management:
     PUT  /api/plaid/accounts/<id>    - Update account settings
 
 Transactions:
-    GET  /api/plaid/transactions     - List transactions
-    POST /api/plaid/sync             - Trigger manual sync
-    GET  /api/plaid/sync/status      - Get sync status
-    GET  /api/plaid/sync/diagnose    - Get detailed sync diagnostics
-    POST /api/plaid/sync/reset       - Reset sync cursor for fresh sync
-    POST /api/plaid/sync/refresh     - Reset cursor and trigger sync
+    GET  /api/plaid/transactions        - List transactions
+    GET  /api/plaid/transactions/by-source - Get transactions grouped by card/account
+    POST /api/plaid/sync                - Trigger manual sync
+    GET  /api/plaid/sync/status         - Get sync status
+    GET  /api/plaid/sync/diagnose       - Get detailed sync diagnostics
+    POST /api/plaid/sync/reset          - Reset sync cursor for fresh sync
+    POST /api/plaid/sync/refresh        - Reset cursor and trigger sync
+    POST /api/plaid/sync/import         - Import to main transactions table
 
 Webhooks:
     POST /api/plaid/webhook          - Receive Plaid webhooks
@@ -1570,6 +1572,40 @@ def sync_reset():
         }), 500
 
 
+@plaid_bp.route('/sync/import', methods=['POST'])
+@require_auth
+def sync_import():
+    """
+    Import transactions from plaid_transactions staging table to main transactions table.
+
+    This moves synced Plaid transactions into the main transactions table
+    so they appear in the viewer and can be matched with receipts.
+
+    Response:
+        {
+            "success": true,
+            "imported": 150,
+            "skipped": 2,
+            "message": "Imported 150 transactions to viewer"
+        }
+    """
+    try:
+        plaid = get_plaid()
+        result = plaid.import_to_transactions(user_id=get_user_id())
+
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        logger.error(f"Import error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @plaid_bp.route('/sync/refresh', methods=['POST'])
 @require_auth
 def sync_refresh():
@@ -1630,6 +1666,100 @@ def sync_refresh():
 
     except Exception as e:
         logger.error(f"Refresh sync error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@plaid_bp.route('/transactions/by-source', methods=['GET'])
+@require_auth
+def transactions_by_source():
+    """
+    Get transaction summary grouped by source account.
+
+    Useful for:
+    - Seeing which cards have the most transactions
+    - Finding transactions without receipts by card
+    - Receipt matching rules per card
+
+    Response:
+        {
+            "success": true,
+            "sources": [
+                {
+                    "institution": "Regions Bank",
+                    "account_name": "Checking",
+                    "account_mask": "1234",
+                    "display": "Regions Bank - Checking (...1234)",
+                    "transaction_count": 150,
+                    "total_amount": -4523.45,
+                    "with_receipt": 45,
+                    "without_receipt": 105,
+                    "date_range": {"earliest": "2025-09-23", "latest": "2025-12-22"}
+                }
+            ]
+        }
+    """
+    try:
+        plaid = get_plaid()
+        db = plaid._get_db()
+        conn = db.get_connection()
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    source_institution,
+                    source_account_name,
+                    source_account_mask,
+                    COUNT(*) AS transaction_count,
+                    COALESCE(SUM(chase_amount), 0) AS total_amount,
+                    MIN(chase_date) AS earliest_date,
+                    MAX(chase_date) AS latest_date,
+                    SUM(CASE WHEN r2_url IS NOT NULL AND r2_url != '' THEN 1 ELSE 0 END) AS with_receipt,
+                    SUM(CASE WHEN r2_url IS NULL OR r2_url = '' THEN 1 ELSE 0 END) AS without_receipt
+                FROM transactions
+                WHERE source_institution IS NOT NULL
+                AND (deleted IS NULL OR deleted = 0)
+                GROUP BY source_institution, source_account_name, source_account_mask
+                ORDER BY transaction_count DESC
+            """)
+
+            sources = []
+            for row in cursor.fetchall():
+                # Build display string
+                display = row['source_institution']
+                if row['source_account_name']:
+                    display += f" - {row['source_account_name']}"
+                if row['source_account_mask']:
+                    display += f" (...{row['source_account_mask']})"
+
+                sources.append({
+                    'institution': row['source_institution'],
+                    'account_name': row['source_account_name'],
+                    'account_mask': row['source_account_mask'],
+                    'display': display,
+                    'transaction_count': row['transaction_count'],
+                    'total_amount': float(row['total_amount']),
+                    'with_receipt': row['with_receipt'],
+                    'without_receipt': row['without_receipt'],
+                    'date_range': {
+                        'earliest': row['earliest_date'].isoformat() if row['earliest_date'] else None,
+                        'latest': row['latest_date'].isoformat() if row['latest_date'] else None
+                    }
+                })
+
+            return jsonify({
+                'success': True,
+                'sources': sources
+            })
+
+        finally:
+            db.return_connection(conn)
+
+    except Exception as e:
+        logger.error(f"Transactions by source error: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
