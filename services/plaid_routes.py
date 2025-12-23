@@ -1606,6 +1606,47 @@ def sync_import():
         }), 500
 
 
+@plaid_bp.route('/sync/force-import', methods=['GET', 'POST'])
+@require_auth
+def sync_force_import():
+    """
+    Reset import status and re-import all transactions.
+
+    This resets the processing_status of 'matched' transactions back to 'new'
+    and then runs the import again. Use this if transactions were marked as
+    imported but didn't actually appear in the viewer.
+
+    Response:
+        {
+            "success": true,
+            "reset": {"reset": 704, "message": "..."},
+            "import": {"imported": 704, "skipped": 0, "message": "..."}
+        }
+    """
+    try:
+        plaid = get_plaid()
+        user_id = get_user_id()
+
+        # First reset
+        reset_result = plaid.reset_import_status(user_id=user_id)
+
+        # Then import
+        import_result = plaid.import_to_transactions(user_id=user_id)
+
+        return jsonify({
+            'success': True,
+            'reset': reset_result,
+            'import': import_result
+        })
+
+    except Exception as e:
+        logger.error(f"Force import error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @plaid_bp.route('/sync/refresh', methods=['POST'])
 @require_auth
 def sync_refresh():
