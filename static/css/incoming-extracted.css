@@ -759,13 +759,23 @@ tbody tr:nth-child(5) { animation-delay: 0.1s; }
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Mobile Card Container */
+/* Mobile Card Container - Always visible on mobile */
 .mobile-inbox {
   display: none;
   flex-direction: column;
   gap: 12px;
   padding: 16px;
   padding-bottom: calc(16px + var(--safe-bottom));
+}
+
+/* Force mobile inbox visible on smaller screens */
+@media (max-width: 900px) {
+  .mobile-inbox {
+    display: flex !important;
+  }
+  .content table {
+    display: none !important;
+  }
 }
 
 /* Receipt Card */

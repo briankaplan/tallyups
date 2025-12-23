@@ -1469,7 +1469,17 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
 /* Tablet breakpoint */
 @media(max-width:1024px){
   .left{flex:0 0 100%;max-width:100%;min-width:unset}
-  .right{display:none}
+  /* Show receipt panel below transactions on mobile */
+  .right{
+    display:block !important;
+    position:relative !important;
+    top:auto !important;
+    height:auto !important;
+    min-height:300px;
+    max-height:50vh;
+    flex:0 0 auto;
+    border-top:1px solid var(--edge);
+  }
   .main{flex-direction:column}
   .divider{display:none}
 
