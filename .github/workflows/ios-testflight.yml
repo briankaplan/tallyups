@@ -23,7 +23,7 @@ jobs:
         with:
           xcode-version: '15.2'
 
-      - name: Install API Key
+      - name: Install App Store Connect API Key
         env:
           API_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
@@ -33,10 +33,20 @@ jobs:
           chmod 600 "$HOME/private_keys/AuthKey_${API_KEY_ID}.p8"
           echo "API Key installed: AuthKey_${API_KEY_ID}.p8"
 
+      - name: Import Code Signing Certificate
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.P12_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
+
+      - name: Import Provisioning Profile
+        uses: apple-actions/import-provisioning-profile@v1
+        with:
+          provisioning-profile-base64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+
       - name: Generate App Icon
         run: |
           cd ios/TallyScanner/Resources/Assets.xcassets/AppIcon.appiconset
-          # Create a simple 1024x1024 icon using Python
           python3 -c "
           import struct, zlib
           def create_png(w, h, c):
@@ -51,42 +61,47 @@ jobs:
           "
           ls -la AppIcon.png
 
-      - name: Build and Upload
+      - name: Build Archive
         env:
           API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
           cd ios
-
           KEY_PATH="$HOME/private_keys/AuthKey_${API_KEY_ID}.p8"
-          echo "Using key: $KEY_PATH"
 
-          # Build archive with automatic signing
           xcodebuild archive \
             -project TallyScanner.xcodeproj \
             -scheme TallyScanner \
             -archivePath build/TallyScanner.xcarchive \
             -destination "generic/platform=iOS" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$API_KEY_ID" \
-            -authenticationKeyIssuerID "$API_ISSUER_ID" \
-            CODE_SIGN_STYLE=Automatic \
-            DEVELOPMENT_TEAM=R2LSUCXR5J
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            DEVELOPMENT_TEAM=R2LSUCXR5J \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}"
 
-          # Export IPA
+      - name: Export IPA
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          cd ios
+          KEY_PATH="$HOME/private_keys/AuthKey_${API_KEY_ID}.p8"
+
           xcodebuild -exportArchive \
             -archivePath build/TallyScanner.xcarchive \
             -exportPath build \
             -exportOptionsPlist ExportOptions.plist \
-            -allowProvisioningUpdates \
             -authenticationKeyPath "$KEY_PATH" \
             -authenticationKeyID "$API_KEY_ID" \
             -authenticationKeyIssuerID "$API_ISSUER_ID"
 
-          # Upload to TestFlight
+      - name: Upload to TestFlight
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
           xcrun altool --upload-app \
-            -f build/TallyScanner.ipa \
+            -f ios/build/TallyScanner.ipa \
             -t ios \
             --apiKey "$API_KEY_ID" \
             --apiIssuer "$API_ISSUER_ID"
