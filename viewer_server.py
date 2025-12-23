@@ -2796,10 +2796,10 @@ def health_check():
         "accuracy": "99%+" if gemini_configured else "97-98%"
     }
 
-    # Check Plaid integration
+    # Check Plaid integration with sync diagnostics
     plaid_status = {"status": "not_configured", "routes_loaded": False}
     try:
-        from services.plaid_service import is_plaid_configured, PLAID_SDK_AVAILABLE
+        from services.plaid_service import is_plaid_configured, PLAID_SDK_AVAILABLE, get_plaid_service
         plaid_status["sdk_available"] = PLAID_SDK_AVAILABLE
         plaid_status["configured"] = is_plaid_configured()
         # Check if routes are registered
@@ -2809,6 +2809,34 @@ def health_check():
         )
         if plaid_status["configured"] and plaid_status["routes_loaded"]:
             plaid_status["status"] = "ready"
+
+            # Add sync diagnostics if Plaid is ready
+            try:
+                plaid = get_plaid_service()
+                diagnostics = plaid.get_sync_diagnostics(user_id='default')
+
+                plaid_status["bank_sync"] = {
+                    "total_items": diagnostics['summary']['total_items'],
+                    "active_items": diagnostics['summary']['active_items'],
+                    "total_transactions": diagnostics['summary']['total_transactions'],
+                    "issues_detected": diagnostics['summary']['total_issues'],
+                    "date_filter": diagnostics['date_filter']['min_date'],
+                    "items": []
+                }
+
+                for item in diagnostics['items']:
+                    plaid_status["bank_sync"]["items"].append({
+                        "institution": item['institution'],
+                        "status": item['status'],
+                        "has_cursor": item['has_cursor'],
+                        "last_sync": item['last_successful_sync'],
+                        "transactions": item['transactions']['total'],
+                        "tx_range": f"{item['transactions']['earliest_date']} to {item['transactions']['latest_date']}" if item['transactions']['earliest_date'] else None,
+                        "issues": item['issues']
+                    })
+            except Exception as diag_err:
+                plaid_status["bank_sync"] = {"error": str(diag_err)}
+
         elif plaid_status["sdk_available"]:
             plaid_status["status"] = "sdk_only"
         else:
