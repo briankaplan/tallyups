@@ -4310,8 +4310,8 @@ async function loadStatsPage() {
     debugLog('Fetching transactions from /api/transactions...');
 
     try {
-      // Stats needs ALL transactions including already submitted ones
-      const res = await fetch('/api/transactions?show_submitted=true', { credentials: 'same-origin' });
+      // Stats needs ALL transactions including already submitted ones AND those in reports
+      const res = await fetch('/api/transactions?show_submitted=true&show_in_report=true&all=true', { credentials: 'same-origin' });
       debugLog('Transactions response status:', res.status);
 
       if (res.ok) {
