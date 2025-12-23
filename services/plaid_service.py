@@ -1895,9 +1895,9 @@ class PlaidService:
                 # Use merchant_name if available, otherwise use name
                 description = tx['merchant_name'] or tx['name'] or 'Unknown'
 
-                # Plaid amounts are positive for debits, negative for credits
-                # Chase format uses negative for purchases
-                amount = -float(tx['amount'])
+                # Plaid amounts are positive for debits (spending), negative for credits (refunds)
+                # Keep the same convention - positive for charges
+                amount = float(tx['amount'])
 
                 # Map category
                 category = tx['category_primary'] or tx['category_detailed'] or ''
@@ -1921,7 +1921,7 @@ class PlaidService:
 
                 try:
                     if has_source_columns:
-                        # Check if this transaction already exists
+                        # Check if this transaction already exists by Plaid ID
                         cursor.execute("""
                             SELECT _index FROM transactions
                             WHERE plaid_transaction_id = %s
@@ -1929,10 +1929,44 @@ class PlaidService:
                         existing = cursor.fetchone()
 
                         if existing:
-                            # Already imported
+                            # Already imported by Plaid ID
                             skipped += 1
                             if skipped == 1:
                                 logger.info(f"First skip: {transaction_id} already exists at index {existing['_index']}")
+                            continue
+
+                        # Also check for duplicate by date/amount/description (from CSV imports)
+                        cursor.execute("""
+                            SELECT _index, report_id FROM transactions
+                            WHERE chase_date = %s
+                            AND ABS(chase_amount - %s) < 0.01
+                            AND (chase_description LIKE %s OR %s LIKE CONCAT('%%', LEFT(chase_description, 20), '%%'))
+                            AND plaid_transaction_id IS NULL
+                            LIMIT 1
+                        """, (tx['date'], amount, f"%{description[:20]}%", description))
+                        existing_match = cursor.fetchone()
+
+                        if existing_match:
+                            # Found existing transaction - link it instead of creating duplicate
+                            cursor.execute("""
+                                UPDATE transactions
+                                SET plaid_transaction_id = %s,
+                                    plaid_account_id = %s,
+                                    source_institution = %s,
+                                    source_account_name = %s,
+                                    source_account_mask = %s
+                                WHERE _index = %s
+                            """, (transaction_id, account_id, institution, account_name, account_mask, existing_match['_index']))
+
+                            # Mark as matched in staging
+                            cursor.execute("""
+                                UPDATE plaid_transactions SET processing_status = 'matched'
+                                WHERE transaction_id = %s
+                            """, (transaction_id,))
+
+                            skipped += 1
+                            if skipped <= 3:
+                                logger.info(f"Linked Plaid tx to existing: {description[:30]} on {tx['date']} (index {existing_match['_index']})")
                             continue
 
                         # Use full INSERT with source tracking columns
