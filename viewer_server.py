@@ -530,6 +530,13 @@ except ImportError as e:
     logger.warning(f"Could not load reports blueprint: {e}")
 
 try:
+    from routes.admin import admin_bp
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    logger.info("Registered blueprint: admin")
+except ImportError as e:
+    logger.warning(f"Could not load admin blueprint: {e}")
+
+try:
     from routes.library import library_bp
     app.register_blueprint(library_bp)
     logger.info("Registered blueprint: library")
