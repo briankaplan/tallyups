@@ -1936,14 +1936,17 @@ class PlaidService:
                             continue
 
                         # Also check for duplicate by date/amount/description (from CSV imports)
+                        # Check within 2 days to catch posting date differences
                         cursor.execute("""
                             SELECT _index, report_id FROM transactions
-                            WHERE chase_date = %s
+                            WHERE ABS(DATEDIFF(chase_date, %s)) <= 2
                             AND ABS(chase_amount - %s) < 0.01
-                            AND (chase_description LIKE %s OR %s LIKE CONCAT('%%', LEFT(chase_description, 20), '%%'))
+                            AND (LOWER(chase_description) LIKE LOWER(%s)
+                                 OR LOWER(%s) LIKE CONCAT('%%', LOWER(LEFT(chase_description, 10)), '%%'))
                             AND plaid_transaction_id IS NULL
+                            ORDER BY ABS(DATEDIFF(chase_date, %s)) ASC
                             LIMIT 1
-                        """, (tx['date'], amount, f"%{description[:20]}%", description))
+                        """, (tx['date'], amount, f"%{description[:15]}%", description, tx['date']))
                         existing_match = cursor.fetchone()
 
                         if existing_match:
