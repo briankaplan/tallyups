@@ -3777,57 +3777,47 @@ def admin_plaid_import_debug():
     if admin_key != os.getenv('ADMIN_API_KEY'):
         return jsonify({'error': 'Admin auth required'}), 401
 
+    if not db:
+        return jsonify({'error': 'No database'}), 500
+
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
 
+        results = {}
+
         # Count transactions table
         cursor.execute("SELECT COUNT(*) as cnt FROM transactions")
-        tx_count = cursor.fetchone()['cnt']
-
-        # Count with plaid_transaction_id
-        cursor.execute("SELECT COUNT(*) as cnt FROM transactions WHERE plaid_transaction_id IS NOT NULL")
-        plaid_tx_count = cursor.fetchone()['cnt']
-
-        # Count by source
-        cursor.execute("""
-            SELECT source_institution, COUNT(*) as cnt
-            FROM transactions
-            WHERE source_institution IS NOT NULL
-            GROUP BY source_institution
-        """)
-        by_source = cursor.fetchall()
+        results['total_transactions'] = cursor.fetchone()['cnt']
 
         # Count plaid_transactions by status
-        cursor.execute("""
-            SELECT processing_status, COUNT(*) as cnt
-            FROM plaid_transactions
-            GROUP BY processing_status
-        """)
-        plaid_status = cursor.fetchall()
+        try:
+            cursor.execute("""
+                SELECT processing_status, COUNT(*) as cnt
+                FROM plaid_transactions
+                GROUP BY processing_status
+            """)
+            results['plaid_status'] = {row['processing_status']: row['cnt'] for row in cursor.fetchall()}
+        except Exception as e:
+            results['plaid_status_error'] = str(e)
 
-        # Sample recent transactions
-        cursor.execute("""
-            SELECT _index, chase_date, chase_description, chase_amount,
-                   plaid_transaction_id, source_institution, receipt_source
-            FROM transactions
-            ORDER BY _index DESC
-            LIMIT 5
-        """)
-        recent = cursor.fetchall()
+        # Check if new columns exist
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM transactions WHERE plaid_transaction_id IS NOT NULL")
+            results['with_plaid_id'] = cursor.fetchone()['cnt']
+        except Exception as e:
+            results['plaid_id_error'] = str(e)
+
+        # Sample recent
+        try:
+            cursor.execute("SELECT _index, chase_date, chase_description, chase_amount FROM transactions ORDER BY _index DESC LIMIT 3")
+            results['recent'] = [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            results['recent_error'] = str(e)
 
         db.return_connection(conn)
+        return jsonify({'ok': True, 'results': results})
 
-        return jsonify({
-            'ok': True,
-            'transactions_table': {
-                'total': tx_count,
-                'with_plaid_id': plaid_tx_count
-            },
-            'by_source': [dict(r) for r in by_source],
-            'plaid_transactions_status': [dict(r) for r in plaid_status],
-            'recent_transactions': [dict(r) for r in recent]
-        })
     except Exception as e:
         import traceback
         return jsonify({'ok': False, 'error': str(e), 'trace': traceback.format_exc()}), 500
