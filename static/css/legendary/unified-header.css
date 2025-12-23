@@ -21,13 +21,13 @@ body.has-app-header {
    HEADER CONTAINER
    ═══════════════════════════════════════════════════════════════ */
 .app-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 9999 !important;
   height: 64px;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-6, 24px);
@@ -249,7 +249,15 @@ body.has-app-header {
 
 @media (max-width: 768px) {
   .app-header__hamburger {
-    display: flex;
+    display: flex !important;
+  }
+
+  .app-header__nav {
+    display: none !important;
+  }
+
+  .app-header__search {
+    display: none !important;
   }
 }
 
@@ -262,7 +270,7 @@ body.has-app-header {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 999;
+  z-index: 9998;
   background: var(--bg-primary, #0b0d10);
   border-top: 1px solid var(--border-primary, rgba(255,255,255,0.08));
   transform: translateY(-100%);
