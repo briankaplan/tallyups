@@ -3693,6 +3693,77 @@ def debug_receipt_stats():
         return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 
+@app.route("/api/admin/run-migration-008", methods=["POST"])
+def admin_run_migration_008():
+    """
+    Run migration 008 to add Plaid source tracking columns.
+    Requires ADMIN_API_KEY for authentication.
+    """
+    # Require admin key
+    admin_key = request.headers.get('X-Admin-Key') or request.args.get('admin_key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not admin_key or admin_key != expected_key:
+        return jsonify({'error': 'Admin authentication required'}), 401
+
+    if not USE_DATABASE or not db:
+        return jsonify({'error': 'Database not available'}), 500
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        results = []
+
+        # Check which columns already exist
+        cursor.execute("SHOW COLUMNS FROM transactions")
+        existing_cols = {row['Field'] for row in cursor.fetchall()}
+
+        # Add columns if they don't exist
+        new_columns = [
+            ("plaid_transaction_id", "VARCHAR(100) NULL"),
+            ("plaid_account_id", "VARCHAR(100) NULL"),
+            ("source_institution", "VARCHAR(100) NULL"),
+            ("source_account_name", "VARCHAR(100) NULL"),
+            ("source_account_mask", "VARCHAR(10) NULL"),
+        ]
+
+        for col_name, col_def in new_columns:
+            if col_name not in existing_cols:
+                cursor.execute(f"ALTER TABLE transactions ADD COLUMN {col_name} {col_def}")
+                results.append(f"Added column: {col_name}")
+            else:
+                results.append(f"Column exists: {col_name}")
+
+        # Add unique index on plaid_transaction_id if not exists
+        cursor.execute("SHOW INDEX FROM transactions WHERE Key_name = 'idx_plaid_transaction_id'")
+        if not cursor.fetchone():
+            cursor.execute("CREATE UNIQUE INDEX idx_plaid_transaction_id ON transactions(plaid_transaction_id)")
+            results.append("Created unique index: idx_plaid_transaction_id")
+        else:
+            results.append("Index exists: idx_plaid_transaction_id")
+
+        # Add source_institution index
+        cursor.execute("SHOW INDEX FROM transactions WHERE Key_name = 'idx_source_institution'")
+        if not cursor.fetchone():
+            cursor.execute("CREATE INDEX idx_source_institution ON transactions(source_institution)")
+            results.append("Created index: idx_source_institution")
+        else:
+            results.append("Index exists: idx_source_institution")
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'message': 'Migration 008 completed',
+            'results': results
+        })
+
+    except Exception as e:
+        import traceback
+        return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
+
+
 @app.route("/api/admin/restore-transactions", methods=["POST"])
 def admin_restore_transactions():
     """
