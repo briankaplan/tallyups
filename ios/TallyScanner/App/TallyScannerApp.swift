@@ -143,7 +143,23 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
         let token = tokenParts.joined()
         print("🔔 Push token: \(token)")
-        // TODO: Send to backend for push notifications
+
+        // Send token to backend for push notifications
+        Task {
+            do {
+                try await APIClient.shared.registerPushToken(token)
+                print("🔔 Push token registered with backend")
+            } catch {
+                print("🔔 Failed to register push token: \(error)")
+            }
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        print("🔔 Failed to register for push notifications: \(error)")
     }
 }
 
