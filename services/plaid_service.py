@@ -796,14 +796,18 @@ class PlaidService:
                 response = self._api.transactions_sync(request)
 
                 # Process added transactions
+                batch_added = 0
                 for tx in response.added:
-                    self._process_transaction(tx, item_id, batch_id, 'added')
-                    added += 1
+                    if self._process_transaction(tx, item_id, batch_id, 'added'):
+                        added += 1
+                        batch_added += 1
 
                 # Process modified transactions
+                batch_modified = 0
                 for tx in response.modified:
-                    self._process_transaction(tx, item_id, batch_id, 'modified')
-                    modified += 1
+                    if self._process_transaction(tx, item_id, batch_id, 'modified'):
+                        modified += 1
+                        batch_modified += 1
 
                 # Process removed transactions
                 for tx in response.removed:
@@ -814,10 +818,13 @@ class PlaidService:
                 cursor = response.next_cursor
                 has_more = response.has_more
 
+                # Log batch results including filtered count
+                plaid_count = len(response.added) + len(response.modified)
+                saved_count = batch_added + batch_modified
+                filtered_count = plaid_count - saved_count
                 logger.info(
-                    f"Sync batch: added={len(response.added)}, "
-                    f"modified={len(response.modified)}, "
-                    f"removed={len(response.removed)}, has_more={has_more}"
+                    f"Sync batch: received={plaid_count}, saved={saved_count}, "
+                    f"filtered={filtered_count}, removed={len(response.removed)}, has_more={has_more}"
                 )
 
             # Update Item's cursor
@@ -877,13 +884,17 @@ class PlaidService:
         item_id: str,
         batch_id: str,
         operation: str
-    ):
-        """Process a single transaction from Plaid."""
+    ) -> bool:
+        """Process a single transaction from Plaid.
+
+        Returns:
+            True if transaction was saved, False if filtered/skipped
+        """
         # Filter: Skip transactions before September 2025
         min_date = datetime(2025, 9, 1).date()
         if tx.date and tx.date < min_date:
             logger.debug(f"Skipping transaction {tx.transaction_id} - date {tx.date} before {min_date}")
-            return
+            return False
 
         db = self._get_db()
         conn = db.get_connection()
@@ -949,6 +960,7 @@ class PlaidService:
             ))
 
             conn.commit()
+            return True
 
         finally:
             db.return_connection(conn)
@@ -1596,6 +1608,209 @@ class PlaidService:
                 'earliest_date': row['earliest_date'].isoformat() if row['earliest_date'] else None,
                 'latest_date': row['latest_date'].isoformat() if row['latest_date'] else None
             }
+        finally:
+            db.return_connection(conn)
+
+    def get_sync_diagnostics(self, user_id: str = 'default') -> dict:
+        """
+        Get comprehensive sync diagnostics for troubleshooting.
+
+        Returns detailed information about:
+        - Item status and configuration
+        - Recent sync history with success/failure details
+        - Transaction counts and date ranges
+        - Any errors or issues detected
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            Dictionary with diagnostic information
+        """
+        db = self._get_db()
+        conn = db.get_connection()
+        try:
+            cursor = conn.cursor()
+
+            # Get items with detailed status
+            cursor.execute("""
+                SELECT item_id, institution_name, status, transactions_cursor,
+                       last_successful_sync, last_sync_attempt, error_code, error_message,
+                       created_at
+                FROM plaid_items
+                WHERE user_id = %s AND status != 'revoked'
+                ORDER BY created_at DESC
+            """, (user_id,))
+            items = cursor.fetchall()
+
+            items_diagnostics = []
+            for item in items:
+                item_id = item['item_id']
+
+                # Get accounts for this item
+                cursor.execute("""
+                    SELECT account_id, name, type, subtype, sync_enabled,
+                           balance_current, balance_available
+                    FROM plaid_accounts
+                    WHERE item_id = %s
+                """, (item_id,))
+                accounts = cursor.fetchall()
+
+                # Get recent sync history
+                cursor.execute("""
+                    SELECT batch_id, sync_type, status, started_at, completed_at,
+                           duration_ms, transactions_added, transactions_modified,
+                           transactions_removed, error_code, error_message
+                    FROM plaid_sync_history
+                    WHERE item_id = %s
+                    ORDER BY started_at DESC
+                    LIMIT 10
+                """, (item_id,))
+                sync_history = cursor.fetchall()
+
+                # Get transaction counts for this item
+                cursor.execute("""
+                    SELECT
+                        COUNT(*) as total,
+                        MIN(date) as earliest_date,
+                        MAX(date) as latest_date,
+                        SUM(CASE WHEN processing_status = 'new' THEN 1 ELSE 0 END) as new_count
+                    FROM plaid_transactions pt
+                    JOIN plaid_accounts pa ON pt.account_id = pa.account_id
+                    WHERE pa.item_id = %s
+                """, (item_id,))
+                tx_stats = cursor.fetchone()
+
+                # Detect issues
+                issues = []
+                if item['status'] != 'active':
+                    issues.append(f"Item status is '{item['status']}' - may need reauthorization")
+                if not item['transactions_cursor']:
+                    issues.append("No sync cursor - initial sync may not have completed")
+                if item['error_code']:
+                    issues.append(f"Error: {item['error_code']} - {item['error_message']}")
+
+                # Check if any accounts have sync disabled
+                disabled_accounts = [a for a in accounts if not a['sync_enabled']]
+                if disabled_accounts:
+                    issues.append(f"{len(disabled_accounts)} account(s) have sync disabled")
+
+                # Check sync history for recent failures
+                recent_failures = [s for s in sync_history[:3] if s['status'] == 'failed']
+                if recent_failures:
+                    issues.append(f"Recent sync failures: {len(recent_failures)} in last 3 attempts")
+
+                items_diagnostics.append({
+                    'item_id': item_id,
+                    'institution': item['institution_name'],
+                    'status': item['status'],
+                    'has_cursor': bool(item['transactions_cursor']),
+                    'last_successful_sync': item['last_successful_sync'].isoformat() if item['last_successful_sync'] else None,
+                    'last_sync_attempt': item['last_sync_attempt'].isoformat() if item['last_sync_attempt'] else None,
+                    'error': item['error_message'] if item['error_code'] else None,
+                    'created_at': item['created_at'].isoformat() if item['created_at'] else None,
+                    'accounts': [{
+                        'account_id': a['account_id'],
+                        'name': a['name'],
+                        'type': a['type'],
+                        'subtype': a['subtype'],
+                        'sync_enabled': a['sync_enabled'],
+                        'balance': float(a['balance_current']) if a['balance_current'] else None
+                    } for a in accounts],
+                    'transactions': {
+                        'total': tx_stats['total'] or 0,
+                        'earliest_date': tx_stats['earliest_date'].isoformat() if tx_stats['earliest_date'] else None,
+                        'latest_date': tx_stats['latest_date'].isoformat() if tx_stats['latest_date'] else None,
+                        'unprocessed': tx_stats['new_count'] or 0
+                    },
+                    'recent_syncs': [{
+                        'batch_id': s['batch_id'],
+                        'type': s['sync_type'],
+                        'status': s['status'],
+                        'started_at': s['started_at'].isoformat() if s['started_at'] else None,
+                        'duration_ms': s['duration_ms'],
+                        'added': s['transactions_added'],
+                        'modified': s['transactions_modified'],
+                        'removed': s['transactions_removed'],
+                        'error': s['error_message'] if s['error_code'] else None
+                    } for s in sync_history],
+                    'issues': issues
+                })
+
+            # Overall summary
+            total_transactions = sum(i['transactions']['total'] for i in items_diagnostics)
+            total_issues = sum(len(i['issues']) for i in items_diagnostics)
+
+            return {
+                'user_id': user_id,
+                'timestamp': datetime.now().isoformat(),
+                'summary': {
+                    'total_items': len(items_diagnostics),
+                    'active_items': sum(1 for i in items_diagnostics if i['status'] == 'active'),
+                    'total_transactions': total_transactions,
+                    'total_issues': total_issues
+                },
+                'date_filter': {
+                    'enabled': True,
+                    'min_date': '2025-09-01',
+                    'description': 'Transactions before September 2025 are filtered out'
+                },
+                'items': items_diagnostics
+            }
+
+        finally:
+            db.return_connection(conn)
+
+    def reset_sync_cursor(self, item_id: str) -> dict:
+        """
+        Reset the sync cursor for an Item to force a fresh sync.
+
+        This clears the cursor so the next sync will fetch all available
+        transactions from Plaid (subject to date filters).
+
+        Args:
+            item_id: The Plaid Item ID
+
+        Returns:
+            Dictionary with reset status
+        """
+        db = self._get_db()
+        conn = db.get_connection()
+        try:
+            cursor = conn.cursor()
+
+            # Verify item exists
+            cursor.execute("""
+                SELECT item_id, institution_name, transactions_cursor
+                FROM plaid_items
+                WHERE item_id = %s
+            """, (item_id,))
+            item = cursor.fetchone()
+
+            if not item:
+                return {'success': False, 'error': 'Item not found'}
+
+            had_cursor = bool(item['transactions_cursor'])
+
+            # Clear the cursor
+            cursor.execute("""
+                UPDATE plaid_items
+                SET transactions_cursor = NULL,
+                    updated_at = NOW()
+                WHERE item_id = %s
+            """, (item_id,))
+            conn.commit()
+
+            logger.info(f"Reset sync cursor for {item_id} ({item['institution_name']})")
+
+            return {
+                'success': True,
+                'item_id': item_id,
+                'institution': item['institution_name'],
+                'had_cursor': had_cursor,
+                'message': 'Sync cursor cleared. Next sync will fetch all available transactions.'
+            }
+
         finally:
             db.return_connection(conn)
 
