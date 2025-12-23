@@ -3693,7 +3693,7 @@ def debug_receipt_stats():
         return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 
-@app.route("/api/admin/run-migration-008", methods=["POST"])
+@app.route("/api/admin/run-migration-008", methods=["GET", "POST"])
 def admin_run_migration_008():
     """
     Run migration 008 to add Plaid source tracking columns.

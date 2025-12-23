@@ -1572,7 +1572,7 @@ def sync_reset():
         }), 500
 
 
-@plaid_bp.route('/sync/import', methods=['POST'])
+@plaid_bp.route('/sync/import', methods=['GET', 'POST'])
 @require_auth
 def sync_import():
     """
