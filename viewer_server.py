@@ -713,6 +713,13 @@ if CSRF_AVAILABLE:
         pass
 
     try:
+        from routes.admin import admin_bp
+        csrf.exempt(admin_bp)
+        logger.info("Admin blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
+    try:
         from routes.library import library_bp
         csrf.exempt(library_bp)
         logger.info("Library blueprint exempted from CSRF")
