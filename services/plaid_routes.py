@@ -30,6 +30,7 @@ Transactions:
     GET  /api/plaid/sync/diagnose    - Get detailed sync diagnostics
     POST /api/plaid/sync/reset       - Reset sync cursor for fresh sync
     POST /api/plaid/sync/refresh     - Reset cursor and trigger sync
+    POST /api/plaid/sync/import      - Import to main transactions table
 
 Webhooks:
     POST /api/plaid/webhook          - Receive Plaid webhooks
@@ -1564,6 +1565,40 @@ def sync_reset():
 
     except Exception as e:
         logger.error(f"Reset sync error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@plaid_bp.route('/sync/import', methods=['POST'])
+@require_auth
+def sync_import():
+    """
+    Import transactions from plaid_transactions staging table to main transactions table.
+
+    This moves synced Plaid transactions into the main transactions table
+    so they appear in the viewer and can be matched with receipts.
+
+    Response:
+        {
+            "success": true,
+            "imported": 150,
+            "skipped": 2,
+            "message": "Imported 150 transactions to viewer"
+        }
+    """
+    try:
+        plaid = get_plaid()
+        result = plaid.import_to_transactions(user_id=get_user_id())
+
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        logger.error(f"Import error: {e}")
         return jsonify({
             'success': False,
             'error': str(e)

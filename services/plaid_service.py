@@ -1814,6 +1814,129 @@ class PlaidService:
         finally:
             db.return_connection(conn)
 
+    def import_to_transactions(self, user_id: str = 'default') -> dict:
+        """
+        Import transactions from plaid_transactions staging table to main transactions table.
+
+        This moves synced Plaid transactions into the main transactions table
+        so they appear in the viewer and can be matched with receipts.
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            Dictionary with import results
+        """
+        db = self._get_db()
+        conn = db.get_connection()
+        try:
+            cursor = conn.cursor()
+
+            # Get the next available _index
+            cursor.execute("SELECT COALESCE(MAX(_index), 0) + 1 as next_index FROM transactions")
+            next_index = cursor.fetchone()['next_index']
+
+            # Get unimported transactions (processing_status = 'new')
+            cursor.execute("""
+                SELECT
+                    pt.transaction_id,
+                    pt.account_id,
+                    pt.date,
+                    pt.merchant_name,
+                    pt.name,
+                    pt.amount,
+                    pt.category_primary,
+                    pt.category_detailed,
+                    pt.pending,
+                    pa.default_business_type
+                FROM plaid_transactions pt
+                JOIN plaid_accounts pa ON pt.account_id = pa.account_id
+                JOIN plaid_items pi ON pa.item_id = pi.item_id
+                WHERE pi.user_id = %s
+                AND pt.processing_status = 'new'
+                AND pt.pending = FALSE
+                ORDER BY pt.date DESC
+            """, (user_id,))
+
+            transactions = cursor.fetchall()
+
+            if not transactions:
+                return {
+                    'success': True,
+                    'imported': 0,
+                    'message': 'No new transactions to import'
+                }
+
+            imported = 0
+            skipped = 0
+
+            for tx in transactions:
+                # Use merchant_name if available, otherwise use name
+                description = tx['merchant_name'] or tx['name'] or 'Unknown'
+
+                # Plaid amounts are positive for debits, negative for credits
+                # Chase format uses negative for purchases
+                amount = -float(tx['amount'])
+
+                # Map category
+                category = tx['category_primary'] or tx['category_detailed'] or ''
+
+                # Get business type from account default
+                business_type = tx['default_business_type'] or 'Personal'
+
+                try:
+                    cursor.execute("""
+                        INSERT INTO transactions
+                        (_index, chase_date, chase_description, chase_amount, chase_category,
+                         business_type, receipt_source, created_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'plaid', NOW())
+                    """, (
+                        next_index,
+                        tx['date'],
+                        description,
+                        amount,
+                        category,
+                        business_type
+                    ))
+
+                    # Mark as imported in plaid_transactions
+                    cursor.execute("""
+                        UPDATE plaid_transactions
+                        SET processing_status = 'matched',
+                            updated_at = NOW()
+                        WHERE transaction_id = %s
+                    """, (tx['transaction_id'],))
+
+                    next_index += 1
+                    imported += 1
+
+                except Exception as e:
+                    logger.warning(f"Failed to import transaction {tx['transaction_id']}: {e}")
+                    skipped += 1
+                    continue
+
+            conn.commit()
+
+            logger.info(f"Imported {imported} transactions from Plaid (skipped {skipped})")
+
+            return {
+                'success': True,
+                'imported': imported,
+                'skipped': skipped,
+                'message': f'Imported {imported} transactions to viewer'
+            }
+
+        except Exception as e:
+            logger.error(f"Import failed: {e}")
+            conn.rollback()
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+        finally:
+            db.return_connection(conn)
+
 
 # =============================================================================
 # MODULE-LEVEL FUNCTIONS
