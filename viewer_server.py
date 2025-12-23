@@ -3770,6 +3770,69 @@ def admin_run_migration_008():
         return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
 
 
+@app.route("/api/admin/plaid-import-debug", methods=["GET"])
+def admin_plaid_import_debug():
+    """Debug endpoint to check import status."""
+    admin_key = request.args.get('admin_key')
+    if admin_key != os.getenv('ADMIN_API_KEY'):
+        return jsonify({'error': 'Admin auth required'}), 401
+
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+
+        # Count transactions table
+        cursor.execute("SELECT COUNT(*) as cnt FROM transactions")
+        tx_count = cursor.fetchone()['cnt']
+
+        # Count with plaid_transaction_id
+        cursor.execute("SELECT COUNT(*) as cnt FROM transactions WHERE plaid_transaction_id IS NOT NULL")
+        plaid_tx_count = cursor.fetchone()['cnt']
+
+        # Count by source
+        cursor.execute("""
+            SELECT source_institution, COUNT(*) as cnt
+            FROM transactions
+            WHERE source_institution IS NOT NULL
+            GROUP BY source_institution
+        """)
+        by_source = cursor.fetchall()
+
+        # Count plaid_transactions by status
+        cursor.execute("""
+            SELECT processing_status, COUNT(*) as cnt
+            FROM plaid_transactions
+            GROUP BY processing_status
+        """)
+        plaid_status = cursor.fetchall()
+
+        # Sample recent transactions
+        cursor.execute("""
+            SELECT _index, chase_date, chase_description, chase_amount,
+                   plaid_transaction_id, source_institution, receipt_source
+            FROM transactions
+            ORDER BY _index DESC
+            LIMIT 5
+        """)
+        recent = cursor.fetchall()
+
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'transactions_table': {
+                'total': tx_count,
+                'with_plaid_id': plaid_tx_count
+            },
+            'by_source': [dict(r) for r in by_source],
+            'plaid_transactions_status': [dict(r) for r in plaid_status],
+            'recent_transactions': [dict(r) for r in recent]
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({'ok': False, 'error': str(e), 'trace': traceback.format_exc()}), 500
+
+
 @app.route("/api/admin/restore-transactions", methods=["POST"])
 def admin_restore_transactions():
     """
