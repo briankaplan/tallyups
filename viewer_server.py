@@ -3699,16 +3699,22 @@ def admin_run_migration_008():
     Run migration 008 to add Plaid source tracking columns.
     Requires ADMIN_API_KEY for authentication.
     """
-    # Require admin key
-    admin_key = request.headers.get('X-Admin-Key') or request.args.get('admin_key')
-    expected_key = os.getenv('ADMIN_API_KEY')
-    if not admin_key or admin_key != expected_key:
-        return jsonify({'error': 'Admin authentication required'}), 401
-
-    if not USE_DATABASE or not db:
-        return jsonify({'error': 'Database not available'}), 500
-
     try:
+        # Require admin key
+        admin_key = request.headers.get('X-Admin-Key') or request.args.get('admin_key')
+        expected_key = os.getenv('ADMIN_API_KEY')
+
+        if not expected_key:
+            return jsonify({'ok': False, 'error': 'ADMIN_API_KEY not configured on server'}), 500
+
+        if not admin_key:
+            return jsonify({'ok': False, 'error': 'Missing admin_key parameter'}), 401
+
+        if admin_key != expected_key:
+            return jsonify({'ok': False, 'error': 'Invalid admin key'}), 401
+
+        if not USE_DATABASE or not db:
+            return jsonify({'ok': False, 'error': 'Database not available'}), 500
         conn = db.get_connection()
         cursor = conn.cursor()
 
