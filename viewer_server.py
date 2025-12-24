@@ -2821,20 +2821,20 @@ def service_worker():
 
 @app.route("/static/js/<path:filename>")
 def serve_static_js(filename):
-    """Serve static JavaScript files with cache busting."""
+    """Serve static JavaScript files with long cache + ETag for cache busting."""
     response = send_from_directory(BASE_DIR / "static" / "js", filename, mimetype='application/javascript')
-    # Short cache time to ensure updates are picked up quickly
-    response.headers['Cache-Control'] = 'public, max-age=300'  # 5 minutes
+    # Long cache (1 week) - browsers will revalidate with ETag
+    response.headers['Cache-Control'] = 'public, max-age=604800, stale-while-revalidate=86400'
     response.headers['Vary'] = 'Accept-Encoding'
     return response
 
 
 @app.route("/static/css/<path:filename>")
 def serve_static_css(filename):
-    """Serve static CSS files with cache busting."""
+    """Serve static CSS files with long cache + ETag for cache busting."""
     response = send_from_directory(BASE_DIR / "static" / "css", filename, mimetype='text/css')
-    # Short cache time to ensure updates are picked up quickly
-    response.headers['Cache-Control'] = 'public, max-age=300'  # 5 minutes
+    # Long cache (1 week) - browsers will revalidate with ETag
+    response.headers['Cache-Control'] = 'public, max-age=604800, stale-while-revalidate=86400'
     response.headers['Vary'] = 'Accept-Encoding'
     return response
 
@@ -5977,8 +5977,25 @@ def get_transactions():
                 record['MI Confidence'] = record.get('mi_confidence', 0)
 
                 # Map receipt URLs (for R2 storage)
-                record['r2_url'] = record.get('r2_url', '') or record.get('receipt_url', '')
-                record['R2 URL'] = record.get('r2_url', '') or record.get('receipt_url', '')
+                r2_url = record.get('r2_url', '') or ''
+                record['r2_url'] = r2_url
+                record['R2 URL'] = r2_url
+                # Also set normalized receipt_url for frontend consistency
+                receipt_file = record.get('receipt_file', '') or record.get('Receipt File', '') or ''
+                if r2_url:
+                    record['receipt_url'] = r2_url
+                elif receipt_file:
+                    # Normalize local file paths
+                    if receipt_file.startswith('http'):
+                        record['receipt_url'] = receipt_file
+                    elif receipt_file.startswith('/'):
+                        record['receipt_url'] = receipt_file
+                    elif receipt_file.startswith('receipts/') or receipt_file.startswith('incoming/'):
+                        record['receipt_url'] = f'/{receipt_file}'
+                    else:
+                        record['receipt_url'] = f'/receipts/{receipt_file}'
+                else:
+                    record['receipt_url'] = ''
 
                 # Map category
                 record['Chase Category'] = record.get('chase_category', '') or record.get('category', '')

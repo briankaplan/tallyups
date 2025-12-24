@@ -9,12 +9,16 @@
   <title>Receipt Library - Tallyups</title>
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.json">
+  <!-- Preconnect for faster external resource loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <!-- Legendary Design System -->
   <link rel="stylesheet" href="/static/css/legendary/index.css">
   <link rel="stylesheet" href="/static/css/receipt-library-extracted.css">
-  <script src="/static/js/unified-header.js"></script>
+  <!-- All scripts deferred to not block HTML parsing -->
+  <script src="/static/js/design-system.js" defer></script>
+  <script src="/static/js/unified-header.js" defer></script>
   <script src="/static/js/app-shell.js" defer></script>
-  <script src="/static/js/design-system.js"></script>
 </head>
 <body class="dark-mode">
   <div class="app-container">
