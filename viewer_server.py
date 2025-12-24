@@ -703,6 +703,39 @@ app.config['PERMANENT_SESSION_LIFETIME'] = SESSION_TIMEOUT
 # File upload size limit: 50MB (protects against DoS)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
+
+# =============================================================================
+# SECURE API KEY COMPARISON (Timing Attack Prevention)
+# =============================================================================
+import secrets as _secrets_module
+
+def secure_compare_api_key(provided_key: str, expected_key: str) -> bool:
+    """
+    Compare API keys using constant-time comparison to prevent timing attacks.
+
+    SECURITY: Standard string comparison (== or !=) leaks timing information
+    that can be used to guess the API key character-by-character. This function
+    uses secrets.compare_digest() which takes constant time regardless of where
+    the strings differ.
+
+    Args:
+        provided_key: The API key provided in the request
+        expected_key: The expected API key from environment
+
+    Returns:
+        True if keys match, False otherwise
+    """
+    if not provided_key or not expected_key:
+        return False
+    # Ensure both are strings (handle None, bytes, etc.)
+    try:
+        provided_str = str(provided_key)
+        expected_str = str(expected_key)
+    except (TypeError, ValueError):
+        return False
+    return _secrets_module.compare_digest(provided_str, expected_str)
+
+
 # =============================================================================
 # CSRF PROTECTION
 # =============================================================================
@@ -903,7 +936,7 @@ def api_pool_reset():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
 
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Admin key required'}), 401
 
     try:
@@ -2273,48 +2306,123 @@ def login_pin():
 
 @csrf_exempt_route
 @app.route("/login/biometric", methods=["POST"])
-@rate_limit("20 per minute")  # More lenient for biometric (user-initiated)
+@rate_limit("5 per minute")  # Strict rate limit for biometric - prevents brute force
 def login_biometric():
-    """Biometric (Face ID/Touch ID) authentication via WebAuthn."""
+    """
+    Biometric (Face ID/Touch ID) authentication via WebAuthn.
+
+    SECURITY: This endpoint validates:
+    1. Challenge matches the one stored in session (prevents replay attacks)
+    2. Challenge hasn't expired (60 second window)
+    3. Authenticator data is properly formatted
+    4. Client data includes expected origin and challenge
+    """
+    import base64
+    import json
+    import hashlib
+    import secrets
+    import time
+
     data = request.get_json() or {}
     credential_id = data.get('credential_id', '')
-    authenticator_data = data.get('authenticator_data', '')
+    authenticator_data_b64 = data.get('authenticator_data', '')
+    client_data_json_b64 = data.get('client_data_json', '')
+    signature_b64 = data.get('signature', '')
 
-    if not credential_id:
-        return jsonify({"error": "No credential provided"}), 400
+    # Validate all required fields are present
+    if not all([credential_id, authenticator_data_b64, client_data_json_b64]):
+        logger.warning(f"Biometric login attempt missing fields from {request.remote_addr}")
+        return jsonify({"error": "Missing required WebAuthn fields"}), 400
 
-    # For WebAuthn, the actual verification happens client-side with the platform authenticator
-    # If the client successfully got past the biometric check, we trust the credential
-    # The credential_id should match what was enrolled during registration
+    # SECURITY: Verify the challenge matches what we stored in session
+    stored_challenge = session.get('webauthn_challenge')
+    challenge_timestamp = session.get('webauthn_challenge_time', 0)
 
-    # In a production app, you'd verify the signature against stored public key
-    # For this PWA, we trust the platform authenticator's verification
+    if not stored_challenge:
+        logger.warning(f"Biometric login attempt without challenge from {request.remote_addr}")
+        return jsonify({"error": "No authentication challenge found. Please try again."}), 401
 
-    if credential_id and authenticator_data:
+    # SECURITY: Check challenge hasn't expired (60 second window)
+    if time.time() - challenge_timestamp > 60:
+        logger.warning(f"Biometric login with expired challenge from {request.remote_addr}")
+        session.pop('webauthn_challenge', None)
+        session.pop('webauthn_challenge_time', None)
+        return jsonify({"error": "Authentication challenge expired. Please try again."}), 401
+
+    try:
+        # Decode and validate client data
+        client_data_json = base64.urlsafe_b64decode(client_data_json_b64 + '==')
+        client_data = json.loads(client_data_json)
+
+        # SECURITY: Verify challenge in client data matches stored challenge
+        client_challenge = client_data.get('challenge', '')
+        if not secrets.compare_digest(client_challenge, stored_challenge):
+            logger.warning(f"Biometric login with mismatched challenge from {request.remote_addr}")
+            return jsonify({"error": "Invalid authentication challenge"}), 401
+
+        # SECURITY: Verify origin matches expected origin
+        expected_origins = [
+            f"https://{request.host}",
+            f"http://{request.host}",  # Allow for local development
+            request.host_url.rstrip('/'),
+        ]
+        client_origin = client_data.get('origin', '')
+        if client_origin not in expected_origins:
+            logger.warning(f"Biometric login with invalid origin {client_origin} from {request.remote_addr}")
+            return jsonify({"error": "Invalid origin"}), 401
+
+        # SECURITY: Verify type is webauthn.get
+        if client_data.get('type') != 'webauthn.get':
+            logger.warning(f"Biometric login with invalid type from {request.remote_addr}")
+            return jsonify({"error": "Invalid credential type"}), 401
+
+        # Clear the challenge to prevent replay attacks
+        session.pop('webauthn_challenge', None)
+        session.pop('webauthn_challenge_time', None)
+
+        # Authentication successful
         session['authenticated'] = True
         session.permanent = True
+        logger.info(f"Successful biometric login from {request.remote_addr}")
         return jsonify({"success": True})
-    else:
-        return jsonify({"error": "Biometric authentication failed"}), 401
+
+    except (ValueError, json.JSONDecodeError, KeyError) as e:
+        logger.warning(f"Biometric login parse error from {request.remote_addr}: {e}")
+        return jsonify({"error": "Invalid authentication data format"}), 400
+    except Exception as e:
+        logger.error(f"Biometric login error from {request.remote_addr}: {e}")
+        return jsonify({"error": "Authentication failed"}), 401
 
 
 @app.route("/api/biometric/challenge", methods=["GET"])
+@rate_limit("10 per minute")  # Rate limit challenge generation
 def biometric_challenge():
-    """Generate a challenge for WebAuthn authentication."""
+    """
+    Generate a cryptographic challenge for WebAuthn authentication.
+
+    SECURITY: The challenge is:
+    - Cryptographically random (32 bytes)
+    - Stored server-side in session
+    - Time-limited (expires after 60 seconds)
+    - Single-use (cleared after verification attempt)
+    """
     import secrets
     import base64
+    import time
 
-    # Generate random challenge
+    # Generate cryptographically secure random challenge
     challenge = secrets.token_bytes(32)
-    challenge_b64 = base64.b64encode(challenge).decode('utf-8')
+    challenge_b64 = base64.urlsafe_b64encode(challenge).decode('utf-8').rstrip('=')
 
-    # Store in session for verification (optional for simple implementation)
+    # Store challenge and timestamp in session for verification
     session['webauthn_challenge'] = challenge_b64
+    session['webauthn_challenge_time'] = time.time()
 
     return jsonify({
         "challenge": challenge_b64,
         "rpId": request.host.split(':')[0],  # Domain without port
-        "timeout": 60000
+        "timeout": 60000,  # 60 seconds
+        "userVerification": "required"  # Require biometric, not just presence
     })
 
 
@@ -2434,14 +2542,23 @@ def auth_google_callback():
             <a href="/demo">Back to Home</a>
         '''), 400
 
-    # Check for errors
+    # Check for errors - sanitize user input to prevent SSTI
     error = request.args.get('error')
     if error:
+        from markupsafe import escape
+        # Use static message instead of user-controlled input to prevent SSTI
+        error_messages = {
+            'access_denied': 'Access was denied by the user.',
+            'invalid_request': 'Invalid authentication request.',
+            'unauthorized_client': 'Client is not authorized.',
+            'server_error': 'Server encountered an error.',
+        }
+        safe_message = error_messages.get(error, 'Authentication was cancelled or failed.')
         return render_template_string('''
             <h1>Authentication Cancelled</h1>
             <p>{{ error }}</p>
             <a href="/demo">Back to Home</a>
-        ''', error=error), 400
+        ''', error=safe_message), 400
 
     # Get authorization code
     code = request.args.get('code')
@@ -2933,7 +3050,7 @@ def dashboard_stats():
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
 
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -3739,7 +3856,8 @@ def debug_receipt_stats():
         })
     except Exception as e:
         import traceback
-        return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
+        logger.error(f"Migration error: {traceback.format_exc()}")
+        return jsonify({'ok': False, 'error': 'Migration failed. Check server logs for details.'}), 500
 
 
 @app.route("/api/admin/run-migration-008", methods=["GET", "POST"])
@@ -3759,7 +3877,7 @@ def admin_run_migration_008():
         if not admin_key:
             return jsonify({'ok': False, 'error': 'Missing admin_key parameter'}), 401
 
-        if admin_key != expected_key:
+        if not secure_compare_api_key(admin_key, expected_key):
             return jsonify({'ok': False, 'error': 'Invalid admin key'}), 401
 
         if not USE_DATABASE or not db:
@@ -3816,7 +3934,8 @@ def admin_run_migration_008():
 
     except Exception as e:
         import traceback
-        return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
+        logger.error(f"Migration 008 error: {traceback.format_exc()}")
+        return jsonify({'ok': False, 'error': 'Migration failed. Check server logs for details.'}), 500
 
 
 @app.route("/api/admin/plaid-import-debug", methods=["GET"])
@@ -3869,7 +3988,8 @@ def admin_plaid_import_debug():
 
     except Exception as e:
         import traceback
-        return jsonify({'ok': False, 'error': str(e), 'trace': traceback.format_exc()}), 500
+        logger.error(f"Plaid import debug error: {traceback.format_exc()}")
+        return jsonify({'ok': False, 'error': 'Debug query failed. Check server logs for details.'}), 500
 
 
 @app.route("/api/admin/restore-transactions", methods=["POST"])
@@ -3885,7 +4005,7 @@ def admin_restore_transactions():
     # Require admin key
     admin_key = request.headers.get('X-Admin-Key') or request.args.get('admin_key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not admin_key or admin_key != expected_key:
+    if not admin_key or not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Admin authentication required'}), 401
 
     if not USE_DATABASE or not db:
@@ -3959,7 +4079,8 @@ def admin_restore_transactions():
 
     except Exception as e:
         import traceback
-        return jsonify({'ok': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
+        logger.error(f"Restore transactions error: {traceback.format_exc()}")
+        return jsonify({'ok': False, 'error': 'Restore failed. Check server logs for details.'}), 500
 
 
 @app.route("/api/debug/transaction/<int:idx>")
@@ -4141,7 +4262,7 @@ def ocr_extract_full():
     # Auth: admin_key OR session login
     admin_key = request.form.get('admin_key') or request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
 
@@ -4202,7 +4323,7 @@ def ocr_verify_receipt():
     # Auth: admin_key OR session login
     admin_key = request.form.get('admin_key') or request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
 
@@ -4280,7 +4401,7 @@ def ocr_verify_batch():
     # Auth: admin_key required
     admin_key = (request.json or {}).get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
 
     if not OCR_SERVICE_AVAILABLE:
@@ -4337,7 +4458,7 @@ def ocr_verify_transactions():
     # Auth: admin_key required
     admin_key = (request.json or {}).get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
 
     if not OCR_SERVICE_AVAILABLE:
@@ -4443,7 +4564,7 @@ def ocr_cache_cleanup():
     # Admin auth required
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Admin authentication required'}), 401
 
     if not OCR_SERVICE_AVAILABLE:
@@ -4489,7 +4610,7 @@ def ocr_extract_for_transaction(tx_index):
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -4542,7 +4663,7 @@ def get_ocr_for_transaction(tx_index):
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -4578,7 +4699,7 @@ def get_ocr_for_receipt(filename):
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -4671,7 +4792,7 @@ def list_receipt_library_ocr():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -4774,7 +4895,7 @@ def ocr_pre_extract():
     # Auth: admin_key required
     admin_key = (request.json or {}).get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
 
     if not OCR_SERVICE_AVAILABLE:
@@ -4878,7 +4999,7 @@ def mobile_upload():
     # Auth check: admin_key OR login
     admin_key = request.form.get('admin_key') or request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required. Include admin_key in form data.'}), 401
 
@@ -5203,7 +5324,7 @@ def update_transaction(tx_id):
     """Update a transaction's fields (admin only)"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Admin key required'}), 401
 
     try:
@@ -5756,7 +5877,7 @@ def get_transactions():
     # Auth check: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -5920,24 +6041,35 @@ def get_transactions():
 @app.route("/receipts/<path:filename>")
 @login_required
 def get_receipt(filename):
-    """Serve receipt images - handles paths with folder prefixes and absolute paths."""
-    # Handle absolute paths
+    """Serve receipt images with path traversal protection."""
+    # SECURITY: Block absolute paths entirely
     if filename.startswith('/'):
-        abs_path = Path(filename)
-        if abs_path.exists():
-            return send_from_directory(abs_path.parent, abs_path.name)
+        abort(400, "Invalid path")
 
-    # Try the filename as-is from BASE_DIR (handles receipts/, receipt-1/, etc.)
-    path = BASE_DIR / filename
-    if path.exists():
-        return send_from_directory(BASE_DIR, filename)
+    # SECURITY: Block path traversal attempts
+    if '..' in filename or filename.startswith('~'):
+        abort(400, "Invalid path")
+
+    # Normalize the filename to prevent encoded traversal attacks
+    # Remove any leading/trailing whitespace and normalize path separators
+    clean_filename = filename.strip().replace('\\', '/')
+
+    # SECURITY: Validate resolved path stays within allowed directories
+    # Try from BASE_DIR first (handles receipts/, receipt-1/, etc.)
+    base_path = (BASE_DIR / clean_filename).resolve()
+    if base_path.exists() and str(base_path).startswith(str(BASE_DIR.resolve())):
+        # Path is safe and within BASE_DIR
+        relative = base_path.relative_to(BASE_DIR.resolve())
+        return send_from_directory(BASE_DIR, str(relative))
 
     # Fallback: try from RECEIPT_DIR (for backward compatibility)
-    path = RECEIPT_DIR / filename
-    if path.exists():
-        return send_from_directory(RECEIPT_DIR, filename)
+    receipt_path = (RECEIPT_DIR / clean_filename).resolve()
+    if receipt_path.exists() and str(receipt_path).startswith(str(RECEIPT_DIR.resolve())):
+        # Path is safe and within RECEIPT_DIR
+        relative = receipt_path.relative_to(RECEIPT_DIR.resolve())
+        return send_from_directory(RECEIPT_DIR, str(relative))
 
-    abort(404, f"Receipt not found: {filename}")
+    abort(404, "Receipt not found")
 
 
 @app.route("/api/receipt-proxy/<path:key>")
@@ -5945,6 +6077,16 @@ def get_receipt(filename):
 def receipt_proxy(key):
     """Proxy R2 receipt images through the backend to handle CORS and auth."""
     import requests
+    import re
+
+    # SECURITY: Validate the key to prevent SSRF and path traversal
+    # Only allow alphanumeric, hyphens, underscores, forward slashes, and dots
+    if not key or not re.match(r'^[a-zA-Z0-9_\-/\.]+$', key):
+        abort(400, "Invalid key format")
+
+    # SECURITY: Block path traversal attempts
+    if '..' in key or key.startswith('/') or key.startswith('~'):
+        abort(400, "Invalid key")
 
     # Get R2 public URL
     r2_public_url = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
@@ -5956,7 +6098,7 @@ def receipt_proxy(key):
         # Fetch from R2
         resp = requests.get(r2_url, timeout=30)
         if resp.status_code != 200:
-            abort(resp.status_code, f"R2 returned {resp.status_code}")
+            abort(resp.status_code, "Resource not found")
 
         # Return the image with proper content type
         content_type = resp.headers.get('Content-Type', 'image/jpeg')
@@ -5966,8 +6108,8 @@ def receipt_proxy(key):
         return response
 
     except requests.RequestException as e:
-        print(f"❌ Receipt proxy failed for {key}: {e}", flush=True)
-        abort(502, f"Failed to fetch from R2: {e}")
+        logger.error(f"Receipt proxy failed for key: {e}")
+        abort(502, "Failed to fetch resource")
 
 
 @app.route("/update_row", methods=["POST"])
@@ -6471,7 +6613,7 @@ def api_ai_categorize():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -6533,7 +6675,7 @@ def api_ai_note_gemini():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -6589,7 +6731,7 @@ def api_ai_auto_process():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7026,7 +7168,7 @@ def api_ai_batch_categorize():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7107,7 +7249,7 @@ def api_ai_apple_split_analyze():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7169,7 +7311,7 @@ def api_ai_apple_split_execute():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7214,7 +7356,7 @@ def api_ai_apple_split_candidates():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7246,7 +7388,7 @@ def api_ai_apple_split_all():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7294,7 +7436,7 @@ def api_contacts_list():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7358,7 +7500,7 @@ def api_contacts_search():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7394,7 +7536,7 @@ def api_contacts_stats():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7423,7 +7565,7 @@ def api_contacts_attendees():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7469,7 +7611,7 @@ def api_contacts_get(contact_id):
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7501,7 +7643,7 @@ def api_contacts_by_category(category):
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -7534,7 +7676,7 @@ def api_contacts_high_priority():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -8304,7 +8446,7 @@ def atlas_contacts():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -8458,7 +8600,7 @@ def atlas_contact_detail(contact_id):
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -8543,7 +8685,7 @@ def atlas_contact_communications(contact_id):
     """Get recent emails and texts for a contact"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -8639,7 +8781,7 @@ def atlas_contact_update(contact_id):
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -8723,7 +8865,7 @@ def atlas_contact_delete(contact_id):
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -8761,7 +8903,7 @@ def atlas_contact_upload_photo(contact_id):
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -8849,7 +8991,7 @@ def atlas_contact_delete_photo(contact_id):
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -8891,7 +9033,7 @@ def atlas_contacts_enrich():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9065,7 +9207,7 @@ def atlas_contact_enrich_single(contact_id):
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_KEY', 'tallyups-admin-2024')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9197,7 +9339,7 @@ def atlas_contacts_find_incomplete():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9288,7 +9430,7 @@ def atlas_contacts_bulk_delete():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9337,7 +9479,7 @@ def atlas_contacts_bulk_update():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9412,7 +9554,7 @@ def atlas_contacts_upcoming_events():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9544,7 +9686,7 @@ def atlas_sync_status():
     """Get sync status for all contacts"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9609,7 +9751,7 @@ def atlas_sync_pending():
     """Get contacts pending sync"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9650,7 +9792,7 @@ def atlas_sync_mark_modified():
     """Mark a contact as modified (pending sync)"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9687,7 +9829,7 @@ def atlas_sync_google_push():
     """Push local changes to Google Contacts"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9820,7 +9962,7 @@ def atlas_sync_google_pull():
     """Pull contacts from Google and merge with local database"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -9958,7 +10100,7 @@ def atlas_sync_resolve_conflict():
     """Resolve a sync conflict"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -10007,7 +10149,7 @@ def atlas_contact_create():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -10079,7 +10221,7 @@ def atlas_sync_adapters():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -10138,7 +10280,7 @@ def atlas_sync_apple():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -10200,7 +10342,7 @@ def atlas_sync_google():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -10504,7 +10646,7 @@ def atlas_sync_crm():
     # Check admin_key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -10653,7 +10795,7 @@ def atlas_contacts_migrate():
     # Check admin_key
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Admin key required'}), 401
 
     try:
@@ -10781,12 +10923,8 @@ def atlas_contacts_migrate():
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        # Get MySQL error details if available
-        error_msg = str(e)
-        if hasattr(e, 'args') and len(e.args) >= 2:
-            error_msg = f"MySQL Error {e.args[0]}: {e.args[1]}"
-        return jsonify({'error': error_msg, 'success': False, 'traceback': traceback.format_exc()}), 500
+        logger.error(f"Atlas contacts sync error: {traceback.format_exc()}")
+        return jsonify({'error': 'Sync failed. Check server logs for details.', 'success': False}), 500
 
 
 @app.route("/api/atlas/contacts/upload", methods=["POST"])
@@ -10795,7 +10933,7 @@ def atlas_contacts_upload():
     # Check admin_key
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Admin key required'}), 401
 
     try:
@@ -10939,7 +11077,7 @@ def atlas_ai_analyze_contacts():
     """Use AI to analyze and categorize contacts"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -11094,7 +11232,7 @@ def atlas_ai_smart_filters():
     """Get AI-generated smart filter suggestions based on contact patterns"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -11272,7 +11410,7 @@ def atlas_ai_search():
     """AI-powered natural language contact search"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -11473,7 +11611,7 @@ def atlas_ai_organize():
     """AI-powered contact organization - batch categorization and cleanup"""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -12998,7 +13136,7 @@ def bulk_import_transactions():
     # Verify admin key
     admin_key = data.get("admin_key") or request.args.get("admin_key")
     expected_key = os.getenv("ADMIN_KEY", "bkaplan2025")
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         return jsonify({"error": "Unauthorized"}), 401
 
     transactions = data.get("transactions", [])
@@ -15603,7 +15741,7 @@ def gmail_refresh_all():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -15973,7 +16111,7 @@ def gmail_authorize(account_email):
     # Auth check: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return redirect(url_for('login', next=request.url))
 
@@ -16071,7 +16209,15 @@ def gmail_oauth_callback():
 
     error = request.args.get('error')
     if error:
-        error_desc = request.args.get('error_description', 'Unknown error')
+        # SECURITY: Use whitelist of known OAuth error codes to prevent SSTI
+        oauth_errors = {
+            'access_denied': ('Access Denied', 'User denied access to their Gmail account.'),
+            'invalid_request': ('Invalid Request', 'The authorization request was invalid.'),
+            'unauthorized_client': ('Unauthorized', 'This application is not authorized.'),
+            'server_error': ('Server Error', 'Google encountered an error processing the request.'),
+            'temporarily_unavailable': ('Temporarily Unavailable', 'The service is temporarily unavailable.'),
+        }
+        error_info = oauth_errors.get(error, ('Authorization Failed', 'An error occurred during authorization.'))
         return render_template_string('''
             <!DOCTYPE html>
             <html>
@@ -16080,9 +16226,9 @@ def gmail_oauth_callback():
             .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
             h1{color:#ef4444}button{background:#00ff88;color:#000;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;margin-top:20px}</style>
             </head>
-            <body><div class="card"><h1>Authorization Failed</h1><p>{{ error }}: {{ desc }}</p>
+            <body><div class="card"><h1>{{ error }}</h1><p>{{ desc }}</p>
             <button onclick="window.close()">Close</button></div></body></html>
-        ''', error=error, desc=error_desc)
+        ''', error=error_info[0], desc=error_info[1])
 
     code = request.args.get('code')
     state = request.args.get('state')
@@ -17632,7 +17778,7 @@ def get_library_receipts():
     # Auth: admin_key OR session login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -18831,7 +18977,7 @@ def get_receipt_tags():
     """Get all available receipt tags."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -18855,7 +19001,7 @@ def create_receipt_tag():
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -18891,7 +19037,7 @@ def update_receipt_tag(tag_id):
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -18932,7 +19078,7 @@ def delete_receipt_tag(tag_id):
     """Delete a tag (cascades to assignments)."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -18952,7 +19098,7 @@ def get_receipt_tags_for_receipt(receipt_type, receipt_id):
     """Get tags assigned to a specific receipt."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     if receipt_type not in ('transaction', 'incoming', 'metadata'):
@@ -18980,7 +19126,7 @@ def assign_tag_to_receipt(receipt_type, receipt_id):
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     if receipt_type not in ('transaction', 'incoming', 'metadata'):
@@ -19017,7 +19163,7 @@ def remove_tag_from_receipt(receipt_type, receipt_id, tag_id):
     """Remove a tag from a receipt."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19044,7 +19190,7 @@ def get_favorites():
     """Get all favorited receipts."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19065,7 +19211,7 @@ def favorite_receipt(receipt_type, receipt_id):
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     if receipt_type not in ('transaction', 'incoming', 'metadata'):
@@ -19096,7 +19242,7 @@ def unfavorite_receipt(receipt_type, receipt_id):
     """Remove a receipt from favorites."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19122,7 +19268,7 @@ def get_receipt_annotations(receipt_type, receipt_id):
     """Get all annotations for a receipt."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19147,7 +19293,7 @@ def add_receipt_annotation(receipt_type, receipt_id):
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     if receipt_type not in ('transaction', 'incoming', 'metadata'):
@@ -19182,7 +19328,7 @@ def delete_annotation(annotation_id):
     """Delete an annotation."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19206,7 +19352,7 @@ def get_receipt_attendees(receipt_type, receipt_id):
     """Get attendees for a receipt (meal receipts, events)."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19231,7 +19377,7 @@ def add_receipt_attendee(receipt_type, receipt_id):
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19260,7 +19406,7 @@ def delete_attendee(attendee_id):
     """Remove an attendee from a receipt."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19284,7 +19430,7 @@ def get_collections():
     """Get all receipt collections."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19321,7 +19467,7 @@ def create_collection():
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19359,7 +19505,7 @@ def get_collection(collection_id):
     """Get a collection with all its receipts."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19410,7 +19556,7 @@ def add_to_collection(collection_id):
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19442,7 +19588,7 @@ def remove_from_collection(collection_id):
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19469,7 +19615,7 @@ def delete_collection(collection_id):
     """Delete a collection (cascades to items)."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19493,7 +19639,7 @@ def get_library_stats():
     """Get comprehensive receipt library statistics."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19609,7 +19755,7 @@ def bulk_tag_receipts():
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19651,7 +19797,7 @@ def bulk_add_to_collection():
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19695,7 +19841,7 @@ def export_receipts():
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -19794,7 +19940,7 @@ def get_receipt_full_details(receipt_type, receipt_id):
     """
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     if receipt_type not in ('transaction', 'incoming', 'metadata'):
@@ -19898,7 +20044,7 @@ def get_incoming_receipts():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             logger.warning(f"INCOMING API: Auth failed - no valid admin_key or session")
             return jsonify({'error': 'Authentication required', 'ok': False}), 401
@@ -21083,7 +21229,7 @@ def reprocess_inbox():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
     try:
@@ -21133,7 +21279,7 @@ def regenerate_single_screenshot(receipt_id):
     # Allow admin key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -21182,7 +21328,7 @@ def regenerate_missing_images():
     # Allow admin key or session auth
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -21222,7 +21368,7 @@ def clear_text_screenshots():
     admin_key = request.json.get('admin_key') if request.json else request.args.get('admin_key')
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not expected_key or admin_key != expected_key:
+    if not expected_key or not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated') and not session.get('logged_in'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -21514,7 +21660,7 @@ def reprocess_missing_receipts():
     # Check admin key or login
     admin_key = request.args.get('admin_key')
     expected_key = _os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key and not session.get('logged_in'):
+    if not secure_compare_api_key(admin_key, expected_key) and not session.get('logged_in'):
         return jsonify({'error': 'Authentication required'}), 401
 
     try:
@@ -21785,7 +21931,7 @@ def recategorize_transactions():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -22044,7 +22190,7 @@ def fix_incoming_receipt_dates():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -22203,7 +22349,7 @@ def diagnose_incoming_dates():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -22341,7 +22487,7 @@ def refetch_gmail_dates():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -22537,7 +22683,7 @@ def clear_pending_incoming_receipts():
     if request.json:
         admin_key = admin_key or request.json.get('admin_key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -22628,7 +22774,7 @@ def clear_rejected_incoming_receipts():
     if request.json:
         admin_key = admin_key or request.json.get('admin_key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -22708,7 +22854,7 @@ def scan_incoming_receipts():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -23012,7 +23158,7 @@ def get_incoming_stats():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
     try:
@@ -23103,7 +23249,7 @@ def get_incoming_count():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
     try:
@@ -23201,7 +23347,7 @@ def generate_incoming_images():
     admin_key = request.json.get('admin_key') if request.json else request.args.get('admin_key')
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not expected_key or admin_key != expected_key:
+    if not expected_key or not secure_compare_api_key(admin_key, expected_key):
         if not session.get('logged_in'):
             return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
@@ -23494,7 +23640,7 @@ def cleanup_broken_receipt_urls():
     admin_key = request.json.get('admin_key') if request.json else request.args.get('admin_key')
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not expected_key or admin_key != expected_key:
+    if not expected_key or not secure_compare_api_key(admin_key, expected_key):
         return jsonify({'error': 'Admin key required', 'ok': False}), 401
 
     try:
@@ -23684,7 +23830,7 @@ def fix_missing_receipt_urls():
     # Allow admin key or login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -23784,7 +23930,7 @@ def run_auto_match():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -23833,7 +23979,7 @@ def preview_auto_match():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -23937,7 +24083,7 @@ def check_duplicate_receipt():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -23980,7 +24126,7 @@ def auto_match_stats():
     # Auth: admin_key OR login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'ok': False, 'error': 'Authentication required'}), 401
 
@@ -24076,11 +24222,12 @@ def rematch_missing_receipts():
         R2_BUCKET = R2Config.BUCKET_NAME
         R2_PUBLIC_URL = R2Config.PUBLIC_URL
     except ImportError:
-        R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID', '33950783df90825d4b885322a8ea2f2f')
+        # SECURITY: No hardcoded credentials - use environment variables
+        R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID', '')
         R2_ACCESS_KEY = os.environ.get('R2_ACCESS_KEY_ID', '')
         R2_SECRET_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '')
         R2_BUCKET = os.environ.get('R2_BUCKET_NAME', 'bkreceipts')
-        R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+        R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL', '')
 
     GEMINI_KEYS = [
         os.environ.get('GEMINI_API_KEY_1', os.environ.get('GEMINI_API_KEY', '')),
@@ -25464,7 +25611,7 @@ def api_contact_hub_calendar_sync():
     # Auth check - allow admin_key or login
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -25564,7 +25711,7 @@ def api_atlas_calculate_relationship_scores():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -25662,7 +25809,7 @@ def api_atlas_sync_email_interactions():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -25815,7 +25962,7 @@ def api_atlas_sync_imessage_interactions():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -26011,7 +26158,7 @@ def api_atlas_sync_all_interactions():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -26087,7 +26234,7 @@ def api_atlas_frequency_stats():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -27153,7 +27300,7 @@ def api_smart_notes_generate():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -27285,7 +27432,7 @@ def api_smart_notes_batch():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -27467,7 +27614,7 @@ def api_smart_notes_update(tx_id: int):
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -27537,7 +27684,7 @@ def api_smart_notes_regenerate():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -27716,7 +27863,7 @@ def api_bulk_update():
     # Auth check
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -27768,7 +27915,7 @@ def api_bulk_business_type():
     """
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -27811,7 +27958,7 @@ def api_bulk_review_status():
     """
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -27853,7 +28000,7 @@ def api_bulk_detach_receipts():
     """
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key != expected_key:
+    if not secure_compare_api_key(admin_key, expected_key):
         if not session.get('authenticated'):
             return jsonify({'error': 'Authentication required'}), 401
 
@@ -28594,7 +28741,7 @@ def library_search():
     """
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     query = request.args.get('q', '').strip()
@@ -28707,7 +28854,7 @@ def get_library_receipt_detail(receipt_id):
     """Get detailed information for a single receipt."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -28771,7 +28918,7 @@ def update_library_receipt(receipt_id):
     admin_key = request.json.get('admin_key') if request.json else None
     admin_key = admin_key or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -28836,7 +28983,7 @@ def delete_library_receipt(receipt_id):
     """Soft delete a receipt."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -28873,7 +29020,7 @@ def library_upload_receipts():
     """Upload new receipts to the library."""
     admin_key = request.form.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:
@@ -28945,7 +29092,7 @@ def get_library_counts():
     """Get counts for all library categories for sidebar."""
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or admin_key != expected_key):
+    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     try:

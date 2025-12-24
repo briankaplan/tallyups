@@ -36,11 +36,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # R2 Configuration from .env
-R2_ENDPOINT = os.getenv('R2_ENDPOINT', 'https://33950783df90825d4b885322a8ea2f2f.r2.cloudflarestorage.com')
+# SECURITY: No hardcoded credentials - use environment variables
+R2_ENDPOINT = os.getenv('R2_ENDPOINT', '')
 R2_BUCKET = os.getenv('R2_BUCKET_NAME', 'bkreceipts')
 R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY_ID', '')
 R2_SECRET_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
-R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '')
 
 # Use Homebrew curl for OpenSSL support (required on macOS)
 CURL_PATH = '/opt/homebrew/opt/curl/bin/curl'

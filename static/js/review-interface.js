@@ -1006,7 +1006,8 @@ class TransactionReviewInterface {
 
         const toast = document.createElement('div');
         toast.className = 'toast';
-        toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-message">${message}</span>`;
+        // SECURITY: Escape message to prevent XSS
+        toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-message">${this.escapeHtml(message)}</span>`;
 
         container.appendChild(toast);
 

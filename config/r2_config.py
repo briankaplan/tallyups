@@ -29,19 +29,20 @@ except ImportError:
 class R2Config:
     """Centralized R2 configuration - SINGLE SOURCE OF TRUTH"""
 
+    # SECURITY: All credentials must be set via environment variables
     # Account ID (from Cloudflare R2 dashboard)
-    ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', '33950783df90825d4b885322a8ea2f2f')
+    ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', '')
 
-    # Bucket name - THE CORRECT BUCKET
+    # Bucket name
     BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'bkreceipts')
 
-    # Credentials
+    # Credentials - MUST be set via environment variables
     ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '')
     SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
 
     # URLs
-    ENDPOINT_URL = os.getenv('R2_ENDPOINT', f'https://{ACCOUNT_ID}.r2.cloudflarestorage.com')
-    PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+    ENDPOINT_URL = os.getenv('R2_ENDPOINT', f'https://{ACCOUNT_ID}.r2.cloudflarestorage.com' if ACCOUNT_ID else '')
+    PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '')
 
     # KNOWN WRONG BUCKETS - DO NOT USE THESE
     # These are here for migration/cleanup purposes only

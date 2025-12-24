@@ -447,11 +447,11 @@ def get_document_service(anthropic_client=None):
             r2_secret_key = R2Config.SECRET_ACCESS_KEY
             r2_endpoint = R2Config.ENDPOINT_URL
         except ImportError:
-            # Fallback with CORRECT defaults
+            # SECURITY: No hardcoded credentials - use environment variables
             r2_bucket = os.environ.get('R2_BUCKET_NAME', 'bkreceipts')
-            r2_access_key = os.environ.get('R2_ACCESS_KEY_ID')
-            r2_secret_key = os.environ.get('R2_SECRET_ACCESS_KEY')
-            r2_endpoint = os.environ.get('R2_ENDPOINT_URL', 'https://33950783df90825d4b885322a8ea2f2f.r2.cloudflarestorage.com')
+            r2_access_key = os.environ.get('R2_ACCESS_KEY_ID', '')
+            r2_secret_key = os.environ.get('R2_SECRET_ACCESS_KEY', '')
+            r2_endpoint = os.environ.get('R2_ENDPOINT_URL', '')
 
         _document_service = DocumentManagementService(
             r2_bucket_name=r2_bucket,

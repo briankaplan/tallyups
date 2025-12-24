@@ -28,11 +28,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # R2 Configuration from environment variables
-R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', '33950783df90825d4b885322a8ea2f2f')
-R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', 'c71acbf15f1f98846d07a62413f6181c')
-R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '38b4c0d3b999768f358af01758f8b7ad448f8deedb35527e9b32bfef1e6a62ad')
+# SECURITY: Credentials must be set via environment variables, never hardcoded
+R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', '')
+R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '')
+R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
 R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'bkreceipts')
-R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '')
 R2_CUSTOM_DOMAIN = os.getenv('R2_CUSTOM_DOMAIN', '')  # Optional custom domain
 
 
