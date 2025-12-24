@@ -1066,7 +1066,7 @@ def not_found_error(error):
 def internal_error(error):
     """Handle 500 Internal Server errors"""
     # Log the actual error for debugging
-    print(f"❌ Internal Server Error: {error}", flush=True)
+    logger.error(f"Internal Server Error: {error}")
     return jsonify({
         'ok': False,
         'error': 'Internal Server Error',
@@ -1093,8 +1093,8 @@ def handle_exception(error):
     """Handle all uncaught exceptions"""
     # Log the full traceback
     import traceback
-    print(f"❌ Unhandled Exception: {error}", flush=True)
-    traceback.print_exc()
+    logger.error(f"Unhandled Exception: {error}")
+    logger.error(traceback.format_exc())
 
     # Return a generic error response
     return jsonify({
@@ -1543,7 +1543,7 @@ def load_data(force_refresh=False):
 
         return cached_df
     except Exception as e:
-        print(f"❌ MySQL load failed: {e}")
+        logger.error(f"MySQL load failed: {e}")
         raise
 
 
@@ -1650,17 +1650,17 @@ def update_row_by_index(idx: int, patch: dict, source: str = "viewer_ui") -> boo
 
     # === STEP 1: Update MySQL ===
     if not db:
-        print(f"❌ MySQL not available", flush=True)
+        logger.error("MySQL not available for update")
         return False
 
     try:
         success = db.update_transaction(idx, patch)
         if not success:
-            print(f"❌ MySQL update failed for row #{idx}", flush=True)
+            logger.error(f"MySQL update failed for row #{idx}")
             return False
-        print(f"💾 MySQL updated: row #{idx}", flush=True)
+        logger.debug(f"MySQL updated: row #{idx}")
     except Exception as e:
-        print(f"❌ MySQL error for row #{idx}: {e}", flush=True)
+        logger.error(f"MySQL error for row #{idx}: {e}")
         return False
 
     # === STEP 2: Log changes to audit log ===
