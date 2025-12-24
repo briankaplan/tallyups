@@ -54,7 +54,15 @@ const ThemeManager = {
 // TOAST NOTIFICATIONS
 const Toast = {
   container: null,
-  
+
+  // SECURITY: HTML escape function to prevent XSS
+  _escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, function(c) {
+      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+    });
+  },
+
   init() {
     if (this.container) return;
     this.container = document.createElement('div');
@@ -63,22 +71,23 @@ const Toast = {
     this.container.setAttribute('aria-live', 'polite');
     document.body.appendChild(this.container);
   },
-  
+
   show(message, type, duration) {
     type = type || 'info';
     duration = duration || 3000;
     this.init();
-    
+
     var icon = '?';
     if (type === 'success') icon = '?';
     else if (type === 'error') icon = '?';
     else if (type === 'warning') icon = '?';
     else icon = '?';
-    
+
     var toast = document.createElement('div');
     toast.className = 'toast toast-' + type;
     toast.setAttribute('role', 'alert');
-    toast.innerHTML = '<span class="toast-icon">' + icon + '</span><span class="toast-message">' + message + '</span>';
+    // SECURITY: Escape message to prevent XSS
+    toast.innerHTML = '<span class="toast-icon">' + icon + '</span><span class="toast-message">' + this._escapeHtml(message) + '</span>';
     
     this.container.appendChild(toast);
     

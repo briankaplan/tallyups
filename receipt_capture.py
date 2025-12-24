@@ -38,12 +38,12 @@ try:
     R2_BUCKET_NAME = R2Config.BUCKET_NAME
     R2_PUBLIC_URL = R2Config.PUBLIC_URL
 except ImportError:
-    # Fallback with CORRECT defaults
+    # SECURITY: No hardcoded credentials - use environment variables
     R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '')
     R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
-    R2_ENDPOINT_URL = os.getenv('R2_ENDPOINT_URL', 'https://33950783df90825d4b885322a8ea2f2f.r2.cloudflarestorage.com')
-    R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'bkreceipts')  # CORRECT bucket
-    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+    R2_ENDPOINT_URL = os.getenv('R2_ENDPOINT_URL', '')
+    R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'bkreceipts')
+    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '')
 
 # Local fallback directory
 LOCAL_RECEIPTS_DIR = Path('receipts/incoming')

@@ -46,10 +46,12 @@ def csrf_exempt_api(f):
 
 
 def check_auth():
-    """Check if request is authenticated via admin key or session."""
+    """Check if request is authenticated using constant-time comparison."""
+    import secrets
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    if admin_key == expected_key:
+    # SECURITY: Use constant-time comparison to prevent timing attacks
+    if admin_key and expected_key and secrets.compare_digest(str(admin_key), str(expected_key)):
         return True
     is_authenticated, _, _, _ = get_dependencies()
     if is_authenticated():

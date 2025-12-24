@@ -37,12 +37,12 @@ try:
     R2_BUCKET_NAME = R2Config.BUCKET_NAME
     R2_PUBLIC_URL = R2Config.PUBLIC_URL
 except ImportError:
-    # Fallback to environment variables with CORRECT defaults
-    R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', '33950783df90825d4b885322a8ea2f2f')
+    # Fallback to environment variables - SECURITY: no hardcoded values
+    R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', '')
     R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '')
     R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
-    R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'bkreceipts')  # CORRECT bucket
-    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+    R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'bkreceipts')
+    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '')
 
 
 class ReceiptUploadService:
