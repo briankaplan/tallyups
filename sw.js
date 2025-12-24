@@ -1,7 +1,7 @@
-// Service Worker for Tallyups PWA - v7
-const CACHE_NAME = 'tallyups-v7';
-const STATIC_CACHE = 'tallyups-static-v7';
-const DYNAMIC_CACHE = 'tallyups-dynamic-v7';
+// Service Worker for Tallyups PWA - v8
+const CACHE_NAME = 'tallyups-v8';
+const STATIC_CACHE = 'tallyups-static-v8';
+const DYNAMIC_CACHE = 'tallyups-dynamic-v8';
 const OFFLINE_QUEUE = 'tallyups-offline-queue';
 
 // Core app shell to cache
@@ -18,7 +18,7 @@ const APP_SHELL = [
 
 // Install - cache app shell
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker v7...');
+  console.log('[SW] Installing service worker v8...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
@@ -33,7 +33,7 @@ self.addEventListener('install', (event) => {
 
 // Activate - clean old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker v7...');
+  console.log('[SW] Activating service worker v8...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -77,6 +77,13 @@ self.addEventListener('fetch', (event) => {
 
   // HTML pages - stale while revalidate
   if (request.destination === 'document' || url.pathname === '/scanner') {
+    event.respondWith(staleWhileRevalidate(request));
+    return;
+  }
+
+  // JS and CSS files - stale while revalidate (always check for updates)
+  if (request.destination === 'script' || request.destination === 'style' ||
+      url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
     event.respondWith(staleWhileRevalidate(request));
     return;
   }

@@ -2701,14 +2701,22 @@ def service_worker():
 
 @app.route("/static/js/<path:filename>")
 def serve_static_js(filename):
-    """Serve static JavaScript files."""
-    return send_from_directory(BASE_DIR / "static" / "js", filename, mimetype='application/javascript')
+    """Serve static JavaScript files with cache busting."""
+    response = send_from_directory(BASE_DIR / "static" / "js", filename, mimetype='application/javascript')
+    # Short cache time to ensure updates are picked up quickly
+    response.headers['Cache-Control'] = 'public, max-age=300'  # 5 minutes
+    response.headers['Vary'] = 'Accept-Encoding'
+    return response
 
 
 @app.route("/static/css/<path:filename>")
 def serve_static_css(filename):
-    """Serve static CSS files."""
-    return send_from_directory(BASE_DIR / "static" / "css", filename, mimetype='text/css')
+    """Serve static CSS files with cache busting."""
+    response = send_from_directory(BASE_DIR / "static" / "css", filename, mimetype='text/css')
+    # Short cache time to ensure updates are picked up quickly
+    response.headers['Cache-Control'] = 'public, max-age=300'  # 5 minutes
+    response.headers['Vary'] = 'Accept-Encoding'
+    return response
 
 
 @app.route("/receipt-icon-192.png")
