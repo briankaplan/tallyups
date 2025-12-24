@@ -155,6 +155,81 @@ def db_execute(conn, db_type, sql, params=None):
     return cursor
 
 
+# =============================================================================
+# QUERY OPTIMIZATION: Column definitions and caching
+# =============================================================================
+
+# Transaction columns needed for the main API response (avoid SELECT *)
+TRANSACTION_COLUMNS = [
+    '_index', 'id', 'chase_date', 'chase_description', 'chase_amount',
+    'chase_category', 'chase_type', 'receipt_file', 'r2_url', 'business_type',
+    'notes', 'ai_note', 'ai_confidence', 'ai_receipt_merchant', 'ai_receipt_date',
+    'ai_receipt_total', 'review_status', 'category', 'report_id', 'source',
+    'mi_merchant', 'mi_category', 'mi_description', 'mi_confidence',
+    'mi_is_subscription', 'is_refund', 'already_submitted', 'deleted'
+]
+TRANSACTION_COLUMNS_SQL = ', '.join(TRANSACTION_COLUMNS)
+
+# Simple in-memory cache with TTL for expensive queries
+import threading
+from functools import wraps
+
+class SimpleCache:
+    """Thread-safe in-memory cache with TTL."""
+    def __init__(self, default_ttl=60):
+        self._cache = {}
+        self._lock = threading.Lock()
+        self.default_ttl = default_ttl
+        self.hits = 0
+        self.misses = 0
+
+    def get(self, key):
+        """Get value from cache if not expired."""
+        with self._lock:
+            if key in self._cache:
+                value, expires_at = self._cache[key]
+                if datetime.now() < expires_at:
+                    self.hits += 1
+                    return value
+                else:
+                    del self._cache[key]
+            self.misses += 1
+            return None
+
+    def set(self, key, value, ttl=None):
+        """Set value in cache with TTL."""
+        if ttl is None:
+            ttl = self.default_ttl
+        expires_at = datetime.now() + timedelta(seconds=ttl)
+        with self._lock:
+            self._cache[key] = (value, expires_at)
+
+    def invalidate(self, pattern=None):
+        """Invalidate cache entries. If pattern provided, only matching keys."""
+        with self._lock:
+            if pattern is None:
+                self._cache.clear()
+            else:
+                keys_to_delete = [k for k in self._cache if pattern in k]
+                for k in keys_to_delete:
+                    del self._cache[k]
+
+    def stats(self):
+        """Return cache statistics."""
+        total = self.hits + self.misses
+        hit_rate = (self.hits / total * 100) if total > 0 else 0
+        return {
+            'hits': self.hits,
+            'misses': self.misses,
+            'hit_rate': f'{hit_rate:.1f}%',
+            'size': len(self._cache)
+        }
+
+# Global cache instance (60 second default TTL)
+from datetime import timedelta
+query_cache = SimpleCache(default_ttl=60)
+
+
 # === AUDIT LOGGER ===
 try:
     from audit_logger import get_audit_logger
