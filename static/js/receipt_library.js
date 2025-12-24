@@ -200,9 +200,15 @@
         const response = await fetch(`${this.baseUrl}/receipts/${uuid}`, {
           credentials: 'include'
         });
+        if (!response.ok) {
+          console.error(`Failed to get receipt ${uuid}: ${response.status}`);
+          showToast('Failed to load receipt details', 'error');
+          return null;
+        }
         return await response.json();
       } catch (error) {
         console.error('API Error:', error);
+        showToast('Failed to load receipt details', 'error');
         return null;
       }
     },
@@ -215,9 +221,19 @@
           body: JSON.stringify(data),
           credentials: 'include'
         });
-        return await response.json();
+        if (!response.ok) {
+          console.error(`Failed to update receipt ${uuid}: ${response.status}`);
+          showToast('Failed to update receipt', 'error');
+          return null;
+        }
+        const result = await response.json();
+        if (result.ok) {
+          showToast('Receipt updated', 'success');
+        }
+        return result;
       } catch (error) {
         console.error('API Error:', error);
+        showToast('Failed to update receipt', 'error');
         return null;
       }
     },
@@ -228,9 +244,16 @@
           method: 'DELETE',
           credentials: 'include'
         });
-        return response.ok;
+        if (!response.ok) {
+          console.error(`Failed to delete receipt ${uuid}: ${response.status}`);
+          showToast('Failed to delete receipt', 'error');
+          return false;
+        }
+        showToast('Receipt deleted', 'success');
+        return true;
       } catch (error) {
         console.error('API Error:', error);
+        showToast('Failed to delete receipt', 'error');
         return false;
       }
     },

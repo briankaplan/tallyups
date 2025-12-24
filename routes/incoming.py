@@ -148,8 +148,9 @@ def get_incoming_receipts():
                 if receipt.get(json_field) and isinstance(receipt[json_field], str):
                     try:
                         receipt[json_field] = json.loads(receipt[json_field])
-                    except:
-                        pass
+                    except (json.JSONDecodeError, ValueError) as e:
+                        logger.warning(f"Failed to parse JSON field {json_field}: {e}")
+                        receipt[json_field] = []
 
         return jsonify({
             'ok': True,

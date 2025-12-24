@@ -461,6 +461,24 @@ def rate_limit(*args, **kwargs):
         return f
     return decorator
 
+# =============================================================================
+# RESPONSE COMPRESSION (Gzip for faster API responses)
+# =============================================================================
+try:
+    from flask_compress import Compress
+    compress = Compress()
+    # Configure compression settings
+    app.config['COMPRESS_MIMETYPES'] = [
+        'text/html', 'text/css', 'text/xml', 'text/plain',
+        'application/json', 'application/javascript', 'application/xml'
+    ]
+    app.config['COMPRESS_LEVEL'] = 6  # Balance between speed and compression
+    app.config['COMPRESS_MIN_SIZE'] = 500  # Only compress responses > 500 bytes
+    compress.init_app(app)
+    logger.info("Response compression enabled (gzip)")
+except ImportError as e:
+    logger.warning(f"flask-compress not available: {e}")
+
 # Add structured request logging
 flask_request_logger(app)
 logger.info("Flask application initialized")
@@ -2821,20 +2839,20 @@ def service_worker():
 
 @app.route("/static/js/<path:filename>")
 def serve_static_js(filename):
-    """Serve static JavaScript files with cache busting."""
+    """Serve static JavaScript files with long cache + ETag for cache busting."""
     response = send_from_directory(BASE_DIR / "static" / "js", filename, mimetype='application/javascript')
-    # Short cache time to ensure updates are picked up quickly
-    response.headers['Cache-Control'] = 'public, max-age=300'  # 5 minutes
+    # Long cache (1 week) - browsers will revalidate with ETag
+    response.headers['Cache-Control'] = 'public, max-age=604800, stale-while-revalidate=86400'
     response.headers['Vary'] = 'Accept-Encoding'
     return response
 
 
 @app.route("/static/css/<path:filename>")
 def serve_static_css(filename):
-    """Serve static CSS files with cache busting."""
+    """Serve static CSS files with long cache + ETag for cache busting."""
     response = send_from_directory(BASE_DIR / "static" / "css", filename, mimetype='text/css')
-    # Short cache time to ensure updates are picked up quickly
-    response.headers['Cache-Control'] = 'public, max-age=300'  # 5 minutes
+    # Long cache (1 week) - browsers will revalidate with ETag
+    response.headers['Cache-Control'] = 'public, max-age=604800, stale-while-revalidate=86400'
     response.headers['Vary'] = 'Accept-Encoding'
     return response
 
@@ -5977,8 +5995,25 @@ def get_transactions():
                 record['MI Confidence'] = record.get('mi_confidence', 0)
 
                 # Map receipt URLs (for R2 storage)
-                record['r2_url'] = record.get('r2_url', '') or record.get('receipt_url', '')
-                record['R2 URL'] = record.get('r2_url', '') or record.get('receipt_url', '')
+                r2_url = record.get('r2_url', '') or ''
+                record['r2_url'] = r2_url
+                record['R2 URL'] = r2_url
+                # Also set normalized receipt_url for frontend consistency
+                receipt_file = record.get('receipt_file', '') or record.get('Receipt File', '') or ''
+                if r2_url:
+                    record['receipt_url'] = r2_url
+                elif receipt_file:
+                    # Normalize local file paths
+                    if receipt_file.startswith('http'):
+                        record['receipt_url'] = receipt_file
+                    elif receipt_file.startswith('/'):
+                        record['receipt_url'] = receipt_file
+                    elif receipt_file.startswith('receipts/') or receipt_file.startswith('incoming/'):
+                        record['receipt_url'] = f'/{receipt_file}'
+                    else:
+                        record['receipt_url'] = f'/receipts/{receipt_file}'
+                else:
+                    record['receipt_url'] = ''
 
                 # Map category
                 record['Chase Category'] = record.get('chase_category', '') or record.get('category', '')
@@ -6044,7 +6079,7 @@ def get_transactions():
 @app.route("/receipts/<path:filename>")
 @login_required
 def get_receipt(filename):
-    """Serve receipt images with path traversal protection."""
+    """Serve receipt images with path traversal protection and cache control."""
     # SECURITY: Block absolute paths entirely
     if filename.startswith('/'):
         abort(400, "Invalid path")
@@ -6057,20 +6092,33 @@ def get_receipt(filename):
     # Remove any leading/trailing whitespace and normalize path separators
     clean_filename = filename.strip().replace('\\', '/')
 
+    # Helper to add cache headers
+    def add_cache_headers(response, file_path):
+        """Add cache headers for conditional requests."""
+        import os
+        mtime = os.path.getmtime(file_path)
+        response.headers['Last-Modified'] = datetime.fromtimestamp(mtime).strftime('%a, %d %b %Y %H:%M:%S GMT')
+        response.headers['ETag'] = f'"{int(mtime)}-{os.path.getsize(file_path)}"'
+        # Cache for 5 minutes, revalidate after
+        response.headers['Cache-Control'] = 'private, max-age=300, must-revalidate'
+        return response
+
     # SECURITY: Validate resolved path stays within allowed directories
     # Try from BASE_DIR first (handles receipts/, receipt-1/, etc.)
     base_path = (BASE_DIR / clean_filename).resolve()
     if base_path.exists() and str(base_path).startswith(str(BASE_DIR.resolve())):
         # Path is safe and within BASE_DIR
         relative = base_path.relative_to(BASE_DIR.resolve())
-        return send_from_directory(BASE_DIR, str(relative))
+        response = send_from_directory(BASE_DIR, str(relative))
+        return add_cache_headers(response, str(base_path))
 
     # Fallback: try from RECEIPT_DIR (for backward compatibility)
     receipt_path = (RECEIPT_DIR / clean_filename).resolve()
     if receipt_path.exists() and str(receipt_path).startswith(str(RECEIPT_DIR.resolve())):
         # Path is safe and within RECEIPT_DIR
         relative = receipt_path.relative_to(RECEIPT_DIR.resolve())
-        return send_from_directory(RECEIPT_DIR, str(relative))
+        response = send_from_directory(RECEIPT_DIR, str(relative))
+        return add_cache_headers(response, str(receipt_path))
 
     abort(404, "Receipt not found")
 
