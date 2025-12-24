@@ -511,13 +511,16 @@ def add_security_headers(response):
     # Allow inline scripts for legacy compat, but block external untrusted sources
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdn.plaid.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdn.plaid.com https://cdnjs.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: https: blob:; "
         "connect-src 'self' https://*.cloudflare.com https://*.r2.cloudflarestorage.com https://*.plaid.com; "
         "frame-src https://*.plaid.com; "
-        "frame-ancestors 'none';"
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "upgrade-insecure-requests;"
     )
     # Prevent browsers from caching sensitive pages and HTML
     if request.path.startswith('/api/') or request.path in ('/', '/library', '/reports', '/contacts', '/viewer', '/incoming'):
@@ -1063,7 +1066,7 @@ def not_found_error(error):
 def internal_error(error):
     """Handle 500 Internal Server errors"""
     # Log the actual error for debugging
-    print(f"❌ Internal Server Error: {error}", flush=True)
+    logger.error(f"Internal Server Error: {error}")
     return jsonify({
         'ok': False,
         'error': 'Internal Server Error',
@@ -1090,8 +1093,8 @@ def handle_exception(error):
     """Handle all uncaught exceptions"""
     # Log the full traceback
     import traceback
-    print(f"❌ Unhandled Exception: {error}", flush=True)
-    traceback.print_exc()
+    logger.error(f"Unhandled Exception: {error}")
+    logger.error(traceback.format_exc())
 
     # Return a generic error response
     return jsonify({
@@ -1540,7 +1543,7 @@ def load_data(force_refresh=False):
 
         return cached_df
     except Exception as e:
-        print(f"❌ MySQL load failed: {e}")
+        logger.error(f"MySQL load failed: {e}")
         raise
 
 
@@ -1647,17 +1650,17 @@ def update_row_by_index(idx: int, patch: dict, source: str = "viewer_ui") -> boo
 
     # === STEP 1: Update MySQL ===
     if not db:
-        print(f"❌ MySQL not available", flush=True)
+        logger.error("MySQL not available for update")
         return False
 
     try:
         success = db.update_transaction(idx, patch)
         if not success:
-            print(f"❌ MySQL update failed for row #{idx}", flush=True)
+            logger.error(f"MySQL update failed for row #{idx}")
             return False
-        print(f"💾 MySQL updated: row #{idx}", flush=True)
+        logger.debug(f"MySQL updated: row #{idx}")
     except Exception as e:
-        print(f"❌ MySQL error for row #{idx}: {e}", flush=True)
+        logger.error(f"MySQL error for row #{idx}: {e}")
         return False
 
     # === STEP 2: Log changes to audit log ===
