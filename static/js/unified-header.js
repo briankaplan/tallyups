@@ -437,14 +437,17 @@
         .tu-header__text { display: none; }
       }
 
-      @media (max-width: 640px) {
+      @media (max-width: 768px) {
         .tu-header { padding: 10px 16px; }
         .tu-header__nav { display: none; }
         .tu-header__status { display: none; }
         .tu-header__settings { display: none; }
-        .tu-header__hamburger { display: flex; }
-        .tu-bottom-nav { display: flex; }
-        body.has-tu-header { padding-bottom: 72px; }
+        .tu-header__hamburger { display: flex !important; }
+      }
+
+      /* Bottom nav - hidden, using hamburger menu instead */
+      .tu-bottom-nav {
+        display: none !important;
       }
 
       /* Body adjustments */
@@ -485,10 +488,7 @@
     // Inject header
     document.body.insertAdjacentHTML('afterbegin', createHeader());
 
-    // Inject bottom nav
-    document.body.insertAdjacentHTML('beforeend', createBottomNav());
-
-    // Inject mobile menu
+    // Inject mobile menu (hamburger slide-out)
     document.body.insertAdjacentHTML('beforeend', createMobileMenu());
 
     // Add body class
