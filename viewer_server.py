@@ -6023,9 +6023,9 @@ def get_transactions():
                     cursor.execute(count_query)
                     total_count = cursor.fetchone()['total']
 
-                    # Build main query with pagination
+                    # Build main query with pagination (use specific columns for performance)
                     query = f'''
-                        SELECT * FROM transactions
+                        SELECT {TRANSACTION_COLUMNS_SQL} FROM transactions
                         {where_sql}
                         ORDER BY chase_date DESC, _index DESC
                     '''
