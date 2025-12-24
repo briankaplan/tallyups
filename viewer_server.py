@@ -461,6 +461,24 @@ def rate_limit(*args, **kwargs):
         return f
     return decorator
 
+# =============================================================================
+# RESPONSE COMPRESSION (Gzip for faster API responses)
+# =============================================================================
+try:
+    from flask_compress import Compress
+    compress = Compress()
+    # Configure compression settings
+    app.config['COMPRESS_MIMETYPES'] = [
+        'text/html', 'text/css', 'text/xml', 'text/plain',
+        'application/json', 'application/javascript', 'application/xml'
+    ]
+    app.config['COMPRESS_LEVEL'] = 6  # Balance between speed and compression
+    app.config['COMPRESS_MIN_SIZE'] = 500  # Only compress responses > 500 bytes
+    compress.init_app(app)
+    logger.info("Response compression enabled (gzip)")
+except ImportError as e:
+    logger.warning(f"flask-compress not available: {e}")
+
 # Add structured request logging
 flask_request_logger(app)
 logger.info("Flask application initialized")

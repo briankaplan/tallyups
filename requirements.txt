@@ -2,6 +2,7 @@
 # Cache bust: 2025-12-03 - force fresh pip install
 flask>=3.0.0
 flask-cors>=4.0.0
+flask-compress>=1.14.0  # Gzip compression for faster API responses
 flask-limiter>=3.5.0  # Rate limiting for security
 flask-wtf>=1.2.0  # CSRF protection
 
