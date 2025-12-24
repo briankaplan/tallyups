@@ -162,7 +162,19 @@ def api_library_receipts():
                 if date_val and hasattr(date_val, 'isoformat'):
                     date_val = date_val.isoformat()
                 # Use r2_url first, then receipt_file as fallback
-                image_url = r.get('r2_url') or r.get('receipt_file') or ''
+                # Ensure local paths start with / for proper browser loading
+                image_url = r.get('r2_url') or ''
+                if not image_url:
+                    receipt_file = r.get('receipt_file') or ''
+                    if receipt_file:
+                        if receipt_file.startswith('http'):
+                            image_url = receipt_file
+                        elif receipt_file.startswith('/'):
+                            image_url = receipt_file
+                        elif receipt_file.startswith('receipts/') or receipt_file.startswith('incoming/'):
+                            image_url = f'/{receipt_file}'
+                        else:
+                            image_url = f'/receipts/{receipt_file}'
 
                 # Map review_status to frontend-expected status
                 review_status = r.get('review_status') or ''
@@ -339,7 +351,19 @@ def api_library_search():
             if date_val and hasattr(date_val, 'isoformat'):
                 date_val = date_val.isoformat()
             # Use r2_url first, then receipt_file as fallback
-            image_url = r.get('r2_url') or r.get('receipt_file') or ''
+            # Ensure local paths start with / for proper browser loading
+            image_url = r.get('r2_url') or ''
+            if not image_url:
+                receipt_file = r.get('receipt_file') or ''
+                if receipt_file:
+                    if receipt_file.startswith('http'):
+                        image_url = receipt_file
+                    elif receipt_file.startswith('/'):
+                        image_url = receipt_file
+                    elif receipt_file.startswith('receipts/') or receipt_file.startswith('incoming/'):
+                        image_url = f'/{receipt_file}'
+                    else:
+                        image_url = f'/receipts/{receipt_file}'
 
             results.append({
                 'id': f"tx_{r['_index']}",

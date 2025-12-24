@@ -40,17 +40,45 @@ const ImageUtils = {
         // Return first valid URL (after fixing if needed)
         for (const url of urls) {
             if (url && url.trim()) {
-                return this.fixUrl(url);
+                return this.normalizeUrl(this.fixUrl(url));
             }
         }
 
         // Fall back to local file path
         const receiptFile = item['Receipt File'] || item.receipt_file || item.original_filename;
         if (receiptFile) {
-            return `/receipts/${receiptFile}`;
+            return this.normalizeUrl(receiptFile);
         }
 
         return null;
+    },
+
+    /**
+     * Normalize a URL/path to ensure proper format for browser loading.
+     * Handles relative paths by adding proper prefix.
+     * @param {string} url - URL or path to normalize
+     * @returns {string} - Normalized URL
+     */
+    normalizeUrl(url) {
+        if (!url) return url;
+
+        // Already an absolute URL
+        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+            return url;
+        }
+
+        // Already an absolute path
+        if (url.startsWith('/')) {
+            return url;
+        }
+
+        // Handle relative paths - add leading /
+        if (url.startsWith('receipts/') || url.startsWith('incoming/')) {
+            return `/${url}`;
+        }
+
+        // Default: assume it's a receipt filename
+        return `/receipts/${url}`;
     },
 
     /**
@@ -63,7 +91,7 @@ const ImageUtils = {
 
         // Prefer explicit thumbnail
         if (item.thumbnail_url) {
-            return this.fixUrl(item.thumbnail_url);
+            return this.normalizeUrl(this.fixUrl(item.thumbnail_url));
         }
 
         // Fall back to main receipt URL
@@ -179,13 +207,14 @@ const ImageUtils = {
 
         for (const url of candidates) {
             if (url && url.trim()) {
-                // Add fixed URL
-                const fixed = this.fixUrl(url);
+                // Add fixed and normalized URL
+                const fixed = this.normalizeUrl(this.fixUrl(url));
                 urls.add(fixed);
 
                 // If URL was from wrong bucket, also try original as fallback
-                if (fixed !== url) {
-                    urls.add(url);
+                const original = this.normalizeUrl(url);
+                if (fixed !== original) {
+                    urls.add(original);
                 }
             }
         }
@@ -193,7 +222,7 @@ const ImageUtils = {
         // Add local file fallback
         const receiptFile = item['Receipt File'] || item.receipt_file || item.original_filename;
         if (receiptFile) {
-            urls.add(`/receipts/${receiptFile}`);
+            urls.add(this.normalizeUrl(receiptFile));
         }
 
         // Add proxy fallback for R2 URLs
