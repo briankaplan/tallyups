@@ -1,7 +1,7 @@
-// Service Worker for Tallyups PWA - v8
-const CACHE_NAME = 'tallyups-v8';
-const STATIC_CACHE = 'tallyups-static-v8';
-const DYNAMIC_CACHE = 'tallyups-dynamic-v8';
+// Service Worker for Tallyups PWA - v9
+const CACHE_NAME = 'tallyups-v9';
+const STATIC_CACHE = 'tallyups-static-v9';
+const DYNAMIC_CACHE = 'tallyups-dynamic-v9';
 const OFFLINE_QUEUE = 'tallyups-offline-queue';
 
 // Core app shell to cache
@@ -69,9 +69,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Images - cache first
+  // Images - network first for receipts, cache first for static assets
   if (request.destination === 'image') {
-    event.respondWith(cacheFirst(request));
+    // Receipt images should always check for updates
+    if (url.pathname.includes('/receipts/') ||
+        url.pathname.includes('/incoming/') ||
+        url.hostname.includes('r2.cloudflarestorage') ||
+        url.hostname.includes('r2.dev')) {
+      event.respondWith(networkFirst(request));
+    } else {
+      event.respondWith(cacheFirst(request));
+    }
     return;
   }
 
@@ -122,6 +130,22 @@ async function staleWhileRevalidate(request) {
   }).catch(() => cached);
 
   return cached || fetchPromise;
+}
+
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(DYNAMIC_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (err) {
+    // Network failed, try cache
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    return new Response('Offline', { status: 503 });
+  }
 }
 
 async function networkOnly(request) {

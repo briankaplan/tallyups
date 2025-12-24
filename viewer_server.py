@@ -6061,7 +6061,7 @@ def get_transactions():
 @app.route("/receipts/<path:filename>")
 @login_required
 def get_receipt(filename):
-    """Serve receipt images with path traversal protection."""
+    """Serve receipt images with path traversal protection and cache control."""
     # SECURITY: Block absolute paths entirely
     if filename.startswith('/'):
         abort(400, "Invalid path")
@@ -6074,20 +6074,33 @@ def get_receipt(filename):
     # Remove any leading/trailing whitespace and normalize path separators
     clean_filename = filename.strip().replace('\\', '/')
 
+    # Helper to add cache headers
+    def add_cache_headers(response, file_path):
+        """Add cache headers for conditional requests."""
+        import os
+        mtime = os.path.getmtime(file_path)
+        response.headers['Last-Modified'] = datetime.fromtimestamp(mtime).strftime('%a, %d %b %Y %H:%M:%S GMT')
+        response.headers['ETag'] = f'"{int(mtime)}-{os.path.getsize(file_path)}"'
+        # Cache for 5 minutes, revalidate after
+        response.headers['Cache-Control'] = 'private, max-age=300, must-revalidate'
+        return response
+
     # SECURITY: Validate resolved path stays within allowed directories
     # Try from BASE_DIR first (handles receipts/, receipt-1/, etc.)
     base_path = (BASE_DIR / clean_filename).resolve()
     if base_path.exists() and str(base_path).startswith(str(BASE_DIR.resolve())):
         # Path is safe and within BASE_DIR
         relative = base_path.relative_to(BASE_DIR.resolve())
-        return send_from_directory(BASE_DIR, str(relative))
+        response = send_from_directory(BASE_DIR, str(relative))
+        return add_cache_headers(response, str(base_path))
 
     # Fallback: try from RECEIPT_DIR (for backward compatibility)
     receipt_path = (RECEIPT_DIR / clean_filename).resolve()
     if receipt_path.exists() and str(receipt_path).startswith(str(RECEIPT_DIR.resolve())):
         # Path is safe and within RECEIPT_DIR
         relative = receipt_path.relative_to(RECEIPT_DIR.resolve())
-        return send_from_directory(RECEIPT_DIR, str(relative))
+        response = send_from_directory(RECEIPT_DIR, str(relative))
+        return add_cache_headers(response, str(receipt_path))
 
     abort(404, "Receipt not found")
 
