@@ -750,6 +750,10 @@ async function initBizTypes() {
 
 // Load receipts on page load
 document.addEventListener('DOMContentLoaded', async () => {
+  // Load ImageUtils config for proper R2 URL handling
+  if (typeof ImageUtils !== 'undefined') {
+    ImageUtils.loadConfig();
+  }
   // Load business types first
   await initBizTypes();
   // Set pending as active by default

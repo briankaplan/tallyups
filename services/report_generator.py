@@ -22,6 +22,7 @@ import csv
 import io
 import json
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -119,7 +120,8 @@ class Transaction:
         if self.receipt_url:
             return self.receipt_url
         if self.receipt_file:
-            return f"https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/{self.receipt_file}"
+            r2_url = os.environ.get('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+            return f"{r2_url}/receipts/{self.receipt_file}"
         return ""
 
 

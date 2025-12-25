@@ -92,6 +92,15 @@ except Exception as e:
     process_transaction_mi = None
     process_all_mi = None
 
+# === R2 STORAGE CONFIGURATION ===
+try:
+    from config.r2_config import R2Config
+    R2_PUBLIC_URL = R2Config.PUBLIC_URL or 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev'
+    print(f"✅ R2 config loaded: {R2_PUBLIC_URL}")
+except ImportError:
+    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+    print(f"⚠️ R2 config not available, using env: {R2_PUBLIC_URL}")
+
 # === DATABASE (MySQL only) ===
 USE_DATABASE = False
 db = None
@@ -2950,6 +2959,19 @@ def pwa_icons():
     </svg>'''
     from flask import Response
     return Response(svg, mimetype='image/svg+xml')
+
+
+@app.route("/api/config")
+def get_app_config():
+    """Return public app configuration for frontend."""
+    return jsonify({
+        "r2_public_url": R2_PUBLIC_URL,
+        "version": APP_VERSION,
+        "wrong_buckets": {
+            'pub-946b7d51aa2c4a0fb92c1ba15bf5c520.r2.dev': 'second-brain-receipts',
+            'pub-f0fa143240d4452e836320be0bac6138.r2.dev': 'tallyups-receipts',
+        }
+    })
 
 
 @app.route("/health")
@@ -6222,7 +6244,7 @@ def receipt_proxy(key):
         abort(400, "Invalid key")
 
     # Get R2 public URL
-    r2_public_url = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
+    r2_public_url = R2_PUBLIC_URL
 
     # Build the full R2 URL
     r2_url = f"{r2_public_url}/{key}"
@@ -13752,7 +13774,7 @@ def export_reconciliation_csv():
             if not receipt_url and row.get('receipt_file'):
                 rf = row['receipt_file']
                 if rf and not rf.startswith('http'):
-                    receipt_url = f"https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/{rf}"
+                    receipt_url = f"{R2_PUBLIC_URL}/receipts/{rf}"
                 elif rf:
                     receipt_url = rf
 
@@ -13868,7 +13890,7 @@ def api_vision_verify_batch():
                 if ',' in rf:
                     rf = rf.split(',')[0].strip()
                 if rf and not rf.startswith('http'):
-                    receipt_url = f"https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/{rf}"
+                    receipt_url = f"{R2_PUBLIC_URL}/receipts/{rf}"
                 elif rf:
                     receipt_url = rf
 
@@ -14077,7 +14099,7 @@ def export_vision_verify_csv():
                 if ',' in rf:
                     rf = rf.split(',')[0].strip()
                 if rf and not rf.startswith('http'):
-                    receipt_url = f"https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/{rf}"
+                    receipt_url = f"{R2_PUBLIC_URL}/receipts/{rf}"
                 elif rf:
                     receipt_url = rf
 
@@ -14245,7 +14267,7 @@ def reports_export_downhome(report_id):
                 receipt_file = exp.get("receipt_file", "")
                 if receipt_file:
                     # Generate R2 URL from filename
-                    receipt_url = f"https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/{receipt_file}"
+                    receipt_url = f"{R2_PUBLIC_URL}/receipts/{receipt_file}"
 
             writer.writerow([
                 f"{report_id}-{line_num}",  # External ID
@@ -24012,9 +24034,7 @@ def fix_missing_receipt_urls():
                 'fixed': 0
             })
 
-        # R2 public URL base
-        R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
-
+        # Use global R2_PUBLIC_URL (defined at top of file)
         fixed = 0
         errors = []
 
