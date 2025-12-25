@@ -24399,7 +24399,8 @@ def rematch_missing_receipts():
         R2_ACCESS_KEY = os.environ.get('R2_ACCESS_KEY_ID', '')
         R2_SECRET_KEY = os.environ.get('R2_SECRET_ACCESS_KEY', '')
         R2_BUCKET = os.environ.get('R2_BUCKET_NAME', 'bkreceipts')
-        R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL', '')
+        # PUBLIC_URL MUST have fallback or image URLs break
+        R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL', '') or 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev'
 
     GEMINI_KEYS = [
         os.environ.get('GEMINI_API_KEY_1', os.environ.get('GEMINI_API_KEY', '')),

@@ -35,14 +35,19 @@ try:
     R2_ACCESS_KEY_ID = R2Config.ACCESS_KEY_ID
     R2_SECRET_ACCESS_KEY = R2Config.SECRET_ACCESS_KEY
     R2_BUCKET_NAME = R2Config.BUCKET_NAME
-    R2_PUBLIC_URL = R2Config.PUBLIC_URL
+    _r2_public_url = R2Config.PUBLIC_URL or ''
 except ImportError:
     # Fallback to environment variables - SECURITY: no hardcoded values
     R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', '')
     R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '')
     R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
     R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'bkreceipts')
-    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '')
+    _r2_public_url = os.getenv('R2_PUBLIC_URL', '')
+
+# R2 Public URL - MUST have a fallback or all image URLs will be broken
+if not _r2_public_url:
+    _r2_public_url = 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev'
+R2_PUBLIC_URL = _r2_public_url
 
 
 class ReceiptUploadService:

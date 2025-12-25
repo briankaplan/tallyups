@@ -42,7 +42,8 @@ class R2Config:
 
     # URLs
     ENDPOINT_URL = os.getenv('R2_ENDPOINT', f'https://{ACCOUNT_ID}.r2.cloudflarestorage.com' if ACCOUNT_ID else '')
-    PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '')
+    # PUBLIC_URL MUST have a fallback - without it, all image URLs will be broken
+    PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '') or 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev'
 
     # KNOWN WRONG BUCKETS - DO NOT USE THESE
     # These are here for migration/cleanup purposes only
