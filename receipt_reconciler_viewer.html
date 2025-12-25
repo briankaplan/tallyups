@@ -1672,6 +1672,11 @@ async function initBusinessTypes() {
 
 // Initialize - parallelize API calls for faster loading
 document.addEventListener('DOMContentLoaded', async () => {
+  // Load ImageUtils config first (fast, non-blocking)
+  if (typeof ImageUtils !== 'undefined') {
+    ImageUtils.loadConfig();
+  }
+
   // Run independent API calls in parallel for faster initial load
   await Promise.all([
     initBusinessTypes(),

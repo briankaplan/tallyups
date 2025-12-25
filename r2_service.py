@@ -41,7 +41,20 @@ R2_ENDPOINT = os.getenv('R2_ENDPOINT', '')
 R2_BUCKET = os.getenv('R2_BUCKET_NAME', 'bkreceipts')
 R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY_ID', '')
 R2_SECRET_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
-R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '')
+
+# R2 Public URL - MUST have a fallback or all image URLs will be broken
+# First try env var, then try importing from R2Config, then use production default
+_r2_public_url = os.getenv('R2_PUBLIC_URL', '')
+if not _r2_public_url:
+    try:
+        from config.r2_config import R2Config
+        _r2_public_url = R2Config.PUBLIC_URL or ''
+    except ImportError:
+        pass
+if not _r2_public_url:
+    # Fallback to production R2 bucket URL
+    _r2_public_url = 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev'
+R2_PUBLIC_URL = _r2_public_url
 
 # Use Homebrew curl for OpenSSL support (required on macOS)
 CURL_PATH = '/opt/homebrew/opt/curl/bin/curl'

@@ -31,6 +31,11 @@
    * Initialize the app shell
    */
   function init() {
+    // Load ImageUtils config for proper R2 URL handling
+    if (typeof ImageUtils !== 'undefined' && ImageUtils.loadConfig) {
+      ImageUtils.loadConfig();
+    }
+
     // Inject design system CSS if not already present
     injectDesignSystem();
 

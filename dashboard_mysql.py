@@ -45,7 +45,8 @@ def get_mysql_config():
 
 MYSQL_CONFIG = get_mysql_config()
 
-R2_PUBLIC = 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev'
+# R2 public URL - use env var with fallback
+R2_PUBLIC = os.environ.get('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
 
 def get_db():
     return pymysql.connect(**MYSQL_CONFIG)
@@ -183,7 +184,7 @@ DASHBOARD_HTML = '''
     <div class="auto-refresh" id="autoRefresh">Auto-refresh: <span id="refreshTimer">30s</span></div>
 
     <script>
-        const R2_PUBLIC = 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev';
+        const R2_PUBLIC = '{{ r2_public }}';
         let currentBusiness = 'Down Home';
         let refreshInterval = null;
         let countdown = 30;
@@ -320,7 +321,7 @@ DASHBOARD_HTML = '''
 
 @app.route('/')
 def dashboard():
-    return render_template_string(DASHBOARD_HTML)
+    return render_template_string(DASHBOARD_HTML, r2_public=R2_PUBLIC)
 
 @app.route('/api/all-stats')
 def get_all_stats():

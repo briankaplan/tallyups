@@ -10,13 +10,37 @@
  */
 
 const ImageUtils = {
-    // R2 public URL - must match r2_config.py
+    // R2 public URL - fetched from server config, with fallback
     R2_PUBLIC_URL: 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev',
+    _configLoaded: false,
 
     // Known wrong bucket URLs to fix
     WRONG_BUCKETS: {
         'pub-946b7d51aa2c4a0fb92c1ba15bf5c520.r2.dev': 'second-brain-receipts',
         'pub-f0fa143240d4452e836320be0bac6138.r2.dev': 'tallyups-receipts',
+    },
+
+    /**
+     * Load configuration from server (call once at startup)
+     */
+    async loadConfig() {
+        if (this._configLoaded) return;
+        try {
+            const response = await fetch('/api/config');
+            if (response.ok) {
+                const config = await response.json();
+                if (config.r2_public_url) {
+                    this.R2_PUBLIC_URL = config.r2_public_url;
+                    console.log('[ImageUtils] R2 URL configured:', this.R2_PUBLIC_URL);
+                }
+                if (config.wrong_buckets) {
+                    this.WRONG_BUCKETS = config.wrong_buckets;
+                }
+                this._configLoaded = true;
+            }
+        } catch (e) {
+            console.warn('[ImageUtils] Failed to load config, using defaults:', e);
+        }
     },
 
     /**

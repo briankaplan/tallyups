@@ -36,14 +36,15 @@ try:
     R2_SECRET_ACCESS_KEY = R2Config.SECRET_ACCESS_KEY
     R2_ENDPOINT_URL = R2Config.ENDPOINT_URL
     R2_BUCKET_NAME = R2Config.BUCKET_NAME
-    R2_PUBLIC_URL = R2Config.PUBLIC_URL
+    R2_PUBLIC_URL = R2Config.PUBLIC_URL  # R2Config now has fallback built in
 except ImportError:
     # SECURITY: No hardcoded credentials - use environment variables
     R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '')
     R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
     R2_ENDPOINT_URL = os.getenv('R2_ENDPOINT_URL', '')
     R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'bkreceipts')
-    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '')
+    # PUBLIC_URL MUST have a fallback or all image URLs will be broken
+    R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', '') or 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev'
 
 # Local fallback directory
 LOCAL_RECEIPTS_DIR = Path('receipts/incoming')
