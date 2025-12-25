@@ -18,7 +18,7 @@ const APP_SHELL = [
 
 // Install - cache app shell
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker v8...');
+  console.log('[SW] Installing service worker v10...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
@@ -33,7 +33,7 @@ self.addEventListener('install', (event) => {
 
 // Activate - clean old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker v8...');
+  console.log('[SW] Activating service worker v10...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
