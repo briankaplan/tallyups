@@ -155,6 +155,81 @@ def db_execute(conn, db_type, sql, params=None):
     return cursor
 
 
+# =============================================================================
+# QUERY OPTIMIZATION: Column definitions and caching
+# =============================================================================
+
+# Transaction columns needed for the main API response (avoid SELECT *)
+TRANSACTION_COLUMNS = [
+    '_index', 'id', 'chase_date', 'chase_description', 'chase_amount',
+    'chase_category', 'chase_type', 'receipt_file', 'r2_url', 'business_type',
+    'notes', 'ai_note', 'ai_confidence', 'ai_receipt_merchant', 'ai_receipt_date',
+    'ai_receipt_total', 'review_status', 'category', 'report_id', 'source',
+    'mi_merchant', 'mi_category', 'mi_description', 'mi_confidence',
+    'mi_is_subscription', 'is_refund', 'already_submitted', 'deleted'
+]
+TRANSACTION_COLUMNS_SQL = ', '.join(TRANSACTION_COLUMNS)
+
+# Simple in-memory cache with TTL for expensive queries
+import threading
+from functools import wraps
+
+class SimpleCache:
+    """Thread-safe in-memory cache with TTL."""
+    def __init__(self, default_ttl=60):
+        self._cache = {}
+        self._lock = threading.Lock()
+        self.default_ttl = default_ttl
+        self.hits = 0
+        self.misses = 0
+
+    def get(self, key):
+        """Get value from cache if not expired."""
+        with self._lock:
+            if key in self._cache:
+                value, expires_at = self._cache[key]
+                if datetime.now() < expires_at:
+                    self.hits += 1
+                    return value
+                else:
+                    del self._cache[key]
+            self.misses += 1
+            return None
+
+    def set(self, key, value, ttl=None):
+        """Set value in cache with TTL."""
+        if ttl is None:
+            ttl = self.default_ttl
+        expires_at = datetime.now() + timedelta(seconds=ttl)
+        with self._lock:
+            self._cache[key] = (value, expires_at)
+
+    def invalidate(self, pattern=None):
+        """Invalidate cache entries. If pattern provided, only matching keys."""
+        with self._lock:
+            if pattern is None:
+                self._cache.clear()
+            else:
+                keys_to_delete = [k for k in self._cache if pattern in k]
+                for k in keys_to_delete:
+                    del self._cache[k]
+
+    def stats(self):
+        """Return cache statistics."""
+        total = self.hits + self.misses
+        hit_rate = (self.hits / total * 100) if total > 0 else 0
+        return {
+            'hits': self.hits,
+            'misses': self.misses,
+            'hit_rate': f'{hit_rate:.1f}%',
+            'size': len(self._cache)
+        }
+
+# Global cache instance (60 second default TTL)
+from datetime import timedelta
+query_cache = SimpleCache(default_ttl=60)
+
+
 # === AUDIT LOGGER ===
 try:
     from audit_logger import get_audit_logger
@@ -5948,9 +6023,9 @@ def get_transactions():
                     cursor.execute(count_query)
                     total_count = cursor.fetchone()['total']
 
-                    # Build main query with pagination
+                    # Build main query with pagination (use specific columns for performance)
                     query = f'''
-                        SELECT * FROM transactions
+                        SELECT {TRANSACTION_COLUMNS_SQL} FROM transactions
                         {where_sql}
                         ORDER BY chase_date DESC, _index DESC
                     '''
@@ -6048,9 +6123,11 @@ def get_transactions():
             # Return with pagination metadata
             # For backward compatibility, check if client expects array or object
             if request.args.get('format') == 'array' or return_all:
-                return jsonify(safe_json(records))
+                response = jsonify(safe_json(records))
+                response.headers['X-Total-Count'] = str(total_count)
+                return response
 
-            return jsonify(safe_json({
+            response = jsonify(safe_json({
                 'transactions': records,
                 # iOS app expects these at root level
                 'total': total_count,
@@ -6066,6 +6143,11 @@ def get_transactions():
                     'has_prev': page > 1
                 }
             }))
+            # Add standard pagination headers
+            response.headers['X-Total-Count'] = str(total_count)
+            response.headers['X-Page'] = str(page)
+            response.headers['X-Per-Page'] = str(per_page)
+            return response
 
         except Exception as e:
             print(f"⚠️  Database read error, falling back to DataFrame: {e}", flush=True)
@@ -19929,15 +20011,34 @@ def export_receipts():
             """)
             export_data.extend([dict(row) for row in cursor.fetchall()])
 
-        # Add tags if requested
-        if include_tags:
+        # Add tags if requested (optimized: single query instead of N+1)
+        if include_tags and export_data:
+            # Build list of (receipt_type, receipt_id) pairs
+            receipt_keys = [(item['receipt_type'], item.get('_index') or item.get('id')) for item in export_data]
+
+            # Fetch all tags in one query
+            placeholders = ', '.join(['(%s, %s)'] * len(receipt_keys))
+            flat_params = [val for pair in receipt_keys for val in pair]
+
+            cursor.execute(f"""
+                SELECT a.receipt_type, a.receipt_id, t.name
+                FROM receipt_tags t
+                JOIN receipt_tag_assignments a ON t.id = a.tag_id
+                WHERE (a.receipt_type, a.receipt_id) IN ({placeholders})
+            """, flat_params)
+
+            # Group tags by (receipt_type, receipt_id)
+            tags_by_key = {}
+            for row in cursor.fetchall():
+                key = (row['receipt_type'], row['receipt_id'])
+                if key not in tags_by_key:
+                    tags_by_key[key] = []
+                tags_by_key[key].append(row['name'])
+
+            # Assign tags to each item
             for item in export_data:
-                cursor.execute("""
-                    SELECT t.name FROM receipt_tags t
-                    JOIN receipt_tag_assignments a ON t.id = a.tag_id
-                    WHERE a.receipt_type = %s AND a.receipt_id = %s
-                """, (item['receipt_type'], item.get('_index') or item.get('id')))
-                item['tags'] = [row['name'] for row in cursor.fetchall()]
+                key = (item['receipt_type'], item.get('_index') or item.get('id'))
+                item['tags'] = tags_by_key.get(key, [])
 
         db.return_connection(conn)
 

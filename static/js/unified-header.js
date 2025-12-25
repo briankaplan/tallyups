@@ -445,9 +445,14 @@
         .tu-header__hamburger { display: flex !important; }
       }
 
-      /* Bottom nav - hidden, using hamburger menu instead */
-      .tu-bottom-nav {
-        display: none !important;
+      /* Bottom nav - show on mobile for easy navigation */
+      @media (max-width: 768px) {
+        .tu-bottom-nav {
+          display: flex !important;
+        }
+        body.has-tu-header {
+          padding-bottom: 70px;
+        }
       }
 
       /* Body adjustments */
@@ -487,6 +492,9 @@
 
     // Inject header
     document.body.insertAdjacentHTML('afterbegin', createHeader());
+
+    // Inject bottom nav for mobile
+    document.body.insertAdjacentHTML('beforeend', createBottomNav());
 
     // Inject mobile menu (hamburger slide-out)
     document.body.insertAdjacentHTML('beforeend', createMobileMenu());
