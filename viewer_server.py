@@ -6123,9 +6123,11 @@ def get_transactions():
             # Return with pagination metadata
             # For backward compatibility, check if client expects array or object
             if request.args.get('format') == 'array' or return_all:
-                return jsonify(safe_json(records))
+                response = jsonify(safe_json(records))
+                response.headers['X-Total-Count'] = str(total_count)
+                return response
 
-            return jsonify(safe_json({
+            response = jsonify(safe_json({
                 'transactions': records,
                 # iOS app expects these at root level
                 'total': total_count,
@@ -6141,6 +6143,11 @@ def get_transactions():
                     'has_prev': page > 1
                 }
             }))
+            # Add standard pagination headers
+            response.headers['X-Total-Count'] = str(total_count)
+            response.headers['X-Page'] = str(page)
+            response.headers['X-Per-Page'] = str(per_page)
+            return response
 
         except Exception as e:
             print(f"⚠️  Database read error, falling back to DataFrame: {e}", flush=True)
@@ -20004,15 +20011,34 @@ def export_receipts():
             """)
             export_data.extend([dict(row) for row in cursor.fetchall()])
 
-        # Add tags if requested
-        if include_tags:
+        # Add tags if requested (optimized: single query instead of N+1)
+        if include_tags and export_data:
+            # Build list of (receipt_type, receipt_id) pairs
+            receipt_keys = [(item['receipt_type'], item.get('_index') or item.get('id')) for item in export_data]
+
+            # Fetch all tags in one query
+            placeholders = ', '.join(['(%s, %s)'] * len(receipt_keys))
+            flat_params = [val for pair in receipt_keys for val in pair]
+
+            cursor.execute(f"""
+                SELECT a.receipt_type, a.receipt_id, t.name
+                FROM receipt_tags t
+                JOIN receipt_tag_assignments a ON t.id = a.tag_id
+                WHERE (a.receipt_type, a.receipt_id) IN ({placeholders})
+            """, flat_params)
+
+            # Group tags by (receipt_type, receipt_id)
+            tags_by_key = {}
+            for row in cursor.fetchall():
+                key = (row['receipt_type'], row['receipt_id'])
+                if key not in tags_by_key:
+                    tags_by_key[key] = []
+                tags_by_key[key].append(row['name'])
+
+            # Assign tags to each item
             for item in export_data:
-                cursor.execute("""
-                    SELECT t.name FROM receipt_tags t
-                    JOIN receipt_tag_assignments a ON t.id = a.tag_id
-                    WHERE a.receipt_type = %s AND a.receipt_id = %s
-                """, (item['receipt_type'], item.get('_index') or item.get('id')))
-                item['tags'] = [row['name'] for row in cursor.fetchall()]
+                key = (item['receipt_type'], item.get('_index') or item.get('id'))
+                item['tags'] = tags_by_key.get(key, [])
 
         db.return_connection(conn)
 
