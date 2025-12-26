@@ -453,6 +453,203 @@
       to { transform: rotate(360deg); }
     }
 
+    /* Spotlight Section - Inner Circle */
+    .spotlight-section {
+      padding: 16px 20px;
+      background: linear-gradient(180deg, rgba(170, 102, 255, 0.08) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .spotlight-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .spotlight-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--purple);
+    }
+
+    .spotlight-title svg {
+      color: var(--purple);
+    }
+
+    .spotlight-toggle {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+
+    .spotlight-toggle:hover {
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+
+    .spotlight-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .spotlight-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .spotlight-card {
+      flex-shrink: 0;
+      width: 140px;
+      padding: 16px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .spotlight-card:hover {
+      border-color: var(--purple);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(170, 102, 255, 0.2);
+    }
+
+    .spotlight-card .rank-badge {
+      position: absolute;
+      top: -6px;
+      left: -6px;
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      box-shadow: 0 2px 8px rgba(170, 102, 255, 0.4);
+    }
+
+    .spotlight-card .spotlight-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 10px;
+      font-size: 18px;
+      font-weight: 600;
+      color: white;
+      position: relative;
+    }
+
+    .spotlight-card .spotlight-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .spotlight-card .spotlight-avatar .score-ring {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+    }
+
+    .spotlight-card .spotlight-avatar .score-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .spotlight-card .spotlight-avatar .score-ring circle {
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .spotlight-card .spotlight-avatar .score-ring .bg {
+      stroke: var(--border);
+    }
+
+    .spotlight-card .spotlight-avatar .score-ring .progress {
+      stroke: var(--purple);
+      stroke-linecap: round;
+    }
+
+    .spotlight-card .spotlight-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .spotlight-card .spotlight-role {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .spotlight-card .spotlight-stats {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .spotlight-card .spotlight-stat {
+      text-align: center;
+    }
+
+    .spotlight-card .spotlight-stat-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--purple);
+    }
+
+    .spotlight-card .spotlight-stat-label {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .spotlight-card.vip-card {
+      border-color: rgba(255, 215, 0, 0.4);
+      background: linear-gradient(180deg, rgba(255, 215, 0, 0.08) 0%, var(--bg-card) 50%);
+    }
+
+    .spotlight-card.vip-card .rank-badge {
+      background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+      color: #000;
+    }
+
     /* Interaction count badge on contact cards */
     .interaction-badge {
       display: inline-flex;
@@ -989,6 +1186,7 @@
 
     /* Contact Card */
     .contact-card {
+      position: relative;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 16px;
@@ -1005,6 +1203,39 @@
 
     .contact-card:active {
       transform: scale(0.98);
+    }
+
+    .contact-card.top-contact {
+      background: linear-gradient(135deg, rgba(170, 102, 255, 0.08) 0%, var(--bg-card) 100%);
+      border-color: rgba(170, 102, 255, 0.3);
+    }
+
+    .contact-rank {
+      position: absolute;
+      top: -8px;
+      left: -8px;
+      width: 28px;
+      height: 28px;
+      background: var(--bg-elevated);
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .contact-rank.top-three {
+      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
+      border-color: var(--purple);
+      color: white;
+      box-shadow: 0 2px 8px rgba(170, 102, 255, 0.4);
+    }
+
+    .ranked-section .section-title {
+      color: var(--purple);
     }
 
     .contact-header {
@@ -2743,17 +2974,11 @@
   <div class="sort-controls">
     <span class="sort-label">Sort:</span>
     <div class="sort-buttons">
-      <button class="sort-btn active" data-sort="name" onclick="setSortOrder('name', this)">
+      <button class="sort-btn active" data-sort="score" onclick="setSortOrder('score', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 6h18M3 12h12M3 18h6"/>
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
-        A-Z
-      </button>
-      <button class="sort-btn" data-sort="frequency" onclick="setSortOrder('frequency', this)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-        </svg>
-        Most Frequent
+        Top Contacts
       </button>
       <button class="sort-btn" data-sort="recent" onclick="setSortOrder('recent', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2762,11 +2987,17 @@
         </svg>
         Recent
       </button>
-      <button class="sort-btn" data-sort="score" onclick="setSortOrder('score', this)">
+      <button class="sort-btn" data-sort="frequency" onclick="setSortOrder('frequency', this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
         </svg>
-        Score
+        Frequent
+      </button>
+      <button class="sort-btn" data-sort="name" onclick="setSortOrder('name', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18M3 12h12M3 18h6"/>
+        </svg>
+        A-Z
       </button>
     </div>
     <button class="sync-interactions-btn" id="syncInteractionsBtn" onclick="syncAllInteractions()">
@@ -2776,6 +3007,26 @@
       </svg>
       Sync
     </button>
+  </div>
+
+  <!-- Top Contacts Spotlight - Shows your most important relationships -->
+  <div class="spotlight-section" id="spotlightSection" style="display: none;">
+    <div class="spotlight-header">
+      <div class="spotlight-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        Your Inner Circle
+      </div>
+      <button class="spotlight-toggle" onclick="toggleSpotlight()" title="Hide spotlight">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <path d="M18 15l-6-6-6 6"/>
+        </svg>
+      </button>
+    </div>
+    <div class="spotlight-scroll" id="spotlightContacts">
+      <!-- Dynamically populated with top contacts -->
+    </div>
   </div>
 
   <!-- Industry Category Chips -->
@@ -3136,8 +3387,8 @@
     let isSelectMode = false;
     let selectedContacts = new Set();
 
-    // Sort State
-    let currentSort = 'name';  // name, frequency, recent, score
+    // Sort State - Default to score (most interacted) for smart prioritization
+    let currentSort = 'score';  // score (default), name, frequency, recent
 
     // Set sort order and reload contacts
     async function setSortOrder(sort, element) {
@@ -3652,6 +3903,7 @@
           hasMoreContacts = contacts.length < totalContactCount;
           currentOffset = contacts.length;
           updateStats(data.stats || { total: totalContactCount });
+          renderSpotlight();  // Render top contacts spotlight
           renderContacts();
           renderCategoryChips();  // Render category filter chips with counts
           updateLoadAllButton();  // Show Load All button if more contacts available
@@ -3740,6 +3992,92 @@
       return Math.round(sum / contacts.length);
     }
 
+    // Spotlight visibility state
+    let spotlightVisible = localStorage.getItem('spotlightVisible') !== 'false';
+
+    function toggleSpotlight() {
+      spotlightVisible = !spotlightVisible;
+      localStorage.setItem('spotlightVisible', spotlightVisible);
+      const section = document.getElementById('spotlightSection');
+      const btn = section.querySelector('.spotlight-toggle svg');
+      if (spotlightVisible) {
+        section.querySelector('.spotlight-scroll').style.display = 'flex';
+        btn.innerHTML = '<path d="M18 15l-6-6-6 6"/>';
+      } else {
+        section.querySelector('.spotlight-scroll').style.display = 'none';
+        btn.innerHTML = '<path d="M6 9l6 6 6-6"/>';
+      }
+    }
+
+    // Render spotlight section with top contacts
+    function renderSpotlight() {
+      const section = document.getElementById('spotlightSection');
+      const container = document.getElementById('spotlightContacts');
+      if (!section || !container) return;
+
+      // Get top contacts by score (minimum score of 10 to be in spotlight)
+      const topContacts = [...contacts]
+        .filter(c => (c.relationship_score || 0) >= 10 || c.is_vip || (c.interaction_count || 0) >= 3)
+        .sort((a, b) => {
+          // VIPs always first
+          if (a.is_vip && !b.is_vip) return -1;
+          if (!a.is_vip && b.is_vip) return 1;
+          // Then by score
+          return (b.relationship_score || 0) - (a.relationship_score || 0);
+        })
+        .slice(0, 8); // Show top 8
+
+      if (topContacts.length < 2) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      if (!spotlightVisible) {
+        container.style.display = 'none';
+        section.querySelector('.spotlight-toggle svg').innerHTML = '<path d="M6 9l6 6 6-6"/>';
+      }
+
+      container.innerHTML = topContacts.map((contact, index) => {
+        const initials = getInitials(contact.display_name || contact.name || 'Unknown');
+        const score = contact.relationship_score || 0;
+        const circumference = 2 * Math.PI * 30;
+        const offset = circumference - (score / 100) * circumference;
+        const role = contact.company || contact.title || contact.category || '';
+
+        return `
+          <div class="spotlight-card ${contact.is_vip ? 'vip-card' : ''}" onclick="openContact(${contact.id})">
+            <div class="rank-badge">${index + 1}</div>
+            <div class="spotlight-avatar">
+              ${contact.photo_url ? `<img src="${contact.photo_url}" alt="">` : initials}
+              <div class="score-ring">
+                <svg viewBox="0 0 64 64">
+                  <circle class="bg" cx="32" cy="32" r="30"/>
+                  <circle class="progress" cx="32" cy="32" r="30"
+                    stroke-dasharray="${circumference}"
+                    stroke-dashoffset="${offset}"/>
+                </svg>
+              </div>
+            </div>
+            <div class="spotlight-name">${contact.display_name || contact.name || 'Unknown'}</div>
+            <div class="spotlight-role">${role || 'Contact'}</div>
+            <div class="spotlight-stats">
+              <div class="spotlight-stat">
+                <div class="spotlight-stat-value">${score}</div>
+                <div class="spotlight-stat-label">Score</div>
+              </div>
+              ${contact.interaction_count ? `
+              <div class="spotlight-stat">
+                <div class="spotlight-stat-value">${contact.interaction_count}</div>
+                <div class="spotlight-stat-label">Chats</div>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
     // Render contacts
     function renderContacts() {
       const list = document.getElementById('contactList');
@@ -3770,28 +4108,44 @@
         return;
       }
 
-      // Group by first letter
-      const grouped = {};
-      filtered.forEach(contact => {
-        let letter = (contact.display_name || contact.name || 'Unknown')[0].toUpperCase();
-        if (!/[A-Z]/.test(letter)) letter = '#';
-        if (!grouped[letter]) grouped[letter] = [];
-        grouped[letter].push(contact);
-      });
-
       let html = '';
-      Object.keys(grouped).sort().forEach(letter => {
+
+      // Different display modes based on sort
+      if (currentSort === 'name') {
+        // Group by first letter for alphabetical sort
+        const grouped = {};
+        filtered.forEach(contact => {
+          let letter = (contact.display_name || contact.name || 'Unknown')[0].toUpperCase();
+          if (!/[A-Z]/.test(letter)) letter = '#';
+          if (!grouped[letter]) grouped[letter] = [];
+          grouped[letter].push(contact);
+        });
+
+        Object.keys(grouped).sort().forEach(letter => {
+          html += `
+            <div class="section-header" data-section="${letter}">
+              <span class="section-title">${letter}</span>
+              <span class="section-action">${grouped[letter].length}</span>
+            </div>
+          `;
+          grouped[letter].forEach(contact => {
+            html += renderContactCard(contact);
+          });
+        });
+      } else {
+        // Ranked list for score/frequency/recent sorts
+        const sortLabel = currentSort === 'score' ? 'Top Contacts' :
+                          currentSort === 'frequency' ? 'Most Frequent' : 'Recently Active';
         html += `
-          <div class="section-header" data-section="${letter}">
-            <span class="section-title">${letter}</span>
-            <span class="section-action">${grouped[letter].length}</span>
+          <div class="section-header ranked-section">
+            <span class="section-title">${sortLabel}</span>
+            <span class="section-action">${filtered.length} contacts</span>
           </div>
         `;
-
-        grouped[letter].forEach(contact => {
-          html += renderContactCard(contact);
+        filtered.forEach((contact, index) => {
+          html += renderContactCard(contact, index + 1);
         });
-      });
+      }
 
       // Add Load All button if there are more contacts to load
       if (hasMoreContacts && contacts.length < totalContactCount) {
@@ -3807,7 +4161,7 @@
     }
 
     // Render contact card
-    function renderContactCard(contact) {
+    function renderContactCard(contact, rank = null) {
       const initials = getInitials(contact.display_name || contact.name || 'Unknown');
       const score = contact.relationship_score || 0; // No fake scores - show actual data only
       const circumference = 2 * Math.PI * 14;
@@ -3816,10 +4170,16 @@
       const tags = [];
       if (contact.is_vip) tags.push('<span class="intel-tag high-value">VIP</span>');
       if (contact.needs_attention) tags.push('<span class="intel-tag needs-attention">Needs attention</span>');
-      if (contact.category === 'business') tags.push('<span class="intel-tag connected">Business</span>');
+      if (contact.category && contact.category !== 'General') tags.push(`<span class="intel-tag connected">${contact.category}</span>`);
+
+      // Rank badge styling for top contacts
+      const rankBadge = rank && rank <= 10 ? `
+        <div class="contact-rank ${rank <= 3 ? 'top-three' : ''}">${rank}</div>
+      ` : '';
 
       return `
-        <div class="contact-card" data-contact-id="${contact.id}" onclick="${isSelectMode ? `toggleContactSelection(${contact.id}, event)` : `openContact(${contact.id})`}">
+        <div class="contact-card ${rank && rank <= 3 ? 'top-contact' : ''}" data-contact-id="${contact.id}" onclick="${isSelectMode ? `toggleContactSelection(${contact.id}, event)` : `openContact(${contact.id})`}">
+          ${rankBadge}
           <div class="contact-checkbox ${selectedContacts.has(contact.id) ? 'selected' : ''}" onclick="event.stopPropagation(); toggleContactSelection(${contact.id}, event)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
               <polyline points="20 6 9 17 4 12"/>
