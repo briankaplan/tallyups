@@ -2604,6 +2604,7 @@
         </div>
         <div class="sync-source-name">Google Contacts</div>
         <div class="sync-source-status" id="googleStatus">Not connected</div>
+        <div style="font-size: 11px; color: var(--text-dim); margin: 6px 0 8px;">Your saved contacts from Google account</div>
 
         <!-- Bidirectional Sync Buttons -->
         <div class="sync-direction-btns">
@@ -2629,6 +2630,7 @@
         </div>
         <div class="sync-source-name">Apple Contacts</div>
         <div class="sync-source-status" id="appleStatus">Pull only (macOS)</div>
+        <div style="font-size: 11px; color: var(--text-dim); margin: 6px 0 8px;">Import from macOS or iPhone contacts</div>
 
         <!-- Apple Sync - Pull Only -->
         <div class="sync-direction-btns">
@@ -2657,6 +2659,7 @@
         </div>
         <div class="sync-source-name">Gmail Contacts</div>
         <div class="sync-source-status" id="gmailStatus">Extract from email history</div>
+        <div style="font-size: 11px; color: var(--text-dim); margin: 6px 0 8px;">Discover contacts from people you've emailed</div>
 
         <div class="sync-direction-btns">
           <button class="sync-dir-btn pull" onclick="extractGmailContacts()" title="Extract contacts from Gmail emails">
@@ -5137,16 +5140,58 @@
       document.getElementById('loadingState').style.display = 'none';
 
       list.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div class="empty-state" style="max-width: 500px; margin: 0 auto;">
+          <div class="empty-icon" style="background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
               <circle cx="12" cy="8" r="4"/>
               <path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/>
             </svg>
           </div>
-          <div class="empty-title">No contacts yet</div>
-          <div class="empty-text">Sync your contacts from Google or Apple to get started with relationship intelligence</div>
-          <button class="empty-btn" onclick="toggleSyncPanel()">Sync Contacts</button>
+          <div class="empty-title">Welcome to Contact Intelligence</div>
+          <div class="empty-text" style="margin-bottom: 24px;">
+            Track relationships, discover email history, and find spending patterns with contacts.
+          </div>
+
+          <div style="text-align: left; background: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <div style="font-weight: 600; margin-bottom: 12px; color: var(--text);">Get started in 3 ways:</div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #4285f4, #34a853); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                  <svg viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight: 500; color: var(--text);">Google Contacts</div>
+                  <div style="font-size: 12px; color: var(--text-secondary);">Sync your saved contacts from Google. Two-way sync keeps everything in sync.</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #EA4335, #FBBC04, #34A853); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                  <svg viewBox="0 0 24 24" fill="white" width="16" height="16"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6" fill="none" stroke="white" stroke-width="2"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight: 500; color: var(--text);">Gmail History</div>
+                  <div style="font-size: 12px; color: var(--text-secondary);">Auto-discover contacts from people you've emailed. Great for finding forgotten connections.</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #333, #666); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                  <svg viewBox="0 0 24 24" fill="white" width="14" height="14"><path d="M18.71,19.5C17.88,20.74 17,21.95 15.66,21.97C14.32,22 13.89,21.18 12.37,21.18C10.84,21.18 10.37,21.95 9.1,22C7.79,22.05 6.8,20.68 5.96,19.47C4.25,17 2.94,12.45 4.7,9.39C5.57,7.87 7.13,6.91 8.82,6.88C10.1,6.86 11.32,7.75 12.11,7.75C12.89,7.75 14.37,6.68 15.92,6.84C16.57,6.87 18.39,7.1 19.56,8.82C19.47,8.88 17.39,10.1 17.41,12.63C17.44,15.65 20.06,16.66 20.09,16.67C20.06,16.74 19.67,18.11 18.71,19.5M13,3.5C13.73,2.67 14.94,2.04 15.94,2C16.07,3.17 15.6,4.35 14.9,5.19C14.21,6.04 13.07,6.7 11.95,6.61C11.8,5.46 12.36,4.26 13,3.5Z"/></svg>
+                </div>
+                <div>
+                  <div style="font-weight: 500; color: var(--text);">Apple Contacts</div>
+                  <div style="font-size: 12px; color: var(--text-secondary);">Import from macOS or iPhone contacts. One-way import (pull only).</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="empty-btn" onclick="toggleSyncPanel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="margin-right: 8px;">
+              <path d="M23 4v6h-6M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            Open Sync Panel
+          </button>
         </div>
       `;
     }

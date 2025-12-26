@@ -12,26 +12,31 @@
   // State Management
   // ============================================
 
-  // Cache buster for thumbnail URLs - ensures fresh load on session/page load
-  let cacheBuster = `cb=${Date.now()}`;
+  // Cache buster only used when explicitly refreshing (not on every load)
+  let forceRefresh = false;
 
-  // Force refresh all images by updating cache buster
+  // Force refresh all images by setting flag and re-rendering
   function refreshAllImages() {
-    cacheBuster = `cb=${Date.now()}`;
+    forceRefresh = true;
     renderReceipts();
     showToast('Images refreshed', 'success');
+    // Reset after render so subsequent loads use browser cache
+    setTimeout(() => { forceRefresh = false; }, 100);
   }
 
-  // Helper to add cache buster to thumbnail URLs for fresh loading
+  // Helper to get thumbnail URL - lets browser cache work normally
   function getThumbnailUrl(url) {
     if (!url) return '';
     // Use ImageUtils if available for URL fixing
     if (typeof ImageUtils !== 'undefined') {
       url = ImageUtils.fixUrl(url);
     }
-    // Add cache buster to force reload (fixes cached login thumbnail issue)
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}${cacheBuster}`;
+    // Only add cache buster when explicitly refreshing
+    if (forceRefresh) {
+      const separator = url.includes('?') ? '&' : '?';
+      return `${url}${separator}cb=${Date.now()}`;
+    }
+    return url;
   }
 
   // Helper to get receipt URL from receipt object using ImageUtils (prioritizes r2_url)

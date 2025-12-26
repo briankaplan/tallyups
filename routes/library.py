@@ -22,8 +22,10 @@ This blueprint manages the receipt library system.
 
 import os
 import json
+import hashlib
 from datetime import datetime
-from flask import Blueprint, request, jsonify, session
+from functools import wraps
+from flask import Blueprint, request, jsonify, session, make_response
 
 from logging_config import get_logger
 
@@ -31,6 +33,101 @@ logger = get_logger("routes.library")
 
 # Create blueprint
 library_bp = Blueprint('library', __name__, url_prefix='/api/library')
+
+
+# =============================================================================
+# PERFORMANCE: In-memory cache for expensive queries
+# =============================================================================
+
+class FastCache:
+    """Simple TTL cache for API responses - dramatically improves load times."""
+
+    def __init__(self, default_ttl=60):
+        self._cache = {}
+        self._default_ttl = default_ttl
+
+    def get(self, key):
+        """Get value if not expired."""
+        if key in self._cache:
+            value, expires_at = self._cache[key]
+            if datetime.now().timestamp() < expires_at:
+                return value
+            del self._cache[key]
+        return None
+
+    def set(self, key, value, ttl=None):
+        """Set value with TTL in seconds."""
+        ttl = ttl or self._default_ttl
+        expires_at = datetime.now().timestamp() + ttl
+        self._cache[key] = (value, expires_at)
+
+    def clear(self):
+        """Clear all cached values."""
+        self._cache.clear()
+
+    def invalidate_prefix(self, prefix):
+        """Invalidate all keys starting with prefix."""
+        keys_to_delete = [k for k in self._cache if k.startswith(prefix)]
+        for k in keys_to_delete:
+            del self._cache[k]
+
+
+# Global cache instance - 5 minute default TTL
+_api_cache = FastCache(default_ttl=300)
+
+
+def cached_response(ttl=300, prefix='library'):
+    """
+    Decorator to cache API responses.
+    Cache key is based on endpoint + query string.
+    """
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            # Build cache key from request
+            cache_key = f"{prefix}:{request.path}:{request.query_string.decode()}"
+
+            # Check cache first
+            cached = _api_cache.get(cache_key)
+            if cached is not None:
+                response = make_response(jsonify(cached))
+                response.headers['X-Cache'] = 'HIT'
+                response.headers['Cache-Control'] = f'public, max-age={ttl}'
+                return response
+
+            # Execute function
+            result = f(*args, **kwargs)
+
+            # Cache successful JSON responses
+            if isinstance(result, tuple):
+                data, status = result
+                if status == 200:
+                    _api_cache.set(cache_key, data.get_json(), ttl)
+                return result
+            else:
+                # Flask Response object
+                if hasattr(result, 'get_json'):
+                    try:
+                        json_data = result.get_json()
+                        if json_data and json_data.get('ok', True):
+                            _api_cache.set(cache_key, json_data, ttl)
+                    except:
+                        pass
+
+                # Add cache headers
+                if hasattr(result, 'headers'):
+                    result.headers['X-Cache'] = 'MISS'
+                    result.headers['Cache-Control'] = f'public, max-age={ttl}'
+
+                return result
+
+        return wrapper
+    return decorator
+
+
+def invalidate_library_cache():
+    """Call this when receipts are modified to clear cache."""
+    _api_cache.invalidate_prefix('library:')
 
 
 def get_dependencies():
@@ -59,6 +156,7 @@ def check_auth():
 
 
 @library_bp.route("/receipts", methods=["GET"])
+@cached_response(ttl=120, prefix='library:receipts')  # 2 minute cache for receipt lists
 def api_library_receipts():
     """
     List receipts with filtering and pagination.
@@ -305,6 +403,7 @@ def api_library_receipts():
 
 
 @library_bp.route("/search", methods=["GET"])
+@cached_response(ttl=60, prefix='library:search')  # 1 minute cache for searches
 def api_library_search():
     """
     Search receipts across all sources.
@@ -447,6 +546,7 @@ def api_library_search():
 
 
 @library_bp.route("/counts", methods=["GET"])
+@cached_response(ttl=180, prefix='library:counts')  # 3 minute cache for counts
 def api_library_counts():
     """Get receipt counts by source, status, and business type."""
     if not check_auth():
@@ -534,6 +634,7 @@ def api_library_counts():
 
 
 @library_bp.route("/stats", methods=["GET"])
+@cached_response(ttl=180, prefix='library:stats')  # 3 minute cache for stats
 def api_library_stats():
     """Get library statistics."""
     if not check_auth():
@@ -658,6 +759,7 @@ def api_library_stats():
 
 
 @library_bp.route("/tags", methods=["GET"])
+@cached_response(ttl=300, prefix='library:tags')  # 5 minute cache for tags
 def api_library_tags():
     """List all tags."""
     if not check_auth():
@@ -743,6 +845,7 @@ def api_library_create_tag():
 
 
 @library_bp.route("/collections", methods=["GET"])
+@cached_response(ttl=300, prefix='library:collections')  # 5 minute cache for collections
 def api_library_collections():
     """List all collections."""
     if not check_auth():
