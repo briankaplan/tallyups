@@ -501,8 +501,8 @@ struct TransactionDetailView: View {
         }
     }
 
-    private func unlinkReceipt(receiptId: Int) async {
-        let success = await viewModel.unlinkReceipt(transactionIndex: transaction.index, receiptId: receiptId)
+    private func unlinkReceipt(receiptId: String) async {
+        let success = await viewModel.unmatchReceipt(transactionIndex: transaction.index, receiptId: receiptId)
         if success {
             linkedReceipts.removeAll { $0.id == receiptId }
             if linkedReceipts.isEmpty {
@@ -796,7 +796,7 @@ struct ReceiptMatchCard: View {
 struct LinkedReceiptsView: View {
     let transaction: Transaction
     let receipts: [Receipt]
-    let onUnlink: (Int) -> Void
+    let onUnlink: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var selectedReceipt: Receipt?
     @State private var showingFullImage = false

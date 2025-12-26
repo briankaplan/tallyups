@@ -423,11 +423,13 @@ class NotificationService: ObservableObject {
 
     /// Clear notifications of a specific type
     func clearNotifications(withPrefix prefix: String) {
-        center.getDeliveredNotifications { notifications in
+        center.getDeliveredNotifications { [weak self] notifications in
             let idsToRemove = notifications
                 .filter { $0.request.identifier.hasPrefix(prefix) }
                 .map { $0.request.identifier }
-            self.center.removeDeliveredNotifications(withIdentifiers: idsToRemove)
+            Task { @MainActor in
+                self?.center.removeDeliveredNotifications(withIdentifiers: idsToRemove)
+            }
         }
     }
 }

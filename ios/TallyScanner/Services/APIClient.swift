@@ -226,7 +226,8 @@ actor APIClient {
 
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
-            throw APIError.serverError
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
+            throw APIError.serverError(statusCode, "Failed to register push token")
         }
     }
 
@@ -551,6 +552,19 @@ actor APIClient {
         }
 
         return httpResponse.statusCode == 200
+    }
+
+    /// Fetch receipts linked to a transaction
+    func fetchLinkedReceipts(transactionIndex: Int) async throws -> [Receipt] {
+        let request = try makeRequest(path: "/api/transactions/\(transactionIndex)/receipts", method: "GET")
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        struct LinkedReceiptsResponse: Codable {
+            let receipts: [Receipt]
+        }
+
+        let response = try decoder.decode(LinkedReceiptsResponse.self, from: data)
+        return response.receipts
     }
 
     // MARK: - Contacts
