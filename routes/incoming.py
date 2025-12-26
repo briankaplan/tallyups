@@ -354,8 +354,17 @@ def accept_incoming_receipt():
         max_idx = cursor.fetchone()
         next_index = (max_idx['max_idx'] or 0) + 1
 
-        # Get receipt file URL
-        receipt_url = receipt_data.get('receipt_image_url') or receipt_data.get('file_path') or ''
+        # Get receipt file URL - try multiple possible columns
+        receipt_url = (
+            receipt_data.get('receipt_image_url') or
+            receipt_data.get('r2_url') or
+            receipt_data.get('file_path') or
+            ''
+        )
+
+        # Log if we couldn't find a receipt URL
+        if not receipt_url:
+            logger.warning(f"No receipt URL found for receipt {receipt_id}. Available keys: {list(receipt_data.keys())}")
 
         # Insert new transaction
         cursor = db_execute(conn, db_type, '''

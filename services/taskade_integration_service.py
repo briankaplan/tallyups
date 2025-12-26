@@ -200,10 +200,23 @@ class TaskadeIntegration:
             self._set_task_note(project_id, task_id, metadata['note'])
 
     def _set_task_priority(self, project_id, task_id, priority):
-        """Set task priority (urgent, high, normal, low)"""
-        # Taskade uses special markers in content for priority
-        # This is a simplified version - actual implementation may vary
-        pass
+        """
+        Set task priority (urgent, high, normal, low)
+
+        Taskade represents priority via the 'priority' field on tasks.
+        Values: 1 (urgent), 2 (high), 3 (normal/default), 4 (low)
+        """
+        priority_map = {
+            'urgent': 1,
+            'high': 2,
+            'normal': 3,
+            'low': 4
+        }
+        priority_value = priority_map.get(priority.lower(), 3)
+
+        data = {'priority': priority_value}
+        endpoint = f'/projects/{project_id}/tasks/{task_id}'
+        return self._request('PATCH', endpoint, data)
 
     def _set_task_deadline(self, project_id, task_id, deadline):
         """
@@ -226,10 +239,42 @@ class TaskadeIntegration:
         return self._request('PUT', endpoint, data)
 
     def _set_task_tags(self, project_id, task_id, tags):
-        """Set task tags"""
-        # Tags in Taskade are part of content with #hashtags
-        # This would require updating content with tags
-        pass
+        """
+        Set task tags by appending hashtags to task content.
+
+        Taskade uses #hashtags in the task content for tagging.
+        This fetches the current task, appends tags if not present,
+        and updates the content.
+
+        Args:
+            tags: List of tag names (without # prefix)
+        """
+        if not tags:
+            return
+
+        try:
+            # Get current task content
+            endpoint = f'/projects/{project_id}/tasks/{task_id}'
+            task = self._request('GET', endpoint)
+
+            if not task or 'content' not in task:
+                return
+
+            current_content = task.get('content', '')
+
+            # Format tags as hashtags
+            tag_string = ' '.join(f'#{tag.replace(" ", "_")}' for tag in tags)
+
+            # Check if tags already exist in content
+            if tag_string not in current_content:
+                # Append tags to content
+                new_content = f"{current_content} {tag_string}".strip()
+                data = {'content': new_content}
+                return self._request('PATCH', endpoint, data)
+
+        except Exception as e:
+            # Log but don't fail - tags are optional
+            print(f"Warning: Could not set tags on task {task_id}: {e}")
 
     def _set_task_assignees(self, project_id, task_id, assignees):
         """
