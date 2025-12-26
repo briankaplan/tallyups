@@ -474,14 +474,11 @@
   }
 
   function injectHeader() {
-    // Don't inject on dashboard (it has its own)
-    if (getCurrentPath() === '/' && document.querySelector('.clean-header')) return;
-
     // Check if already injected
     if (document.querySelector('.tu-header')) return;
 
     // Remove old headers/navs
-    const oldHeaders = document.querySelectorAll('.app-header, header:not(.tu-header):not(.clean-header)');
+    const oldHeaders = document.querySelectorAll('.app-header, header:not(.tu-header)');
     oldHeaders.forEach(h => h.remove());
 
     const oldBottomNav = document.querySelectorAll('.bottom-nav, .mobile-nav');
