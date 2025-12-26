@@ -2646,6 +2646,29 @@
           </button>
         </div>
       </div>
+
+      <!-- Gmail Email Extraction -->
+      <div class="sync-source" id="gmailSync">
+        <div class="sync-source-icon" style="background: linear-gradient(135deg, #EA4335 0%, #FBBC04 50%, #34A853 100%);">
+          <svg viewBox="0 0 24 24" fill="white" width="18" height="18">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6" fill="none" stroke="white" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="sync-source-name">Gmail Contacts</div>
+        <div class="sync-source-status" id="gmailStatus">Extract from email history</div>
+
+        <div class="sync-direction-btns">
+          <button class="sync-dir-btn pull" onclick="extractGmailContacts()" title="Extract contacts from Gmail emails">
+            <span class="icon">&#x1F4E7;</span>
+            <span class="label">Extract</span>
+          </button>
+          <button class="sync-dir-btn" onclick="syncGmailReceipts()" title="Sync receipts from Gmail">
+            <span class="icon">&#x1F9FE;</span>
+            <span class="label">Receipts</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2940,6 +2963,16 @@
         <div class="modal-section" id="communicationsSection" style="display: none;">
           <div class="modal-section-title">Recent Communications</div>
           <div id="communicationsList" style="max-height: 200px; overflow-y: auto;">
+            <div style="text-align: center; color: var(--text-dim); padding: 12px;">Loading...</div>
+          </div>
+        </div>
+
+        <div class="modal-section" id="transactionsSection" style="display: none;">
+          <div class="modal-section-title">
+            <span>Related Transactions</span>
+            <span id="transactionsSummary" style="font-size: 11px; color: var(--success); margin-left: 8px;"></span>
+          </div>
+          <div id="transactionsList" style="max-height: 200px; overflow-y: auto;">
             <div style="text-align: center; color: var(--text-dim); padding: 12px;">Loading...</div>
           </div>
         </div>
@@ -4181,6 +4214,9 @@
       // Fetch recent communications (emails and texts)
       loadContactCommunications(contactId);
 
+      // Fetch related transactions
+      loadContactTransactions(contactId);
+
       // Render timeline
       const timeline = document.getElementById('modalTimeline');
       if (currentContact.interactions && currentContact.interactions.length > 0) {
@@ -4263,6 +4299,58 @@
         list.innerHTML = html || '<div style="text-align: center; color: var(--text-dim); padding: 12px;">No recent communications</div>';
       } catch (e) {
         console.log('Error loading communications:', e);
+        section.style.display = 'none';
+      }
+    }
+
+    // Load related transactions for a contact
+    async function loadContactTransactions(contactId) {
+      const section = document.getElementById('transactionsSection');
+      const list = document.getElementById('transactionsList');
+      const summary = document.getElementById('transactionsSummary');
+
+      try {
+        const response = await fetch(`/api/contacts/${contactId}/transactions`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (!data.success || !data.transactions || data.transactions.length === 0) {
+          section.style.display = 'none';
+          return;
+        }
+
+        section.style.display = 'block';
+
+        // Calculate total spent
+        const totalSpent = data.transactions.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+        summary.textContent = `$${totalSpent.toFixed(2)} total`;
+
+        let html = '';
+        data.transactions.forEach(txn => {
+          const amount = txn.amount ? Math.abs(txn.amount).toFixed(2) : '0.00';
+          const amountColor = txn.amount < 0 ? 'var(--error)' : 'var(--success)';
+          const receiptIcon = txn.has_receipt ?
+            '<svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="14" height="14"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>' :
+            '<svg viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>';
+
+          html += `
+            <div style="display: flex; align-items: center; gap: 10px; padding: 8px; background: var(--bg-card); border-radius: 8px; margin-bottom: 6px;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(txn.description || 'Transaction')}</div>
+                <div style="font-size: 11px; color: var(--text-dim);">${txn.date || ''} ${txn.business_type ? '- ' + txn.business_type : ''}</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                ${receiptIcon}
+                <span style="color: ${amountColor}; font-weight: 600; font-size: 13px;">$${amount}</span>
+              </div>
+            </div>
+          `;
+        });
+
+        list.innerHTML = html;
+      } catch (e) {
+        console.log('Error loading transactions:', e);
         section.style.display = 'none';
       }
     }
@@ -4570,6 +4658,67 @@
       }
 
       btn.classList.remove('syncing');
+    }
+
+    // Extract contacts from Gmail email history
+    async function extractGmailContacts() {
+      const statusEl = document.getElementById('gmailStatus');
+      statusEl.textContent = 'Extracting...';
+
+      try {
+        const response = await fetch('/api/gmail/extract-contacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            days_back: 90,
+            max_messages: 500
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showToast(`Extracted ${data.contacts_created} new contacts, updated ${data.contacts_updated}`, 'success');
+          statusEl.textContent = `${data.contacts_created + data.contacts_updated} contacts`;
+          statusEl.classList.add('connected');
+          loadContacts();
+        } else {
+          showToast(data.error || 'Failed to extract contacts', 'error');
+          statusEl.textContent = 'Extraction failed';
+        }
+      } catch (e) {
+        showToast('Error extracting contacts: ' + e.message, 'error');
+        statusEl.textContent = 'Error';
+      }
+    }
+
+    // Sync receipts from Gmail
+    async function syncGmailReceipts() {
+      const statusEl = document.getElementById('gmailStatus');
+      statusEl.textContent = 'Syncing receipts...';
+
+      try {
+        const response = await fetch('/api/gmail/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ days_back: 30 })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showToast('Gmail receipt sync initiated', 'success');
+          statusEl.textContent = 'Sync initiated';
+        } else {
+          showToast(data.error || 'Failed to sync receipts', 'error');
+          statusEl.textContent = 'Sync failed';
+        }
+      } catch (e) {
+        showToast('Error syncing receipts: ' + e.message, 'error');
+        statusEl.textContent = 'Error';
+      }
     }
 
     // Export contacts to vCard format (for Apple Contacts import)

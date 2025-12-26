@@ -842,6 +842,268 @@ def get_nudges():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# =============================================================================
+# CONTACT INTERACTIONS
+# =============================================================================
+
+@contacts_bp.route('/<int:contact_id>/interactions', methods=['GET'])
+def get_contact_interactions(contact_id):
+    """
+    Get all interactions for a contact (emails, transactions, meetings).
+
+    Query Params:
+        type: Filter by type (email, expense, meeting, call)
+        limit: Max results (default 50)
+
+    Response:
+        {
+            "success": true,
+            "contact": { ... },
+            "interactions": [...],
+            "summary": { "emails": 10, "expenses": 5, "total_spent": 1500.00 }
+        }
+    """
+    try:
+        interaction_type = request.args.get('type')
+        limit = int(request.args.get('limit', 50))
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Get contact
+            cursor.execute("""
+                SELECT id, name, email, phone, company, title,
+                       relationship_score, last_interaction, interaction_count
+                FROM contacts WHERE id = %s
+            """, (contact_id,))
+
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'success': False, 'error': 'Contact not found'}), 404
+
+            contact = {
+                'id': row[0],
+                'name': row[1],
+                'email': row[2],
+                'phone': row[3],
+                'company': row[4],
+                'title': row[5],
+                'relationship_score': float(row[6]) if row[6] else 50,
+                'last_interaction': str(row[7]) if row[7] else None,
+                'interaction_count': row[8] or 0
+            }
+
+            # Get interactions
+            query = """
+                SELECT id, interaction_type, interaction_date, subject, notes,
+                       source_type, amount, transaction_id
+                FROM contact_interactions
+                WHERE contact_id = %s
+            """
+            params = [contact_id]
+
+            if interaction_type:
+                query += " AND interaction_type = %s"
+                params.append(interaction_type)
+
+            query += " ORDER BY interaction_date DESC LIMIT %s"
+            params.append(limit)
+
+            cursor.execute(query, params)
+
+            interactions = []
+            for row in cursor.fetchall():
+                interactions.append({
+                    'id': row[0],
+                    'type': row[1],
+                    'date': str(row[2]),
+                    'subject': row[3],
+                    'notes': row[4],
+                    'source': row[5],
+                    'amount': float(row[6]) if row[6] else None,
+                    'transaction_id': row[7]
+                })
+
+            # Get summary stats
+            cursor.execute("""
+                SELECT interaction_type, COUNT(*), SUM(COALESCE(amount, 0))
+                FROM contact_interactions
+                WHERE contact_id = %s
+                GROUP BY interaction_type
+            """, (contact_id,))
+
+            summary = {'total_interactions': 0, 'total_spent': 0.0}
+            for row in cursor.fetchall():
+                summary[row[0] + 's'] = row[1]
+                summary['total_interactions'] += row[1]
+                if row[2]:
+                    summary['total_spent'] += float(row[2])
+
+        return jsonify({
+            'success': True,
+            'contact': contact,
+            'interactions': interactions,
+            'summary': summary
+        })
+
+    except Exception as e:
+        logger.error(f"Get interactions error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/<int:contact_id>/interactions', methods=['POST'])
+def add_contact_interaction(contact_id):
+    """
+    Add a new interaction for a contact.
+
+    Request Body:
+        {
+            "type": "email|call|meeting|expense|note",
+            "subject": "Discussion about project",
+            "notes": "Detailed notes...",
+            "amount": 150.00  // For expense type
+        }
+    """
+    try:
+        data = request.get_json() or {}
+
+        if not data.get('type'):
+            return jsonify({
+                'success': False,
+                'error': 'Interaction type is required'
+            }), 400
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Verify contact exists
+            cursor.execute("SELECT id FROM contacts WHERE id = %s", (contact_id,))
+            if not cursor.fetchone():
+                return jsonify({'success': False, 'error': 'Contact not found'}), 404
+
+            # Add interaction
+            cursor.execute("""
+                INSERT INTO contact_interactions
+                (contact_id, interaction_type, interaction_date, subject, notes, amount, source_type)
+                VALUES (%s, %s, NOW(), %s, %s, %s, 'manual')
+            """, (
+                contact_id,
+                data['type'],
+                data.get('subject'),
+                data.get('notes'),
+                data.get('amount')
+            ))
+
+            interaction_id = cursor.lastrowid
+
+            # Update contact last interaction
+            cursor.execute("""
+                UPDATE contacts
+                SET last_interaction = NOW(),
+                    interaction_count = COALESCE(interaction_count, 0) + 1,
+                    updated_at = NOW()
+                WHERE id = %s
+            """, (contact_id,))
+
+        return jsonify({
+            'success': True,
+            'interaction_id': interaction_id
+        }), 201
+
+    except Exception as e:
+        logger.error(f"Add interaction error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@contacts_bp.route('/<int:contact_id>/transactions', methods=['GET'])
+def get_contact_transactions(contact_id):
+    """
+    Get transactions associated with a contact.
+
+    This finds transactions where the merchant matches the contact's company
+    or email domain.
+    """
+    try:
+        limit = int(request.args.get('limit', 20))
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Get contact
+            cursor.execute("""
+                SELECT name, email, company FROM contacts WHERE id = %s
+            """, (contact_id,))
+
+            contact = cursor.fetchone()
+            if not contact:
+                return jsonify({'success': False, 'error': 'Contact not found'}), 404
+
+            name, email, company = contact
+
+            # Build search terms
+            search_terms = []
+            if company:
+                search_terms.append(company)
+            if email:
+                domain = email.split('@')[-1].split('.')[0]
+                search_terms.append(domain)
+            if name:
+                search_terms.append(name.split()[0])
+
+            if not search_terms:
+                return jsonify({
+                    'success': True,
+                    'transactions': [],
+                    'message': 'No searchable terms for this contact'
+                })
+
+            # Search transactions
+            conditions = ' OR '.join(['chase_description LIKE %s'] * len(search_terms))
+            params = [f'%{term}%' for term in search_terms]
+            params.append(limit)
+
+            cursor.execute(f"""
+                SELECT _index, chase_date, chase_description, chase_amount,
+                       business_type, receipt_file
+                FROM transactions
+                WHERE {conditions}
+                ORDER BY chase_date DESC
+                LIMIT %s
+            """, params)
+
+            transactions = []
+            for row in cursor.fetchall():
+                transactions.append({
+                    'id': row[0],
+                    'date': str(row[1]),
+                    'description': row[2],
+                    'amount': float(row[3]) if row[3] else None,
+                    'business_type': row[4],
+                    'has_receipt': bool(row[5])
+                })
+
+        return jsonify({
+            'success': True,
+            'contact_id': contact_id,
+            'search_terms': search_terms,
+            'transactions': transactions,
+            'count': len(transactions)
+        })
+
+    except Exception as e:
+        logger.error(f"Get contact transactions error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 def register_contacts_routes(app):
     """Register contacts routes with the Flask app."""
     app.register_blueprint(contacts_bp)

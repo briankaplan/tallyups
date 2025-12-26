@@ -648,3 +648,232 @@ def register_gmail_routes(app):
     """Register Gmail routes with the Flask app."""
     app.register_blueprint(gmail_bp)
     logger.info("Gmail routes registered at /api/gmail/*")
+
+
+# =============================================================================
+# CONTACT EXTRACTION FROM EMAILS
+# =============================================================================
+
+def extract_contact_from_email(sender_string):
+    """
+    Extract name and email from a sender string like 'John Doe <john@example.com>'.
+
+    Returns:
+        tuple: (name, email)
+    """
+    import re
+    # Pattern: "Name <email>" or just "email"
+    match = re.match(r'^(?:"?([^"<]+)"?\s*)?<?([^>]+@[^>]+)>?$', sender_string.strip())
+    if match:
+        name = match.group(1).strip() if match.group(1) else None
+        email = match.group(2).strip().lower()
+        return name, email
+    return None, sender_string.strip().lower()
+
+
+@gmail_bp.route('/extract-contacts', methods=['POST'])
+def extract_contacts_from_emails():
+    """
+    Extract contacts from Gmail messages and create/update in contacts table.
+
+    Request Body:
+        {
+            "account": "brian@downhome.com",  // Optional
+            "days_back": 90,  // How far back to scan (default 90)
+            "max_messages": 500  // Max messages to process (default 500)
+        }
+
+    Response:
+        {
+            "success": true,
+            "contacts_created": 15,
+            "contacts_updated": 30,
+            "emails_processed": 250
+        }
+    """
+    try:
+        data = request.get_json() or {}
+        account = data.get('account', GMAIL_ACCOUNTS[0])
+        days_back = data.get('days_back', 90)
+        max_messages = data.get('max_messages', 500)
+
+        from pathlib import Path
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+        from db_mysql import get_mysql_db
+
+        token_path = Path('credentials') / f'tokens_{account.replace("@", "_").replace(".", "_")}.json'
+        if not token_path.exists():
+            return jsonify({
+                'success': False,
+                'error': f'Not authenticated for {account}'
+            }), 401
+
+        creds = Credentials.from_authorized_user_file(str(token_path))
+        service = build('gmail', 'v1', credentials=creds)
+
+        # Search for emails in date range
+        from datetime import datetime, timedelta
+        after_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y/%m/%d')
+        query = f'after:{after_date}'
+
+        results = service.users().messages().list(
+            userId='me',
+            q=query,
+            maxResults=max_messages
+        ).execute()
+
+        messages = results.get('messages', [])
+        db = get_mysql_db()
+
+        contacts_created = 0
+        contacts_updated = 0
+        interactions_added = 0
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            for msg in messages:
+                try:
+                    msg_data = service.users().messages().get(
+                        userId='me',
+                        id=msg['id'],
+                        format='metadata',
+                        metadataHeaders=['Subject', 'From', 'Date', 'To']
+                    ).execute()
+
+                    headers = {h['name']: h['value'] for h in msg_data.get('payload', {}).get('headers', [])}
+                    sender = headers.get('From', '')
+                    subject = headers.get('Subject', '')
+                    date_str = headers.get('Date', '')
+
+                    name, email = extract_contact_from_email(sender)
+
+                    if not email or email == account:
+                        continue  # Skip self-emails
+
+                    # Check if contact exists
+                    cursor.execute("SELECT id, name FROM contacts WHERE email = %s", (email,))
+                    existing = cursor.fetchone()
+
+                    if existing:
+                        contact_id = existing[0]
+                        # Update last interaction
+                        cursor.execute("""
+                            UPDATE contacts
+                            SET last_interaction = GREATEST(COALESCE(last_interaction, '1970-01-01'), NOW()),
+                                interaction_count = COALESCE(interaction_count, 0) + 1,
+                                gmail_thread_count = COALESCE(gmail_thread_count, 0) + 1,
+                                updated_at = NOW()
+                            WHERE id = %s
+                        """, (contact_id,))
+                        contacts_updated += 1
+                    else:
+                        # Create new contact
+                        cursor.execute("""
+                            INSERT INTO contacts (name, email, source, last_interaction,
+                                                  interaction_count, gmail_thread_count, created_at, updated_at)
+                            VALUES (%s, %s, 'gmail', NOW(), 1, 1, NOW(), NOW())
+                        """, (name or email.split('@')[0].replace('.', ' ').title(), email))
+                        contact_id = cursor.lastrowid
+                        contacts_created += 1
+
+                    # Add interaction record
+                    cursor.execute("""
+                        INSERT INTO contact_interactions
+                        (contact_id, interaction_type, interaction_date, subject, source_type, source_id)
+                        VALUES (%s, 'email', NOW(), %s, 'gmail', %s)
+                        ON DUPLICATE KEY UPDATE interaction_date = VALUES(interaction_date)
+                    """, (contact_id, subject[:500] if subject else None, msg['id']))
+                    interactions_added += 1
+
+                except Exception as e:
+                    logger.warning(f"Error processing message {msg['id']}: {e}")
+                    continue
+
+        return jsonify({
+            'success': True,
+            'contacts_created': contacts_created,
+            'contacts_updated': contacts_updated,
+            'interactions_added': interactions_added,
+            'emails_processed': len(messages)
+        })
+
+    except Exception as e:
+        logger.error(f"Extract contacts error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@gmail_bp.route('/contact/<int:contact_id>/emails', methods=['GET'])
+def get_contact_emails(contact_id):
+    """
+    Get email history for a specific contact.
+
+    Query Params:
+        limit: Max results (default 20)
+
+    Response:
+        {
+            "success": true,
+            "contact": { ... },
+            "emails": [
+                { "subject": "...", "date": "...", "preview": "..." },
+                ...
+            ]
+        }
+    """
+    try:
+        limit = int(request.args.get('limit', 20))
+
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+
+        with db._pool.connection() as conn:
+            cursor = conn.cursor()
+
+            # Get contact info
+            cursor.execute("""
+                SELECT id, name, email, company, gmail_thread_count, last_email_date
+                FROM contacts WHERE id = %s
+            """, (contact_id,))
+            contact_row = cursor.fetchone()
+
+            if not contact_row:
+                return jsonify({'success': False, 'error': 'Contact not found'}), 404
+
+            contact = {
+                'id': contact_row[0],
+                'name': contact_row[1],
+                'email': contact_row[2],
+                'company': contact_row[3],
+                'thread_count': contact_row[4],
+                'last_email': str(contact_row[5]) if contact_row[5] else None
+            }
+
+            # Get interactions
+            cursor.execute("""
+                SELECT interaction_type, interaction_date, subject, source_id
+                FROM contact_interactions
+                WHERE contact_id = %s AND interaction_type = 'email'
+                ORDER BY interaction_date DESC
+                LIMIT %s
+            """, (contact_id, limit))
+
+            emails = []
+            for row in cursor.fetchall():
+                emails.append({
+                    'type': row[0],
+                    'date': str(row[1]),
+                    'subject': row[2],
+                    'gmail_id': row[3]
+                })
+
+        return jsonify({
+            'success': True,
+            'contact': contact,
+            'emails': emails
+        })
+
+    except Exception as e:
+        logger.error(f"Get contact emails error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
