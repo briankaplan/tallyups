@@ -214,10 +214,11 @@ actor APIClient {
         var request = try makeRequest(path: "/api/notifications/register-device", method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        let deviceName = await MainActor.run { UIDevice.current.name }
         let body: [String: Any] = [
             "token": token,
             "platform": "ios",
-            "device_name": UIDevice.current.name,
+            "device_name": deviceName,
             "app_version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
