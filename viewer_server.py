@@ -706,6 +706,36 @@ except ImportError as e:
 except Exception as e:
     logger.warning(f"2FA error: {e}")
 
+# Gmail Integration
+try:
+    from routes.gmail import gmail_bp
+    app.register_blueprint(gmail_bp)
+    logger.info("Registered blueprint: gmail (email receipt processing)")
+except ImportError as e:
+    logger.warning(f"Gmail blueprint not available: {e}")
+except Exception as e:
+    logger.warning(f"Gmail blueprint error: {e}")
+
+# Calendar Integration
+try:
+    from routes.calendar import calendar_bp
+    app.register_blueprint(calendar_bp)
+    logger.info("Registered blueprint: calendar (Google Calendar integration)")
+except ImportError as e:
+    logger.warning(f"Calendar blueprint not available: {e}")
+except Exception as e:
+    logger.warning(f"Calendar blueprint error: {e}")
+
+# Contacts/ATLAS Integration
+try:
+    from routes.contacts import contacts_bp
+    app.register_blueprint(contacts_bp)
+    logger.info("Registered blueprint: contacts (ATLAS relationship intelligence)")
+except ImportError as e:
+    logger.warning(f"Contacts blueprint not available: {e}")
+except Exception as e:
+    logger.warning(f"Contacts blueprint error: {e}")
+
 # Set up API monitoring
 try:
     from monitoring import setup_flask_monitoring, get_monitor

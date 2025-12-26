@@ -1,7 +1,7 @@
-// Service Worker for Tallyups PWA - v12
-const CACHE_NAME = 'tallyups-v12';
-const STATIC_CACHE = 'tallyups-static-v12';
-const DYNAMIC_CACHE = 'tallyups-dynamic-v12';
+// Service Worker for Tallyups PWA - v13
+const CACHE_NAME = 'tallyups-v13';
+const STATIC_CACHE = 'tallyups-static-v13';
+const DYNAMIC_CACHE = 'tallyups-dynamic-v13';
 const OFFLINE_QUEUE = 'tallyups-offline-queue';
 
 // Core app shell to cache
@@ -18,7 +18,7 @@ const APP_SHELL = [
 
 // Install - cache app shell
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker v12...');
+  console.log('[SW] Installing service worker v13...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
@@ -33,7 +33,7 @@ self.addEventListener('install', (event) => {
 
 // Activate - clean old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker v12...');
+  console.log('[SW] Activating service worker v13...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
