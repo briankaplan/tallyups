@@ -660,9 +660,59 @@ struct ReceiptEditorView: View {
         // Apply calendar event as context
         notes = "Meeting: \(event.title)"
         if let attendees = event.attendees, !attendees.isEmpty {
-            // Add first few attendees to selected
-            // TODO: Match with contacts
+            // Match attendees with stored contacts using fuzzy name matching
+            matchAttendeesWithContacts(attendees)
         }
+    }
+
+    /// Match calendar event attendees with stored contacts using fuzzy name matching
+    private func matchAttendeesWithContacts(_ attendees: [String]) {
+        for attendeeName in attendees.prefix(5) {
+            // Clean and normalize the attendee name
+            let cleanedName = attendeeName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+            // Try to find a matching contact
+            if let matchedContact = findMatchingContact(for: cleanedName) {
+                // Avoid duplicates
+                if !selectedAttendees.contains(where: { $0.id == matchedContact.id }) {
+                    selectedAttendees.append(matchedContact)
+                }
+            }
+        }
+    }
+
+    /// Find a contact that matches the given name using fuzzy matching
+    private func findMatchingContact(for name: String) -> Contact? {
+        let nameParts = name.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+
+        for contact in suggestedContacts {
+            let contactName = contact.name.lowercased()
+
+            // Exact match
+            if contactName == name {
+                return contact
+            }
+
+            // Check if contact name contains all parts of the search name
+            let allPartsMatch = nameParts.allSatisfy { part in
+                contactName.contains(part)
+            }
+            if allPartsMatch && !nameParts.isEmpty {
+                return contact
+            }
+
+            // Check if any name part matches significantly
+            let contactParts = contactName.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+            for namePart in nameParts where namePart.count >= 3 {
+                for contactPart in contactParts where contactPart.count >= 3 {
+                    if namePart == contactPart || contactPart.hasPrefix(namePart) || namePart.hasPrefix(contactPart) {
+                        return contact
+                    }
+                }
+            }
+        }
+
+        return nil
     }
 
     // MARK: - Attendees Section

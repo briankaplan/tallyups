@@ -355,6 +355,9 @@ struct TransactionDetailView: View {
     @ObservedObject var viewModel: TransactionsViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingReceiptPicker = false
+    @State private var showingLinkedReceipts = false
+    @State private var linkedReceipts: [Receipt] = []
+    @State private var isLoadingReceipts = false
 
     var body: some View {
         NavigationStack {
@@ -384,6 +387,17 @@ struct TransactionDetailView: View {
             }
             .sheet(isPresented: $showingReceiptPicker) {
                 ReceiptPickerView(transaction: transaction, viewModel: viewModel)
+            }
+            .sheet(isPresented: $showingLinkedReceipts) {
+                LinkedReceiptsView(
+                    transaction: transaction,
+                    receipts: linkedReceipts,
+                    onUnlink: { receiptId in
+                        Task {
+                            await unlinkReceipt(receiptId: receiptId)
+                        }
+                    }
+                )
             }
         }
     }
@@ -427,20 +441,33 @@ struct TransactionDetailView: View {
                 .foregroundColor(.white)
 
             if transaction.hasReceipt {
-                HStack {
-                    Image(systemName: "doc.fill")
-                        .foregroundColor(.green)
-                    Text("\(transaction.receiptCount) receipt\(transaction.receiptCount == 1 ? "" : "s") linked")
-                        .foregroundColor(.white)
-                    Spacer()
-                    Button("View") {
-                        // TODO: Show linked receipts
+                Button(action: {
+                    Task {
+                        await loadLinkedReceipts()
+                        showingLinkedReceipts = true
                     }
-                    .foregroundColor(.tallyAccent)
+                }) {
+                    HStack {
+                        Image(systemName: "doc.fill")
+                            .foregroundColor(.green)
+                        Text("\(transaction.receiptCount) receipt\(transaction.receiptCount == 1 ? "" : "s") linked")
+                            .foregroundColor(.white)
+                        Spacer()
+                        if isLoadingReceipts {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        } else {
+                            Text("View")
+                                .foregroundColor(.tallyAccent)
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding()
+                    .background(Color.tallyCard)
+                    .cornerRadius(12)
                 }
-                .padding()
-                .background(Color.tallyCard)
-                .cornerRadius(12)
             } else {
                 Button(action: { showingReceiptPicker = true }) {
                     HStack {
@@ -458,6 +485,28 @@ struct TransactionDetailView: View {
                             .strokeBorder(Color.tallyAccent.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [5]))
                     )
                 }
+            }
+        }
+    }
+
+    private func loadLinkedReceipts() async {
+        isLoadingReceipts = true
+        defer { isLoadingReceipts = false }
+
+        do {
+            linkedReceipts = try await APIClient.shared.fetchLinkedReceipts(transactionIndex: transaction.index)
+        } catch {
+            print("Failed to load linked receipts: \(error)")
+            linkedReceipts = []
+        }
+    }
+
+    private func unlinkReceipt(receiptId: Int) async {
+        let success = await viewModel.unlinkReceipt(transactionIndex: transaction.index, receiptId: receiptId)
+        if success {
+            linkedReceipts.removeAll { $0.id == receiptId }
+            if linkedReceipts.isEmpty {
+                showingLinkedReceipts = false
             }
         }
     }
@@ -738,6 +787,195 @@ struct ReceiptMatchCard: View {
             .padding()
             .background(Color.tallyCard)
             .cornerRadius(12)
+        }
+    }
+}
+
+// MARK: - Linked Receipts View
+
+struct LinkedReceiptsView: View {
+    let transaction: Transaction
+    let receipts: [Receipt]
+    let onUnlink: (Int) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedReceipt: Receipt?
+    @State private var showingFullImage = false
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.tallyBackground.ignoresSafeArea()
+
+                if receipts.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                        Text("No receipts linked")
+                            .foregroundColor(.gray)
+                    }
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(receipts) { receipt in
+                                LinkedReceiptCard(
+                                    receipt: receipt,
+                                    onView: {
+                                        selectedReceipt = receipt
+                                        showingFullImage = true
+                                    },
+                                    onUnlink: {
+                                        onUnlink(receipt.id)
+                                    }
+                                )
+                            }
+                        }
+                        .padding()
+                    }
+                }
+            }
+            .navigationTitle("Linked Receipts")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showingFullImage) {
+                if let receipt = selectedReceipt {
+                    ReceiptImageViewer(receipt: receipt)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Linked Receipt Card
+
+struct LinkedReceiptCard: View {
+    let receipt: Receipt
+    let onView: () -> Void
+    let onUnlink: () -> Void
+    @State private var showingUnlinkConfirm = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Receipt Image
+            AsyncImage(url: URL(string: receipt.imageURL ?? "")) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 300)
+                case .failure, .empty:
+                    ZStack {
+                        Color.tallyCard
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.gray)
+                    }
+                    .frame(height: 150)
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .cornerRadius(12)
+            .onTapGesture { onView() }
+
+            // Receipt Details
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(receipt.displayMerchant)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    HStack {
+                        Text(receipt.formattedAmount)
+                            .font(.subheadline)
+                            .foregroundColor(.tallyAccent)
+                        Text(receipt.formattedDate)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+
+                Spacer()
+
+                Button(action: { showingUnlinkConfirm = true }) {
+                    Image(systemName: "link.badge.plus")
+                        .rotationEffect(.degrees(45))
+                        .font(.title3)
+                        .foregroundColor(.orange)
+                }
+            }
+            .padding()
+        }
+        .background(Color.tallyCard)
+        .cornerRadius(16)
+        .confirmationDialog(
+            "Unlink this receipt?",
+            isPresented: $showingUnlinkConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Unlink", role: .destructive) {
+                onUnlink()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+}
+
+// MARK: - Receipt Image Viewer
+
+struct ReceiptImageViewer: View {
+    let receipt: Receipt
+    @Environment(\.dismiss) private var dismiss
+    @State private var scale: CGFloat = 1.0
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+
+                AsyncImage(url: URL(string: receipt.imageURL ?? "")) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFit()
+                            .scaleEffect(scale)
+                            .gesture(
+                                MagnificationGesture()
+                                    .onChanged { value in
+                                        scale = value.magnitude
+                                    }
+                                    .onEnded { _ in
+                                        withAnimation(.spring()) {
+                                            scale = max(1.0, min(scale, 3.0))
+                                        }
+                                    }
+                            )
+                            .onTapGesture(count: 2) {
+                                withAnimation(.spring()) {
+                                    scale = scale > 1.0 ? 1.0 : 2.0
+                                }
+                            }
+                    case .failure, .empty:
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+            }
+            .navigationTitle(receipt.displayMerchant)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
     }
 }

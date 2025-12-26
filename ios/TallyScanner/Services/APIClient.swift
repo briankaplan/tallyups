@@ -207,6 +207,29 @@ actor APIClient {
         clearCredentials()
     }
 
+    // MARK: - Push Notifications
+
+    /// Register device push token with backend
+    func registerPushToken(_ token: String) async throws {
+        var request = try makeRequest(path: "/api/notifications/register-device", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "token": token,
+            "platform": "ios",
+            "device_name": UIDevice.current.name,
+            "app_version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError
+        }
+    }
+
     // MARK: - Receipt Upload (Main Scanner Endpoint)
 
     /// Upload a receipt image to the server
