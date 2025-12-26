@@ -12,7 +12,10 @@
     { href: '/viewer', label: 'Match', icon: 'link' },
     { href: '/incoming', label: 'Inbox', icon: 'inbox' },
     { href: '/library', label: 'Library', icon: 'book' },
-    { href: '/reports', label: 'Reports', icon: 'file-text' }
+    { href: '/reports', label: 'Reports', icon: 'file-text' },
+    { href: '/gmail', label: 'Gmail', icon: 'mail' },
+    { href: '/contacts', label: 'Contacts', icon: 'users' },
+    { href: '/bank-accounts', label: 'Banks', icon: 'credit-card' }
   ];
 
   const MOBILE_NAV_ITEMS = [
@@ -35,7 +38,10 @@
     search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
     clipboard: '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/>',
     menu: '<line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>',
-    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
+    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>',
+    users: '<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>',
+    'credit-card': '<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>'
   };
 
   function getIcon(name, size = 20) {
@@ -64,7 +70,8 @@
       '/reports': 'Reports',
       '/settings': 'Settings',
       '/gmail': 'Gmail',
-      '/contacts': 'Contacts'
+      '/contacts': 'Contacts',
+      '/bank-accounts': 'Bank Accounts'
     };
     return titles[path] || 'TallyUps';
   }
