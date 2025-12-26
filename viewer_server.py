@@ -18388,13 +18388,35 @@ def get_library_receipts():
         paginated_receipts = all_receipts[offset:offset + limit]
         has_more = (offset + limit) < total
 
+        # Get real counts from database for favorites and duplicates
+        favorites_count = 0
+        duplicates_count = 0
+        try:
+            conn2, _ = db.get_connection()
+            cursor2 = conn2.cursor()
+
+            # Count favorites (using receipt_type/receipt_id schema)
+            cursor2.execute("SELECT COUNT(*) FROM receipt_favorites")
+            row = cursor2.fetchone()
+            favorites_count = row[0] if row else 0
+
+            # Count unresolved duplicates
+            cursor2.execute("SELECT COUNT(*) FROM receipt_duplicates WHERE resolved = FALSE")
+            row = cursor2.fetchone()
+            duplicates_count = row[0] if row else 0
+
+            db.return_connection(conn2)
+        except Exception as e:
+            # Tables might not exist yet - that's OK, use 0
+            logger.debug(f"Could not get favorites/duplicates counts: {e}")
+
         # Build unified counts object for frontend compatibility
         counts = {
             'total': total,
-            'favorites': 0,  # TODO: Count from receipt_favorites table
+            'favorites': favorites_count,
             'recent': sum(1 for r in all_receipts if r.get('is_recent')),
             'needs_review': verification_counts.get('needs_review', 0),
-            'duplicates': 0,  # TODO: Implement duplicate detection
+            'duplicates': duplicates_count,
             'verified': verification_counts.get('verified', 0),
             'matched': match_counts.get('matched', 0),
             'processing': 0,
@@ -19603,6 +19625,408 @@ def delete_attendee(attendee_id):
 
         return jsonify({'ok': True, 'message': 'Attendee removed'})
     except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# =============================================================================
+# GENIUS FEATURES - Analytics, Duplicate Detection, AI Insights
+# =============================================================================
+
+@app.route("/api/library/analytics", methods=["GET"])
+def get_spending_analytics():
+    """
+    Get comprehensive spending analytics.
+
+    Query params:
+    - period: 'week', 'month', 'quarter', 'year', 'all' (default: month)
+    - business_type: filter by business type
+
+    Returns spending trends, category breakdown, merchant frequency, etc.
+    """
+    if not is_authenticated():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        period = request.args.get('period', 'month')
+        business_type = request.args.get('business_type')
+
+        conn, _ = db.get_connection()
+        cursor = conn.cursor()
+
+        # Determine date range
+        if period == 'week':
+            date_filter = "chase_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"
+        elif period == 'month':
+            date_filter = "chase_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)"
+        elif period == 'quarter':
+            date_filter = "chase_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)"
+        elif period == 'year':
+            date_filter = "chase_date >= DATE_SUB(CURDATE(), INTERVAL 365 DAY)"
+        else:
+            date_filter = "1=1"
+
+        # Add business type filter
+        bt_filter = f"AND business_type = '{business_type}'" if business_type else ""
+
+        # Total spending
+        cursor.execute(f"""
+            SELECT
+                COUNT(*) as transaction_count,
+                COALESCE(SUM(ABS(chase_amount)), 0) as total_spent,
+                COALESCE(AVG(ABS(chase_amount)), 0) as avg_transaction,
+                COALESCE(MAX(ABS(chase_amount)), 0) as largest_transaction
+            FROM transactions
+            WHERE {date_filter} {bt_filter} AND chase_amount < 0
+        """)
+        totals = dict(cursor.fetchone() or {})
+
+        # Spending by category
+        cursor.execute(f"""
+            SELECT
+                COALESCE(chase_category, 'Uncategorized') as category,
+                COUNT(*) as count,
+                SUM(ABS(chase_amount)) as total
+            FROM transactions
+            WHERE {date_filter} {bt_filter} AND chase_amount < 0
+            GROUP BY chase_category
+            ORDER BY total DESC
+            LIMIT 10
+        """)
+        by_category = [dict(row) for row in cursor.fetchall()]
+
+        # Spending by business type
+        cursor.execute(f"""
+            SELECT
+                COALESCE(business_type, 'Personal') as business_type,
+                COUNT(*) as count,
+                SUM(ABS(chase_amount)) as total
+            FROM transactions
+            WHERE {date_filter} AND chase_amount < 0
+            GROUP BY business_type
+            ORDER BY total DESC
+        """)
+        by_business = [dict(row) for row in cursor.fetchall()]
+
+        # Top merchants
+        cursor.execute(f"""
+            SELECT
+                chase_description as merchant,
+                COUNT(*) as visit_count,
+                SUM(ABS(chase_amount)) as total_spent,
+                AVG(ABS(chase_amount)) as avg_spent
+            FROM transactions
+            WHERE {date_filter} {bt_filter} AND chase_amount < 0
+            GROUP BY chase_description
+            ORDER BY total_spent DESC
+            LIMIT 10
+        """)
+        top_merchants = [dict(row) for row in cursor.fetchall()]
+
+        # Daily spending trend (last 30 days)
+        cursor.execute(f"""
+            SELECT
+                DATE(chase_date) as date,
+                SUM(ABS(chase_amount)) as total
+            FROM transactions
+            WHERE chase_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+              AND chase_amount < 0 {bt_filter}
+            GROUP BY DATE(chase_date)
+            ORDER BY date
+        """)
+        daily_trend = [{'date': str(row['date']), 'total': float(row['total'])} for row in cursor.fetchall()]
+
+        # Receipts with/without images
+        cursor.execute(f"""
+            SELECT
+                SUM(CASE WHEN receipt_file IS NOT NULL AND receipt_file != '' THEN 1 ELSE 0 END) as with_receipt,
+                SUM(CASE WHEN receipt_file IS NULL OR receipt_file = '' THEN 1 ELSE 0 END) as without_receipt
+            FROM transactions
+            WHERE {date_filter} {bt_filter}
+        """)
+        receipt_stats = dict(cursor.fetchone() or {})
+
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'period': period,
+            'totals': {
+                'transaction_count': int(totals.get('transaction_count', 0)),
+                'total_spent': float(totals.get('total_spent', 0)),
+                'avg_transaction': float(totals.get('avg_transaction', 0)),
+                'largest_transaction': float(totals.get('largest_transaction', 0))
+            },
+            'by_category': by_category,
+            'by_business_type': by_business,
+            'top_merchants': top_merchants,
+            'daily_trend': daily_trend,
+            'receipt_coverage': {
+                'with_receipt': int(receipt_stats.get('with_receipt', 0)),
+                'without_receipt': int(receipt_stats.get('without_receipt', 0))
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Analytics error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/detect-duplicates", methods=["POST"])
+def detect_duplicate_receipts():
+    """
+    Scan for duplicate receipts based on amount, date, and merchant similarity.
+
+    Finds transactions within 3 days of each other with same amount and similar merchant.
+    """
+    if not is_authenticated():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn, _ = db.get_connection()
+        cursor = conn.cursor()
+
+        # Find potential duplicates: same amount, within 3 days, similar merchant
+        cursor.execute("""
+            SELECT
+                t1._index as id1,
+                t2._index as id2,
+                t1.chase_description as merchant1,
+                t2.chase_description as merchant2,
+                t1.chase_amount as amount,
+                t1.chase_date as date1,
+                t2.chase_date as date2,
+                ABS(DATEDIFF(t1.chase_date, t2.chase_date)) as days_apart
+            FROM transactions t1
+            JOIN transactions t2 ON t1._index < t2._index
+            WHERE t1.chase_amount = t2.chase_amount
+              AND ABS(DATEDIFF(t1.chase_date, t2.chase_date)) <= 3
+              AND (
+                  t1.chase_description = t2.chase_description
+                  OR SOUNDEX(t1.chase_description) = SOUNDEX(t2.chase_description)
+                  OR LOCATE(SUBSTRING(t1.chase_description, 1, 10), t2.chase_description) > 0
+              )
+            ORDER BY t1.chase_date DESC
+            LIMIT 100
+        """)
+
+        duplicates = []
+        for row in cursor.fetchall():
+            # Calculate similarity score
+            m1 = (row['merchant1'] or '').lower()
+            m2 = (row['merchant2'] or '').lower()
+            if m1 == m2:
+                similarity = 1.0
+            elif m1 in m2 or m2 in m1:
+                similarity = 0.9
+            else:
+                similarity = 0.7  # SOUNDEX match
+
+            dup = {
+                'id1': row['id1'],
+                'id2': row['id2'],
+                'merchant1': row['merchant1'],
+                'merchant2': row['merchant2'],
+                'amount': float(row['amount']) if row['amount'] else 0,
+                'date1': str(row['date1']),
+                'date2': str(row['date2']),
+                'days_apart': row['days_apart'],
+                'similarity': similarity
+            }
+            duplicates.append(dup)
+
+            # Insert into receipt_duplicates table for tracking
+            try:
+                cursor.execute("""
+                    INSERT IGNORE INTO receipt_duplicates
+                    (original_transaction_id, duplicate_transaction_id, similarity_score)
+                    VALUES (%s, %s, %s)
+                """, (row['id1'], row['id2'], similarity))
+            except:
+                pass  # Table might not exist yet
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'duplicates_found': len(duplicates),
+            'duplicates': duplicates
+        })
+
+    except Exception as e:
+        logger.error(f"Duplicate detection error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/duplicates/<int:dup_id>/resolve", methods=["POST"])
+def resolve_duplicate(dup_id):
+    """
+    Resolve a duplicate pair.
+
+    Body:
+    - resolution: 'keep_original', 'keep_duplicate', 'both_valid', 'merge'
+    """
+    if not is_authenticated():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        data = request.get_json() or {}
+        resolution = data.get('resolution', 'both_valid')
+
+        conn, _ = db.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE receipt_duplicates
+            SET resolved = TRUE, resolution = %s, resolved_at = NOW()
+            WHERE id = %s
+        """, (resolution, dup_id))
+
+        conn.commit()
+        db.return_connection(conn)
+
+        return jsonify({'ok': True, 'message': f'Duplicate resolved as: {resolution}'})
+
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route("/api/library/insights", methods=["GET"])
+def get_ai_insights():
+    """
+    Generate AI-powered insights about spending patterns.
+
+    Returns actionable insights like:
+    - Unusual spending alerts
+    - Subscription detection
+    - Category recommendations
+    - Budget suggestions
+    """
+    if not is_authenticated():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        conn, _ = db.get_connection()
+        cursor = conn.cursor()
+
+        insights = []
+
+        # Insight 1: Recurring charges (potential subscriptions)
+        cursor.execute("""
+            SELECT
+                chase_description as merchant,
+                chase_amount as amount,
+                COUNT(*) as occurrences,
+                GROUP_CONCAT(DISTINCT DATE_FORMAT(chase_date, '%Y-%m') ORDER BY chase_date) as months
+            FROM transactions
+            WHERE chase_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+              AND chase_amount < 0
+            GROUP BY chase_description, chase_amount
+            HAVING occurrences >= 2
+            ORDER BY occurrences DESC
+            LIMIT 10
+        """)
+
+        for row in cursor.fetchall():
+            insights.append({
+                'type': 'subscription',
+                'icon': '🔄',
+                'title': f"Recurring charge detected",
+                'description': f"{row['merchant']} - ${abs(float(row['amount'])):.2f} ({row['occurrences']} times)",
+                'suggestion': "Consider reviewing if this subscription is still needed",
+                'priority': 'medium'
+            })
+
+        # Insight 2: Unusual large transactions
+        cursor.execute("""
+            SELECT AVG(ABS(chase_amount)) as avg_amount, STDDEV(ABS(chase_amount)) as std_amount
+            FROM transactions
+            WHERE chase_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+              AND chase_amount < 0
+        """)
+        stats = cursor.fetchone()
+        if stats and stats['avg_amount']:
+            threshold = float(stats['avg_amount']) + (2 * float(stats['std_amount'] or 0))
+
+            cursor.execute("""
+                SELECT chase_description, chase_amount, chase_date
+                FROM transactions
+                WHERE chase_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                  AND ABS(chase_amount) > %s
+                ORDER BY ABS(chase_amount) DESC
+                LIMIT 5
+            """, (threshold,))
+
+            for row in cursor.fetchall():
+                insights.append({
+                    'type': 'unusual',
+                    'icon': '⚠️',
+                    'title': "Unusually large transaction",
+                    'description': f"{row['chase_description']} - ${abs(float(row['chase_amount'])):.2f} on {row['chase_date']}",
+                    'suggestion': "Verify this transaction is expected",
+                    'priority': 'high'
+                })
+
+        # Insight 3: Missing receipts for large transactions
+        cursor.execute("""
+            SELECT COUNT(*) as missing_count, SUM(ABS(chase_amount)) as missing_total
+            FROM transactions
+            WHERE chase_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+              AND chase_amount < 0
+              AND ABS(chase_amount) > 50
+              AND (receipt_file IS NULL OR receipt_file = '')
+        """)
+        missing = cursor.fetchone()
+        if missing and missing['missing_count'] > 0:
+            insights.append({
+                'type': 'missing_receipt',
+                'icon': '📄',
+                'title': "Missing receipts for large transactions",
+                'description': f"{missing['missing_count']} transactions over $50 without receipts (${float(missing['missing_total']):.2f} total)",
+                'suggestion': "Add receipts to improve record keeping",
+                'priority': 'medium'
+            })
+
+        # Insight 4: Top spending category this month vs last month
+        cursor.execute("""
+            SELECT
+                chase_category,
+                SUM(CASE WHEN chase_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN ABS(chase_amount) ELSE 0 END) as this_month,
+                SUM(CASE WHEN chase_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND chase_date < DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN ABS(chase_amount) ELSE 0 END) as last_month
+            FROM transactions
+            WHERE chase_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+              AND chase_amount < 0
+            GROUP BY chase_category
+            HAVING this_month > 0 AND last_month > 0
+            ORDER BY (this_month - last_month) DESC
+            LIMIT 3
+        """)
+
+        for row in cursor.fetchall():
+            if row['this_month'] and row['last_month']:
+                change = ((float(row['this_month']) - float(row['last_month'])) / float(row['last_month'])) * 100
+                if abs(change) > 20:
+                    direction = "increased" if change > 0 else "decreased"
+                    emoji = "📈" if change > 0 else "📉"
+                    insights.append({
+                        'type': 'trend',
+                        'icon': emoji,
+                        'title': f"{row['chase_category'] or 'Unknown'} spending {direction}",
+                        'description': f"${float(row['this_month']):.2f} this month vs ${float(row['last_month']):.2f} last month ({abs(change):.0f}% change)",
+                        'suggestion': "Review spending in this category" if change > 0 else "Great job reducing spending!",
+                        'priority': 'low' if change < 0 else 'medium'
+                    })
+
+        db.return_connection(conn)
+
+        return jsonify({
+            'ok': True,
+            'insights': insights,
+            'generated_at': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Insights error: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
@@ -29089,6 +29513,41 @@ def get_library_receipt_detail(receipt_id):
         r = dict(row)
         receipt_url = r.get('r2_url') or r.get('receipt_url') or r.get('receipt_file')
 
+        # Load tags for this receipt
+        tags = []
+        is_favorite = False
+        try:
+            conn2, _ = db.get_connection()
+            cursor2 = conn2.cursor()
+
+            # Determine receipt type and ID
+            if table == 'transactions':
+                receipt_type = 'transaction'
+                rid = r.get('_index') or r.get('id')
+            else:
+                receipt_type = 'incoming'
+                rid = r.get('id')
+
+            if rid:
+                # Get tags (join with receipt_tags to get names)
+                cursor2.execute("""
+                    SELECT t.name FROM receipt_tag_assignments rta
+                    JOIN receipt_tags t ON rta.tag_id = t.id
+                    WHERE rta.receipt_type = %s AND rta.receipt_id = %s
+                """, (receipt_type, rid))
+                tags = [row2[0] for row2 in cursor2.fetchall()]
+
+                # Check if favorited
+                cursor2.execute(
+                    "SELECT 1 FROM receipt_favorites WHERE receipt_type = %s AND receipt_id = %s LIMIT 1",
+                    (receipt_type, rid)
+                )
+                is_favorite = cursor2.fetchone() is not None
+
+            db.return_connection(conn2)
+        except Exception as e:
+            logger.debug(f"Could not load tags/favorites: {e}")
+
         return jsonify({
             'ok': True,
             'receipt': {
@@ -29107,7 +29566,8 @@ def get_library_receipt_detail(receipt_id):
                 'ocr_date': str(r.get('ocr_date') or ''),
                 'ocr_confidence': float(r.get('ocr_confidence') or 0),
                 'notes': r.get('notes') or '',
-                'tags': []  # TODO: Load from receipt_item_tags
+                'tags': tags,
+                'is_favorite': is_favorite
             }
         })
 
