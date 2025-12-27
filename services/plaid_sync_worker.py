@@ -228,7 +228,7 @@ class PlaidSyncWorker:
                            last_successful_sync, last_sync_attempt
                     FROM plaid_items
                     WHERE status = 'active'
-                    ORDER BY last_successful_sync ASC NULLS FIRST
+                    ORDER BY last_successful_sync IS NOT NULL, last_successful_sync ASC
                 """)
                 items = cursor.fetchall()
             finally:
