@@ -301,7 +301,7 @@ def get_current_user_from_request():
         if expected_key and admin_key == expected_key:
             # Admin key users are always admins
             user = {
-                'user_id': 'admin-00000000-0000-0000-0000-000000000000',
+                'user_id': '00000000-0000-0000-0000-000000000001',
                 'role': 'admin',
                 'auth_method': 'admin_key'
             }
@@ -310,7 +310,7 @@ def get_current_user_from_request():
     if not user and session.get('authenticated'):
         # Session-based auth is for admin user
         user = {
-            'user_id': session.get('user_id', 'admin-00000000-0000-0000-0000-000000000000'),
+            'user_id': session.get('user_id', '00000000-0000-0000-0000-000000000001'),
             'role': session.get('role', 'admin'),
             'auth_method': 'session'
         }

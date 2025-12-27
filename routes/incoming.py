@@ -30,9 +30,10 @@ incoming_bp = Blueprint('incoming', __name__, url_prefix='/api/incoming')
 
 # Import user scoping helpers
 try:
-    from db_user_scope import get_current_user_id, ADMIN_USER_ID
+    from db_user_scope import get_current_user_id, ADMIN_USER_ID, USER_SCOPING_ENABLED
 except ImportError:
-    ADMIN_USER_ID = 'admin-00000000-0000-0000-0000-000000000000'
+    ADMIN_USER_ID = '00000000-0000-0000-0000-000000000001'
+    USER_SCOPING_ENABLED = False
     def get_current_user_id():
         return ADMIN_USER_ID
 
@@ -124,20 +125,31 @@ def get_incoming_receipts():
 
         conn, db_type = get_db_connection()
 
-        # USER SCOPING: Filter by current user's receipts
-        user_id = get_current_user_id()
-
-        if status == 'all':
-            query = 'SELECT * FROM incoming_receipts WHERE user_id = %s ORDER BY received_date DESC LIMIT %s'
-            cursor = db_execute(conn, db_type, query, (user_id, limit))
+        # USER SCOPING: Filter by current user's receipts (if enabled)
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            if status == 'all':
+                query = 'SELECT * FROM incoming_receipts WHERE user_id = %s ORDER BY received_date DESC LIMIT %s'
+                cursor = db_execute(conn, db_type, query, (user_id, limit))
+            else:
+                query = 'SELECT * FROM incoming_receipts WHERE user_id = %s AND status = %s ORDER BY received_date DESC LIMIT %s'
+                cursor = db_execute(conn, db_type, query, (user_id, status, limit))
         else:
-            query = 'SELECT * FROM incoming_receipts WHERE user_id = %s AND status = %s ORDER BY received_date DESC LIMIT %s'
-            cursor = db_execute(conn, db_type, query, (user_id, status, limit))
+            # No user scoping - return all receipts
+            if status == 'all':
+                query = 'SELECT * FROM incoming_receipts ORDER BY received_date DESC LIMIT %s'
+                cursor = db_execute(conn, db_type, query, (limit,))
+            else:
+                query = 'SELECT * FROM incoming_receipts WHERE status = %s ORDER BY received_date DESC LIMIT %s'
+                cursor = db_execute(conn, db_type, query, (status, limit))
 
         receipts = [dict(row) for row in cursor.fetchall()]
 
-        # Get counts by status (for current user only)
-        cursor = db_execute(conn, db_type, 'SELECT status, COUNT(*) as count FROM incoming_receipts WHERE user_id = %s GROUP BY status', (user_id,))
+        # Get counts by status
+        if USER_SCOPING_ENABLED:
+            cursor = db_execute(conn, db_type, 'SELECT status, COUNT(*) as count FROM incoming_receipts WHERE user_id = %s GROUP BY status', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, 'SELECT status, COUNT(*) as count FROM incoming_receipts GROUP BY status', ())
         status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
 
         return_db_connection(conn)

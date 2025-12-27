@@ -101,7 +101,7 @@ def get_user_id():
     from flask import session, g
 
     # Admin user ID - all existing data is assigned to this user
-    ADMIN_USER_ID = 'admin-00000000-0000-0000-0000-000000000000'
+    ADMIN_USER_ID = '00000000-0000-0000-0000-000000000001'
 
     # First check g.user_id (set by JWT auth middleware)
     if hasattr(g, 'user_id') and g.user_id:

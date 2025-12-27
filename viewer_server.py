@@ -76,7 +76,7 @@ from gemini_utils import generate_content_with_fallback, analyze_receipt_image, 
 try:
     from receipt_ocr_service import ReceiptOCRService, extract_receipt, verify_receipt
     OCR_SERVICE_AVAILABLE = True
-    print("✅ Receipt OCR Service loaded (Gemini + Ollama fallback)")
+    print("✅ Receipt OCR Service loaded (OpenAI → Gemini → Ollama fallback)")
 except ImportError as e:
     OCR_SERVICE_AVAILABLE = False
     print(f"⚠️ Receipt OCR Service not available: {e}")
@@ -105,15 +105,17 @@ except ImportError:
 try:
     from db_user_scope import (
         get_current_user_id, is_admin_user, add_user_scope,
-        user_scoped_query, user_scoped_count, UserScopedDB, ADMIN_USER_ID
+        user_scoped_query, user_scoped_count, UserScopedDB, ADMIN_USER_ID,
+        USER_SCOPING_ENABLED
     )
     USER_SCOPING_AVAILABLE = True
     print("✅ User scoping module loaded")
 except ImportError as e:
     USER_SCOPING_AVAILABLE = False
+    USER_SCOPING_ENABLED = False
     print(f"⚠️ User scoping not available: {e}")
     # Fallback functions
-    ADMIN_USER_ID = 'admin-00000000-0000-0000-0000-000000000000'
+    ADMIN_USER_ID = '00000000-0000-0000-0000-000000000001'
     def get_current_user_id():
         return ADMIN_USER_ID
     def is_admin_user():
@@ -769,6 +771,56 @@ except ImportError as e:
     logger.warning(f"Contacts blueprint not available: {e}")
 except Exception as e:
     logger.warning(f"Contacts blueprint error: {e}")
+
+# ATLAS Relationship Intelligence (extracted routes)
+try:
+    from routes.atlas import atlas_bp
+    app.register_blueprint(atlas_bp)
+    logger.info("Registered blueprint: atlas (relationship intelligence API)")
+except ImportError as e:
+    logger.warning(f"Atlas blueprint not available: {e}")
+except Exception as e:
+    logger.warning(f"Atlas blueprint error: {e}")
+
+# Transaction Management (extracted routes)
+try:
+    from routes.transactions import transactions_bp
+    app.register_blueprint(transactions_bp)
+    logger.info("Registered blueprint: transactions (CRUD & linking)")
+except ImportError as e:
+    logger.warning(f"Transactions blueprint not available: {e}")
+except Exception as e:
+    logger.warning(f"Transactions blueprint error: {e}")
+
+# OCR Processing (extracted routes)
+try:
+    from routes.ocr import ocr_bp
+    app.register_blueprint(ocr_bp)
+    logger.info("Registered blueprint: ocr (receipt processing & verification)")
+except ImportError as e:
+    logger.warning(f"OCR blueprint not available: {e}")
+except Exception as e:
+    logger.warning(f"OCR blueprint error: {e}")
+
+# AI Processing (extracted routes - Gemini categorization, Apple splits)
+try:
+    from routes.ai import ai_bp
+    app.register_blueprint(ai_bp)
+    logger.info("Registered blueprint: ai (Gemini categorization & Apple splits)")
+except ImportError as e:
+    logger.warning(f"AI blueprint not available: {e}")
+except Exception as e:
+    logger.warning(f"AI blueprint error: {e}")
+
+# Contact Hub (extracted routes - ATLAS CRM integration)
+try:
+    from routes.contact_hub import contact_hub_bp
+    app.register_blueprint(contact_hub_bp)
+    logger.info("Registered blueprint: contact_hub (ATLAS CRM integration)")
+except ImportError as e:
+    logger.warning(f"Contact Hub blueprint not available: {e}")
+except Exception as e:
+    logger.warning(f"Contact Hub blueprint error: {e}")
 
 # Set up API monitoring
 try:
@@ -4461,6 +4513,15 @@ def debug_transaction(idx):
     return jsonify(result)
 
 
+# =============================================================================
+# OCR (OPTICAL CHARACTER RECOGNITION) API
+# =============================================================================
+# NOTE: These routes (4494-5270) are being migrated to routes/ocr.py
+# The blueprint version is registered and working. These inline routes
+# remain temporarily for backwards compatibility during the migration.
+# TODO: Remove once routes/ocr.py is fully tested in production.
+# =============================================================================
+
 @app.route("/ocr", methods=["POST"])
 @login_required
 def ocr_endpoint():
@@ -5640,6 +5701,15 @@ def mobile_upload():
         return jsonify({"error": str(e)}), 500
 
 
+# =============================================================================
+# TRANSACTION MANAGEMENT API
+# =============================================================================
+# NOTE: These routes (5663-6232) are being migrated to routes/transactions.py
+# The blueprint version is registered and working. These inline routes
+# remain temporarily for backwards compatibility during the migration.
+# TODO: Remove once routes/transactions.py is fully tested in production.
+# =============================================================================
+
 @app.route("/api/transactions/<int:tx_id>", methods=["GET"])
 @login_required
 def get_transaction(tx_id):
@@ -5648,14 +5718,22 @@ def get_transaction(tx_id):
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # USER SCOPING: Only return transaction if it belongs to current user
-        user_id = get_current_user_id()
-        cursor.execute("""
-            SELECT _index, chase_date, chase_description, chase_amount, business_type,
-                   category, notes, receipt_file, receipt_url, r2_url, review_status,
-                   ocr_verified, ocr_verification_status, ocr_data
-            FROM transactions WHERE _index = %s AND user_id = %s
-        """, (tx_id, user_id))
+        # USER SCOPING: Only return transaction if it belongs to current user (when enabled)
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor.execute("""
+                SELECT _index, chase_date, chase_description, chase_amount, business_type,
+                       category, notes, receipt_file, receipt_url, r2_url, review_status,
+                       ocr_verified, ocr_verification_status, ocr_data
+                FROM transactions WHERE _index = %s AND user_id = %s
+            """, (tx_id, user_id))
+        else:
+            cursor.execute("""
+                SELECT _index, chase_date, chase_description, chase_amount, business_type,
+                       category, notes, receipt_file, receipt_url, r2_url, review_status,
+                       ocr_verified, ocr_verification_status, ocr_data
+                FROM transactions WHERE _index = %s
+            """, (tx_id,))
 
         row = cursor.fetchone()
         cursor.close()
@@ -6268,10 +6346,11 @@ def get_transactions():
                     where_clauses = []
                     query_params = []
 
-                    # USER SCOPING: Filter by current user's data
-                    user_id = get_current_user_id()
-                    where_clauses.append("user_id = %s")
-                    query_params.append(user_id)
+                    # USER SCOPING: Filter by current user's data (only when enabled)
+                    if USER_SCOPING_ENABLED:
+                        user_id = get_current_user_id()
+                        where_clauses.append("user_id = %s")
+                        query_params.append(user_id)
 
                     # By default, hide transactions that are in a report (have report_id)
                     # unless show_in_report=true is passed
@@ -7003,6 +7082,15 @@ def ai_note():
 
 # =============================================================================
 # GEMINI-POWERED AI ENDPOINTS
+# =============================================================================
+# MIGRATION NOTE: These routes (lines 7066-7880) have been extracted to routes/ai.py
+# The blueprint is registered above. Original routes remain temporarily for
+# backwards compatibility. Remove after production testing confirms blueprint works.
+# Routes extracted: /api/ai/categorize, /api/ai/note, /api/ai/auto-process,
+#                  /api/ai/regenerate-notes, /api/ai/find-problematic-notes,
+#                  /api/ai/regenerate-birthday-notes, /api/ai/batch-categorize,
+#                  /api/ai/apple-split-analyze, /api/ai/apple-split-execute,
+#                  /api/ai/apple-split-candidates, /api/ai/apple-split-all
 # =============================================================================
 
 @app.route("/api/ai/categorize", methods=["POST"])
@@ -8184,6 +8272,11 @@ def apple_contacts_sync_api():
 
 # =============================================================================
 # ATLAS RELATIONSHIP INTELLIGENCE API
+# =============================================================================
+# NOTE: These routes (8195-8851) are being migrated to routes/atlas.py
+# The blueprint version is registered and working. These inline routes
+# remain temporarily for backwards compatibility during the migration.
+# TODO: Remove once routes/atlas.py is fully tested in production.
 # =============================================================================
 
 @app.route("/api/atlas/status", methods=["GET"])
@@ -25918,6 +26011,14 @@ def generate_missing_receipt_form():
 
 # =============================================================================
 # ATLAS CONTACT HUB - Full CRM Integration
+# =============================================================================
+# MIGRATION NOTE: These routes (lines 26004-26632) have been extracted to routes/contact_hub.py
+# The blueprint is registered above. Original routes remain temporarily for
+# backwards compatibility. Remove after production testing confirms blueprint works.
+# Routes extracted: /contact-hub, /contacts, /api/contact-hub/contacts, /api/contact-hub/interactions,
+#                  /api/contact-hub/touch-needed, /api/contact-hub/timeline/<id>,
+#                  /api/contact-hub/digest, /api/contact-hub/link-expense, /api/contact-hub/reminders,
+#                  /api/contact-hub/intelligence/*, /api/contact-hub/calendar/*, etc.
 # =============================================================================
 
 @app.route("/contact-hub")

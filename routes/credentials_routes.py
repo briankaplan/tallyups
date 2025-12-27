@@ -509,3 +509,188 @@ def test_credential(service):
     except Exception as e:
         logger.error(f"Credential test failed for {service}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 400
+
+
+# ============================================================================
+# SIMPLIFIED API KEY ENDPOINTS (for iOS app)
+# ============================================================================
+
+@credentials_bp.route('/status', methods=['GET'])
+@user_required
+def get_api_keys_status():
+    """
+    Get status of which API keys are configured for the current user.
+
+    Returns:
+    {
+        "openai": true/false,
+        "gemini": true/false,
+        "anthropic": true/false,
+        "taskade": true/false
+    }
+    """
+    if not CREDENTIALS_AVAILABLE:
+        return jsonify({
+            'openai': False,
+            'gemini': False,
+            'anthropic': False,
+            'taskade': False
+        })
+
+    user_id = get_current_user_id()
+
+    # Check each service
+    status = {
+        'openai': user_credentials_service.has_credential(user_id, SERVICE_OPENAI),
+        'gemini': user_credentials_service.has_credential(user_id, SERVICE_GEMINI),
+        'anthropic': user_credentials_service.has_credential(user_id, SERVICE_ANTHROPIC),
+        'taskade': user_credentials_service.has_credential(user_id, SERVICE_TASKADE)
+    }
+
+    return jsonify(status)
+
+
+@credentials_bp.route('/<service>', methods=['POST'])
+@user_required
+def store_service_api_key(service):
+    """
+    Store an API key for a specific service.
+
+    POST /api/credentials/openai
+    {
+        "api_key": "sk-..."
+    }
+    """
+    if not CREDENTIALS_AVAILABLE:
+        return jsonify({'error': 'Credentials service not available'}), 503
+
+    user_id = get_current_user_id()
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+
+    api_key = data.get('api_key')
+    if not api_key:
+        return jsonify({'error': 'api_key required'}), 400
+
+    # Map service name to type
+    service_map = {
+        'openai': SERVICE_OPENAI,
+        'gemini': SERVICE_GEMINI,
+        'anthropic': SERVICE_ANTHROPIC,
+        'taskade': SERVICE_TASKADE
+    }
+
+    service_type = service_map.get(service.lower())
+    if not service_type:
+        return jsonify({'error': f'Invalid service: {service}'}), 400
+
+    try:
+        user_credentials_service.store_credential(
+            user_id=user_id,
+            service_type=service_type,
+            api_key=api_key,
+            workspace_id=data.get('workspace_id'),
+            project_id=data.get('project_id'),
+            folder_id=data.get('folder_id')
+        )
+
+        return jsonify({'success': True, 'service': service})
+
+    except Exception as e:
+        logger.error(f"Failed to store API key for {service}: {e}")
+        return jsonify({'error': 'Failed to store API key'}), 500
+
+
+@credentials_bp.route('/<service>', methods=['DELETE'])
+@user_required
+def delete_service_api_key(service):
+    """
+    Delete an API key for a specific service.
+
+    DELETE /api/credentials/openai
+    """
+    if not CREDENTIALS_AVAILABLE:
+        return jsonify({'error': 'Credentials service not available'}), 503
+
+    user_id = get_current_user_id()
+
+    service_map = {
+        'openai': SERVICE_OPENAI,
+        'gemini': SERVICE_GEMINI,
+        'anthropic': SERVICE_ANTHROPIC,
+        'taskade': SERVICE_TASKADE
+    }
+
+    service_type = service_map.get(service.lower())
+    if not service_type:
+        return jsonify({'error': f'Invalid service: {service}'}), 400
+
+    success = user_credentials_service.delete_credential(user_id, service_type)
+
+    if success:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Credential not found'}), 404
+
+
+@credentials_bp.route('/<service>/validate', methods=['POST'])
+@user_required
+def validate_service_api_key(service):
+    """
+    Validate an API key before storing it.
+
+    POST /api/credentials/openai/validate
+    {
+        "api_key": "sk-..."
+    }
+
+    Returns:
+    {
+        "valid": true/false
+    }
+    """
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+
+    api_key = data.get('api_key')
+    if not api_key:
+        return jsonify({'error': 'api_key required'}), 400
+
+    try:
+        if service.lower() == 'openai':
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+            client.models.list()
+            return jsonify({'valid': True})
+
+        elif service.lower() == 'gemini':
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            list(genai.list_models())
+            return jsonify({'valid': True})
+
+        elif service.lower() == 'anthropic':
+            # Anthropic doesn't have a simple validation endpoint
+            # Just check key format
+            if api_key.startswith('sk-ant-'):
+                return jsonify({'valid': True})
+            return jsonify({'valid': False, 'error': 'Invalid key format'})
+
+        elif service.lower() == 'taskade':
+            import requests as http_requests
+            response = http_requests.get(
+                'https://www.taskade.com/api/v1/workspaces',
+                headers={'Authorization': f"Bearer {api_key}"},
+                timeout=10
+            )
+            return jsonify({'valid': response.status_code == 200})
+
+        return jsonify({'error': f'Validation not supported for {service}'}), 400
+
+    except Exception as e:
+        logger.warning(f"API key validation failed for {service}: {e}")
+        return jsonify({'valid': False, 'error': str(e)})

@@ -511,6 +511,49 @@ class UserCredentialsService:
             cursor.close()
             conn.close()
 
+    def has_credential(
+        self,
+        user_id: str,
+        service_type: str,
+        account_email: str = None
+    ) -> bool:
+        """
+        Check if a user has an active credential for a service.
+
+        Args:
+            user_id: User's UUID
+            service_type: Type of service
+            account_email: Optional email for multi-account services
+
+        Returns:
+            True if credential exists and is active
+        """
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        try:
+            if account_email:
+                cursor.execute("""
+                    SELECT 1 FROM user_credentials
+                    WHERE user_id = %s AND service_type = %s AND account_email = %s AND is_active = TRUE
+                    LIMIT 1
+                """, (user_id, service_type, account_email))
+            else:
+                cursor.execute("""
+                    SELECT 1 FROM user_credentials
+                    WHERE user_id = %s AND service_type = %s AND is_active = TRUE
+                    LIMIT 1
+                """, (user_id, service_type))
+
+            return cursor.fetchone() is not None
+
+        except Exception as e:
+            logger.error(f"Failed to check credential: {e}")
+            return False
+        finally:
+            cursor.close()
+            conn.close()
+
     def delete_all_user_credentials(self, user_id: str) -> int:
         """
         Delete all credentials for a user (for account deletion).

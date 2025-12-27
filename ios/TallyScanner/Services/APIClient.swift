@@ -1724,6 +1724,107 @@ actor APIClient {
             throw APIError.invalidResponse
         }
     }
+
+    // MARK: - API Keys Management
+
+    /// API Keys status response
+    struct APIKeysStatus: Codable {
+        let openai: Bool
+        let gemini: Bool
+        let anthropic: Bool
+        let taskade: Bool
+    }
+
+    /// Get status of configured API keys
+    func getAPIKeysStatus() async throws -> APIKeysStatus {
+        let request = try makeRequest(path: "/api/credentials/status", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        // Return all false if endpoint doesn't exist yet
+        if httpResponse.statusCode == 404 {
+            return APIKeysStatus(openai: false, gemini: false, anthropic: false, taskade: false)
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError(httpResponse.statusCode, "Failed to get API key status")
+        }
+
+        return try decoder.decode(APIKeysStatus.self, from: data)
+    }
+
+    /// Save an API key for a service
+    func saveAPIKey(service: String, key: String) async throws {
+        var request = try makeRequest(path: "/api/credentials/\(service)", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "api_key": key
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "Failed to save API key"
+            throw APIError.serverError(httpResponse.statusCode, message)
+        }
+    }
+
+    /// Remove an API key for a service
+    func removeAPIKey(service: String) async throws {
+        let request = try makeRequest(path: "/api/credentials/\(service)", method: "DELETE")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "Failed to remove API key"
+            throw APIError.serverError(httpResponse.statusCode, message)
+        }
+    }
+
+    /// Validate an API key with the provider (optional check)
+    func validateAPIKey(service: String, key: String) async throws -> Bool {
+        var request = try makeRequest(path: "/api/credentials/\(service)/validate", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "api_key": key
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        // If validation endpoint doesn't exist, assume valid
+        if httpResponse.statusCode == 404 {
+            return true
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            return false
+        }
+
+        struct ValidationResponse: Codable {
+            let valid: Bool
+        }
+
+        let validationResponse = try decoder.decode(ValidationResponse.self, from: data)
+        return validationResponse.valid
+    }
 }
 
 // MARK: - Color Extension for Hex

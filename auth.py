@@ -35,7 +35,7 @@ except ImportError:
     logging.warning("JWT service not available - using legacy auth only")
 
 # Admin user ID constant
-ADMIN_USER_ID = 'admin-00000000-0000-0000-0000-000000000000'
+ADMIN_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 # Get password from environment variable (hashed)
 # Set this in Railway: AUTH_PASSWORD_HASH=<your_bcrypt_hash>

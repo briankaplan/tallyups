@@ -3,6 +3,7 @@ User-Scoped Database Query Helpers for TallyUps
 Ensures all queries are properly filtered by user_id for multi-tenant data isolation
 """
 
+import os
 import logging
 from flask import g
 from functools import wraps
@@ -10,7 +11,22 @@ from functools import wraps
 logger = logging.getLogger(__name__)
 
 # Admin user ID (used for legacy auth and admin operations)
-ADMIN_USER_ID = 'admin-00000000-0000-0000-0000-000000000000'
+# Standard 36-char UUID format
+ADMIN_USER_ID = '00000000-0000-0000-0000-000000000001'
+
+# ============================================================================
+# USER SCOPING TOGGLE
+# Set ENABLE_USER_SCOPING=true in environment AFTER running migrations:
+#   - 009_users_table.sql
+#   - 010_user_sessions.sql
+#   - 011_user_credentials.sql
+#   - 012_add_user_id_columns.sql
+#   - 013_migrate_to_admin.sql (migrate existing data)
+# ============================================================================
+USER_SCOPING_ENABLED = os.getenv('ENABLE_USER_SCOPING', 'false').lower() == 'true'
+
+if not USER_SCOPING_ENABLED:
+    logger.info("User scoping DISABLED - all data accessible (single-tenant mode)")
 
 
 def get_current_user_id() -> str:
@@ -18,11 +34,15 @@ def get_current_user_id() -> str:
     Get the current user's ID from the Flask request context.
     Returns ADMIN_USER_ID if no user is set (legacy compatibility).
     """
+    if not USER_SCOPING_ENABLED:
+        return ADMIN_USER_ID
     return getattr(g, 'user_id', None) or ADMIN_USER_ID
 
 
 def is_admin_user() -> bool:
     """Check if the current user is an admin."""
+    if not USER_SCOPING_ENABLED:
+        return True
     return getattr(g, 'user_role', 'user') == 'admin'
 
 
@@ -43,6 +63,10 @@ def add_user_scope(query: str, params: tuple, table_alias: str = None) -> tuple:
         query, params = add_user_scope(query, (), 't')
         # Result: "SELECT * FROM transactions WHERE deleted = 0 AND t.user_id = %s"
     """
+    # If user scoping is disabled, return query unchanged
+    if not USER_SCOPING_ENABLED:
+        return query, params
+
     user_id = get_current_user_id()
 
     prefix = f"{table_alias}." if table_alias else ""
@@ -95,7 +119,6 @@ def user_scoped_query(table: str, columns: str = "*", where: str = None,
     Returns:
         Tuple of (query, params)
     """
-    user_id = get_current_user_id()
     params = []
 
     alias = f" AS {table_alias}" if table_alias else ""
@@ -104,13 +127,19 @@ def user_scoped_query(table: str, columns: str = "*", where: str = None,
     query = f"SELECT {columns} FROM {table}{alias}"
 
     # Build WHERE clause
-    conditions = [f"{prefix}user_id = %s"]
-    params.append(user_id)
+    conditions = []
+
+    # Only add user_id filter if scoping is enabled
+    if USER_SCOPING_ENABLED:
+        user_id = get_current_user_id()
+        conditions.append(f"{prefix}user_id = %s")
+        params.append(user_id)
 
     if where:
         conditions.append(f"({where})")
 
-    query += " WHERE " + " AND ".join(conditions)
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
 
     if order_by:
         query += f" ORDER BY {order_by}"
@@ -137,13 +166,18 @@ def user_scoped_count(table: str, where: str = None) -> tuple:
     Returns:
         Tuple of (query, params)
     """
-    user_id = get_current_user_id()
-    params = [user_id]
+    params = []
 
-    query = f"SELECT COUNT(*) as cnt FROM {table} WHERE user_id = %s"
-
-    if where:
-        query += f" AND ({where})"
+    if USER_SCOPING_ENABLED:
+        user_id = get_current_user_id()
+        params.append(user_id)
+        query = f"SELECT COUNT(*) as cnt FROM {table} WHERE user_id = %s"
+        if where:
+            query += f" AND ({where})"
+    else:
+        query = f"SELECT COUNT(*) as cnt FROM {table}"
+        if where:
+            query += f" WHERE ({where})"
 
     return query, tuple(params)
 
@@ -163,10 +197,13 @@ def user_scoped_update(table: str, set_clause: str, where: str,
     Returns:
         Tuple of (query, params)
     """
-    user_id = get_current_user_id()
-
-    query = f"UPDATE {table} SET {set_clause} WHERE user_id = %s AND {where}"
-    params = set_params + (user_id,) + where_params
+    if USER_SCOPING_ENABLED:
+        user_id = get_current_user_id()
+        query = f"UPDATE {table} SET {set_clause} WHERE user_id = %s AND {where}"
+        params = set_params + (user_id,) + where_params
+    else:
+        query = f"UPDATE {table} SET {set_clause} WHERE {where}"
+        params = set_params + where_params
 
     return query, params
 
@@ -183,10 +220,13 @@ def user_scoped_delete(table: str, where: str, params: tuple = ()) -> tuple:
     Returns:
         Tuple of (query, params)
     """
-    user_id = get_current_user_id()
-
-    query = f"DELETE FROM {table} WHERE user_id = %s AND {where}"
-    return query, (user_id,) + params
+    if USER_SCOPING_ENABLED:
+        user_id = get_current_user_id()
+        query = f"DELETE FROM {table} WHERE user_id = %s AND {where}"
+        return query, (user_id,) + params
+    else:
+        query = f"DELETE FROM {table} WHERE {where}"
+        return query, params
 
 
 def user_scoped_insert(table: str, columns: list, values_params: tuple) -> tuple:
@@ -195,21 +235,27 @@ def user_scoped_insert(table: str, columns: list, values_params: tuple) -> tuple
 
     Args:
         table: Table name
-        columns: List of column names (user_id will be added)
-        values_params: Tuple of values (user_id will be prepended)
+        columns: List of column names (user_id will be added if scoping enabled)
+        values_params: Tuple of values (user_id will be prepended if scoping enabled)
 
     Returns:
         Tuple of (query, params)
     """
-    user_id = get_current_user_id()
-
-    # Add user_id to columns and values
-    all_columns = ['user_id'] + list(columns)
-    placeholders = ', '.join(['%s'] * len(all_columns))
-    columns_str = ', '.join(all_columns)
+    if USER_SCOPING_ENABLED:
+        user_id = get_current_user_id()
+        # Add user_id to columns and values
+        all_columns = ['user_id'] + list(columns)
+        placeholders = ', '.join(['%s'] * len(all_columns))
+        columns_str = ', '.join(all_columns)
+        params = (user_id,) + values_params
+    else:
+        # No user_id column
+        all_columns = list(columns)
+        placeholders = ', '.join(['%s'] * len(all_columns))
+        columns_str = ', '.join(all_columns)
+        params = values_params
 
     query = f"INSERT INTO {table} ({columns_str}) VALUES ({placeholders})"
-    params = (user_id,) + values_params
 
     return query, params
 

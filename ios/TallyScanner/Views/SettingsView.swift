@@ -181,6 +181,34 @@ struct SettingsView: View {
                 }
                 .padding(.vertical, 4)
             }
+
+            NavigationLink {
+                APIKeysView()
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.orange.opacity(0.15))
+                            .frame(width: 36, height: 36)
+
+                        Image(systemName: "key.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.orange)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("API Keys")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+
+                        Text("OpenAI, Gemini, Anthropic")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
         } header: {
             Text("Integrations")
         } footer: {
