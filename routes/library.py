@@ -807,11 +807,21 @@ def api_library_tags():
     try:
         conn, db_type = get_db_connection()
 
-        cursor = db_execute(conn, db_type, '''
-            SELECT id, name, color, created_at
-            FROM receipt_tags
-            ORDER BY name
-        ''')
+        # SECURITY: User scoping - only show user's own tags
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor = db_execute(conn, db_type, '''
+                SELECT id, name, color, created_at
+                FROM receipt_tags
+                WHERE user_id = %s
+                ORDER BY name
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT id, name, color, created_at
+                FROM receipt_tags
+                ORDER BY name
+            ''')
 
         tags = []
         for row in cursor.fetchall():
@@ -853,10 +863,18 @@ def api_library_create_tag():
 
         conn, db_type = get_db_connection()
 
-        cursor = db_execute(conn, db_type, '''
-            INSERT INTO receipt_tags (name, color, created_at)
-            VALUES (%s, %s, NOW())
-        ''', (name, color))
+        # SECURITY: User scoping - associate tag with current user
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor = db_execute(conn, db_type, '''
+                INSERT INTO receipt_tags (name, color, created_at, user_id)
+                VALUES (%s, %s, NOW(), %s)
+            ''', (name, color, user_id))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                INSERT INTO receipt_tags (name, color, created_at)
+                VALUES (%s, %s, NOW())
+            ''', (name, color))
 
         tag_id = cursor.lastrowid
         conn.commit()
@@ -892,14 +910,27 @@ def api_library_collections():
     try:
         conn, db_type = get_db_connection()
 
-        cursor = db_execute(conn, db_type, '''
-            SELECT c.id, c.name, c.description, c.created_at,
-                   COUNT(ci.id) as item_count
-            FROM receipt_collections c
-            LEFT JOIN receipt_collection_items ci ON c.id = ci.collection_id
-            GROUP BY c.id
-            ORDER BY c.name
-        ''')
+        # SECURITY: User scoping - only show user's own collections
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor = db_execute(conn, db_type, '''
+                SELECT c.id, c.name, c.description, c.created_at,
+                       COUNT(ci.id) as item_count
+                FROM receipt_collections c
+                LEFT JOIN receipt_collection_items ci ON c.id = ci.collection_id
+                WHERE c.user_id = %s
+                GROUP BY c.id
+                ORDER BY c.name
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT c.id, c.name, c.description, c.created_at,
+                       COUNT(ci.id) as item_count
+                FROM receipt_collections c
+                LEFT JOIN receipt_collection_items ci ON c.id = ci.collection_id
+                GROUP BY c.id
+                ORDER BY c.name
+            ''')
 
         collections = []
         for row in cursor.fetchall():
@@ -941,10 +972,18 @@ def api_library_create_collection():
 
         conn, db_type = get_db_connection()
 
-        cursor = db_execute(conn, db_type, '''
-            INSERT INTO receipt_collections (name, description, created_at)
-            VALUES (%s, %s, NOW())
-        ''', (name, description))
+        # SECURITY: User scoping - associate collection with current user
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor = db_execute(conn, db_type, '''
+                INSERT INTO receipt_collections (name, description, created_at, user_id)
+                VALUES (%s, %s, NOW(), %s)
+            ''', (name, description, user_id))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                INSERT INTO receipt_collections (name, description, created_at)
+                VALUES (%s, %s, NOW())
+            ''', (name, description))
 
         collection_id = cursor.lastrowid
         conn.commit()

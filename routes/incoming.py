@@ -201,42 +201,85 @@ def get_incoming_stats():
 
         conn, db_type = get_db_connection()
 
-        # Get counts by status
-        cursor = db_execute(conn, db_type, '''
-            SELECT status, COUNT(*) as count
-            FROM incoming_receipts
-            GROUP BY status
-        ''')
-        status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
+        # SECURITY: User scoping - only show user's own stats
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
 
-        # Get counts by source
-        cursor = db_execute(conn, db_type, '''
-            SELECT source, COUNT(*) as count
-            FROM incoming_receipts
-            GROUP BY source
-        ''')
-        source_counts = {row['source'] or 'unknown': row['count'] for row in cursor.fetchall()}
+            # Get counts by status
+            cursor = db_execute(conn, db_type, '''
+                SELECT status, COUNT(*) as count
+                FROM incoming_receipts
+                WHERE user_id = %s
+                GROUP BY status
+            ''', (user_id,))
+            status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
 
-        # Get recent activity
-        cursor = db_execute(conn, db_type, '''
-            SELECT DATE(received_date) as date, COUNT(*) as count
-            FROM incoming_receipts
-            WHERE received_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-            GROUP BY DATE(received_date)
-            ORDER BY date DESC
-        ''')
-        daily_counts = {str(row['date']): row['count'] for row in cursor.fetchall()}
+            # Get counts by source
+            cursor = db_execute(conn, db_type, '''
+                SELECT source, COUNT(*) as count
+                FROM incoming_receipts
+                WHERE user_id = %s
+                GROUP BY source
+            ''', (user_id,))
+            source_counts = {row['source'] or 'unknown': row['count'] for row in cursor.fetchall()}
 
-        # Get top merchants
-        cursor = db_execute(conn, db_type, '''
-            SELECT merchant, COUNT(*) as count
-            FROM incoming_receipts
-            WHERE merchant IS NOT NULL AND merchant != ''
-            GROUP BY merchant
-            ORDER BY count DESC
-            LIMIT 10
-        ''')
-        top_merchants = [{row['merchant']: row['count']} for row in cursor.fetchall()]
+            # Get recent activity
+            cursor = db_execute(conn, db_type, '''
+                SELECT DATE(received_date) as date, COUNT(*) as count
+                FROM incoming_receipts
+                WHERE user_id = %s AND received_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                GROUP BY DATE(received_date)
+                ORDER BY date DESC
+            ''', (user_id,))
+            daily_counts = {str(row['date']): row['count'] for row in cursor.fetchall()}
+
+            # Get top merchants
+            cursor = db_execute(conn, db_type, '''
+                SELECT merchant, COUNT(*) as count
+                FROM incoming_receipts
+                WHERE user_id = %s AND merchant IS NOT NULL AND merchant != ''
+                GROUP BY merchant
+                ORDER BY count DESC
+                LIMIT 10
+            ''', (user_id,))
+            top_merchants = [{row['merchant']: row['count']} for row in cursor.fetchall()]
+        else:
+            # Get counts by status
+            cursor = db_execute(conn, db_type, '''
+                SELECT status, COUNT(*) as count
+                FROM incoming_receipts
+                GROUP BY status
+            ''')
+            status_counts = {row['status']: row['count'] for row in cursor.fetchall()}
+
+            # Get counts by source
+            cursor = db_execute(conn, db_type, '''
+                SELECT source, COUNT(*) as count
+                FROM incoming_receipts
+                GROUP BY source
+            ''')
+            source_counts = {row['source'] or 'unknown': row['count'] for row in cursor.fetchall()}
+
+            # Get recent activity
+            cursor = db_execute(conn, db_type, '''
+                SELECT DATE(received_date) as date, COUNT(*) as count
+                FROM incoming_receipts
+                WHERE received_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                GROUP BY DATE(received_date)
+                ORDER BY date DESC
+            ''')
+            daily_counts = {str(row['date']): row['count'] for row in cursor.fetchall()}
+
+            # Get top merchants
+            cursor = db_execute(conn, db_type, '''
+                SELECT merchant, COUNT(*) as count
+                FROM incoming_receipts
+                WHERE merchant IS NOT NULL AND merchant != ''
+                GROUP BY merchant
+                ORDER BY count DESC
+                LIMIT 10
+            ''')
+            top_merchants = [{row['merchant']: row['count']} for row in cursor.fetchall()]
 
         return_db_connection(conn)
 
