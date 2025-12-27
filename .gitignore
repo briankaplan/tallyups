@@ -241,6 +241,19 @@ LOCAL_CHANGES*.md
 # Zip archives
 *.zip
 
+# Sample receipt HTML files (contain real Stripe/payment tokens)
+anthropic_receipt*.html
+suno_receipt*.html
+*_receipt_*.html
+
+# Xcode user data (local state, contains user paths)
+*.xcuserstate
+xcuserdata/
+*.xcuserdatad/
+
+# Desktop credentials
+credentials_desktop.json
+
 # ========================================
 # Keep These Files (Whitelist)
 # ========================================
@@ -251,7 +264,7 @@ LOCAL_CHANGES*.md
 # Core application Python files (not utility scripts)
 # Note: Utility scripts with hardcoded credentials are excluded above
 
-# HTML/CSS/JS should be committed
+# HTML/CSS/JS should be committed (except sample receipts above)
 !*.html
 !*.css
 !*.js
@@ -262,4 +275,3 @@ LOCAL_CHANGES*.md
 # Configuration examples (not real credentials)
 !.env.example
 !config.example.json
-credentials_desktop.json
