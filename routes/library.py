@@ -26,6 +26,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify, session
 
 from logging_config import get_logger
+from db_user_scope import get_current_user_id, USER_SCOPING_ENABLED
 
 logger = get_logger("routes.library")
 
@@ -101,6 +102,12 @@ def api_library_receipts():
             # Check both r2_url (cloud) and receipt_file (local) for receipt images
             where_clauses = ["((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))"]
             params = []
+
+            # USER SCOPING: Only show user's own data
+            if USER_SCOPING_ENABLED:
+                user_id = get_current_user_id()
+                where_clauses.append("user_id = %s")
+                params.append(user_id)
 
             if search:
                 where_clauses.append("(chase_description LIKE %s OR ai_note LIKE %s OR ocr_merchant LIKE %s)")
@@ -218,6 +225,12 @@ def api_library_receipts():
             where_clauses = ["receipt_image_url IS NOT NULL AND receipt_image_url != ''"]
             params = []
 
+            # USER SCOPING: Only show user's own data
+            if USER_SCOPING_ENABLED:
+                user_id = get_current_user_id()
+                where_clauses.append("user_id = %s")
+                params.append(user_id)
+
             if search:
                 where_clauses.append("(merchant LIKE %s OR subject LIKE %s OR ocr_merchant LIKE %s)")
                 params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
@@ -333,17 +346,33 @@ def api_library_search():
         results = []
         search_term = f'%{query}%'
 
+        # USER SCOPING: Get user_id for filtering
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
         # Search transactions
-        cursor = db_execute(conn, db_type, '''
-            SELECT _index, chase_date, chase_description, chase_amount,
-                   r2_url, receipt_file, ai_note, business_type,
-                   ai_receipt_merchant, ai_receipt_total, ai_confidence
-            FROM transactions
-            WHERE (chase_description LIKE %s OR ai_note LIKE %s OR ai_receipt_merchant LIKE %s)
-            AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
-            ORDER BY chase_date DESC
-            LIMIT %s
-        ''', (search_term, search_term, search_term, limit))
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT _index, chase_date, chase_description, chase_amount,
+                       r2_url, receipt_file, ai_note, business_type,
+                       ai_receipt_merchant, ai_receipt_total, ai_confidence
+                FROM transactions
+                WHERE user_id = %s
+                AND (chase_description LIKE %s OR ai_note LIKE %s OR ai_receipt_merchant LIKE %s)
+                AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+                ORDER BY chase_date DESC
+                LIMIT %s
+            ''', (user_id, search_term, search_term, search_term, limit))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT _index, chase_date, chase_description, chase_amount,
+                       r2_url, receipt_file, ai_note, business_type,
+                       ai_receipt_merchant, ai_receipt_total, ai_confidence
+                FROM transactions
+                WHERE (chase_description LIKE %s OR ai_note LIKE %s OR ai_receipt_merchant LIKE %s)
+                AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+                ORDER BY chase_date DESC
+                LIMIT %s
+            ''', (search_term, search_term, search_term, limit))
 
         for row in cursor.fetchall():
             r = dict(row)
@@ -386,16 +415,29 @@ def api_library_search():
             })
 
         # Search incoming
-        cursor = db_execute(conn, db_type, '''
-            SELECT id, received_date, merchant, amount, subject, from_email,
-                   receipt_image_url, thumbnail_url, status,
-                   ocr_merchant, ocr_amount, ocr_confidence
-            FROM incoming_receipts
-            WHERE (merchant LIKE %s OR subject LIKE %s OR ocr_merchant LIKE %s)
-            AND receipt_image_url IS NOT NULL
-            ORDER BY received_date DESC
-            LIMIT %s
-        ''', (search_term, search_term, search_term, limit))
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT id, received_date, merchant, amount, subject, from_email,
+                       receipt_image_url, thumbnail_url, status,
+                       ocr_merchant, ocr_amount, ocr_confidence
+                FROM incoming_receipts
+                WHERE user_id = %s
+                AND (merchant LIKE %s OR subject LIKE %s OR ocr_merchant LIKE %s)
+                AND receipt_image_url IS NOT NULL
+                ORDER BY received_date DESC
+                LIMIT %s
+            ''', (user_id, search_term, search_term, search_term, limit))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT id, received_date, merchant, amount, subject, from_email,
+                       receipt_image_url, thumbnail_url, status,
+                       ocr_merchant, ocr_amount, ocr_confidence
+                FROM incoming_receipts
+                WHERE (merchant LIKE %s OR subject LIKE %s OR ocr_merchant LIKE %s)
+                AND receipt_image_url IS NOT NULL
+                ORDER BY received_date DESC
+                LIMIT %s
+            ''', (search_term, search_term, search_term, limit))
 
         for row in cursor.fetchall():
             r = dict(row)
@@ -461,39 +503,72 @@ def api_library_counts():
     try:
         conn, db_type = get_db_connection()
 
+        # USER SCOPING: Get user_id for filtering
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+        user_filter = "AND user_id = %s" if USER_SCOPING_ENABLED and user_id else ""
+
         # Transaction receipts - check both r2_url and receipt_file
-        cursor = db_execute(conn, db_type, '''
-            SELECT COUNT(*) as count FROM transactions
-            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
-        ''')
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT COUNT(*) as count FROM transactions
+                WHERE user_id = %s AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT COUNT(*) as count FROM transactions
+                WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
+            ''')
         transaction_count = cursor.fetchone()['count']
 
         # By business type - normalize different formats to canonical names
-        cursor = db_execute(conn, db_type, '''
-            SELECT
-                CASE
-                    WHEN business_type IN ('Business', 'Business') THEN 'Business'
-                    WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
-                    WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
-                    WHEN business_type = 'Personal' THEN 'Personal'
-                    ELSE 'Personal'
-                END AS normalized_business_type,
-                COUNT(*) as count
-            FROM transactions
-            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
-            GROUP BY normalized_business_type
-        ''')
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT
+                    CASE
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        WHEN business_type = 'Personal' THEN 'Personal'
+                        ELSE 'Personal'
+                    END AS normalized_business_type,
+                    COUNT(*) as count
+                FROM transactions
+                WHERE user_id = %s AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+                GROUP BY normalized_business_type
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT
+                    CASE
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        WHEN business_type = 'Personal' THEN 'Personal'
+                        ELSE 'Personal'
+                    END AS normalized_business_type,
+                    COUNT(*) as count
+                FROM transactions
+                WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
+                GROUP BY normalized_business_type
+            ''')
         business_counts = {}
         for row in cursor.fetchall():
             bt = row['normalized_business_type'] or 'Personal'
             business_counts[bt] = row['count']
 
         # Incoming receipts by status
-        cursor = db_execute(conn, db_type, '''
-            SELECT status, COUNT(*) as count FROM incoming_receipts
-            WHERE receipt_image_url IS NOT NULL
-            GROUP BY status
-        ''')
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT status, COUNT(*) as count FROM incoming_receipts
+                WHERE user_id = %s AND receipt_image_url IS NOT NULL
+                GROUP BY status
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT status, COUNT(*) as count FROM incoming_receipts
+                WHERE receipt_image_url IS NOT NULL
+                GROUP BY status
+            ''')
         incoming_counts = {row['status']: row['count'] for row in cursor.fetchall()}
 
         # Total incoming
@@ -548,67 +623,127 @@ def api_library_stats():
     try:
         conn, db_type = get_db_connection()
 
+        # USER SCOPING: Get user_id for filtering
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
         # Total receipts - check both r2_url and receipt_file
-        cursor = db_execute(conn, db_type, '''
-            SELECT COUNT(*) as count FROM transactions
-            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
-        ''')
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT COUNT(*) as count FROM transactions
+                WHERE user_id = %s AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT COUNT(*) as count FROM transactions
+                WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
+            ''')
         total_receipts = cursor.fetchone()['count']
 
         # By business type - normalize different formats to canonical names
-        cursor = db_execute(conn, db_type, '''
-            SELECT
-                CASE
-                    WHEN business_type IN ('Business', 'Business') THEN 'Business'
-                    WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
-                    WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
-                    WHEN business_type = 'Personal' THEN 'Personal'
-                    ELSE 'Personal'
-                END AS normalized_business_type,
-                COUNT(*) as count
-            FROM transactions
-            WHERE ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
-            AND business_type IS NOT NULL AND business_type != ''
-            GROUP BY normalized_business_type
-        ''')
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT
+                    CASE
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        WHEN business_type = 'Personal' THEN 'Personal'
+                        ELSE 'Personal'
+                    END AS normalized_business_type,
+                    COUNT(*) as count
+                FROM transactions
+                WHERE user_id = %s AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+                AND business_type IS NOT NULL AND business_type != ''
+                GROUP BY normalized_business_type
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT
+                    CASE
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        WHEN business_type = 'Personal' THEN 'Personal'
+                        ELSE 'Personal'
+                    END AS normalized_business_type,
+                    COUNT(*) as count
+                FROM transactions
+                WHERE ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+                AND business_type IS NOT NULL AND business_type != ''
+                GROUP BY normalized_business_type
+            ''')
         by_business = {row['normalized_business_type']: row['count'] for row in cursor.fetchall()}
 
         # By month (last 12 months)
-        cursor = db_execute(conn, db_type, '''
-            SELECT DATE_FORMAT(chase_date, '%Y-%m') as month, COUNT(*) as count
-            FROM transactions
-            WHERE ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
-            AND chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-            GROUP BY DATE_FORMAT(chase_date, '%Y-%m')
-            ORDER BY month
-        ''')
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT DATE_FORMAT(chase_date, '%%Y-%%m') as month, COUNT(*) as count
+                FROM transactions
+                WHERE user_id = %s AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+                AND chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                GROUP BY DATE_FORMAT(chase_date, '%%Y-%%m')
+                ORDER BY month
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT DATE_FORMAT(chase_date, '%%Y-%%m') as month, COUNT(*) as count
+                FROM transactions
+                WHERE ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+                AND chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                GROUP BY DATE_FORMAT(chase_date, '%%Y-%%m')
+                ORDER BY month
+            ''')
         by_month = {row['month']: row['count'] for row in cursor.fetchall()}
 
         # Top merchants
-        cursor = db_execute(conn, db_type, '''
-            SELECT chase_description as merchant, COUNT(*) as count
-            FROM transactions
-            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
-            GROUP BY chase_description
-            ORDER BY count DESC
-            LIMIT 10
-        ''')
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT chase_description as merchant, COUNT(*) as count
+                FROM transactions
+                WHERE user_id = %s AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+                GROUP BY chase_description
+                ORDER BY count DESC
+                LIMIT 10
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT chase_description as merchant, COUNT(*) as count
+                FROM transactions
+                WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
+                GROUP BY chase_description
+                ORDER BY count DESC
+                LIMIT 10
+            ''')
         top_merchants = [{row['merchant']: row['count']} for row in cursor.fetchall()]
 
         # Incoming receipts count
-        cursor = db_execute(conn, db_type, '''
-            SELECT COUNT(*) as count FROM incoming_receipts
-            WHERE receipt_image_url IS NOT NULL
-        ''')
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT COUNT(*) as count FROM incoming_receipts
+                WHERE user_id = %s AND receipt_image_url IS NOT NULL
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT COUNT(*) as count FROM incoming_receipts
+                WHERE receipt_image_url IS NOT NULL
+            ''')
         incoming_count = cursor.fetchone()['count']
 
         # Count by review_status for verified badges
-        cursor = db_execute(conn, db_type, '''
-            SELECT review_status, COUNT(*) as count
-            FROM transactions
-            WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
-            GROUP BY review_status
-        ''')
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                SELECT review_status, COUNT(*) as count
+                FROM transactions
+                WHERE user_id = %s AND ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
+                GROUP BY review_status
+            ''', (user_id,))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                SELECT review_status, COUNT(*) as count
+                FROM transactions
+                WHERE (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '')
+                GROUP BY review_status
+            ''')
         by_status = {}
         for row in cursor.fetchall():
             status = row['review_status'] or 'pending'

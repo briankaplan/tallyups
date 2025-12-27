@@ -25,6 +25,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify, session
 
 from logging_config import get_logger
+from db_user_scope import get_current_user_id, USER_SCOPING_ENABLED
 
 logger = get_logger("routes.reports")
 
@@ -69,7 +70,22 @@ def api_reports_list():
 
     try:
         status_filter = request.args.get('status')
-        reports = db.get_all_reports()
+
+        # USER SCOPING: Get user_id for filtering
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
+        # Get reports (filtered by user if scoping enabled)
+        if USER_SCOPING_ENABLED and user_id:
+            conn = db.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT report_id, report_name, business_type, status, expense_count, total_amount, created_at
+                FROM reports WHERE user_id = %s ORDER BY created_at DESC
+            ''', (user_id,))
+            reports = cursor.fetchall()
+            db.return_connection(conn)
+        else:
+            reports = db.get_all_reports()
 
         result = []
         for r in reports:
@@ -125,13 +141,22 @@ def api_reports_create():
 
         report_id = f"RPT-{uuid.uuid4().hex[:8].upper()}"
 
+        # USER SCOPING: Get user_id for new report
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
         conn = db.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
-            INSERT INTO reports (report_id, report_name, business_type, status, expense_count, total_amount, created_at)
-            VALUES (%s, %s, %s, %s, 0, 0.00, NOW())
-        ''', (report_id, name, business_type, status))
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                INSERT INTO reports (report_id, report_name, business_type, status, expense_count, total_amount, user_id, created_at)
+                VALUES (%s, %s, %s, %s, 0, 0.00, %s, NOW())
+            ''', (report_id, name, business_type, status, user_id))
+        else:
+            cursor.execute('''
+                INSERT INTO reports (report_id, report_name, business_type, status, expense_count, total_amount, created_at)
+                VALUES (%s, %s, %s, %s, 0, 0.00, NOW())
+            ''', (report_id, name, business_type, status))
 
         conn.commit()
 

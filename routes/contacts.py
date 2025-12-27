@@ -28,9 +28,13 @@ Relationship Intelligence:
 ================================================================================
 """
 
+import os
 import logging
+import secrets
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
+
+from db_user_scope import get_current_user_id, USER_SCOPING_ENABLED
 
 # Create blueprint
 contacts_bp = Blueprint('contacts', __name__, url_prefix='/api/contacts')
@@ -41,6 +45,18 @@ try:
     logger = get_logger(__name__)
 except ImportError:
     logger = logging.getLogger(__name__)
+
+
+def check_auth():
+    """Check if request is authenticated using constant-time comparison."""
+    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
+    expected_key = os.getenv('ADMIN_API_KEY')
+    # SECURITY: Use constant-time comparison to prevent timing attacks
+    if admin_key and expected_key and secrets.compare_digest(str(admin_key), str(expected_key)):
+        return True
+    if session.get('authenticated'):
+        return True
+    return False
 
 
 # =============================================================================
@@ -65,11 +81,18 @@ def list_contacts():
             "total": 500
         }
     """
+    # SECURITY: Require authentication
+    if not check_auth():
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
     try:
         search = request.args.get('search')
         source = request.args.get('source')
         limit = int(request.args.get('limit', 50))
         offset = int(request.args.get('offset', 0))
+
+        # USER SCOPING: Get user_id for filtering
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
 
         from db_mysql import get_mysql_db
         db = get_mysql_db()
@@ -85,6 +108,11 @@ def list_contacts():
                 WHERE 1=1
             """
             params = []
+
+            # USER SCOPING: Filter by user_id
+            if USER_SCOPING_ENABLED and user_id:
+                query += " AND user_id = %s"
+                params.append(user_id)
 
             if search:
                 query += " AND (name LIKE %s OR email LIKE %s OR company LIKE %s)"
@@ -116,8 +144,11 @@ def list_contacts():
                     'updated_at': str(row[10])
                 })
 
-            # Get total
-            cursor.execute("SELECT COUNT(*) FROM contacts")
+            # Get total (scoped by user)
+            if USER_SCOPING_ENABLED and user_id:
+                cursor.execute("SELECT COUNT(*) FROM contacts WHERE user_id = %s", (user_id,))
+            else:
+                cursor.execute("SELECT COUNT(*) FROM contacts")
             total = cursor.fetchone()[0]
 
         return jsonify({
@@ -148,6 +179,10 @@ def create_contact():
             "notes": "Met at conference"
         }
     """
+    # SECURITY: Require authentication
+    if not check_auth():
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
     try:
         data = request.get_json() or {}
 
@@ -157,22 +192,40 @@ def create_contact():
                 'error': 'Name or email is required'
             }), 400
 
+        # USER SCOPING: Get user_id for new contact
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
         from db_mysql import get_mysql_db
         db = get_mysql_db()
 
         with db._pool.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO contacts (name, email, phone, company, title, notes, source, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, 'manual', NOW(), NOW())
-            """, (
-                data.get('name'),
-                data.get('email'),
-                data.get('phone'),
-                data.get('company'),
-                data.get('title'),
-                data.get('notes')
-            ))
+
+            if USER_SCOPING_ENABLED and user_id:
+                cursor.execute("""
+                    INSERT INTO contacts (name, email, phone, company, title, notes, source, user_id, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'manual', %s, NOW(), NOW())
+                """, (
+                    data.get('name'),
+                    data.get('email'),
+                    data.get('phone'),
+                    data.get('company'),
+                    data.get('title'),
+                    data.get('notes'),
+                    user_id
+                ))
+            else:
+                cursor.execute("""
+                    INSERT INTO contacts (name, email, phone, company, title, notes, source, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'manual', NOW(), NOW())
+                """, (
+                    data.get('name'),
+                    data.get('email'),
+                    data.get('phone'),
+                    data.get('company'),
+                    data.get('title'),
+                    data.get('notes')
+                ))
 
             contact_id = cursor.lastrowid
 
@@ -189,15 +242,33 @@ def create_contact():
 @contacts_bp.route('/<int:contact_id>', methods=['GET'])
 def get_contact(contact_id):
     """Get detailed contact information."""
+    # SECURITY: Require authentication
+    if not check_auth():
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
     try:
+        # USER SCOPING: Get user_id for filtering
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
         from db_mysql import get_mysql_db
         db = get_mysql_db()
 
         with db._pool.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, name, email, phone, company, title, notes,
-                       source, last_interaction, relationship_score,
+
+            # USER SCOPING: Add user_id filter to query
+            if USER_SCOPING_ENABLED and user_id:
+                cursor.execute("""
+                    SELECT id, name, email, phone, company, title, notes,
+                           source, last_interaction, relationship_score,
+                           tags, birthday, linkedin_url, twitter_url,
+                           created_at, updated_at
+                    FROM contacts WHERE id = %s AND user_id = %s
+                """, (contact_id, user_id))
+            else:
+                cursor.execute("""
+                    SELECT id, name, email, phone, company, title, notes,
+                           source, last_interaction, relationship_score,
                        interaction_count, created_at, updated_at
                 FROM contacts
                 WHERE id = %s
