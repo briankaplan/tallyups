@@ -64,15 +64,18 @@ class TaskadeIntegration:
         self._user_credentials_service = None
 
         # If user_id provided, try to get per-user credentials
+        # SECURITY: Do NOT fall back to admin credentials for user requests
         if user_id:
             user_creds = self._get_user_taskade_credentials(user_id)
-            if user_creds:
+            if user_creds and user_creds.get('api_key'):
                 self.api_key = user_creds.get('api_key')
-                self.workspace_id = user_creds.get('workspace_id') or WORKSPACE_ID
+                self.workspace_id = user_creds.get('workspace_id') or workspace_id
             else:
-                self.api_key = api_key or TASKADE_API_KEY
-                self.workspace_id = workspace_id or WORKSPACE_ID
+                # User doesn't have credentials - they must add their own
+                self.api_key = None
+                self.workspace_id = None
         else:
+            # No user_id = admin/system request, use global key
             self.api_key = api_key or TASKADE_API_KEY
             self.workspace_id = workspace_id or WORKSPACE_ID
 
@@ -144,6 +147,13 @@ class TaskadeIntegration:
 
     def _request(self, method, endpoint, data=None):
         """Make API request to Taskade"""
+        # SECURITY: Fail if no API key configured
+        if not self.api_key:
+            if self.user_id:
+                raise ValueError("Taskade not configured. Please add your Taskade API key in Settings > API Keys.")
+            else:
+                raise ValueError("Taskade API key not configured in environment")
+
         url = f"{self.base_url}{endpoint}"
 
         try:
