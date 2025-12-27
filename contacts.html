@@ -665,8 +665,8 @@
       letter-spacing: 0.5px;
     }
 
-    .sync-dir-btn.pull .icon { color: #22c55e; }
-    .sync-dir-btn.push .icon { color: #3b82f6; }
+    .sync-dir-btn.pull .icon { color: var(--success, #22c55e); }
+    .sync-dir-btn.push .icon { color: var(--info, #3b82f6); }
     .sync-dir-btn.full .icon { color: #8b5cf6; }
 
     /* Sync Pending Badge */
@@ -1464,11 +1464,11 @@
       margin-bottom: 4px;
     }
 
-    .health-status.excellent { color: #22c55e; }
-    .health-status.good { color: #84cc16; }
-    .health-status.fair { color: #eab308; }
-    .health-status.needs-attention { color: #f97316; }
-    .health-status.at-risk { color: #ef4444; }
+    .health-status.excellent { color: var(--success, #22c55e); }
+    .health-status.good { color: var(--green, #84cc16); }
+    .health-status.fair { color: var(--yellow, #eab308); }
+    .health-status.needs-attention { color: var(--orange, #f97316); }
+    .health-status.at-risk { color: var(--error, #ef4444); }
 
     .health-message {
       font-size: 12px;
@@ -2397,8 +2397,8 @@
     }
 
     .cleanup-checkbox.checked {
-      background: #ef4444;
-      border-color: #ef4444;
+      background: var(--error, #ef4444);
+      border-color: var(--error, #ef4444);
     }
 
     .cleanup-checkbox.checked::after {
@@ -2474,14 +2474,14 @@
     }
 
     .cleanup-btn.danger {
-      background: #ef4444;
+      background: var(--error, #ef4444);
       border: none;
       color: white;
       margin-left: auto;
     }
 
     .cleanup-btn.danger:hover:not(:disabled) {
-      background: #dc2626;
+      background: var(--error-dark, #dc2626);
     }
 
     .cleanup-btn.danger:disabled {

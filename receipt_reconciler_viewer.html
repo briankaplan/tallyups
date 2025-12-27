@@ -204,14 +204,14 @@ localStorage.setItem('theme', 'dark');
       </div>
       <div class="toolbar-divider"></div>
       <span style="font-size:12px;color:var(--muted);font-weight:600">RECEIPTS:</span>
-      <div class="chip chip-with-badge" data-filter="receipt-verified" style="border-color:#22c55e">
-        ✓✓ Verified <span class="notification-badge" id="receipt-verified-count" style="background:#22c55e">0</span>
+      <div class="chip chip-with-badge border-success" data-filter="receipt-verified">
+        ✓✓ Verified <span class="notification-badge bg-success" id="receipt-verified-count">0</span>
       </div>
-      <div class="chip chip-with-badge" data-filter="receipt-mismatch" style="border-color:#ef4444">
-        ✗ Mismatch <span class="notification-badge" id="receipt-mismatch-count" style="background:#ef4444">0</span>
+      <div class="chip chip-with-badge border-error" data-filter="receipt-mismatch">
+        ✗ Mismatch <span class="notification-badge bg-error" id="receipt-mismatch-count">0</span>
       </div>
-      <div class="chip chip-with-badge" data-filter="receipt-error" style="border-color:#f59e0b">
-        ⚠ Error <span class="notification-badge" id="receipt-error-count" style="background:#f59e0b">0</span>
+      <div class="chip chip-with-badge border-warning" data-filter="receipt-error">
+        ⚠ Error <span class="notification-badge bg-warning" id="receipt-error-count">0</span>
       </div>
       <div class="toolbar-divider"></div>
       <span style="font-size:12px;color:var(--muted);font-weight:600">BUSINESS:</span>
@@ -285,11 +285,11 @@ localStorage.setItem('theme', 'dark');
 <div id="reports-page" class="page-content" style="display:none">
   <div style="max-width:1400px;margin:0 auto;padding:24px">
     <!-- Hero Header -->
-    <div style="margin-bottom:32px;background:linear-gradient(135deg, rgba(0,255,136,.1), rgba(0,204,106,.1));padding:32px;border-radius:16px;border:1px solid rgba(0,255,136,.2)">
+    <div style="margin-bottom:32px;background:linear-gradient(135deg, var(--accent-dim), rgba(0,204,106,.1));padding:32px;border-radius:16px;border:1px solid rgba(0,255,136,.2)">
       <div style="display:flex;align-items:center;gap:16px">
-        <div style="width:56px;height:56px;background:linear-gradient(135deg, #00ff88, #00cc6a);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 16px rgba(0,255,136,.4)">📊</div>
+        <div class="icon-box-brand">📊</div>
         <div style="flex:1">
-          <h2 style="margin:0;font-size:28px;font-weight:800;background:linear-gradient(135deg, #00ff88, #00cc6a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Expense Reports</h2>
+          <h2 class="gradient-brand-text" style="margin:0;font-size:28px;font-weight:800">Expense Reports</h2>
           <p style="margin:4px 0 0 0;color:var(--muted);font-size:14px">Review transactions, verify receipts, and create expense reports</p>
         </div>
       </div>
@@ -302,7 +302,7 @@ localStorage.setItem('theme', 'dark');
       <p style="margin:0 0 24px 0;color:var(--muted);max-width:500px;margin-left:auto;margin-right:auto">
         Review each transaction with its receipt side-by-side. Verify matches, add to report, and export when done.
       </p>
-      <a href="/reports" style="display:inline-flex;align-items:center;gap:10px;padding:16px 32px;font-size:16px;font-weight:700;border-radius:12px;background:linear-gradient(135deg, #00ff88, #00cc6a);color:#000;text-decoration:none;box-shadow:0 4px 20px rgba(0,255,136,.4);transition:all .2s">
+      <a href="/reports" class="btn-brand-solid">
         <span>Start Report Builder</span>
         <span style="font-size:20px">→</span>
       </a>
@@ -339,17 +339,17 @@ localStorage.setItem('theme', 'dark');
       <div style="background:var(--panel);padding:24px;border-radius:12px;border:1px solid var(--edge);margin-bottom:24px">
         <!-- Summary Stats -->
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
-          <div style="background:linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);color:#000;padding:20px;border-radius:10px">
+          <div class="stat-card-primary" style="border-radius:10px">
             <div style="font-size:13px;opacity:0.8;margin-bottom:4px;font-weight:600">Total Amount</div>
             <div style="font-size:32px;font-weight:700" id="report-total-amount">$0.00</div>
           </div>
           <div style="background:var(--panel2);padding:20px;border-radius:10px;border:1px solid var(--edge)">
             <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Expenses</div>
-            <div style="font-size:32px;font-weight:700;color:#00ff88" id="report-expense-count">0</div>
+            <div class="text-brand" style="font-size:32px;font-weight:700" id="report-expense-count">0</div>
           </div>
           <div style="background:var(--panel2);padding:20px;border-radius:10px;border:1px solid var(--edge)">
             <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Receipts</div>
-            <div style="font-size:32px;font-weight:700;color:#00ff88" id="report-receipt-count">0</div>
+            <div class="text-brand" style="font-size:32px;font-weight:700" id="report-receipt-count">0</div>
           </div>
         </div>
 
@@ -404,7 +404,7 @@ localStorage.setItem('theme', 'dark');
     <!-- Archived Reports -->
     <div style="background:linear-gradient(145deg, var(--panel), var(--panel2));padding:28px;border-radius:16px;border:1px solid var(--edge);box-shadow:0 4px 24px rgba(0,0,0,.2)">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <div style="width:36px;height:36px;background:rgba(0,255,136,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">📁</div>
+        <div class="icon-box-sm">📁</div>
         <div>
           <h3 style="margin:0;font-size:18px;font-weight:700">Submitted Reports</h3>
           <p style="margin:4px 0 0 0;font-size:13px;color:var(--muted)">Previously submitted expense reports</p>
@@ -423,55 +423,55 @@ localStorage.setItem('theme', 'dark');
 <div id="stats-page" class="page-content" style="display:none">
   <div style="max-width:1400px;margin:0 auto;padding:24px">
     <!-- Hero Header -->
-    <div style="margin-bottom:32px;background:linear-gradient(135deg, rgba(0,255,136,.1), rgba(0,204,106,.1));padding:32px;border-radius:16px;border:1px solid rgba(0,255,136,.2)">
+    <div class="hero-section">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:16px">
-          <div style="width:56px;height:56px;background:linear-gradient(135deg, #00ff88, #00cc6a);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 16px rgba(0,255,136,.4)">📈</div>
+          <div class="icon-box-brand">📈</div>
           <div>
-            <h2 style="margin:0;font-size:28px;font-weight:800;background:linear-gradient(135deg, #00ff88, #00cc6a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Financial Analytics</h2>
+            <h2 class="gradient-brand-text" style="margin:0;font-size:28px;font-weight:800">Financial Analytics</h2>
             <p style="margin:4px 0 0 0;color:var(--muted);font-size:14px">Real-time spending insights and data</p>
           </div>
         </div>
-        <button onclick="loadStatsPage()" style="background:rgba(0,255,136,.2);border:1px solid rgba(0,255,136,.3);color:#00ff88;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600">🔄 Refresh</button>
+        <button onclick="loadStatsPage()" class="btn-brand-ghost">🔄 Refresh</button>
       </div>
     </div>
 
     <!-- Overview Cards Row -->
     <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:16px;margin-bottom:28px">
-      <div style="background:linear-gradient(135deg, #00ff88, #00cc6a);padding:20px;border-radius:12px;color:#000">
-        <div style="font-size:12px;font-weight:600;opacity:0.7;margin-bottom:6px">TOTAL SPENT</div>
-        <div style="font-size:28px;font-weight:800" id="stats-total-spent">$0</div>
-        <div style="font-size:11px;margin-top:6px;opacity:0.6" id="stats-total-count">0 transactions</div>
+      <div class="stat-card-primary">
+        <div class="stat-label">TOTAL SPENT</div>
+        <div class="stat-value" id="stats-total-spent">$0</div>
+        <div class="stat-sub" id="stats-total-count">0 transactions</div>
       </div>
-      <div style="background:var(--panel);padding:20px;border-radius:12px;border:1px solid var(--edge)">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">RECEIPTS MATCHED</div>
-        <div style="font-size:28px;font-weight:800;color:#00ff88" id="stats-receipts-matched">0</div>
-        <div style="font-size:11px;margin-top:6px;color:var(--muted)" id="stats-match-rate">0% coverage</div>
+      <div class="stat-card">
+        <div class="stat-label">RECEIPTS MATCHED</div>
+        <div class="stat-value" id="stats-receipts-matched">0</div>
+        <div class="stat-sub" id="stats-match-rate">0% coverage</div>
       </div>
-      <div style="background:var(--panel);padding:20px;border-radius:12px;border:1px solid var(--edge)">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">FROM GMAIL</div>
-        <div style="font-size:28px;font-weight:800;color:#00ff88" id="stats-gmail-receipts">0</div>
-        <div style="font-size:11px;margin-top:6px;color:var(--muted)" id="stats-gmail-pct">0% of receipts</div>
+      <div class="stat-card">
+        <div class="stat-label">FROM GMAIL</div>
+        <div class="stat-value" id="stats-gmail-receipts">0</div>
+        <div class="stat-sub" id="stats-gmail-pct">0% of receipts</div>
       </div>
-      <div style="background:var(--panel);padding:20px;border-radius:12px;border:1px solid var(--edge)">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">REFUNDS</div>
-        <div style="font-size:28px;font-weight:800;color:#00ff88" id="stats-refunds">$0</div>
-        <div style="font-size:11px;margin-top:6px;color:var(--muted)" id="stats-refund-count">0 transactions</div>
+      <div class="stat-card">
+        <div class="stat-label">REFUNDS</div>
+        <div class="stat-value" id="stats-refunds">$0</div>
+        <div class="stat-sub" id="stats-refund-count">0 transactions</div>
       </div>
-      <div style="background:var(--panel);padding:20px;border-radius:12px;border:1px solid var(--edge)">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">PAYMENTS</div>
-        <div style="font-size:28px;font-weight:800;color:#00ff88" id="stats-payments">$0</div>
-        <div style="font-size:11px;margin-top:6px;color:var(--muted)" id="stats-payment-count">0 transactions</div>
+      <div class="stat-card">
+        <div class="stat-label">PAYMENTS</div>
+        <div class="stat-value" id="stats-payments">$0</div>
+        <div class="stat-sub" id="stats-payment-count">0 transactions</div>
       </div>
     </div>
 
     <!-- Business Type Breakdown & Interest/Fees -->
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-bottom:28px">
       <!-- Business Type Breakdown -->
-      <div style="background:var(--panel);padding:24px;border-radius:14px;border:1px solid var(--edge)">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-          <div style="width:36px;height:36px;background:rgba(0,255,136,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🏢</div>
-          <h3 style="margin:0;font-size:18px;font-weight:700">By Business Type</h3>
+      <div class="section-panel">
+        <div class="section-header">
+          <div class="icon-box-sm">🏢</div>
+          <h3 class="section-title">By Business Type</h3>
         </div>
         <div id="stats-business-breakdown" style="display:flex;flex-direction:column;gap:16px">
           <!-- Populated by JS -->
@@ -480,44 +480,44 @@ localStorage.setItem('theme', 'dark');
       </div>
 
       <!-- Interest & Fees -->
-      <div style="background:var(--panel);padding:24px;border-radius:14px;border:1px solid var(--edge)">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-          <div style="width:36px;height:36px;background:rgba(255,78,106,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">💳</div>
-          <h3 style="margin:0;font-size:18px;font-weight:700">Interest & Fees</h3>
+      <div class="section-panel">
+        <div class="section-header">
+          <div class="icon-box-sm-error">💳</div>
+          <h3 class="section-title">Interest & Fees</h3>
         </div>
         <div id="stats-interest-fees" style="display:flex;flex-direction:column;gap:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--panel2);border-radius:8px">
             <span style="color:var(--muted)">Interest Charges</span>
-            <span style="font-weight:700;color:#ff4e6a" id="stats-interest-total">$0</span>
+            <span class="text-error" style="font-weight:700" id="stats-interest-total">$0</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--panel2);border-radius:8px">
             <span style="color:var(--muted)">Fees</span>
-            <span style="font-weight:700;color:#ff4e6a" id="stats-fees-total">$0</span>
+            <span class="text-error" style="font-weight:700" id="stats-fees-total">$0</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--panel2);border-radius:8px">
             <span style="color:var(--muted)">Late Charges</span>
-            <span style="font-weight:700;color:#ff4e6a" id="stats-late-total">$0</span>
+            <span class="text-error" style="font-weight:700" id="stats-late-total">$0</span>
           </div>
           <div style="border-top:1px solid var(--edge);margin-top:8px;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
             <span style="font-weight:600">Total Lost to Fees</span>
-            <span style="font-weight:800;color:#ff4e6a;font-size:20px" id="stats-total-fees">$0</span>
+            <span class="text-error" style="font-weight:800;font-size:20px" id="stats-total-fees">$0</span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Subscriptions Section -->
-    <div style="background:var(--panel);padding:24px;border-radius:14px;border:1px solid var(--edge);margin-bottom:28px">
+    <div class="section-panel" style="margin-bottom:28px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:36px;height:36px;background:rgba(0,255,136,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🔄</div>
+          <div class="icon-box-sm">🔄</div>
           <div>
-            <h3 style="margin:0;font-size:18px;font-weight:700">Recurring Subscriptions</h3>
+            <h3 class="section-title">Recurring Subscriptions</h3>
             <p style="margin:2px 0 0 0;font-size:12px;color:var(--muted)">Auto-detected recurring charges</p>
           </div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:24px;font-weight:800;color:#00ff88" id="stats-monthly-subs">$0</div>
+          <div class="text-brand" style="font-size:24px;font-weight:800" id="stats-monthly-subs">$0</div>
           <div style="font-size:11px;color:var(--muted)">total subscription spend</div>
         </div>
       </div>
@@ -530,10 +530,10 @@ localStorage.setItem('theme', 'dark');
     <!-- Top Merchants & Categories -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px">
       <!-- Top Merchants -->
-      <div style="background:var(--panel);padding:24px;border-radius:14px;border:1px solid var(--edge)">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-          <div style="width:36px;height:36px;background:rgba(0,255,136,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">🏪</div>
-          <h3 style="margin:0;font-size:18px;font-weight:700">Top Merchants</h3>
+      <div class="section-panel">
+        <div class="section-header">
+          <div class="icon-box-sm">🏪</div>
+          <h3 class="section-title">Top Merchants</h3>
         </div>
         <div id="stats-top-merchants" style="display:flex;flex-direction:column;gap:10px">
           <!-- Populated by JS -->
@@ -542,10 +542,10 @@ localStorage.setItem('theme', 'dark');
       </div>
 
       <!-- Top Categories -->
-      <div style="background:var(--panel);padding:24px;border-radius:14px;border:1px solid var(--edge)">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-          <div style="width:36px;height:36px;background:rgba(0,255,136,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">📂</div>
-          <h3 style="margin:0;font-size:18px;font-weight:700">Spending by Category</h3>
+      <div class="section-panel">
+        <div class="section-header">
+          <div class="icon-box-sm">📂</div>
+          <h3 class="section-title">Spending by Category</h3>
         </div>
         <div id="stats-top-categories" style="display:flex;flex-direction:column;gap:10px">
           <!-- Populated by JS -->
@@ -555,10 +555,10 @@ localStorage.setItem('theme', 'dark');
     </div>
 
     <!-- Receipt Source Breakdown -->
-    <div style="background:var(--panel);padding:24px;border-radius:14px;border:1px solid var(--edge)">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-        <div style="width:36px;height:36px;background:rgba(0,255,136,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px">📧</div>
-        <h3 style="margin:0;font-size:18px;font-weight:700">Receipt Sources</h3>
+    <div class="section-panel">
+      <div class="section-header">
+        <div class="icon-box-sm">📧</div>
+        <h3 class="section-title">Receipt Sources</h3>
       </div>
       <div id="stats-receipt-sources" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:16px">
         <!-- Populated by JS -->
@@ -742,42 +742,42 @@ localStorage.setItem('theme', 'dark');
     </div>
     <div class="modal-body">
       <!-- System Health -->
-      <div class="settings-section" id="system-health-section" style="background:linear-gradient(135deg, rgba(0,255,136,.1), rgba(0,204,106,.05));border:1px solid rgba(0,255,136,.2);border-radius:12px;padding:16px;margin-bottom:20px">
+      <div class="settings-section hero-section" id="system-health-section" style="padding:16px;margin-bottom:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div class="settings-section-title" style="color:#00ff88;margin:0" id="health-title">🟢 System Health</div>
+          <div class="settings-section-title text-brand" style="margin:0" id="health-title">🟢 System Health</div>
           <div style="font-size:10px;color:var(--muted)" id="health-timestamp">Last checked: --</div>
         </div>
         <div id="system-health-status" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px">
           <div class="health-card" id="health-db-card" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;cursor:pointer" onclick="toggleHealthDetails('db')">
             <div style="font-size:20px;margin-bottom:4px" id="db-icon">✅</div>
             <div style="font-size:11px;color:var(--muted)">Database</div>
-            <div style="font-size:12px;font-weight:600;color:#00ff88" id="db-status">MySQL</div>
+            <div class="health-ok" style="font-size:12px;font-weight:600" id="db-status">MySQL</div>
             <div style="font-size:10px;color:var(--muted);margin-top:4px" id="db-latency">--ms</div>
           </div>
           <div class="health-card" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;cursor:pointer" onclick="toggleHealthDetails('r2')">
             <div style="font-size:20px;margin-bottom:4px" id="r2-icon">✅</div>
             <div style="font-size:11px;color:var(--muted)">R2 Storage</div>
-            <div style="font-size:12px;font-weight:600;color:#00ff88" id="r2-status">Connected</div>
+            <div class="health-ok" style="font-size:12px;font-weight:600" id="r2-status">Connected</div>
             <div style="font-size:10px;color:var(--muted);margin-top:4px" id="r2-bucket">--</div>
           </div>
           <div class="health-card" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;cursor:pointer" onclick="toggleHealthDetails('ai')">
             <div style="font-size:20px;margin-bottom:4px" id="ai-icon">✅</div>
             <div style="font-size:11px;color:var(--muted)">Gemini AI</div>
-            <div style="font-size:12px;font-weight:600;color:#00ff88" id="ai-status">Ready</div>
+            <div class="health-ok" style="font-size:12px;font-weight:600" id="ai-status">Ready</div>
             <div style="font-size:10px;color:var(--muted);margin-top:4px" id="ai-accuracy">99%+ OCR</div>
           </div>
           <div class="health-card" style="text-align:center;padding:12px;background:var(--panel2);border-radius:8px;cursor:pointer" onclick="toggleHealthDetails('gmail')">
             <div style="font-size:20px;margin-bottom:4px" id="gmail-icon">📧</div>
             <div style="font-size:11px;color:var(--muted)">Gmail</div>
-            <div style="font-size:12px;font-weight:600;color:#00ff88" id="gmail-health-status">0/3</div>
+            <div class="health-ok" style="font-size:12px;font-weight:600" id="gmail-health-status">0/3</div>
             <div style="font-size:10px;color:var(--muted);margin-top:4px" id="gmail-accounts-summary">accounts</div>
           </div>
         </div>
 
         <!-- Expandable Details Panel -->
-        <div id="health-details-panel" style="display:none;margin-top:12px;padding:12px;background:var(--panel2);border-radius:8px;border-left:3px solid #00ff88">
+        <div id="health-details-panel" style="display:none;margin-top:12px;padding:12px;background:var(--panel2);border-radius:8px;border-left:3px solid var(--brand)">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <strong id="health-details-title" style="color:#00ff88">Details</strong>
+            <strong id="health-details-title" class="text-brand">Details</strong>
             <button onclick="closeHealthDetails()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button>
           </div>
           <div id="health-details-content" style="font-size:12px;color:var(--ink)">
@@ -788,15 +788,15 @@ localStorage.setItem('theme', 'dark');
         <!-- Receipt Stats Row -->
         <div id="receipt-stats-row" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;margin-top:12px;padding:12px;background:var(--panel2);border-radius:8px">
           <div style="text-align:center">
-            <div style="font-size:18px;font-weight:700;color:#00ff88" id="stat-total">--</div>
+            <div class="text-brand" style="font-size:18px;font-weight:700" id="stat-total">--</div>
             <div style="font-size:10px;color:var(--muted)">Transactions</div>
           </div>
           <div style="text-align:center">
-            <div style="font-size:18px;font-weight:700;color:#00ff88" id="stat-receipts">--</div>
+            <div class="text-brand" style="font-size:18px;font-weight:700" id="stat-receipts">--</div>
             <div style="font-size:10px;color:var(--muted)">With Receipts</div>
           </div>
           <div style="text-align:center">
-            <div style="font-size:18px;font-weight:700;color:#fbbf24" id="stat-missing">--</div>
+            <div class="text-warning" style="font-size:18px;font-weight:700" id="stat-missing">--</div>
             <div style="font-size:10px;color:var(--muted)">Missing</div>
           </div>
         </div>
@@ -926,7 +926,7 @@ localStorage.setItem('theme', 'dark');
             <div class="settings-label">Theme</div>
             <div class="settings-desc">Tallyups dark theme</div>
           </div>
-          <span style="color:#00ff88;font-weight:600">Black & Green</span>
+          <span class="text-brand" style="font-weight:600">Black & Green</span>
         </div>
       </div>
     </div>
@@ -1171,7 +1171,7 @@ localStorage.setItem('theme', 'dark');
           Processing transactions...
         </div>
         <div style="background:var(--panel2);border-radius:8px;overflow:hidden;height:24px;position:relative">
-          <div id="progress-bar" style="background:linear-gradient(90deg,#3b82f6,#8b5cf6);height:100%;width:0%;transition:width 0.3s ease"></div>
+          <div id="progress-bar" class="progress-bar-fill"></div>
           <div id="progress-text" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;font-weight:600;color:var(--ink)">
             0%
           </div>
@@ -1217,7 +1217,7 @@ localStorage.setItem('theme', 'dark');
       <button class="modal-close" onclick="closeMissingReceiptModal()">×</button>
     </div>
     <div class="modal-body">
-      <div style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:white;padding:16px;border-radius:10px;margin-bottom:20px">
+      <div class="banner-warning">
         <div style="font-size:14px;font-weight:600;margin-bottom:4px" id="mrf-merchant">Loading...</div>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:24px;font-weight:700" id="mrf-amount">$0.00</span>
@@ -3585,7 +3585,7 @@ function loadReceipt() {
     wrap.innerHTML = `
       <div class="no-receipt" style="background:linear-gradient(135deg, rgba(34,197,94,0.1), rgba(22,163,74,0.05))">
         <div class="no-receipt-icon" style="font-size:64px">✅</div>
-        <div class="no-receipt-text" style="color:#22c55e;font-weight:600">No Receipt Needed</div>
+        <div class="no-receipt-text text-success" style="font-weight:600">No Receipt Needed</div>
         <div style="font-size:12px;color:var(--muted);margin-top:8px">This expense doesn't require a receipt</div>
       </div>`;
     title.textContent = 'Not Needed';
@@ -3611,7 +3611,7 @@ function loadReceipt() {
     wrap.innerHTML = `
       <div class="no-receipt" style="background:linear-gradient(135deg, rgba(34,197,94,0.1), rgba(22,163,74,0.05))">
         <div class="no-receipt-icon" style="font-size:64px">✅</div>
-        <div class="no-receipt-text" style="color:#22c55e;font-weight:600">No Receipt Needed</div>
+        <div class="no-receipt-text text-success" style="font-weight:600">No Receipt Needed</div>
         <div style="font-size:12px;color:var(--muted);margin-top:8px">This expense doesn't require a receipt</div>
       </div>`;
     title.textContent = 'Not Needed';
@@ -3973,7 +3973,7 @@ function updateQuickViewer() {
     imageDiv.innerHTML = `
       <div class="no-receipt" style="background:linear-gradient(135deg, rgba(34,197,94,0.1), rgba(22,163,74,0.05))">
         <div class="no-receipt-icon" style="font-size:64px">✅</div>
-        <div class="no-receipt-text" style="color:#22c55e;font-weight:600">No Receipt Needed</div>
+        <div class="no-receipt-text text-success" style="font-weight:600">No Receipt Needed</div>
       </div>`;
     if (zoomControls) imageDiv.appendChild(zoomControls);
     if (confidenceBadge) imageDiv.appendChild(confidenceBadge);
@@ -4167,9 +4167,9 @@ function updateQuickViewer() {
   const compareHeader = document.querySelector('.compare-col:last-child .compare-col-header');
   if (compareHeader) {
     if (hasOCR && ocrConfidence > 0) {
-      compareHeader.innerHTML = `RECEIPT <span style="font-size:9px;color:#3b82f6;margin-left:4px">OCR ${Math.round(ocrConfidence*100)}%</span>`;
+      compareHeader.innerHTML = `RECEIPT <span class="text-info" style="font-size:9px;margin-left:4px">OCR ${Math.round(ocrConfidence*100)}%</span>`;
     } else if (hasOCR) {
-      compareHeader.innerHTML = `RECEIPT <span style="font-size:9px;color:#3b82f6;margin-left:4px">OCR</span>`;
+      compareHeader.innerHTML = `RECEIPT <span class="text-info" style="font-size:9px;margin-left:4px">OCR</span>`;
     } else {
       compareHeader.textContent = 'RECEIPT';
     }
@@ -4685,7 +4685,7 @@ async function checkCalendarStatus() {
     if (!data.connected) {
       if (statusEl) {
         statusEl.textContent = '❌ Not Connected';
-        statusEl.style.color = '#ff4e6a';
+        statusEl.classList.add('health-error');
       }
       if (detailEl) detailEl.textContent = data.message || 'Calendar not configured';
       if (accountsList) accountsList.style.display = 'none';
@@ -4696,7 +4696,7 @@ async function checkCalendarStatus() {
     const accountCount = data.account_count || 1;
     if (statusEl) {
       statusEl.textContent = `✅ ${accountCount} Calendar${accountCount > 1 ? 's' : ''} Connected`;
-      statusEl.style.color = '#00ff88';
+      statusEl.classList.add('health-ok');
     }
     if (detailEl) detailEl.textContent = data.message || `${accountCount} account(s) linked`;
 
@@ -4726,7 +4726,7 @@ async function checkCalendarStatus() {
                    id="cal-${account.email.replace(/[@.]/g, '-')}"
                    ${isEnabled ? 'checked' : ''}
                    onchange="toggleCalendar('${account.email}', this.checked)"
-                   style="width:18px;height:18px;accent-color:#00ff88;cursor:pointer">
+                   style="width:18px;height:18px;accent-color:var(--brand);cursor:pointer">
             <div>
               <div style="font-size:13px;font-weight:500;color:var(--ink)">${account.name || account.email}</div>
               <div style="font-size:11px;color:var(--muted)">${account.email}</div>
@@ -4841,7 +4841,7 @@ async function checkSystemHealth() {
   const elements = ['db-status', 'r2-status', 'ai-status', 'gmail-health-status'];
   elements.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.innerHTML = '<span style="color:#fbbf24">...</span>';
+    if (el) el.innerHTML = '<span class="health-warn">...</span>';
   });
 
   try {
@@ -4879,12 +4879,12 @@ async function checkSystemHealth() {
       const db = services.database;
       if (db.status === 'connected') {
         if (dbIcon) dbIcon.textContent = '✅';
-        if (dbStatus) dbStatus.innerHTML = `<span style="color:#00ff88">${db.type?.toUpperCase() || 'OK'}</span>`;
+        if (dbStatus) dbStatus.innerHTML = `<span class="health-ok">${db.type?.toUpperCase() || 'OK'}</span>`;
         if (dbLatency) dbLatency.textContent = `${db.response_ms || '--'}ms`;
         if (dbTypeDesc) dbTypeDesc.textContent = db.type === 'mysql' ? 'MySQL on Railway' : 'SQLite - receipts.db';
       } else {
         if (dbIcon) dbIcon.textContent = '❌';
-        if (dbStatus) dbStatus.innerHTML = '<span style="color:#ef4444">Error</span>';
+        if (dbStatus) dbStatus.innerHTML = '<span class="health-error">Error</span>';
         if (dbLatency) dbLatency.textContent = db.error ? 'Failed' : '--';
       }
 
@@ -4901,7 +4901,7 @@ async function checkSystemHealth() {
         if (statReceipts) statReceipts.textContent = withReceipts.toLocaleString();
         if (statMissing) {
           statMissing.textContent = missing.toLocaleString();
-          statMissing.style.color = missing > 0 ? '#fbbf24' : '#00ff88';
+          statMissing.className = missing > 0 ? 'text-warning' : 'text-brand';
         }
       }
     }
@@ -4915,11 +4915,11 @@ async function checkSystemHealth() {
       const r2 = services.r2_storage;
       if (r2.status === 'connected') {
         if (r2Icon) r2Icon.textContent = '✅';
-        if (r2Status) r2Status.innerHTML = '<span style="color:#00ff88">Connected</span>';
+        if (r2Status) r2Status.innerHTML = '<span class="health-ok">Connected</span>';
         if (r2Bucket) r2Bucket.textContent = r2.bucket || 'receipts';
       } else {
         if (r2Icon) r2Icon.textContent = '⚠️';
-        if (r2Status) r2Status.innerHTML = '<span style="color:#fbbf24">Not Set</span>';
+        if (r2Status) r2Status.innerHTML = '<span class="health-warn">Not Set</span>';
         if (r2Bucket) r2Bucket.textContent = 'configure';
       }
     }
@@ -4934,12 +4934,12 @@ async function checkSystemHealth() {
       const ai = services.gemini_ai;
       if (ai.status === 'configured') {
         if (aiIcon) aiIcon.textContent = '✅';
-        if (aiStatus) aiStatus.innerHTML = '<span style="color:#00ff88">Ready</span>';
+        if (aiStatus) aiStatus.innerHTML = '<span class="health-ok">Ready</span>';
         if (aiAccuracy) aiAccuracy.textContent = services.ocr?.accuracy || '99%+';
         if (geminiBadge) geminiBadge.className = 'badge badge-good';
       } else {
         if (aiIcon) aiIcon.textContent = '⚠️';
-        if (aiStatus) aiStatus.innerHTML = '<span style="color:#fbbf24">No Key</span>';
+        if (aiStatus) aiStatus.innerHTML = '<span class="health-warn">No Key</span>';
         if (aiAccuracy) aiAccuracy.textContent = 'Donut fallback';
         if (geminiBadge) geminiBadge.className = 'badge badge-neutral';
       }
@@ -4956,7 +4956,7 @@ async function checkSystemHealth() {
       const total = gmail.accounts?.length || 3;
 
       if (gmailHealthStatus) {
-        gmailHealthStatus.innerHTML = `<span style="color:${connected > 0 ? '#00ff88' : '#fbbf24'}">${connected}/${total}</span>`;
+        gmailHealthStatus.innerHTML = `<span class="${connected > 0 ? 'health-ok' : 'health-warn'}">${connected}/${total}</span>`;
       }
       if (gmailIcon) gmailIcon.textContent = connected === total ? '✅' : connected > 0 ? '📧' : '⚠️';
       if (gmailSummary) gmailSummary.textContent = connected === total ? 'all connected' : 'accounts';
@@ -4971,7 +4971,7 @@ async function checkSystemHealth() {
 
     // Show error state
     const dbStatus = document.getElementById('db-status');
-    if (dbStatus) dbStatus.innerHTML = '<span style="color:#ef4444">Offline</span>';
+    if (dbStatus) dbStatus.innerHTML = '<span class="health-error">Offline</span>';
 
     showToast('Health check failed: ' + error.message, 'error');
   }
@@ -5011,7 +5011,7 @@ function toggleHealthDetails(service) {
           ${db.transaction_count ? `<div><strong>Transactions:</strong> ${db.transaction_count.toLocaleString()}</div>` : ''}
           ${db.receipts ? `<div><strong>With Receipts:</strong> ${db.receipts.with_receipts?.toLocaleString() || 0}</div>` : ''}
         </div>
-        ${db.error ? `<div style="color:#ef4444;margin-top:8px">Error: ${db.error}</div>` : ''}
+        ${db.error ? `<div class="text-error" style="margin-top:8px">Error: ${db.error}</div>` : ''}
       `;
       break;
 
@@ -5053,12 +5053,12 @@ function toggleHealthDetails(service) {
       html = '<div style="display:flex;flex-direction:column;gap:6px">';
       if (gmail.accounts && gmail.accounts.length > 0) {
         gmail.accounts.forEach(acc => {
-          const statusColor = acc.connected ? '#00ff88' : '#fbbf24';
+          const statusClass = acc.connected ? 'health-ok' : 'health-warn';
           const statusText = acc.connected ? 'Connected' : 'Not connected';
           html += `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">
               <span>${acc.email}</span>
-              <span style="color:${statusColor};font-size:11px">${statusText}</span>
+              <span class="${statusClass}" style="font-size:11px">${statusText}</span>
             </div>
           `;
         });
@@ -6208,7 +6208,7 @@ async function loadStatsPage() {
     // Show error state
     containerIds.forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.innerHTML = `<div style="color:#ff4e6a;text-align:center;padding:20px">Error loading data: ${e.message}</div>`;
+      if (el) el.innerHTML = `<div class="text-error" style="text-align:center;padding:20px">Error loading data: ${e.message}</div>`;
     });
   }
 }
@@ -6488,7 +6488,7 @@ function renderStats(stats) {
             </div>
             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px">
               <span>${data.count} transactions</span>
-              ${hasSubmitted ? `<span style="color:#00ff88">Reported: ${fmt(data.submitted)} (${data.submittedCount})</span>` : ''}
+              ${hasSubmitted ? `<span class="text-brand">Reported: ${fmt(data.submitted)} (${data.submittedCount})</span>` : ''}
             </div>
             ${hasSubmitted && unreported > 0 ? `<div style="font-size:11px;color:#ffd85e;margin-top:2px">Unreported: ${fmt(unreported)} (${data.count - data.submittedCount})</div>` : ''}
           </div>
@@ -6515,15 +6515,15 @@ function renderStats(stats) {
         const pct = Math.round((data.total / maxMerchant) * 100);
         return `
           <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--panel2);border-radius:8px">
-            <div style="width:24px;height:24px;background:rgba(0,255,136,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#00ff88">${i + 1}</div>
+            <div style="width:24px;height:24px;background:var(--accent-dim);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700" class="text-brand">${i + 1}</div>
             <div style="flex:1;min-width:0">
               <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
               <div style="background:var(--edge);height:4px;border-radius:2px;margin-top:4px">
-                <div style="background:#00ff88;height:100%;width:${pct}%;border-radius:2px"></div>
+                <div style="background:var(--brand);height:100%;width:${pct}%;border-radius:2px"></div>
               </div>
             </div>
             <div style="text-align:right">
-              <div style="font-weight:700;color:#00ff88">${fmt(data.total)}</div>
+              <div class="text-brand" style="font-weight:700">${fmt(data.total)}</div>
               <div style="font-size:11px;color:var(--muted)">${data.count}x</div>
             </div>
           </div>
@@ -6553,11 +6553,11 @@ function renderStats(stats) {
             <div style="flex:1">
               <div style="font-weight:600">${name}</div>
               <div style="background:var(--edge);height:4px;border-radius:2px;margin-top:4px">
-                <div style="background:#00ff88;height:100%;width:${pct}%;border-radius:2px"></div>
+                <div style="background:var(--brand);height:100%;width:${pct}%;border-radius:2px"></div>
               </div>
             </div>
             <div style="text-align:right">
-              <div style="font-weight:700;color:#00ff88">${fmt(data.total)}</div>
+              <div class="text-brand" style="font-weight:700">${fmt(data.total)}</div>
               <div style="font-size:11px;color:var(--muted)">${data.count}x</div>
             </div>
           </div>
@@ -6585,7 +6585,7 @@ function renderStats(stats) {
         <div style="background:var(--panel2);padding:14px;border-radius:10px;border:1px solid var(--edge)">
           <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">${sub.name || 'Unknown'}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <span style="font-size:18px;font-weight:700;color:#00ff88">${fmt(sub.total || 0)}</span>
+            <span class="text-brand" style="font-size:18px;font-weight:700">${fmt(sub.total || 0)}</span>
             <span style="font-size:11px;color:var(--muted);background:var(--panel);padding:2px 8px;border-radius:4px">${sub.count || 0}x</span>
           </div>
           <div style="font-size:11px;color:var(--muted)">~${fmt(sub.amount || 0)}/charge${sub.isRecurring ? ' • recurring' : ''}</div>
@@ -6621,7 +6621,7 @@ function renderStats(stats) {
           <div style="background:var(--panel2);padding:16px;border-radius:10px;border:1px solid var(--edge);text-align:center">
             <div style="font-size:32px;margin-bottom:8px">${icon}</div>
             <div style="font-weight:600;margin-bottom:4px">${source}</div>
-            <div style="font-size:28px;font-weight:800;color:#00ff88">${count}</div>
+            <div class="text-brand" style="font-size:28px;font-weight:800">${count}</div>
             <div style="font-size:11px;color:var(--muted)">${pct}% of receipts</div>
           </div>
         `;

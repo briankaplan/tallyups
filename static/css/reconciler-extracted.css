@@ -39,6 +39,246 @@
 }
 
 /* ============================================
+   COLOR UTILITY CLASSES
+   Use these instead of inline styles
+   ============================================ */
+
+/* Text Colors */
+.text-brand { color: var(--brand) !important; }
+.text-success { color: var(--ok) !important; }
+.text-error { color: var(--bad) !important; }
+.text-warning { color: var(--warn) !important; }
+.text-muted { color: var(--muted) !important; }
+
+/* Background Colors */
+.bg-brand { background: var(--brand) !important; }
+.bg-success { background: var(--ok) !important; }
+.bg-error { background: var(--bad) !important; }
+.bg-warning { background: var(--warn) !important; }
+
+/* Border Colors */
+.border-brand { border-color: var(--brand) !important; }
+.border-success { border-color: var(--ok) !important; }
+.border-error { border-color: var(--bad) !important; }
+.border-warning { border-color: var(--warn) !important; }
+
+/* Brand Gradient */
+.gradient-brand {
+  background: linear-gradient(135deg, var(--brand), var(--brand-600, #00cc6a)) !important;
+}
+.gradient-brand-text {
+  background: linear-gradient(135deg, var(--brand), var(--brand-600, #00cc6a));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status Badges */
+.badge-verified { background: var(--ok); color: #000; }
+.badge-error { background: var(--bad); color: #fff; }
+.badge-warning { background: var(--warn); color: #000; }
+.badge-pending { background: var(--muted); color: #fff; }
+
+/* Icon Boxes */
+.icon-box-brand {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-600, #00cc6a));
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  box-shadow: 0 4px 16px var(--glow);
+}
+
+/* Stat Value Colors */
+.stat-value-brand { color: var(--brand); font-weight: 700; }
+.stat-value-warning { color: var(--warn); font-weight: 700; }
+
+/* Button Variants */
+.btn-brand-ghost {
+  background: rgba(0, 255, 136, 0.2);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  color: var(--brand);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-brand-ghost:hover {
+  background: rgba(0, 255, 136, 0.3);
+}
+
+/* Solid Brand Button (CTA) */
+.btn-brand-solid {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-600, #00cc6a));
+  color: #000;
+  text-decoration: none;
+  box-shadow: 0 4px 20px var(--glow);
+  transition: all 0.2s;
+}
+.btn-brand-solid:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px var(--glow);
+}
+
+/* Small Icon Boxes */
+.icon-box-sm {
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 255, 136, 0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.icon-box-sm-error {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 78, 106, 0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+/* Primary Stat Card (gradient background) */
+.stat-card-primary {
+  background: linear-gradient(135deg, var(--brand), var(--brand-600, #00cc6a));
+  padding: 20px;
+  border-radius: 12px;
+  color: #000;
+}
+.stat-card-primary .stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-bottom: 6px;
+}
+.stat-card-primary .stat-value {
+  font-size: 28px;
+  font-weight: 800;
+}
+.stat-card-primary .stat-sub {
+  font-size: 11px;
+  margin-top: 6px;
+  opacity: 0.6;
+}
+
+/* Secondary Stat Card */
+.stat-card {
+  background: var(--panel);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--edge);
+}
+.stat-card .stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--brand);
+}
+.stat-card .stat-sub {
+  font-size: 11px;
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+/* Hero Section */
+.hero-section {
+  margin-bottom: 32px;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 204, 106, 0.1));
+  padding: 32px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+/* Section Panel */
+.section-panel {
+  background: var(--panel);
+  padding: 24px;
+  border-radius: 14px;
+  border: 1px solid var(--edge);
+}
+
+/* Section Title with Icon */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Health Status Colors */
+.health-ok { color: var(--brand) !important; }
+.health-warn { color: var(--warn) !important; }
+.health-error { color: var(--bad) !important; }
+
+/* Info Blue */
+.text-info { color: #3b82f6 !important; }
+.bg-info { background: #3b82f6 !important; }
+.btn-info {
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-info:hover {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+/* Warning Banner */
+.banner-warning {
+  background: linear-gradient(135deg, var(--warn, #f59e0b) 0%, #d97706 100%);
+  color: white;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+  height: 8px;
+  background: var(--panel2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  height: 100%;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* ============================================
    AWARD-WORTHY POLISH & MICRO-INTERACTIONS
    ============================================ */
 
