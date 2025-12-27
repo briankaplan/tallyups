@@ -15,30 +15,12 @@
   <script src="/static/js/unified-header.js"></script>
   <script src="/static/js/app-shell.js" defer></script>
   <style>
-    :root {
-      /* Blue-tinted dark theme */
-      --bg: #0a0f14;
-      --bg-card: #0e141a;
-      --bg-elevated: #121a25;
-      --accent: #00ff88;
-      --accent-dim: rgba(0, 255, 136, 0.15);
-      --accent-glow: rgba(0, 255, 136, 0.3);
-      --text: #ffffff;
-      --text-dim: #666666;
-      --text-secondary: #999999;
-      --border: #1b2a3a;
-      --success: #00ff88;
-      --warning: #ffaa00;
-      --error: #ff4444;
-      --info: #4488ff;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-    }
+    /* Uses legendary design system variables from /static/css/legendary/index.css */
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      font-family: var(--font-text);
+      background: var(--bg-primary);
+      color: var(--text-primary);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       padding-top: calc(60px + var(--safe-top)); /* Space for app-shell header */
