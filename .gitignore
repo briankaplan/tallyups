@@ -154,6 +154,94 @@ compile_*.py
 archive/
 
 # ========================================
+# Personal Data Files (User-Specific)
+# ========================================
+# Business name specific files
+DOWNHOME_*.csv
+DOWN_HOME_*.csv
+DOWNHOME_*.json
+downhome_*.csv
+downhome_*.json
+down_home_*.csv
+
+# Business rules (user-specific mappings)
+email_domain_business_rules.json
+merchant_business_rules.json
+merchant_aliases.json
+
+# Contact data
+contacts.csv
+contacts.backup*.csv
+contacts_for_upload.json
+data/imessage_contacts.csv
+
+# Report files
+reports/
+*_report*.txt
+*_report*.csv
+
+# Verification/validation results
+verification_results.json
+validation_results.json
+reverification_results.json
+*_verification*.csv
+*_verification*.json
+*_validation*.json
+*_wrong_receipts*.json
+*_mismatches*.csv
+*_mismatches*.json
+MISMATCHES*.csv
+TRUE_MISMATCHES*.csv
+FALSE_MISMATCHES*.csv
+
+# OCR progress files
+*_ocr_progress.json
+*_ocr_verification.csv
+
+# Search results
+*_SEARCH_RESULTS.json
+FOUND_MATCHES.json
+missing_*.json
+
+# Export/review files
+*_EXPORT.csv
+*_REVIEW.csv
+*_review.csv
+*_MISSING*.csv
+*_ACTION*.csv
+
+# Railway tokens (SENSITIVE)
+railway_*.env
+
+# Cleanup/audit folders
+cleanup_audit/
+.wrangler/
+
+# Changelog session files
+CHANGELOG_SESSION*.md
+
+# Audit reports (contain personal data references)
+*AUDIT*.md
+*AUDIT*.txt
+
+# Patch files
+changes.patch
+
+# Rename/migration lists
+rename_list.json
+
+# System status files
+SYSTEM_STATUS*.md
+
+# Local comprehenive reports
+*COMPREHENSIVE*.md
+*COMPREHENSIVE*.csv
+LOCAL_CHANGES*.md
+
+# Zip archives
+*.zip
+
+# ========================================
 # Keep These Files (Whitelist)
 # ========================================
 # Documentation should be committed
@@ -174,3 +262,4 @@ archive/
 # Configuration examples (not real credentials)
 !.env.example
 !config.example.json
+credentials_desktop.json
