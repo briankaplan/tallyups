@@ -125,12 +125,35 @@ class R2StorageService:
 
         return sha256_hash.hexdigest()
 
+    def generate_user_scoped_key(
+        self,
+        user_id: str,
+        prefix: str,
+        filename: str
+    ) -> str:
+        """
+        Generate a user-scoped R2 key.
+
+        Args:
+            user_id: User's UUID
+            prefix: Path prefix (e.g., 'receipts', 'inbox')
+            filename: Filename
+
+        Returns:
+            User-scoped R2 key like: {user_id}/{prefix}/{filename}
+        """
+        # Sanitize user_id and filename
+        safe_user_id = user_id.replace('/', '_').replace('\\', '_')
+        safe_filename = filename.replace('/', '_').replace('\\', '_')
+        return f"{safe_user_id}/{prefix}/{safe_filename}"
+
     def upload_file(
         self,
         file_path: str,
         r2_key: str = None,
         metadata: Dict = None,
-        public: bool = True
+        public: bool = True,
+        user_id: str = None
     ) -> Optional[Dict]:
         """
         Upload file to R2 storage
@@ -140,6 +163,7 @@ class R2StorageService:
             r2_key: R2 key/path (if None, auto-generated from filename)
             metadata: Optional metadata dict to store with file
             public: Whether file should be publicly accessible
+            user_id: Optional user ID for user-scoped storage (multi-tenant)
 
         Returns:
             Dict with upload result:
@@ -167,7 +191,14 @@ class R2StorageService:
             if not r2_key:
                 timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
                 file_hash_short = hashlib.md5(str(datetime.now()).encode()).hexdigest()[:8]
-                r2_key = f"receipts/{timestamp}_{file_path.stem}_{file_hash_short}{file_path.suffix}"
+                filename = f"{timestamp}_{file_path.stem}_{file_hash_short}{file_path.suffix}"
+
+                if user_id:
+                    # User-scoped storage path
+                    r2_key = self.generate_user_scoped_key(user_id, 'receipts', filename)
+                else:
+                    # Legacy path (backward compatible)
+                    r2_key = f"receipts/{filename}"
 
             # Calculate file hash for deduplication
             file_hash = self.calculate_file_hash(str(file_path))

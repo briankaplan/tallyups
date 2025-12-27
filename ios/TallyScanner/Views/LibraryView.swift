@@ -88,22 +88,22 @@ struct LibraryView: View {
     private var statsBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 16) {
-                StatPill(
+                LibraryStatPill(
                     title: "Total",
                     value: "\(viewModel.stats?.totalReceipts ?? 0)",
                     color: .tallyAccent
                 )
-                StatPill(
+                LibraryStatPill(
                     title: "Matched",
                     value: "\(viewModel.stats?.matchedReceipts ?? 0)",
                     color: .green
                 )
-                StatPill(
+                LibraryStatPill(
                     title: "Unmatched",
                     value: "\(viewModel.stats?.unmatchedReceipts ?? 0)",
                     color: .orange
                 )
-                StatPill(
+                LibraryStatPill(
                     title: "Total Amount",
                     value: formatCurrency(viewModel.stats?.totalAmount ?? 0),
                     color: .blue
@@ -198,9 +198,9 @@ struct LibraryView: View {
     }
 }
 
-// MARK: - Stat Pill
+// MARK: - Library Stat Pill
 
-struct StatPill: View {
+private struct LibraryStatPill: View {
     let title: String
     let value: String
     let color: Color
@@ -229,6 +229,7 @@ struct StatPill: View {
 
 struct FilterView: View {
     @ObservedObject var viewModel: LibraryViewModel
+    @ObservedObject private var businessTypeService = BusinessTypeService.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var status = "all"
@@ -251,14 +252,27 @@ struct FilterView: View {
                 }
 
                 Section("Business") {
-                    Picker("Business", selection: $business) {
-                        Text("All").tag("all")
-                        Text("Personal").tag("Personal")
-                        Text("Down Home").tag("Down Home")
-                        Text("MCR").tag("Music City Rodeo")
-                        Text("Em.co").tag("Em.co")
+                    if businessTypeService.isLoading {
+                        HStack {
+                            Text("Loading...")
+                                .foregroundColor(.gray)
+                            Spacer()
+                            ProgressView()
+                        }
+                    } else {
+                        Picker("Business", selection: $business) {
+                            Text("All").tag("all")
+                            ForEach(businessTypeService.businessTypes) { type in
+                                HStack {
+                                    Image(systemName: type.icon)
+                                        .foregroundColor(type.swiftUIColor)
+                                    Text(type.displayName)
+                                }
+                                .tag(type.name)
+                            }
+                        }
+                        .pickerStyle(.menu)
                     }
-                    .pickerStyle(.menu)
                 }
 
                 Section("Date Range") {
@@ -287,6 +301,9 @@ struct FilterView: View {
                     }
                     .bold()
                 }
+            }
+            .task {
+                await businessTypeService.loadIfNeeded()
             }
         }
     }

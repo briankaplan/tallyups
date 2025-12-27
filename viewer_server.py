@@ -101,6 +101,24 @@ except ImportError:
     R2_PUBLIC_URL = os.getenv('R2_PUBLIC_URL', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev')
     print(f"⚠️ R2 config not available, using env: {R2_PUBLIC_URL}")
 
+# === USER SCOPING FOR MULTI-TENANT ===
+try:
+    from db_user_scope import (
+        get_current_user_id, is_admin_user, add_user_scope,
+        user_scoped_query, user_scoped_count, UserScopedDB, ADMIN_USER_ID
+    )
+    USER_SCOPING_AVAILABLE = True
+    print("✅ User scoping module loaded")
+except ImportError as e:
+    USER_SCOPING_AVAILABLE = False
+    print(f"⚠️ User scoping not available: {e}")
+    # Fallback functions
+    ADMIN_USER_ID = 'admin-00000000-0000-0000-0000-000000000000'
+    def get_current_user_id():
+        return ADMIN_USER_ID
+    def is_admin_user():
+        return True
+
 # === DATABASE (MySQL only) ===
 USE_DATABASE = False
 db = None
@@ -581,8 +599,8 @@ def start_plaid_sync_worker():
         from services.plaid_sync_worker import PlaidSyncWorker, SyncWorkerConfig
 
         config = SyncWorkerConfig()
-        # Set a reasonable interval for production (15 minutes)
-        config.sync_interval = int(os.environ.get('PLAID_SYNC_INTERVAL', 900))
+        # Sync once per day (86400 seconds) - use env var to override if needed
+        config.sync_interval = int(os.environ.get('PLAID_SYNC_INTERVAL', 86400))
 
         worker = PlaidSyncWorker(config)
         worker.start(daemon=True)
@@ -646,6 +664,22 @@ try:
     logger.info("Registered blueprint: notes")
 except ImportError as e:
     logger.warning(f"Could not load notes blueprint: {e}")
+
+# Authentication routes (Apple Sign In, JWT)
+try:
+    from routes.auth_routes import auth_bp
+    app.register_blueprint(auth_bp)
+    logger.info("Registered blueprint: auth")
+except ImportError as e:
+    logger.warning(f"Could not load auth blueprint: {e}")
+
+# User credentials routes (OAuth, API keys)
+try:
+    from routes.credentials_routes import credentials_bp
+    app.register_blueprint(credentials_bp)
+    logger.info("Registered blueprint: credentials")
+except ImportError as e:
+    logger.warning(f"Could not load credentials blueprint: {e}")
 
 try:
     from routes.incoming import incoming_bp
@@ -5438,12 +5472,14 @@ def get_transaction(tx_id):
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
+        # USER SCOPING: Only return transaction if it belongs to current user
+        user_id = get_current_user_id()
         cursor.execute("""
             SELECT _index, chase_date, chase_description, chase_amount, business_type,
                    category, notes, receipt_file, receipt_url, r2_url, review_status,
                    ocr_verified, ocr_verification_status, ocr_data
-            FROM transactions WHERE _index = %s
-        """, (tx_id,))
+            FROM transactions WHERE _index = %s AND user_id = %s
+        """, (tx_id, user_id))
 
         row = cursor.fetchone()
         cursor.close()
@@ -6054,6 +6090,12 @@ def get_transactions():
 
                     # Build WHERE clause based on filters
                     where_clauses = []
+                    query_params = []
+
+                    # USER SCOPING: Filter by current user's data
+                    user_id = get_current_user_id()
+                    where_clauses.append("user_id = %s")
+                    query_params.append(user_id)
 
                     # By default, hide transactions that are in a report (have report_id)
                     # unless show_in_report=true is passed
@@ -6070,9 +6112,9 @@ def get_transactions():
 
                     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
-                    # Get total count for pagination
+                    # Get total count for pagination (with user_id parameter)
                     count_query = f"SELECT COUNT(*) as total FROM transactions {where_sql}"
-                    cursor.execute(count_query)
+                    cursor.execute(count_query, query_params)
                     total_count = cursor.fetchone()['total']
 
                     # Build main query with pagination (use specific columns for performance)
@@ -6083,7 +6125,7 @@ def get_transactions():
                     '''
                     if not return_all:
                         query += f' LIMIT {int(per_page)} OFFSET {int(offset)}'
-                    cursor.execute(query)
+                    cursor.execute(query, query_params)
                     rows = cursor.fetchall()
 
                     # Get rejected receipts (safely handle if table doesn't exist yet)

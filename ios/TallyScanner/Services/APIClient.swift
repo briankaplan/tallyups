@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import SwiftUI
 
 /// API Client for communicating with the TallyUps Flask backend
 /// Connects to MySQL database via REST API
@@ -445,6 +446,24 @@ actor APIClient {
         let (_, _) = try await URLSession.shared.data(for: request)
     }
 
+    /// Unreject an incoming receipt (restore to pending)
+    func unrejectReceipt(id: String) async throws {
+        var request = try makeRequest(path: "/api/incoming/unreject", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["receipt_id": id])
+
+        let (_, _) = try await URLSession.shared.data(for: request)
+    }
+
+    /// Auto-match a receipt to a transaction
+    func autoMatchReceipt(id: String) async throws {
+        var request = try makeRequest(path: "/api/incoming/auto-match", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["receipt_id": id])
+
+        let (_, _) = try await URLSession.shared.data(for: request)
+    }
+
     /// Trigger Gmail scan
     func triggerGmailScan() async throws {
         let request = try makeRequest(path: "/api/incoming/scan", method: "POST")
@@ -584,6 +603,84 @@ actor APIClient {
         return response.contacts
     }
 
+    /// Create a new contact
+    func createContact(_ contact: AppContact) async throws {
+        var request = try makeRequest(path: "/api/contacts", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any?] = [
+            "name": contact.name,
+            "email": contact.email,
+            "phone": contact.phone,
+            "company": contact.company,
+            "tags": contact.tags
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body.compactMapValues { $0 })
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    /// Update an existing contact
+    func updateContact(_ contact: AppContact) async throws {
+        var request = try makeRequest(path: "/api/contacts/\(contact.id)", method: "PUT")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any?] = [
+            "name": contact.name,
+            "email": contact.email,
+            "phone": contact.phone,
+            "company": contact.company,
+            "tags": contact.tags
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body.compactMapValues { $0 })
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    /// Delete a contact
+    func deleteContact(id: Int) async throws {
+        let request = try makeRequest(path: "/api/contacts/\(id)", method: "DELETE")
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    /// Suggest contacts for a merchant/transaction
+    func suggestContacts(merchant: String, date: Date) async throws -> [AppContact] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let dateStr = formatter.string(from: date)
+
+        let merchantEncoded = merchant.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? merchant
+        let request = try makeRequest(
+            path: "/api/contacts/suggest?merchant=\(merchantEncoded)&date=\(dateStr)",
+            method: "GET"
+        )
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        struct SuggestResponse: Codable {
+            let contacts: [AppContact]
+        }
+
+        let response = try decoder.decode(SuggestResponse.self, from: data)
+        return response.contacts
+    }
+
     // MARK: - Smart Notes
 
     /// Generate smart note for transaction
@@ -668,17 +765,982 @@ actor APIClient {
         request.httpMethod = method
         request.timeoutInterval = 30
 
-        // Add authentication
-        if let adminKey = adminKey {
+        // Add JWT Bearer token authentication (primary)
+        if let accessToken = KeychainService.shared.get(key: "access_token") {
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        }
+        // Fallback to admin key (legacy)
+        else if let adminKey = adminKey {
             request.setValue(adminKey, forHTTPHeaderField: "X-Admin-Key")
         }
 
-        // Add session cookie if available
+        // Add session cookie if available (web interface compat)
         if let sessionToken = sessionToken {
             request.setValue("session=\(sessionToken)", forHTTPHeaderField: "Cookie")
         }
 
         return request
+    }
+
+    // MARK: - Apple Sign In Authentication
+
+    /// Authentication result from Apple Sign In
+    struct AppleAuthResponse: Codable {
+        let accessToken: String
+        let refreshToken: String
+        let expiresIn: Int
+        let user: AuthService.UserInfo
+
+        enum CodingKeys: String, CodingKey {
+            case accessToken = "access_token"
+            case refreshToken = "refresh_token"
+            case expiresIn = "expires_in"
+            case user
+        }
+    }
+
+    /// Token refresh response
+    struct TokenRefreshResponse: Codable {
+        let accessToken: String
+        let refreshToken: String
+        let expiresIn: Int
+
+        enum CodingKeys: String, CodingKey {
+            case accessToken = "access_token"
+            case refreshToken = "refresh_token"
+            case expiresIn = "expires_in"
+        }
+    }
+
+    /// Authenticate with Apple identity token
+    func authenticateWithApple(
+        identityToken: String,
+        userName: String?,
+        deviceId: String,
+        deviceName: String? = nil
+    ) async throws -> AppleAuthResponse {
+        var request = try makeRequest(path: "/api/auth/apple", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [
+            "identity_token": identityToken,
+            "device_id": deviceId
+        ]
+
+        if let userName = userName {
+            body["user_name"] = userName
+        }
+        if let deviceName = deviceName {
+            body["device_name"] = deviceName
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw APIError.serverError(httpResponse.statusCode, message)
+        }
+
+        return try decoder.decode(AppleAuthResponse.self, from: data)
+    }
+
+    /// Refresh access token using refresh token
+    func refreshToken(
+        refreshToken: String,
+        deviceId: String
+    ) async throws -> TokenRefreshResponse {
+        var request = try makeRequest(path: "/api/auth/refresh", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: String] = [
+            "refresh_token": refreshToken,
+            "device_id": deviceId
+        ]
+
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.tokenExpired
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw APIError.serverError(httpResponse.statusCode, message)
+        }
+
+        return try decoder.decode(TokenRefreshResponse.self, from: data)
+    }
+
+    /// Logout with device ID
+    func logout(deviceId: String? = nil) async throws {
+        var request = try makeRequest(path: "/api/auth/logout", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let deviceId = deviceId {
+            let body = ["device_id": deviceId]
+            request.httpBody = try JSONEncoder().encode(body)
+        }
+
+        _ = try? await URLSession.shared.data(for: request)
+        clearCredentials()
+    }
+
+    /// Delete user account (GDPR compliance)
+    func deleteAccount() async throws {
+        let request = try makeRequest(path: "/api/auth/delete-account", method: "DELETE")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "Account deletion failed"
+            throw APIError.serverError(httpResponse.statusCode, message)
+        }
+
+        clearCredentials()
+    }
+
+    /// Get current user profile
+    func getCurrentUser() async throws -> AuthService.UserInfo {
+        let request = try makeRequest(path: "/api/auth/me", method: "GET")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError(httpResponse.statusCode, "Failed to get user")
+        }
+
+        return try decoder.decode(AuthService.UserInfo.self, from: data)
+    }
+
+    // MARK: - Business Types
+
+    /// Business type model for per-user custom categories
+    struct BusinessType: Codable, Identifiable, Hashable {
+        let id: Int
+        let name: String
+        let displayName: String
+        let color: String
+        let icon: String
+        let isDefault: Bool
+        let sortOrder: Int
+
+        enum CodingKeys: String, CodingKey {
+            case id, name, color, icon
+            case displayName = "display_name"
+            case isDefault = "is_default"
+            case sortOrder = "sort_order"
+        }
+
+        /// Convert hex color string to SwiftUI Color
+        var swiftUIColor: Color {
+            Color(hex: color) ?? .gray
+        }
+    }
+
+    /// Response for business types list
+    struct BusinessTypesResponse: Codable {
+        let success: Bool
+        let businessTypes: [BusinessType]
+
+        enum CodingKeys: String, CodingKey {
+            case success
+            case businessTypes = "business_types"
+        }
+    }
+
+    /// Fetch user's business types (per-user custom categories)
+    func fetchBusinessTypes() async throws -> [BusinessType] {
+        let request = try makeRequest(path: "/api/business-types", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        let result = try decoder.decode(BusinessTypesResponse.self, from: data)
+        return result.businessTypes
+    }
+
+    /// Create a new business type
+    func createBusinessType(
+        name: String,
+        displayName: String? = nil,
+        color: String = "#00FF88",
+        icon: String = "briefcase"
+    ) async throws -> BusinessType {
+        var request = try makeRequest(path: "/api/business-types", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "name": name,
+            "display_name": displayName ?? name,
+            "color": color,
+            "icon": icon,
+            "is_default": false
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        struct CreateResponse: Codable {
+            let success: Bool
+            let businessType: BusinessType
+
+            enum CodingKeys: String, CodingKey {
+                case success
+                case businessType = "business_type"
+            }
+        }
+
+        let result = try decoder.decode(CreateResponse.self, from: data)
+        return result.businessType
+    }
+
+    // MARK: - AI Learning & Feedback
+
+    /// AI categorization suggestion
+    struct AISuggestion: Codable {
+        let category: String?
+        let businessType: String?
+        let description: String?
+        let confidence: Double
+        let source: String
+
+        enum CodingKeys: String, CodingKey {
+            case category
+            case businessType = "business_type"
+            case description
+            case confidence
+            case source
+        }
+    }
+
+    /// Submit AI feedback for learning
+    func submitAIFeedback(
+        transactionIndex: Int,
+        feedbackType: String,
+        suggestedValue: String,
+        acceptedValue: String,
+        wasAccepted: Bool
+    ) async throws {
+        var request = try makeRequest(path: "/api/ai/feedback", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "transaction_index": transactionIndex,
+            "feedback_type": feedbackType,
+            "suggested_value": suggestedValue,
+            "accepted_value": acceptedValue,
+            "was_accepted": wasAccepted,
+            "source": "ios_app"
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            // Silent fail - don't break UX for feedback errors
+            print("⚠️ AI feedback submission failed")
+            return
+        }
+    }
+
+    /// Get AI suggestions for a transaction
+    func getAISuggestions(transactionIndex: Int) async throws -> AISuggestion {
+        let request = try makeRequest(path: "/api/ai/suggest?transaction_index=\(transactionIndex)", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        return try decoder.decode(AISuggestion.self, from: data)
+    }
+
+    /// Update transaction with user's corrections (learns from feedback)
+    func updateTransaction(
+        index: Int,
+        category: String? = nil,
+        businessType: String? = nil,
+        notes: String? = nil
+    ) async throws {
+        var request = try makeRequest(path: "/api/transactions/\(index)", method: "PATCH")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [:]
+        if let category = category { body["category"] = category }
+        if let businessType = businessType { body["business_type"] = businessType }
+        if let notes = notes { body["notes"] = notes }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    // MARK: - Duplicate Detection
+
+    /// Check if a receipt image is a duplicate of an existing receipt
+    func checkDuplicateReceipt(
+        imageHash: String,
+        amount: Double?,
+        date: String?,
+        merchant: String?
+    ) async throws -> ScannerService.DuplicateCheckResult {
+        var request = try makeRequest(path: "/api/receipts/check-duplicate", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = ["image_hash": imageHash]
+        if let amount = amount { body["amount"] = amount }
+        if let date = date { body["date"] = date }
+        if let merchant = merchant { body["merchant"] = merchant }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        // If endpoint doesn't exist yet, return no duplicate
+        if httpResponse.statusCode == 404 {
+            return ScannerService.DuplicateCheckResult(
+                isDuplicate: false,
+                existingReceiptId: nil,
+                existingReceiptUrl: nil,
+                matchConfidence: 0,
+                matchType: .exactHash
+            )
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError(httpResponse.statusCode, "Duplicate check failed")
+        }
+
+        // Parse the response
+        struct DuplicateResponse: Codable {
+            let isDuplicate: Bool
+            let existingReceiptId: String?
+            let existingReceiptUrl: String?
+            let matchConfidence: Double?
+            let matchType: String?
+
+            enum CodingKeys: String, CodingKey {
+                case isDuplicate = "is_duplicate"
+                case existingReceiptId = "existing_receipt_id"
+                case existingReceiptUrl = "existing_receipt_url"
+                case matchConfidence = "match_confidence"
+                case matchType = "match_type"
+            }
+        }
+
+        let duplicateResponse = try decoder.decode(DuplicateResponse.self, from: data)
+
+        let matchType: ScannerService.DuplicateCheckResult.MatchType
+        switch duplicateResponse.matchType {
+        case "exact_hash": matchType = .exactHash
+        case "similar_image": matchType = .similarImage
+        case "same_amount_date": matchType = .sameAmountDate
+        case "same_transaction": matchType = .sameTransaction
+        default: matchType = .exactHash
+        }
+
+        return ScannerService.DuplicateCheckResult(
+            isDuplicate: duplicateResponse.isDuplicate,
+            existingReceiptId: duplicateResponse.existingReceiptId,
+            existingReceiptUrl: duplicateResponse.existingReceiptUrl,
+            matchConfidence: duplicateResponse.matchConfidence ?? 0,
+            matchType: matchType
+        )
+    }
+
+    // MARK: - Projects
+
+    /// Fetch all projects for the current user
+    func fetchProjects() async throws -> [Project] {
+        let request = try makeRequest(path: "/api/projects", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        // Return empty array if endpoint doesn't exist yet
+        if httpResponse.statusCode == 404 {
+            return []
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError(httpResponse.statusCode, "Failed to fetch projects")
+        }
+
+        struct ProjectsResponse: Codable {
+            let projects: [Project]
+        }
+
+        let projectsResponse = try decoder.decode(ProjectsResponse.self, from: data)
+        return projectsResponse.projects
+    }
+
+    /// Create a new project
+    func createProject(
+        name: String,
+        description: String? = nil,
+        color: String = "#00FF88",
+        icon: String = "folder.fill",
+        budget: Double? = nil,
+        startDate: Date? = nil,
+        endDate: Date? = nil
+    ) async throws -> Project {
+        var request = try makeRequest(path: "/api/projects", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [
+            "name": name,
+            "color": color,
+            "icon": icon
+        ]
+        if let description = description { body["description"] = description }
+        if let budget = budget { body["budget"] = budget }
+
+        let dateFormatter = ISO8601DateFormatter()
+        if let startDate = startDate {
+            body["start_date"] = dateFormatter.string(from: startDate)
+        }
+        if let endDate = endDate {
+            body["end_date"] = dateFormatter.string(from: endDate)
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        return try decoder.decode(Project.self, from: data)
+    }
+
+    /// Update an existing project
+    func updateProject(_ project: Project) async throws -> Project {
+        var request = try makeRequest(path: "/api/projects/\(project.id)", method: "PUT")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [
+            "name": project.name,
+            "color": project.color,
+            "icon": project.icon,
+            "is_active": project.isActive
+        ]
+        if let description = project.description { body["description"] = description }
+        if let budget = project.budget { body["budget"] = budget }
+
+        let dateFormatter = ISO8601DateFormatter()
+        if let startDate = project.startDate {
+            body["start_date"] = dateFormatter.string(from: startDate)
+        }
+        if let endDate = project.endDate {
+            body["end_date"] = dateFormatter.string(from: endDate)
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        return try decoder.decode(Project.self, from: data)
+    }
+
+    /// Delete a project
+    func deleteProject(id: String) async throws {
+        let request = try makeRequest(path: "/api/projects/\(id)", method: "DELETE")
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    /// Assign a transaction to a project
+    func assignTransactionToProject(transactionIndex: Int, projectId: String?) async throws {
+        var request = try makeRequest(path: "/api/transactions/\(transactionIndex)/project", method: "PUT")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any?] = ["project_id": projectId]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body.compactMapValues { $0 })
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    /// Bulk assign transactions to a project
+    func bulkAssignTransactionsToProject(transactionIndexes: [Int], projectId: String) async throws {
+        var request = try makeRequest(path: "/api/projects/\(projectId)/transactions", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body = ["transaction_indexes": transactionIndexes]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    /// Get transactions for a specific project
+    func fetchProjectTransactions(projectId: String, offset: Int = 0, limit: Int = 50) async throws -> [Transaction] {
+        let request = try makeRequest(
+            path: "/api/projects/\(projectId)/transactions?offset=\(offset)&limit=\(limit)",
+            method: "GET"
+        )
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        let transactionResponse = try decoder.decode(TransactionListResponse.self, from: data)
+        return transactionResponse.transactions
+    }
+
+    // MARK: - Email Mapping Rules
+
+    /// Fetch all email-to-business-type mapping rules
+    func fetchEmailMappingRules() async throws -> [EmailBusinessRule] {
+        let request = try makeRequest(path: "/api/email-rules", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        struct RulesResponse: Codable {
+            let rules: [EmailBusinessRule]
+        }
+
+        let rulesResponse = try decoder.decode(RulesResponse.self, from: data)
+        return rulesResponse.rules
+    }
+
+    /// Create a new email mapping rule
+    func createEmailMappingRule(
+        emailPattern: String,
+        businessType: String,
+        priority: Int = 0
+    ) async throws -> EmailBusinessRule {
+        var request = try makeRequest(path: "/api/email-rules", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "email_pattern": emailPattern,
+            "business_type": businessType,
+            "priority": priority
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        return try decoder.decode(EmailBusinessRule.self, from: data)
+    }
+
+    /// Update an existing email mapping rule
+    func updateEmailMappingRule(_ rule: EmailBusinessRule) async throws -> EmailBusinessRule {
+        var request = try makeRequest(path: "/api/email-rules/\(rule.id)", method: "PUT")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "email_pattern": rule.emailPattern,
+            "business_type": rule.businessType,
+            "priority": rule.priority,
+            "is_active": rule.isActive
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        return try decoder.decode(EmailBusinessRule.self, from: data)
+    }
+
+    /// Delete an email mapping rule
+    func deleteEmailMappingRule(id: String) async throws {
+        let request = try makeRequest(path: "/api/email-rules/\(id)", method: "DELETE")
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    /// Test which business type an email would match
+    func testEmailMapping(email: String) async throws -> String? {
+        var request = try makeRequest(path: "/api/email-rules/test", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body = ["email": email]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        struct TestResponse: Codable {
+            let matched: Bool
+            let businessType: String?
+
+            enum CodingKeys: String, CodingKey {
+                case matched
+                case businessType = "business_type"
+            }
+        }
+
+        let testResponse = try decoder.decode(TestResponse.self, from: data)
+        return testResponse.businessType
+    }
+
+    // MARK: - Expense Reports
+
+    /// Report data model
+    struct ExpenseReport: Codable {
+        let totalSpent: Double
+        let transactionCount: Int
+        let receiptCount: Int
+        let dailyAverage: Double
+        let categories: [CategoryBreakdown]
+        let merchants: [MerchantBreakdown]
+        let timeline: [DailySpending]
+
+        enum CodingKeys: String, CodingKey {
+            case totalSpent = "total_spent"
+            case transactionCount = "transaction_count"
+            case receiptCount = "receipt_count"
+            case dailyAverage = "daily_average"
+            case categories, merchants, timeline
+        }
+    }
+
+    struct CategoryBreakdown: Codable, Identifiable {
+        let id: String { category }
+        let category: String
+        let amount: Double
+        let count: Int
+        let percentage: Double
+    }
+
+    struct MerchantBreakdown: Codable, Identifiable {
+        let id: String { merchant }
+        let merchant: String
+        let amount: Double
+        let count: Int
+    }
+
+    struct DailySpending: Codable, Identifiable {
+        var id: String { date }
+        let date: String
+        let amount: Double
+        let count: Int
+    }
+
+    /// Fetch expense report for a date range
+    func fetchExpenseReport(
+        startDate: Date,
+        endDate: Date,
+        businessType: String? = nil
+    ) async throws -> ExpenseReport {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        var path = "/api/reports/expenses?start=\(formatter.string(from: startDate))&end=\(formatter.string(from: endDate))"
+        if let business = businessType, business != "all" {
+            path += "&business_type=\(business.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? business)"
+        }
+
+        let request = try makeRequest(path: path, method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        // Return empty report if endpoint doesn't exist yet
+        if httpResponse.statusCode == 404 {
+            return ExpenseReport(
+                totalSpent: 0,
+                transactionCount: 0,
+                receiptCount: 0,
+                dailyAverage: 0,
+                categories: [],
+                merchants: [],
+                timeline: []
+            )
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError(httpResponse.statusCode, "Failed to fetch report")
+        }
+
+        return try decoder.decode(ExpenseReport.self, from: data)
+    }
+
+    /// Export report as PDF or CSV
+    func exportReport(
+        startDate: Date,
+        endDate: Date,
+        businessType: String? = nil,
+        format: String = "pdf"
+    ) async throws -> Data {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        var path = "/api/reports/export?start=\(formatter.string(from: startDate))&end=\(formatter.string(from: endDate))&format=\(format)"
+        if let business = businessType, business != "all" {
+            path += "&business_type=\(business.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? business)"
+        }
+
+        let request = try makeRequest(path: path, method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError((response as? HTTPURLResponse)?.statusCode ?? 500, "Export failed")
+        }
+
+        return data
+    }
+
+    // MARK: - Connected Services
+
+    /// Connected service status model
+    struct ConnectedService: Codable, Identifiable {
+        let id: String
+        let type: String
+        let email: String?
+        let isConnected: Bool
+        let lastSync: Date?
+        let status: String
+
+        enum CodingKeys: String, CodingKey {
+            case id, type, email, status
+            case isConnected = "is_connected"
+            case lastSync = "last_sync"
+        }
+    }
+
+    /// Fetch all connected services status
+    func fetchConnectedServices() async throws -> [ConnectedService] {
+        let request = try makeRequest(path: "/api/services/status", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 404 {
+            return []
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError(httpResponse.statusCode, "Failed to fetch services")
+        }
+
+        struct ServicesResponse: Codable {
+            let services: [ConnectedService]
+        }
+
+        let servicesResponse = try decoder.decode(ServicesResponse.self, from: data)
+        return servicesResponse.services
+    }
+
+    /// Get OAuth URL for Gmail connection
+    func getGmailOAuthURL() async throws -> URL {
+        let request = try makeRequest(path: "/api/services/gmail/auth-url", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        struct AuthURLResponse: Codable {
+            let url: String
+        }
+
+        let authResponse = try decoder.decode(AuthURLResponse.self, from: data)
+        guard let url = URL(string: authResponse.url) else {
+            throw APIError.invalidURL
+        }
+        return url
+    }
+
+    /// Get OAuth URL for Calendar connection
+    func getCalendarOAuthURL() async throws -> URL {
+        let request = try makeRequest(path: "/api/services/calendar/auth-url", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        struct AuthURLResponse: Codable {
+            let url: String
+        }
+
+        let authResponse = try decoder.decode(AuthURLResponse.self, from: data)
+        guard let url = URL(string: authResponse.url) else {
+            throw APIError.invalidURL
+        }
+        return url
+    }
+
+    /// Disconnect a service
+    func disconnectService(type: String, accountId: String? = nil) async throws {
+        var path = "/api/services/\(type)/disconnect"
+        if let accountId = accountId {
+            path += "?account_id=\(accountId)"
+        }
+
+        let request = try makeRequest(path: path, method: "POST")
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    /// Get Plaid link token for bank connection
+    func getPlaidLinkToken() async throws -> String {
+        let request = try makeRequest(path: "/api/services/plaid/link-token", method: "GET")
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+
+        struct LinkTokenResponse: Codable {
+            let linkToken: String
+
+            enum CodingKeys: String, CodingKey {
+                case linkToken = "link_token"
+            }
+        }
+
+        let tokenResponse = try decoder.decode(LinkTokenResponse.self, from: data)
+        return tokenResponse.linkToken
+    }
+
+    /// Exchange Plaid public token for access
+    func exchangePlaidToken(publicToken: String, institutionId: String, accountIds: [String]) async throws {
+        var request = try makeRequest(path: "/api/services/plaid/exchange", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "public_token": publicToken,
+            "institution_id": institutionId,
+            "account_ids": accountIds
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.invalidResponse
+        }
+    }
+}
+
+// MARK: - Color Extension for Hex
+
+extension Color {
+    init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        var rgb: UInt64 = 0
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
+
+        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
+        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
+        let b = Double(rgb & 0x0000FF) / 255.0
+
+        self.init(red: r, green: g, blue: b)
     }
 }
 
@@ -688,6 +1750,7 @@ enum APIError: LocalizedError {
     case invalidURL
     case invalidResponse
     case unauthorized
+    case tokenExpired
     case serverError(Int, String)
     case networkError(Error)
     case decodingError(Error)
@@ -700,6 +1763,8 @@ enum APIError: LocalizedError {
             return "Invalid response from server"
         case .unauthorized:
             return "Not authorized. Please log in again."
+        case .tokenExpired:
+            return "Session expired. Please sign in again."
         case .serverError(let code, let message):
             return "Server error (\(code)): \(message)"
         case .networkError(let error):

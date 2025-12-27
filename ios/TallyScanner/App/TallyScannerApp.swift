@@ -132,7 +132,26 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         // Request notification permissions on first launch
         UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+
+        // Register Quick Actions (3D Touch / long-press shortcuts)
+        QuickActionsManager.shared.registerQuickActions()
+
+        // Handle quick action if app launched from one
+        if let shortcutItem = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem {
+            _ = QuickActionsManager.shared.handleQuickAction(shortcutItem)
+        }
+
         return true
+    }
+
+    /// Handle quick action when app is already running
+    func application(
+        _ application: UIApplication,
+        performActionFor shortcutItem: UIApplicationShortcutItem,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        let handled = QuickActionsManager.shared.handleQuickAction(shortcutItem)
+        completionHandler(handled)
     }
 
     func application(

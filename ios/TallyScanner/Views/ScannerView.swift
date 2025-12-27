@@ -451,9 +451,9 @@ struct ReceiptEditorView: View {
 
                     // Form Fields
                     VStack(spacing: 16) {
-                        FormField(title: "Merchant", text: $merchant, placeholder: "Store name")
+                        ScannerFormField(title: "Merchant", text: $merchant, placeholder: "Store name")
 
-                        FormField(title: "Amount", text: $amount, placeholder: "0.00", keyboardType: .decimalPad)
+                        ScannerFormField(title: "Amount", text: $amount, placeholder: "0.00", keyboardType: .decimalPad)
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Date")
@@ -491,7 +491,7 @@ struct ReceiptEditorView: View {
                             .tint(.tallyAccent)
                         }
 
-                        FormField(title: "Notes / Purpose", text: $notes, placeholder: "Business purpose or notes")
+                        ScannerFormField(title: "Notes / Purpose", text: $notes, placeholder: "Business purpose or notes")
                     }
                     .padding()
                     .background(Color.tallyCard)
@@ -870,9 +870,9 @@ struct ReceiptEditorView: View {
     }
 }
 
-// MARK: - Form Field
+// MARK: - Scanner Form Field
 
-struct FormField: View {
+private struct ScannerFormField: View {
     let title: String
     @Binding var text: String
     var placeholder: String = ""

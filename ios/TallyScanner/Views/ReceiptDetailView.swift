@@ -117,19 +117,19 @@ struct ReceiptDetailView: View {
 
     private var displayFields: some View {
         VStack(spacing: 16) {
-            DetailRow(label: "Merchant", value: receipt.merchant ?? "Unknown")
-            DetailRow(label: "Amount", value: receipt.formattedAmount)
-            DetailRow(label: "Date", value: receipt.formattedDate)
+            ReceiptDetailRow(label: "Merchant", value: receipt.merchant ?? "Unknown")
+            ReceiptDetailRow(label: "Amount", value: receipt.formattedAmount)
+            ReceiptDetailRow(label: "Date", value: receipt.formattedDate)
 
             if let category = receipt.category {
-                DetailRow(label: "Category", value: category)
+                ReceiptDetailRow(label: "Category", value: category)
             }
 
             if let business = receipt.business {
-                DetailRow(label: "Business", value: businessDisplayName(business))
+                ReceiptDetailRow(label: "Business", value: businessDisplayName(business))
             }
 
-            DetailRow(label: "Status", value: receipt.status.displayName)
+            ReceiptDetailRow(label: "Status", value: receipt.status.displayName)
 
             if let notes = receipt.notes, !notes.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -143,7 +143,7 @@ struct ReceiptDetailView: View {
             }
 
             if let source = receipt.source {
-                DetailRow(label: "Source", value: source)
+                ReceiptDetailRow(label: "Source", value: source)
             }
         }
     }
@@ -298,9 +298,9 @@ struct ReceiptDetailView: View {
     }
 }
 
-// MARK: - Detail Row
+// MARK: - Receipt Detail Row
 
-struct DetailRow: View {
+private struct ReceiptDetailRow: View {
     let label: String
     let value: String
 

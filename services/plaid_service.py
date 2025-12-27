@@ -1500,7 +1500,8 @@ class PlaidService:
         pending: Optional[bool] = None,
         processing_status: Optional[str] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
+        user_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Query synced transactions.
@@ -1513,6 +1514,7 @@ class PlaidService:
             processing_status: Filter by processing status
             limit: Max results
             offset: Pagination offset
+            user_id: Filter by user ID (for multi-tenant data isolation)
 
         Returns:
             List of transaction dictionaries
@@ -1531,6 +1533,11 @@ class PlaidService:
                 WHERE 1=1
             """
             params = []
+
+            # User ID filtering for multi-tenant isolation
+            if user_id:
+                query += " AND pi.user_id = %s"
+                params.append(user_id)
 
             if account_id:
                 query += " AND pt.account_id = %s"

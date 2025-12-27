@@ -3,7 +3,10 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var uploadQueue: UploadQueue
+    @StateObject private var deepLinkHandler = DeepLinkHandler.shared
     @State private var selectedTab = 0
+    @State private var showFullScreenScanner = false
+    @State private var selectedTransactionId: Int?
 
     var body: some View {
         Group {
@@ -14,6 +17,11 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut, value: authService.isAuthenticated)
+        // Handle deep links from widgets
+        .onOpenURL { url in
+            handleDeepLink(url)
+        }
+        // Handle navigation notifications
         .onReceive(NotificationCenter.default.publisher(for: .navigateToScanner)) { _ in
             withAnimation(.spring(response: 0.3)) {
                 selectedTab = 0
@@ -38,6 +46,49 @@ struct ContentView: View {
             }
             HapticService.shared.mediumTap()
         }
+        // Watch for deep link handler changes
+        .onChange(of: deepLinkHandler.showScanner) { _, newValue in
+            if newValue {
+                showFullScreenScanner = true
+                deepLinkHandler.showScanner = false
+            }
+        }
+        .fullScreenCover(isPresented: $showFullScreenScanner) {
+            FullScreenScannerView(isPresented: $showFullScreenScanner) { capturedImage in
+                handleCapturedImage(capturedImage)
+            }
+        }
+    }
+
+    // MARK: - Deep Link Handling
+
+    private func handleDeepLink(_ url: URL) {
+        guard let deepLink = DeepLink(url: url) else { return }
+
+        HapticService.shared.impact(.medium)
+
+        withAnimation(.spring(response: 0.3)) {
+            switch deepLink {
+            case .scan:
+                showFullScreenScanner = true
+            case .inbox:
+                selectedTab = 3
+            case .transaction(let id):
+                selectedTransactionId = id
+                selectedTab = 2
+            case .dashboard:
+                selectedTab = 1
+            case .profile, .settings:
+                selectedTab = 4
+            }
+        }
+    }
+
+    private func handleCapturedImage(_ image: UIImage) {
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else { return }
+
+        uploadQueue.enqueueReceipt(imageData: imageData)
+        HapticService.shared.success()
     }
 
     private var mainTabView: some View {
@@ -60,9 +111,9 @@ struct ContentView: View {
                 }
                 .tag(2)
 
-            InboxView()
+            ReceiptInboxView()
                 .tabItem {
-                    Label("Inbox", systemImage: "tray.fill")
+                    Label("Receipts", systemImage: "tray.full.fill")
                 }
                 .tag(3)
 

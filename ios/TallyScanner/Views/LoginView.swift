@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 struct LoginView: View {
     @EnvironmentObject var authService: AuthService
@@ -9,6 +10,7 @@ struct LoginView: View {
     @State private var apiKey = ""
     @State private var loginMethod = LoginMethod.password
     @State private var showingSetup = false
+    @State private var showingLegacyLogin = false
     @State private var isAnimating = false
 
     enum LoginMethod: String, CaseIterable {
@@ -33,58 +35,57 @@ struct LoginView: View {
                         .scaleEffect(isAnimating ? 1.05 : 1.0)
                         .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isAnimating)
 
-                    Text("TallyScanner")
+                    Text("TallyUps")
                         .font(.largeTitle.bold())
                         .foregroundColor(.white)
 
-                    Text("Receipt scanning made simple")
+                    Text("Never do expenses again. Seriously.")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }
 
                 Spacer()
 
-                // Login Form
+                // Primary Login Options
                 VStack(spacing: 20) {
-                    // Biometric Login (if available)
+                    // Sign in with Apple (Primary)
+                    appleSignInButton
+
+                    // Biometric Login (if available and has stored credentials)
                     if authService.canUseBiometrics {
                         biometricButton
                     }
 
-                    // Login Method Picker
-                    Picker("Login Method", selection: $loginMethod) {
-                        ForEach(LoginMethod.allCases, id: \.self) { method in
-                            Text(method.rawValue).tag(method)
-                        }
+                    // Divider with "or"
+                    HStack {
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(height: 1)
+                        Text("or")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Rectangle()
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(height: 1)
                     }
-                    .pickerStyle(.segmented)
+                    .padding(.vertical, 8)
 
-                    // Login Fields
-                    switch loginMethod {
-                    case .password:
-                        passwordField
-                    case .pin:
-                        pinField
-                    case .apiKey:
-                        apiKeyField
+                    // Legacy Login Toggle
+                    Button(action: { withAnimation { showingLegacyLogin.toggle() } }) {
+                        HStack {
+                            Text("Other sign in options")
+                                .font(.subheadline)
+                            Image(systemName: showingLegacyLogin ? "chevron.up" : "chevron.down")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.gray)
                     }
 
-                    // Login Button
-                    Button(action: login) {
-                        if authService.isLoading {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .black))
-                        } else {
-                            Text("Sign In")
-                                .font(.headline)
-                        }
+                    // Legacy Login Form (collapsible)
+                    if showingLegacyLogin {
+                        legacyLoginForm
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.tallyAccent)
-                    .foregroundColor(.black)
-                    .cornerRadius(12)
-                    .disabled(authService.isLoading)
 
                     // Error Message
                     if let error = authService.error {
@@ -92,6 +93,7 @@ struct LoginView: View {
                             .font(.caption)
                             .foregroundColor(.red)
                             .multilineTextAlignment(.center)
+                            .padding(.top, 8)
                     }
                 }
                 .padding()
@@ -121,6 +123,30 @@ struct LoginView: View {
         }
     }
 
+    // MARK: - Sign in with Apple Button
+
+    private var appleSignInButton: some View {
+        Button(action: signInWithApple) {
+            HStack(spacing: 8) {
+                if authService.isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                } else {
+                    Image(systemName: "apple.logo")
+                        .font(.title2)
+                    Text("Sign in with Apple")
+                        .font(.headline)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.white)
+            .foregroundColor(.black)
+            .cornerRadius(12)
+        }
+        .disabled(authService.isLoading)
+    }
+
     // MARK: - Biometric Button
 
     private var biometricButton: some View {
@@ -139,6 +165,47 @@ struct LoginView: View {
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(Color.tallyAccent, lineWidth: 1)
             )
+        }
+    }
+
+    // MARK: - Legacy Login Form
+
+    private var legacyLoginForm: some View {
+        VStack(spacing: 16) {
+            // Login Method Picker
+            Picker("Login Method", selection: $loginMethod) {
+                ForEach(LoginMethod.allCases, id: \.self) { method in
+                    Text(method.rawValue).tag(method)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            // Login Fields
+            switch loginMethod {
+            case .password:
+                passwordField
+            case .pin:
+                pinField
+            case .apiKey:
+                apiKeyField
+            }
+
+            // Login Button
+            Button(action: legacyLogin) {
+                if authService.isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                } else {
+                    Text("Sign In")
+                        .font(.headline)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.tallyAccent)
+            .foregroundColor(.black)
+            .cornerRadius(12)
+            .disabled(authService.isLoading)
         }
     }
 
@@ -171,7 +238,13 @@ struct LoginView: View {
 
     // MARK: - Login Actions
 
-    private func login() {
+    private func signInWithApple() {
+        Task {
+            _ = await authService.signInWithApple()
+        }
+    }
+
+    private func legacyLogin() {
         Task {
             var success = false
 

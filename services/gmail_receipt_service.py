@@ -300,20 +300,24 @@ class GmailReceiptService:
     """
     Gmail Receipt Extraction Service
 
-    Handles Gmail authentication and receipt extraction across multiple accounts
+    Handles Gmail authentication and receipt extraction across multiple accounts.
+    Supports both legacy global accounts and per-user credentials for multi-tenant mode.
     """
 
-    def __init__(self, db_path: str = 'receipts.db', credentials_dir: str = 'credentials'):
+    def __init__(self, db_path: str = 'receipts.db', credentials_dir: str = 'credentials', user_id: str = None):
         """
         Initialize Gmail receipt service
 
         Args:
             db_path: Path to SQLite database
             credentials_dir: Directory containing Gmail credentials and tokens
+            user_id: Optional user ID for per-user credential storage (multi-tenant mode)
         """
         self.db_path = db_path
         self.credentials_dir = Path(credentials_dir)
         self.gmail_services = {}  # Account email -> Gmail service
+        self.user_id = user_id  # For multi-tenant mode
+        self._user_credentials_service = None  # Lazy-loaded
 
         # Ensure credentials directory exists
         self.credentials_dir.mkdir(parents=True, exist_ok=True)
@@ -324,6 +328,210 @@ class GmailReceiptService:
         # Check if Gmail API is available
         if not GMAIL_API_AVAILABLE:
             print("⚠️  Gmail API not available - service running in limited mode")
+
+    def _get_user_credentials_service(self):
+        """Lazy-load user credentials service for multi-tenant mode."""
+        if self._user_credentials_service is None:
+            try:
+                from services.user_credentials_service import get_user_credentials_service
+                self._user_credentials_service = get_user_credentials_service()
+            except ImportError:
+                pass
+        return self._user_credentials_service
+
+    def authenticate_with_user_credentials(self, user_id: str, account_email: str) -> Optional[object]:
+        """
+        Authenticate Gmail using per-user credentials from database.
+
+        Args:
+            user_id: User's UUID
+            account_email: Gmail account email
+
+        Returns:
+            Gmail service object or None if failed
+        """
+        if not GMAIL_API_AVAILABLE:
+            print("❌ Gmail API not available")
+            return None
+
+        creds_service = self._get_user_credentials_service()
+        if not creds_service:
+            print("❌ User credentials service not available")
+            return None
+
+        # Get stored credentials for this user's Gmail account
+        stored_creds = creds_service.get_credential(user_id, 'gmail', account_email)
+        if not stored_creds:
+            print(f"❌ No stored credentials for {account_email}")
+            return None
+
+        try:
+            # Build credentials from stored tokens
+            creds = Credentials(
+                token=stored_creds.get('access_token'),
+                refresh_token=stored_creds.get('refresh_token'),
+                token_uri='https://oauth2.googleapis.com/token',
+                client_id=os.getenv('GOOGLE_CLIENT_ID'),
+                client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+                scopes=stored_creds.get('scopes', SCOPES)
+            )
+
+            # Refresh if expired
+            if creds.expired and creds.refresh_token:
+                print(f"🔄 Refreshing credentials for {account_email}...")
+                creds.refresh(Request())
+
+                # Update stored credentials with new access token
+                creds_service.store_credential(
+                    user_id=user_id,
+                    service_type='gmail',
+                    account_email=account_email,
+                    access_token=creds.token,
+                    refresh_token=creds.refresh_token,
+                    token_expires_at=creds.expiry,
+                    scopes=list(creds.scopes) if creds.scopes else SCOPES
+                )
+
+            # Build Gmail service
+            service = build('gmail', 'v1', credentials=creds)
+            cache_key = f"{user_id}:{account_email}"
+            self.gmail_services[cache_key] = service
+            print(f"✅ Authenticated (user mode): {account_email}")
+            return service
+
+        except Exception as e:
+            print(f"❌ Failed to authenticate with user credentials: {e}")
+            return None
+
+    def get_user_gmail_accounts(self, user_id: str) -> List[Dict]:
+        """
+        Get list of Gmail accounts connected by a user.
+
+        Args:
+            user_id: User's UUID
+
+        Returns:
+            List of connected Gmail accounts with metadata
+        """
+        creds_service = self._get_user_credentials_service()
+        if not creds_service:
+            return []
+
+        return creds_service.list_credentials(user_id, 'gmail')
+
+    def search_receipts_for_user(
+        self,
+        user_id: str,
+        account_email: str = None,
+        days_back: int = 30,
+        max_results: int = 100
+    ) -> List[Dict]:
+        """
+        Search for receipts in user's Gmail accounts.
+
+        Args:
+            user_id: User's UUID
+            account_email: Specific account to search (None = all user's accounts)
+            days_back: Number of days to look back
+            max_results: Maximum number of results
+
+        Returns:
+            List of receipt email dicts
+        """
+        if account_email:
+            accounts = [{'account_email': account_email}]
+        else:
+            accounts = self.get_user_gmail_accounts(user_id)
+
+        all_receipts = []
+        for account in accounts:
+            email = account.get('account_email')
+            if not email:
+                continue
+
+            # Authenticate with user credentials
+            service = self.authenticate_with_user_credentials(user_id, email)
+            if not service:
+                continue
+
+            # Search this account
+            receipts = self._search_receipts_with_service(service, email, days_back, max_results)
+            all_receipts.extend(receipts)
+
+        return all_receipts
+
+    def _search_receipts_with_service(
+        self,
+        service,
+        account_email: str,
+        days_back: int,
+        max_results: int
+    ) -> List[Dict]:
+        """
+        Search for receipts using a Gmail service object.
+
+        Args:
+            service: Authenticated Gmail service
+            account_email: Account email for context
+            days_back: Number of days to look back
+            max_results: Maximum number of results
+
+        Returns:
+            List of receipt dicts
+        """
+        # Build search query
+        date_cutoff = (datetime.now() - timedelta(days=days_back)).strftime('%Y/%m/%d')
+        query_parts = [f'after:{date_cutoff}']
+
+        # Add receipt keyword search
+        receipt_keywords = ' OR '.join([f'"{pattern}"' for pattern in RECEIPT_PATTERNS])
+        sender_queries = ' OR '.join([f'from:{domain}' for domain in RECEIPT_SENDERS])
+        query_parts.append(f'(({receipt_keywords}) OR ({sender_queries}))')
+
+        query = ' '.join(query_parts)
+
+        print(f"🔍 Searching {account_email} for receipts (last {days_back} days)...")
+
+        try:
+            results = service.users().messages().list(
+                userId='me',
+                q=query,
+                maxResults=max_results
+            ).execute()
+
+            messages = results.get('messages', [])
+
+            if not messages:
+                print(f"   No receipts found")
+                return []
+
+            print(f"   Found {len(messages)} potential receipts")
+
+            receipts = []
+            for msg in messages:
+                try:
+                    message = service.users().messages().get(
+                        userId='me',
+                        id=msg['id'],
+                        format='full'
+                    ).execute()
+
+                    receipt = self._extract_receipt_data(message, account_email)
+                    if receipt:
+                        receipts.append(receipt)
+                except Exception as e:
+                    print(f"   ⚠️  Error processing message {msg['id']}: {e}")
+                    continue
+
+            print(f"   Extracted {len(receipts)} receipts")
+            return receipts
+
+        except HttpError as e:
+            print(f"❌ Gmail API error: {e}")
+            return []
+        except Exception as e:
+            print(f"❌ Search error: {e}")
+            return []
 
     def _init_database(self):
         """

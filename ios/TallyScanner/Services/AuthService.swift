@@ -1,6 +1,7 @@
 import Foundation
 import LocalAuthentication
 import SwiftUI
+import AuthenticationServices
 
 @MainActor
 class AuthService: ObservableObject {
@@ -10,6 +11,24 @@ class AuthService: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     @Published var biometricType: BiometricType = .none
+
+    // User info (for multi-user mode)
+    @Published var currentUser: UserInfo?
+    @Published var needsOnboarding = false
+
+    /// Represents the authenticated user
+    struct UserInfo: Codable {
+        let id: String
+        let email: String?
+        let name: String?
+        let role: String
+        let onboardingCompleted: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case id, email, name, role
+            case onboardingCompleted = "onboarding_completed"
+        }
+    }
 
     enum BiometricType {
         case none
@@ -38,6 +57,9 @@ class AuthService: ObservableObject {
     private init() {
         checkBiometricType()
         checkExistingSession()
+
+        // Setup credential revocation observer
+        _ = AppleCredentialObserver.shared
     }
 
     // MARK: - Biometric Support
@@ -180,7 +202,7 @@ class AuthService: ObservableObject {
         do {
             let success = try await context.evaluatePolicy(
                 .deviceOwnerAuthenticationWithBiometrics,
-                localizedReason: "Unlock TallyScanner"
+                localizedReason: "Unlock TallyUps"
             )
 
             if success {
@@ -202,16 +224,137 @@ class AuthService: ObservableObject {
         }
     }
 
+    // MARK: - Sign in with Apple
+
+    /// Sign in with Apple - primary authentication method
+    func signInWithApple() async -> Bool {
+        isLoading = true
+        error = nil
+
+        defer { isLoading = false }
+
+        do {
+            // Get Apple credential
+            let appleResult = try await AppleSignInService.shared.signIn()
+
+            // Get device ID
+            let deviceId = getOrCreateDeviceId()
+            let deviceName = await MainActor.run { UIDevice.current.name }
+
+            // Authenticate with backend
+            let authResult = try await APIClient.shared.authenticateWithApple(
+                identityToken: appleResult.identityToken,
+                userName: appleResult.fullName,
+                deviceId: deviceId,
+                deviceName: deviceName
+            )
+
+            // Store tokens
+            KeychainService.shared.saveSensitive(key: "access_token", value: authResult.accessToken)
+            KeychainService.shared.saveSensitive(key: "refresh_token", value: authResult.refreshToken)
+            KeychainService.shared.save(key: "apple_user_id", value: appleResult.userID)
+
+            // Update state
+            currentUser = authResult.user
+            needsOnboarding = !(authResult.user.onboardingCompleted)
+            isAuthenticated = true
+
+            return true
+
+        } catch let error as AppleSignInError where error == .cancelled {
+            // User cancelled - not an error
+            return false
+        } catch {
+            self.error = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Check and refresh access token if needed
+    func refreshTokenIfNeeded() async -> Bool {
+        guard let refreshToken = KeychainService.shared.get(key: "refresh_token") else {
+            return false
+        }
+
+        let deviceId = getOrCreateDeviceId()
+
+        do {
+            let tokens = try await APIClient.shared.refreshToken(
+                refreshToken: refreshToken,
+                deviceId: deviceId
+            )
+
+            // Store new tokens
+            KeychainService.shared.saveSensitive(key: "access_token", value: tokens.accessToken)
+            KeychainService.shared.saveSensitive(key: "refresh_token", value: tokens.refreshToken)
+
+            return true
+        } catch {
+            // Refresh failed - need to re-authenticate
+            return false
+        }
+    }
+
+    /// Handle Apple credential revocation
+    func handleAppleCredentialRevoked() async {
+        // Clear credentials and log out
+        await logout()
+        error = "Your Apple ID was disconnected. Please sign in again."
+    }
+
+    // MARK: - Device ID Management
+
+    private func getOrCreateDeviceId() -> String {
+        if let deviceId = KeychainService.shared.get(key: "device_id") {
+            return deviceId
+        }
+
+        let deviceId = UUID().uuidString
+        KeychainService.shared.save(key: "device_id", value: deviceId)
+        return deviceId
+    }
+
     // MARK: - Logout
 
     func logout() async {
+        let deviceId = getOrCreateDeviceId()
+
         do {
-            try await APIClient.shared.logout()
+            try await APIClient.shared.logout(deviceId: deviceId)
         } catch {
             // Ignore logout errors
         }
 
+        // Clear stored credentials
+        KeychainService.shared.delete(key: "access_token")
+        KeychainService.shared.delete(key: "refresh_token")
+        KeychainService.shared.delete(key: "apple_user_id")
+
+        currentUser = nil
+        needsOnboarding = false
         isAuthenticated = false
+    }
+
+    /// Delete user account (GDPR compliance)
+    func deleteAccount() async -> Bool {
+        do {
+            try await APIClient.shared.deleteAccount()
+
+            // Clear all credentials
+            KeychainService.shared.delete(key: "access_token")
+            KeychainService.shared.delete(key: "refresh_token")
+            KeychainService.shared.delete(key: "apple_user_id")
+            KeychainService.shared.delete(key: "device_id")
+            KeychainService.shared.delete(key: "admin_api_key")
+
+            currentUser = nil
+            isAuthenticated = false
+
+            return true
+        } catch {
+            self.error = error.localizedDescription
+            return false
+        }
     }
 
     // MARK: - Credential Storage for Biometrics

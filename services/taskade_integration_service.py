@@ -46,15 +46,101 @@ PROJECTS = {
 
 
 class TaskadeIntegration:
-    """Enhanced Taskade integration with full CRUD operations"""
+    """
+    Enhanced Taskade integration with full CRUD operations.
+    Supports both global API key and per-user credentials for multi-tenant mode.
+    """
 
-    def __init__(self, api_key=None):
-        self.api_key = api_key or TASKADE_API_KEY
+    def __init__(self, api_key=None, workspace_id=None, user_id=None):
+        """
+        Initialize Taskade integration.
+
+        Args:
+            api_key: Taskade API key (defaults to env var)
+            workspace_id: Taskade workspace ID (defaults to env var)
+            user_id: Optional user ID for per-user credentials (multi-tenant mode)
+        """
+        self.user_id = user_id
+        self._user_credentials_service = None
+
+        # If user_id provided, try to get per-user credentials
+        if user_id:
+            user_creds = self._get_user_taskade_credentials(user_id)
+            if user_creds:
+                self.api_key = user_creds.get('api_key')
+                self.workspace_id = user_creds.get('workspace_id') or WORKSPACE_ID
+            else:
+                self.api_key = api_key or TASKADE_API_KEY
+                self.workspace_id = workspace_id or WORKSPACE_ID
+        else:
+            self.api_key = api_key or TASKADE_API_KEY
+            self.workspace_id = workspace_id or WORKSPACE_ID
+
         self.base_url = TASKADE_BASE_URL
         self.headers = {
             'Authorization': f'Bearer {self.api_key}',
             'Content-Type': 'application/json'
         }
+
+    def _get_user_credentials_service(self):
+        """Lazy-load user credentials service for multi-tenant mode."""
+        if self._user_credentials_service is None:
+            try:
+                from services.user_credentials_service import get_user_credentials_service
+                self._user_credentials_service = get_user_credentials_service()
+            except ImportError:
+                pass
+        return self._user_credentials_service
+
+    def _get_user_taskade_credentials(self, user_id: str) -> Optional[Dict]:
+        """
+        Get Taskade credentials for a specific user.
+
+        Args:
+            user_id: User's UUID
+
+        Returns:
+            Dict with api_key and workspace_id, or None
+        """
+        creds_service = self._get_user_credentials_service()
+        if not creds_service:
+            return None
+
+        creds = creds_service.get_credential(user_id, 'taskade')
+        if creds:
+            return {
+                'api_key': creds.get('api_key'),
+                'workspace_id': creds.get('workspace_id')
+            }
+        return None
+
+    @classmethod
+    def for_user(cls, user_id: str) -> 'TaskadeIntegration':
+        """
+        Create a TaskadeIntegration instance for a specific user.
+
+        Args:
+            user_id: User's UUID
+
+        Returns:
+            TaskadeIntegration instance configured for the user
+        """
+        return cls(user_id=user_id)
+
+    def get_user_projects(self) -> List[Dict]:
+        """
+        Get all projects in the user's workspace.
+
+        Returns:
+            List of project dicts
+        """
+        endpoint = f'/workspaces/{self.workspace_id}/projects'
+        result = self._request('GET', endpoint)
+        return result.get('items', []) if result else []
+
+    def get_user_workspace_id(self) -> str:
+        """Get the workspace ID for this instance."""
+        return self.workspace_id
 
     def _request(self, method, endpoint, data=None):
         """Make API request to Taskade"""

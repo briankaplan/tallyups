@@ -16,14 +16,23 @@ struct SettingsView: View {
                 // Account Section
                 accountSection
 
+                // Connected Services Section
+                connectedServicesSection
+
                 // Upload Queue Section
                 uploadQueueSection
 
                 // Server Section
                 serverSection
 
+                // Features Section
+                featuresSection
+
                 // Preferences Section
                 preferencesSection
+
+                // Legal Section
+                legalSection
 
                 // About Section
                 aboutSection
@@ -59,19 +68,45 @@ struct SettingsView: View {
 
     // MARK: - Account Section
 
+    @State private var showingProfile = false
+
     private var accountSection: some View {
         Section("Account") {
-            HStack {
-                Image(systemName: "person.circle.fill")
-                    .font(.largeTitle)
-                    .foregroundColor(.tallyAccent)
+            Button(action: { showingProfile = true }) {
+                HStack {
+                    // User avatar
+                    ZStack {
+                        Circle()
+                            .fill(Color.tallyAccent.opacity(0.2))
+                            .frame(width: 50, height: 50)
 
-                VStack(alignment: .leading) {
-                    Text("TallyUps User")
-                        .font(.headline)
-                    Text("Connected")
+                        Text(userInitials)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.tallyAccent)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(authService.currentUser?.name ?? "TallyUps User")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+
+                        if let email = authService.currentUser?.email {
+                            Text(email)
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        } else {
+                            Text("Signed in with Apple")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
                         .font(.caption)
-                        .foregroundColor(.green)
+                        .foregroundColor(.gray)
                 }
             }
             .padding(.vertical, 4)
@@ -94,6 +129,62 @@ struct SettingsView: View {
                     )
                 }
             }
+        }
+        .sheet(isPresented: $showingProfile) {
+            ProfileView()
+        }
+    }
+
+    private var userInitials: String {
+        guard let name = authService.currentUser?.name else {
+            return "U"
+        }
+
+        let components = name.components(separatedBy: " ")
+        if components.count >= 2 {
+            let first = components[0].prefix(1)
+            let last = components[1].prefix(1)
+            return "\(first)\(last)"
+        } else {
+            return String(name.prefix(2)).uppercased()
+        }
+    }
+
+    // MARK: - Connected Services Section
+
+    private var connectedServicesSection: some View {
+        Section {
+            NavigationLink {
+                ConnectedServicesView()
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.tallyAccent.opacity(0.15))
+                            .frame(width: 36, height: 36)
+
+                        Image(systemName: "link.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.tallyAccent)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Connected Services")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+
+                        Text("Gmail, Calendar, Bank Accounts")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        } header: {
+            Text("Integrations")
+        } footer: {
+            Text("Connect your email, calendar, and bank accounts for automatic receipt import and transaction matching.")
         }
     }
 
@@ -174,6 +265,42 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Features Section
+
+    private var featuresSection: some View {
+        Section("Features") {
+            NavigationLink {
+                ProjectsView()
+            } label: {
+                Label("Projects", systemImage: "folder.fill")
+            }
+
+            NavigationLink {
+                ContactsView()
+            } label: {
+                Label("Contacts", systemImage: "person.2.fill")
+            }
+
+            NavigationLink {
+                SmartContactsView()
+            } label: {
+                Label("Smart Contacts", systemImage: "person.crop.circle.badge.checkmark")
+            }
+
+            NavigationLink {
+                EmailMappingView()
+            } label: {
+                Label("Email Rules", systemImage: "envelope.badge.fill")
+            }
+
+            NavigationLink {
+                ReportsView()
+            } label: {
+                Label("Reports", systemImage: "chart.bar.doc.horizontal.fill")
+            }
+        }
+    }
+
     // MARK: - Preferences Section
 
     private var preferencesSection: some View {
@@ -198,6 +325,43 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Legal Section
+
+    @State private var showingTerms = false
+    @State private var showingPrivacy = false
+
+    private var legalSection: some View {
+        Section("Legal") {
+            Button(action: { showingTerms = true }) {
+                HStack {
+                    Label("Terms of Service", systemImage: "doc.text.fill")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+            .foregroundColor(.primary)
+            .sheet(isPresented: $showingTerms) {
+                TermsOfServiceView()
+            }
+
+            Button(action: { showingPrivacy = true }) {
+                HStack {
+                    Label("Privacy Policy", systemImage: "lock.shield.fill")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+            .foregroundColor(.primary)
+            .sheet(isPresented: $showingPrivacy) {
+                PrivacyPolicyView()
+            }
+        }
+    }
+
     // MARK: - About Section
 
     private var aboutSection: some View {
@@ -218,6 +382,10 @@ struct SettingsView: View {
 
             Link(destination: URL(string: "https://github.com/tallyups")!) {
                 Label("GitHub", systemImage: "link")
+            }
+
+            Link(destination: URL(string: "https://tallyups.com")!) {
+                Label("Website", systemImage: "globe")
             }
         }
     }
@@ -260,14 +428,29 @@ struct DefaultsSettingsView: View {
     @AppStorage("auto_ocr") private var autoOCR = true
     @AppStorage("auto_enhance") private var autoEnhance = true
     @AppStorage("save_location") private var saveLocation = true
+    @ObservedObject private var businessTypeService = BusinessTypeService.shared
 
     var body: some View {
         Form {
             Section("Business") {
-                Picker("Default Business", selection: $defaultBusiness) {
-                    Text("Personal").tag("personal")
-                    Text("Down Home").tag("downhome")
-                    Text("MCR").tag("mcr")
+                if businessTypeService.isLoading {
+                    HStack {
+                        Text("Loading business types...")
+                            .foregroundColor(.gray)
+                        Spacer()
+                        ProgressView()
+                    }
+                } else {
+                    Picker("Default Business", selection: $defaultBusiness) {
+                        ForEach(businessTypeService.businessTypes) { type in
+                            HStack {
+                                Image(systemName: type.icon)
+                                    .foregroundColor(type.swiftUIColor)
+                                Text(type.displayName)
+                            }
+                            .tag(type.name.lowercased())
+                        }
+                    }
                 }
             }
 
@@ -279,6 +462,9 @@ struct DefaultsSettingsView: View {
         }
         .navigationTitle("Default Values")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await businessTypeService.loadIfNeeded()
+        }
     }
 }
 

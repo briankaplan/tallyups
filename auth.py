@@ -1,14 +1,16 @@
 """
 Tallyups Authentication Module
-Secure password-based auth with bcrypt hashing and timing-safe comparisons
+Multi-user JWT authentication with Sign in with Apple support
+Backward compatible with password/PIN auth for admin users
 """
 
 import os
 import hashlib
 import secrets
 import logging
+import uuid
 from functools import wraps
-from flask import session, redirect, url_for, request, jsonify
+from flask import session, redirect, url_for, request, jsonify, g
 
 # Try to import bcrypt for secure password hashing
 try:
@@ -17,6 +19,23 @@ try:
 except ImportError:
     BCRYPT_AVAILABLE = False
     logging.warning("bcrypt not available - using SHA256 fallback (less secure)")
+
+# Try to import JWT service
+try:
+    from services.jwt_auth_service import (
+        jwt_service, JWTError, TokenExpiredError, InvalidTokenError,
+        extract_bearer_token, get_current_user_from_request,
+        user_required as jwt_user_required,
+        admin_required as jwt_admin_required,
+        optional_auth as jwt_optional_auth
+    )
+    JWT_AVAILABLE = True
+except ImportError:
+    JWT_AVAILABLE = False
+    logging.warning("JWT service not available - using legacy auth only")
+
+# Admin user ID constant
+ADMIN_USER_ID = 'admin-00000000-0000-0000-0000-000000000000'
 
 # Get password from environment variable (hashed)
 # Set this in Railway: AUTH_PASSWORD_HASH=<your_bcrypt_hash>
@@ -118,15 +137,74 @@ def is_authenticated() -> bool:
 
 
 def login_required(f):
-    """Decorator to require authentication for routes"""
+    """Decorator to require authentication for routes (backward compatible)"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Try JWT auth first if available
+        if JWT_AVAILABLE:
+            user = get_current_user_from_request()
+            if user:
+                g.user_id = user['user_id']
+                g.user_role = user['role']
+                g.auth_method = user['auth_method']
+                return f(*args, **kwargs)
+
+        # Fall back to legacy auth
         if not is_authenticated():
-            # Check if it's an API request
             if request.is_json or request.path.startswith('/api/'):
                 return jsonify({'error': 'Authentication required'}), 401
-            # Redirect to login for browser requests
             return redirect(url_for('login', next=request.url))
+
+        # Set user context for legacy auth (admin user)
+        g.user_id = ADMIN_USER_ID
+        g.user_role = 'admin'
+        g.auth_method = 'legacy'
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def user_required(f):
+    """
+    Decorator to require authenticated user (JWT-aware).
+    Sets g.user_id, g.user_role for the request.
+    """
+    if JWT_AVAILABLE:
+        return jwt_user_required(f)
+
+    # Fallback to login_required for legacy mode
+    return login_required(f)
+
+
+def admin_required(f):
+    """
+    Decorator to require admin role.
+    """
+    if JWT_AVAILABLE:
+        return jwt_admin_required(f)
+
+    # Fallback for legacy mode - same as login_required (all legacy users are admin)
+    return login_required(f)
+
+
+def optional_auth(f):
+    """
+    Decorator that allows optional authentication.
+    Sets g.user_id if authenticated, None otherwise.
+    """
+    if JWT_AVAILABLE:
+        return jwt_optional_auth(f)
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if is_authenticated():
+            g.user_id = ADMIN_USER_ID
+            g.user_role = 'admin'
+            g.auth_method = 'legacy'
+        else:
+            g.user_id = None
+            g.user_role = None
+            g.auth_method = None
         return f(*args, **kwargs)
     return decorated_function
 
@@ -141,8 +219,28 @@ def api_key_required(f):
         if expected_key and api_key != expected_key:
             return jsonify({'error': 'Invalid API key'}), 401
 
+        # Set admin context for API key auth
+        g.user_id = ADMIN_USER_ID
+        g.user_role = 'admin'
+        g.auth_method = 'api_key'
+
         return f(*args, **kwargs)
     return decorated_function
+
+
+def get_current_user_id() -> str:
+    """Get the current user's ID from the request context."""
+    return getattr(g, 'user_id', ADMIN_USER_ID)
+
+
+def get_current_user_role() -> str:
+    """Get the current user's role from the request context."""
+    return getattr(g, 'user_role', 'admin')
+
+
+def is_admin() -> bool:
+    """Check if the current user is an admin."""
+    return get_current_user_role() == 'admin'
 
 
 # Login page HTML

@@ -107,6 +107,29 @@ class HapticService {
         notificationFeedback.notificationOccurred(.error)
     }
 
+    /// Notification haptic feedback with type
+    func notification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        notificationFeedback.notificationOccurred(type)
+    }
+
+    /// Impact haptic feedback with style
+    func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        switch style {
+        case .light:
+            lightImpact.impactOccurred()
+        case .medium:
+            mediumImpact.impactOccurred()
+        case .heavy:
+            heavyImpact.impactOccurred()
+        case .rigid:
+            rigidImpact.impactOccurred()
+        case .soft:
+            softImpact.impactOccurred()
+        @unknown default:
+            mediumImpact.impactOccurred()
+        }
+    }
+
     // MARK: - Receipt-Specific Haptics
 
     /// Shutter click when capturing receipt photo

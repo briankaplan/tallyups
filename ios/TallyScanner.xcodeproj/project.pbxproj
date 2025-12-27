@@ -38,6 +38,30 @@
 		A1000029 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000031 /* NotificationService.swift */; };
 		A1000031 /* HapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000033 /* HapticService.swift */; };
 		A1000032 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000034 /* LocationService.swift */; };
+		A1000040 /* AppleSignInService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000040 /* AppleSignInService.swift */; };
+		A1000041 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000041 /* BiometricAuthService.swift */; };
+		A1000042 /* BusinessTypeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000042 /* BusinessTypeService.swift */; };
+		A1000043 /* CelebrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000043 /* CelebrationService.swift */; };
+		A1000044 /* ContactsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000044 /* ContactsService.swift */; };
+		A1000045 /* SpotlightService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000045 /* SpotlightService.swift */; };
+		A1000046 /* WidgetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000046 /* WidgetService.swift */; };
+		A1000050 /* AnalyticsDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000050 /* AnalyticsDashboardView.swift */; };
+		A1000051 /* ContactsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000051 /* ContactsView.swift */; };
+		A1000052 /* ExpenseReportExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000052 /* ExpenseReportExporter.swift */; };
+		A1000053 /* ManualTransactionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000053 /* ManualTransactionView.swift */; };
+		A1000054 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000054 /* OnboardingView.swift */; };
+		A1000055 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000055 /* ProfileView.swift */; };
+		A1000056 /* QuickViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000056 /* QuickViewerView.swift */; };
+		A1000057 /* ReceiptInboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000057 /* ReceiptInboxView.swift */; };
+		A1000060 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000060 /* Project.swift */; };
+		A1000061 /* ProjectService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000061 /* ProjectService.swift */; };
+		A1000062 /* ProjectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000062 /* ProjectsView.swift */; };
+		A1000063 /* EmailBusinessRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000063 /* EmailBusinessRule.swift */; };
+		A1000064 /* EmailMappingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000064 /* EmailMappingService.swift */; };
+		A1000065 /* EmailMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000065 /* EmailMappingView.swift */; };
+		A1000066 /* ContactRelationship.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000066 /* ContactRelationship.swift */; };
+		A1000067 /* SmartContactsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000067 /* SmartContactsView.swift */; };
+		A1000068 /* QuickActionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000068 /* QuickActionsManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +98,30 @@
 		A2000031 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		A2000033 /* HapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticService.swift; sourceTree = "<group>"; };
 		A2000034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		A2000040 /* AppleSignInService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInService.swift; sourceTree = "<group>"; };
+		A2000041 /* BiometricAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
+		A2000042 /* BusinessTypeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessTypeService.swift; sourceTree = "<group>"; };
+		A2000043 /* CelebrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CelebrationService.swift; sourceTree = "<group>"; };
+		A2000044 /* ContactsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsService.swift; sourceTree = "<group>"; };
+		A2000045 /* SpotlightService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightService.swift; sourceTree = "<group>"; };
+		A2000046 /* WidgetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetService.swift; sourceTree = "<group>"; };
+		A2000050 /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDashboardView.swift; sourceTree = "<group>"; };
+		A2000051 /* ContactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsView.swift; sourceTree = "<group>"; };
+		A2000052 /* ExpenseReportExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpenseReportExporter.swift; sourceTree = "<group>"; };
+		A2000053 /* ManualTransactionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualTransactionView.swift; sourceTree = "<group>"; };
+		A2000054 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		A2000055 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		A2000056 /* QuickViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickViewerView.swift; sourceTree = "<group>"; };
+		A2000057 /* ReceiptInboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptInboxView.swift; sourceTree = "<group>"; };
+		A2000060 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
+		A2000061 /* ProjectService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectService.swift; sourceTree = "<group>"; };
+		A2000062 /* ProjectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsView.swift; sourceTree = "<group>"; };
+		A2000063 /* EmailBusinessRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailBusinessRule.swift; sourceTree = "<group>"; };
+		A2000064 /* EmailMappingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailMappingService.swift; sourceTree = "<group>"; };
+		A2000065 /* EmailMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailMappingView.swift; sourceTree = "<group>"; };
+		A2000066 /* ContactRelationship.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactRelationship.swift; sourceTree = "<group>"; };
+		A2000067 /* SmartContactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartContactsView.swift; sourceTree = "<group>"; };
+		A2000068 /* QuickActionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionsManager.swift; sourceTree = "<group>"; };
 		A3000001 /* TallyScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TallyScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -131,19 +179,30 @@
 		A5000005 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				A2000010 /* ScannerView.swift */,
-				A2000011 /* LibraryView.swift */,
-				A2000012 /* InboxView.swift */,
-				A2000013 /* SettingsView.swift */,
-				A2000014 /* LoginView.swift */,
-				A2000015 /* ReceiptDetailView.swift */,
-				A2000020 /* DocumentScannerView.swift */,
+				A2000050 /* AnalyticsDashboardView.swift */,
 				A2000021 /* CameraView.swift */,
-				A2000022 /* ReceiptCardView.swift */,
-				A2000023 /* UploadProgressView.swift */,
-				A2000027 /* ScanHistoryView.swift */,
+				A2000051 /* ContactsView.swift */,
+				A2000020 /* DocumentScannerView.swift */,
+				A2000065 /* EmailMappingView.swift */,
+				A2000052 /* ExpenseReportExporter.swift */,
 				A2000028 /* FullScreenScannerView.swift */,
+				A2000012 /* InboxView.swift */,
+				A2000011 /* LibraryView.swift */,
+				A2000014 /* LoginView.swift */,
+				A2000053 /* ManualTransactionView.swift */,
+				A2000054 /* OnboardingView.swift */,
+				A2000055 /* ProfileView.swift */,
+				A2000062 /* ProjectsView.swift */,
+				A2000056 /* QuickViewerView.swift */,
+				A2000022 /* ReceiptCardView.swift */,
+				A2000015 /* ReceiptDetailView.swift */,
+				A2000057 /* ReceiptInboxView.swift */,
+				A2000027 /* ScanHistoryView.swift */,
+				A2000010 /* ScannerView.swift */,
+				A2000013 /* SettingsView.swift */,
+				A2000067 /* SmartContactsView.swift */,
 				A2000029 /* TransactionsView.swift */,
+				A2000023 /* UploadProgressView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -151,8 +210,8 @@
 		A5000006 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
-				A2000016 /* ScannerViewModel.swift */,
 				A2000017 /* LibraryViewModel.swift */,
+				A2000016 /* ScannerViewModel.swift */,
 				A2000030 /* TransactionsViewModel.swift */,
 			);
 			path = ViewModels;
@@ -162,15 +221,25 @@
 			isa = PBXGroup;
 			children = (
 				A2000004 /* APIClient.swift */,
+				A2000040 /* AppleSignInService.swift */,
 				A2000005 /* AuthService.swift */,
-				A2000006 /* ScannerService.swift */,
-				A2000007 /* UploadQueue.swift */,
-				A2000018 /* KeychainService.swift */,
-				A2000019 /* NetworkMonitor.swift */,
-				A2000026 /* ScanHistoryService.swift */,
-				A2000031 /* NotificationService.swift */,
+				A2000041 /* BiometricAuthService.swift */,
+				A2000042 /* BusinessTypeService.swift */,
+				A2000043 /* CelebrationService.swift */,
+				A2000044 /* ContactsService.swift */,
+				A2000064 /* EmailMappingService.swift */,
 				A2000033 /* HapticService.swift */,
+				A2000018 /* KeychainService.swift */,
 				A2000034 /* LocationService.swift */,
+				A2000019 /* NetworkMonitor.swift */,
+				A2000031 /* NotificationService.swift */,
+				A2000061 /* ProjectService.swift */,
+				A2000068 /* QuickActionsManager.swift */,
+				A2000026 /* ScanHistoryService.swift */,
+				A2000006 /* ScannerService.swift */,
+				A2000045 /* SpotlightService.swift */,
+				A2000007 /* UploadQueue.swift */,
+				A2000046 /* WidgetService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -178,6 +247,9 @@
 		A5000008 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				A2000066 /* ContactRelationship.swift */,
+				A2000063 /* EmailBusinessRule.swift */,
+				A2000060 /* Project.swift */,
 				A2000008 /* Receipt.swift */,
 				A2000009 /* Transaction.swift */,
 			);
@@ -291,6 +363,30 @@
 				A1000029 /* NotificationService.swift in Sources */,
 				A1000031 /* HapticService.swift in Sources */,
 				A1000032 /* LocationService.swift in Sources */,
+				A1000040 /* AppleSignInService.swift in Sources */,
+				A1000041 /* BiometricAuthService.swift in Sources */,
+				A1000042 /* BusinessTypeService.swift in Sources */,
+				A1000043 /* CelebrationService.swift in Sources */,
+				A1000044 /* ContactsService.swift in Sources */,
+				A1000045 /* SpotlightService.swift in Sources */,
+				A1000046 /* WidgetService.swift in Sources */,
+				A1000050 /* AnalyticsDashboardView.swift in Sources */,
+				A1000051 /* ContactsView.swift in Sources */,
+				A1000052 /* ExpenseReportExporter.swift in Sources */,
+				A1000053 /* ManualTransactionView.swift in Sources */,
+				A1000054 /* OnboardingView.swift in Sources */,
+				A1000055 /* ProfileView.swift in Sources */,
+				A1000056 /* QuickViewerView.swift in Sources */,
+				A1000057 /* ReceiptInboxView.swift in Sources */,
+				A1000060 /* Project.swift in Sources */,
+				A1000061 /* ProjectService.swift in Sources */,
+				A1000062 /* ProjectsView.swift in Sources */,
+				A1000063 /* EmailBusinessRule.swift in Sources */,
+				A1000064 /* EmailMappingService.swift in Sources */,
+				A1000065 /* EmailMappingView.swift in Sources */,
+				A1000066 /* ContactRelationship.swift in Sources */,
+				A1000067 /* SmartContactsView.swift in Sources */,
+				A1000068 /* QuickActionsManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -431,11 +527,11 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TallyScanner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = TallyScanner;
+				INFOPLIST_KEY_CFBundleDisplayName = TallyUps;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
-				INFOPLIST_KEY_NSCameraUsageDescription = "TallyScanner needs camera access to scan receipts";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock TallyScanner";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "TallyScanner needs photo library access to import receipt images";
+				INFOPLIST_KEY_NSCameraUsageDescription = "TallyUps needs camera access to scan receipts";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock TallyUps";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "TallyUps needs photo library access to import receipt images";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -467,11 +563,11 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = TallyScanner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = TallyScanner;
+				INFOPLIST_KEY_CFBundleDisplayName = TallyUps;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
-				INFOPLIST_KEY_NSCameraUsageDescription = "TallyScanner needs camera access to scan receipts";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock TallyScanner";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "TallyScanner needs photo library access to import receipt images";
+				INFOPLIST_KEY_NSCameraUsageDescription = "TallyUps needs camera access to scan receipts";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Use Face ID to unlock TallyUps";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "TallyUps needs photo library access to import receipt images";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

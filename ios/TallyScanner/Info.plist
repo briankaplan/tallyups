@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>TallyScanner</string>
+	<string>TallyUps</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -25,13 +25,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>TallyScanner needs camera access to scan and capture receipts for expense tracking.</string>
+	<string>TallyUps needs camera access to scan and capture receipts for expense tracking.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Use Face ID to securely unlock TallyScanner and protect your financial data.</string>
+	<string>Use Face ID to securely unlock TallyUps and protect your financial data.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>TallyScanner needs photo library access to import existing receipt photos.</string>
+	<string>TallyUps needs photo library access to import existing receipt photos.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>TallyScanner can tag receipts with location for better expense categorization.</string>
+	<string>TallyUps can tag receipts with location for better expense categorization.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -43,6 +43,7 @@
 	<array>
 		<string>fetch</string>
 		<string>processing</string>
+		<string>remote-notification</string>
 	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
@@ -75,5 +76,20 @@
 	<string>UIStatusBarStyleLightContent</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.tallyups.scanner</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tallyups</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSContactsUsageDescription</key>
+	<string>TallyUps can use your contacts to track expense attendees and improve receipt matching.</string>
 </dict>
 </plist>

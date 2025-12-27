@@ -71,8 +71,8 @@ class SyncWorkerConfig:
     """Configuration for the sync worker."""
 
     def __init__(self):
-        # Sync interval in seconds (default 1 hour)
-        self.sync_interval = int(os.environ.get('PLAID_SYNC_INTERVAL', 3600))
+        # Sync interval in seconds (default 24 hours - once per day)
+        self.sync_interval = int(os.environ.get('PLAID_SYNC_INTERVAL', 86400))
 
         # Maximum concurrent syncs
         self.max_concurrent = int(os.environ.get('PLAID_SYNC_CONCURRENT', 3))

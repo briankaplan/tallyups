@@ -473,8 +473,8 @@ struct IncomingReceiptDetailView: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
-                        FormField(title: "Merchant", text: $merchant, placeholder: "Store name")
-                        FormField(title: "Amount", text: $amount, placeholder: "0.00", keyboardType: .decimalPad)
+                        InboxFormField(title: "Merchant", text: $merchant, placeholder: "Store name")
+                        InboxFormField(title: "Amount", text: $amount, placeholder: "0.00", keyboardType: .decimalPad)
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Date")
@@ -532,7 +532,7 @@ struct IncomingReceiptDetailView: View {
                             }
                         }
 
-                        FormField(title: "Notes", text: $notes, placeholder: "Optional notes")
+                        InboxFormField(title: "Notes", text: $notes, placeholder: "Optional notes")
                     }
                     .padding()
                     .background(Color.tallyCard)
@@ -750,6 +750,28 @@ struct IncomingReceiptDetailView: View {
                 print("Reject failed: \(error)")
             }
             isProcessing = false
+        }
+    }
+}
+
+// MARK: - Inbox Form Field
+
+private struct InboxFormField: View {
+    let title: String
+    @Binding var text: String
+    var placeholder: String = ""
+    var keyboardType: UIKeyboardType = .default
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.gray)
+            TextField(placeholder, text: $text)
+                .keyboardType(keyboardType)
+                .padding()
+                .background(Color.tallyBackground)
+                .cornerRadius(8)
         }
     }
 }

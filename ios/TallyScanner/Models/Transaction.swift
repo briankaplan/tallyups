@@ -15,6 +15,24 @@ struct Transaction: Identifiable, Codable, Hashable {
     var receiptUrl: String?
     var r2Url: String?
 
+    // Card/Account source fields (for filtering by card)
+    var accountId: String?
+    var accountName: String?
+    var cardLast4: String?
+    var cardType: String?  // e.g., "credit", "debit", "checking"
+    var source: String?    // e.g., "plaid", "manual", "import"
+
+    // AI-suggested fields for personalized learning
+    var aiCategory: String?
+    var aiDescription: String?
+    var aiConfidence: Double?
+    var aiBusinessType: String?
+
+    // Project tagging
+    var projectId: String?
+    var projectName: String?
+    var projectColor: String?
+
     enum TransactionStatus: String, Codable {
         case pending
         case matched
@@ -44,6 +62,21 @@ struct Transaction: Identifiable, Codable, Hashable {
         case status = "review_status"
         case receiptUrl = "receipt_url"
         case r2Url = "r2_url"
+        // Card/Account fields
+        case accountId = "account_id"
+        case accountName = "account_name"
+        case cardLast4 = "card_last4"
+        case cardType = "card_type"
+        case source
+        // AI fields
+        case aiCategory = "ai_category"
+        case aiDescription = "ai_description"
+        case aiConfidence = "ai_confidence"
+        case aiBusinessType = "ai_business_type"
+        // Project fields
+        case projectId = "project_id"
+        case projectName = "project_name"
+        case projectColor = "project_color"
     }
 
     init(from decoder: Decoder) throws {
@@ -121,6 +154,24 @@ struct Transaction: Identifiable, Codable, Hashable {
         } else {
             status = hasReceipt ? .matched : .pending
         }
+
+        // Card/Account fields - for card filtering
+        accountId = try container.decodeIfPresent(String.self, forKey: .accountId)
+        accountName = try container.decodeIfPresent(String.self, forKey: .accountName)
+        cardLast4 = try container.decodeIfPresent(String.self, forKey: .cardLast4)
+        cardType = try container.decodeIfPresent(String.self, forKey: .cardType)
+        source = try container.decodeIfPresent(String.self, forKey: .source)
+
+        // AI fields - for personalized suggestions
+        aiCategory = try container.decodeIfPresent(String.self, forKey: .aiCategory)
+        aiDescription = try container.decodeIfPresent(String.self, forKey: .aiDescription)
+        aiConfidence = try container.decodeIfPresent(Double.self, forKey: .aiConfidence)
+        aiBusinessType = try container.decodeIfPresent(String.self, forKey: .aiBusinessType)
+
+        // Project fields
+        projectId = try container.decodeIfPresent(String.self, forKey: .projectId)
+        projectName = try container.decodeIfPresent(String.self, forKey: .projectName)
+        projectColor = try container.decodeIfPresent(String.self, forKey: .projectColor)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -135,6 +186,21 @@ struct Transaction: Identifiable, Codable, Hashable {
         try container.encode(receiptCount, forKey: .receiptCount)
         try container.encode(hasReceipt, forKey: .hasReceipt)
         try container.encode(status.rawValue, forKey: .status)
+        // Card/Account fields
+        try container.encodeIfPresent(accountId, forKey: .accountId)
+        try container.encodeIfPresent(accountName, forKey: .accountName)
+        try container.encodeIfPresent(cardLast4, forKey: .cardLast4)
+        try container.encodeIfPresent(cardType, forKey: .cardType)
+        try container.encodeIfPresent(source, forKey: .source)
+        // AI fields
+        try container.encodeIfPresent(aiCategory, forKey: .aiCategory)
+        try container.encodeIfPresent(aiDescription, forKey: .aiDescription)
+        try container.encodeIfPresent(aiConfidence, forKey: .aiConfidence)
+        try container.encodeIfPresent(aiBusinessType, forKey: .aiBusinessType)
+        // Project fields
+        try container.encodeIfPresent(projectId, forKey: .projectId)
+        try container.encodeIfPresent(projectName, forKey: .projectName)
+        try container.encodeIfPresent(projectColor, forKey: .projectColor)
     }
 
     var formattedAmount: String {
@@ -149,6 +215,29 @@ struct Transaction: Identifiable, Codable, Hashable {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+
+    /// Display name for the card/account (e.g., "Chase ••1234" or "Manual Entry")
+    var cardDisplayName: String {
+        if let last4 = cardLast4, !last4.isEmpty {
+            let bankName = accountName ?? "Card"
+            return "\(bankName) ••\(last4)"
+        } else if let src = source?.lowercased(), src == "manual" {
+            return "Manual Entry"
+        } else if let name = accountName, !name.isEmpty {
+            return name
+        }
+        return "Unknown Card"
+    }
+
+    /// Short card identifier for badges (e.g., "••1234")
+    var cardShortName: String {
+        if let last4 = cardLast4, !last4.isEmpty {
+            return "••\(last4)"
+        } else if let src = source?.lowercased(), src == "manual" {
+            return "Manual"
+        }
+        return ""
     }
 }
 

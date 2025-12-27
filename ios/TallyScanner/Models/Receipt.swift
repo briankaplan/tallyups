@@ -285,6 +285,18 @@ struct IncomingReceipt: Identifiable, Codable {
     var category: String?
     var bodySnippet: String?
     var confidenceScore: Double?
+    var source: String?
+    var suggestedMatchId: Int?
+
+    // Computed property for receipt date
+    var receiptDate: Date? {
+        date ?? receivedDate
+    }
+
+    // Suggested match placeholder
+    var suggestedMatch: Int? {
+        suggestedMatchId
+    }
 
     struct ExtractedData: Codable {
         var merchant: String?
@@ -313,6 +325,8 @@ struct IncomingReceipt: Identifiable, Codable {
         case category
         case bodySnippet = "body_snippet"
         case confidenceScore = "confidence_score"
+        case source
+        case suggestedMatchId = "suggested_match_id"
     }
 
     init(from decoder: Decoder) throws {
@@ -342,6 +356,8 @@ struct IncomingReceipt: Identifiable, Codable {
         category = try? container.decode(String.self, forKey: .category)
         bodySnippet = try? container.decode(String.self, forKey: .bodySnippet)
         confidenceScore = try? container.decode(Double.self, forKey: .confidenceScore)
+        source = try? container.decode(String.self, forKey: .source)
+        suggestedMatchId = try? container.decode(Int.self, forKey: .suggestedMatchId)
     }
 
     func encode(to encoder: Encoder) throws {

@@ -74,19 +74,54 @@ def require_auth(f):
     """
     Decorator to require authentication for Plaid endpoints.
 
-    Currently bypassed for local development.
+    Uses JWT auth when available, falls back to session for backward compatibility.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Auth bypassed for local development - page itself handles access
+        # Try to get user from JWT or session
+        user_id = get_user_id()
+        if not user_id or user_id == 'default':
+            # Check if we should enforce auth in production
+            import os
+            if os.environ.get('REQUIRE_AUTH', '').lower() == 'true':
+                return jsonify({'success': False, 'error': 'Authentication required'}), 401
         return f(*args, **kwargs)
     return decorated_function
 
 
 def get_user_id():
-    """Get the current user ID from session or default."""
-    from flask import session
-    return session.get('user_id', 'default')
+    """
+    Get the current user ID from JWT token, Flask g context, or session.
+
+    Priority:
+    1. g.user_id (set by JWT middleware)
+    2. session['user_id'] (legacy session auth)
+    3. ADMIN_USER_ID (for backward compatibility - all existing data belongs to admin)
+    """
+    from flask import session, g
+
+    # Admin user ID - all existing data is assigned to this user
+    ADMIN_USER_ID = 'admin-00000000-0000-0000-0000-000000000000'
+
+    # First check g.user_id (set by JWT auth middleware)
+    if hasattr(g, 'user_id') and g.user_id:
+        return g.user_id
+
+    # Fall back to session (legacy auth)
+    if 'user_id' in session and session['user_id']:
+        return session['user_id']
+
+    # Try to get from db_user_scope helper
+    try:
+        from db_user_scope import get_current_user_id
+        user_id = get_current_user_id()
+        if user_id:
+            return user_id
+    except ImportError:
+        pass
+
+    # Default to admin user - all existing data belongs to admin
+    return ADMIN_USER_ID
 
 
 # =============================================================================
@@ -104,8 +139,165 @@ def get_plaid():
 
 
 # =============================================================================
+# CONNECTION CACHE (prevents excessive Plaid API calls)
+# =============================================================================
+
+import time
+from threading import Lock
+
+_connection_cache = {}
+_cache_lock = Lock()
+_CACHE_TTL_SECONDS = 300  # 5 minutes
+
+# Sync rate limiting - only allow 1 sync per day per item to control Plaid costs
+_SYNC_RATE_LIMIT_HOURS = 24  # Minimum hours between syncs
+
+
+def _get_cached_items(user_id: str):
+    """Get cached items for a user, or None if cache is stale/missing."""
+    with _cache_lock:
+        cache_entry = _connection_cache.get(user_id)
+        if cache_entry:
+            items, timestamp = cache_entry
+            if time.time() - timestamp < _CACHE_TTL_SECONDS:
+                return items
+    return None
+
+
+def _set_cached_items(user_id: str, items):
+    """Cache items for a user."""
+    with _cache_lock:
+        _connection_cache[user_id] = (items, time.time())
+
+
+def _invalidate_cache(user_id: str):
+    """Invalidate cache for a user (after connection changes)."""
+    with _cache_lock:
+        if user_id in _connection_cache:
+            del _connection_cache[user_id]
+
+
+def _check_sync_rate_limit(item) -> dict:
+    """
+    Check if an item can be synced based on daily rate limit.
+
+    Returns:
+        dict with 'allowed' bool, 'hours_until_next' if not allowed,
+        and 'last_sync' timestamp
+    """
+    from datetime import datetime, timedelta
+
+    if not item.last_successful_sync:
+        return {'allowed': True, 'last_sync': None}
+
+    now = datetime.now()
+    hours_since_sync = (now - item.last_successful_sync).total_seconds() / 3600
+
+    if hours_since_sync >= _SYNC_RATE_LIMIT_HOURS:
+        return {
+            'allowed': True,
+            'last_sync': item.last_successful_sync.isoformat(),
+            'hours_since': round(hours_since_sync, 1)
+        }
+    else:
+        hours_until_next = _SYNC_RATE_LIMIT_HOURS - hours_since_sync
+        return {
+            'allowed': False,
+            'last_sync': item.last_successful_sync.isoformat(),
+            'hours_since': round(hours_since_sync, 1),
+            'hours_until_next': round(hours_until_next, 1),
+            'next_sync_allowed': (item.last_successful_sync + timedelta(hours=_SYNC_RATE_LIMIT_HOURS)).isoformat()
+        }
+
+
+# =============================================================================
 # LINK TOKEN ENDPOINTS
 # =============================================================================
+
+@plaid_bp.route('/check-connections', methods=['GET'])
+@require_auth
+def check_existing_connections():
+    """
+    Check user's existing Plaid connections before starting Link flow.
+
+    This helps prevent duplicate connections which cost money.
+    Call this before showing the "Add Bank" button.
+
+    Query Parameters:
+        institution_id: Optional - check if specific institution is connected
+
+    Response:
+        {
+            "success": true,
+            "has_connections": true,
+            "connection_count": 3,
+            "connections": [
+                {
+                    "item_id": "xxx",
+                    "institution_id": "ins_xxx",
+                    "institution_name": "Chase",
+                    "status": "active",
+                    "account_count": 2
+                }
+            ],
+            "institution_connected": true,  // Only if institution_id provided
+            "warning": "You already have Chase connected..."  // If duplicate
+        }
+    """
+    try:
+        plaid = get_plaid()
+        user_id = get_user_id()
+        institution_id = request.args.get('institution_id')
+
+        # Try to get from cache first
+        items = _get_cached_items(user_id)
+        if items is None:
+            items = plaid.get_items(user_id=user_id)
+            _set_cached_items(user_id, items)
+
+        connections = []
+        for item in items:
+            accounts = plaid.get_accounts(item.item_id)
+            connections.append({
+                'item_id': item.item_id,
+                'institution_id': item.institution_id,
+                'institution_name': item.institution_name,
+                'status': item.status.value,
+                'account_count': len(accounts),
+                'last_sync': item.last_successful_sync.isoformat() if item.last_successful_sync else None
+            })
+
+        response = {
+            'success': True,
+            'has_connections': len(connections) > 0,
+            'connection_count': len(connections),
+            'connections': connections
+        }
+
+        # Check specific institution if requested
+        if institution_id:
+            existing = next(
+                (c for c in connections if c['institution_id'] == institution_id and c['status'] == 'active'),
+                None
+            )
+            response['institution_connected'] = existing is not None
+            if existing:
+                response['warning'] = (
+                    f"You already have {existing['institution_name']} connected with "
+                    f"{existing['account_count']} account(s). Adding it again will incur additional costs. "
+                    f"Use 'Update Connection' instead if you need to re-authenticate."
+                )
+                response['existing_item_id'] = existing['item_id']
+
+        return jsonify(response)
+
+    except Exception as e:
+        logger.error(f"Check connections error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 
 @plaid_bp.route('/debug-config', methods=['GET'])
 def debug_plaid_config():
@@ -199,9 +391,14 @@ def exchange_public_token():
 
     Called after user completes the Plaid Link flow.
 
+    IMPORTANT: This creates a new Plaid Item which incurs costs.
+    The endpoint checks for duplicate connections to prevent unnecessary charges.
+
     Request Body:
         {
-            "public_token": "public-sandbox-xxx"
+            "public_token": "public-sandbox-xxx",
+            "institution_id": "ins_xxx",  // Optional: for duplicate check
+            "force": false  // Optional: skip duplicate check
         }
 
     Response:
@@ -217,6 +414,7 @@ def exchange_public_token():
     """
     try:
         plaid = get_plaid()
+        user_id = get_user_id()
 
         data = request.get_json()
         if not data or not data.get('public_token'):
@@ -226,15 +424,43 @@ def exchange_public_token():
             }), 400
 
         public_token = data['public_token']
+        institution_id = data.get('institution_id')
+        force = data.get('force', False)
+
+        # Check for duplicate connection (prevents costly reconnects)
+        if not force and institution_id:
+            existing_items = plaid.get_items(user_id=user_id)
+            existing_connection = next(
+                (i for i in existing_items if i.institution_id == institution_id and i.status.value == 'active'),
+                None
+            )
+            if existing_connection:
+                logger.warning(
+                    f"Duplicate connection attempt: user={user_id} already has {institution_id} "
+                    f"(item={existing_connection.item_id})"
+                )
+                return jsonify({
+                    'success': False,
+                    'error': 'You already have this bank connected.',
+                    'error_code': 'DUPLICATE_CONNECTION',
+                    'existing_item': existing_connection.to_dict(include_token=False),
+                    'message': f'{existing_connection.institution_name} is already connected. '
+                              f'Use the existing connection or remove it first to reconnect.'
+                }), 409  # Conflict
 
         # Exchange token
         item = plaid.exchange_public_token(
             public_token=public_token,
-            user_id=get_user_id()
+            user_id=user_id
         )
 
         # Get accounts for response
         accounts = plaid.get_accounts(item.item_id)
+
+        logger.info(f"New Plaid connection: user={user_id}, institution={item.institution_name}, item={item.item_id}")
+
+        # Invalidate cache after adding new connection
+        _invalidate_cache(user_id)
 
         return jsonify({
             'success': True,
@@ -399,6 +625,9 @@ def remove_item(item_id):
             }), 404
 
         plaid.remove_item(item_id)
+
+        # Invalidate cache after removing connection
+        _invalidate_cache(get_user_id())
 
         return jsonify({
             'success': True,
@@ -601,32 +830,40 @@ def list_transactions():
             pending=pending,
             processing_status=status,
             limit=limit,
-            offset=offset
+            offset=offset,
+            user_id=get_user_id()  # Multi-tenant data isolation
         )
 
-        # Get total count
+        # Get total count (with user scoping)
         from db_mysql import get_mysql_db
         db = get_mysql_db()
         conn = db.get_connection()
         try:
             cursor = conn.cursor()
-            query = "SELECT COUNT(*) as total FROM plaid_transactions WHERE 1=1"
-            params = []
+            # Join with items to filter by user_id
+            query = """
+                SELECT COUNT(*) as total
+                FROM plaid_transactions pt
+                JOIN plaid_accounts pa ON pt.account_id = pa.account_id
+                JOIN plaid_items pi ON pa.item_id = pi.item_id
+                WHERE pi.user_id = %s
+            """
+            params = [get_user_id()]
 
             if account_id:
-                query += " AND account_id = %s"
+                query += " AND pt.account_id = %s"
                 params.append(account_id)
             if start_date:
-                query += " AND date >= %s"
+                query += " AND pt.date >= %s"
                 params.append(start_date)
             if end_date:
-                query += " AND date <= %s"
+                query += " AND pt.date <= %s"
                 params.append(end_date)
             if pending is not None:
-                query += " AND pending = %s"
+                query += " AND pt.pending = %s"
                 params.append(pending)
             if status:
-                query += " AND processing_status = %s"
+                query += " AND pt.processing_status = %s"
                 params.append(status)
 
             cursor.execute(query, params)
@@ -696,9 +933,13 @@ def trigger_sync():
     """
     Trigger a manual transaction sync.
 
+    RATE LIMITED: Only 1 sync per 24 hours per Item to control Plaid API costs.
+    Use force=true to override (not recommended).
+
     Request Body:
         {
-            "item_id": "xxx"  // Optional - sync specific Item, or all if omitted
+            "item_id": "xxx",  // Optional - sync specific Item, or all if omitted
+            "force": false     // Optional - bypass rate limit (use sparingly!)
         }
 
     Response:
@@ -711,7 +952,8 @@ def trigger_sync():
                     "modified": 2,
                     "removed": 0
                 }
-            ]
+            ],
+            "rate_limited": [...]  // Items that were skipped due to rate limit
         }
     """
     try:
@@ -719,25 +961,57 @@ def trigger_sync():
 
         data = request.get_json() or {}
         item_id = data.get('item_id')
+        force = data.get('force', False)
 
         results = []
+        rate_limited = []
 
         if item_id:
             # Sync specific Item
             items = plaid.get_items(user_id=get_user_id())
-            if not any(i.item_id == item_id for i in items):
+            item = next((i for i in items if i.item_id == item_id), None)
+
+            if not item:
                 return jsonify({
                     'success': False,
                     'error': 'Item not found'
                 }), 404
 
+            # Check rate limit (unless forced)
+            rate_check = _check_sync_rate_limit(item)
+            if not force and not rate_check['allowed']:
+                return jsonify({
+                    'success': False,
+                    'error': 'Sync rate limited to once per 24 hours to control costs.',
+                    'error_code': 'RATE_LIMITED',
+                    'rate_limit': rate_check,
+                    'message': f"Last sync was {rate_check['hours_since']} hours ago. "
+                              f"Next sync allowed in {rate_check['hours_until_next']} hours. "
+                              f"Use force=true to override (not recommended)."
+                }), 429  # Too Many Requests
+
             result = plaid.sync_transactions(item_id, sync_type='manual')
             results.append(result.to_dict())
+
         else:
-            # Sync all Items
+            # Sync all Items (with rate limiting)
             items = plaid.get_items(user_id=get_user_id())
             for item in items:
                 if item.status.value == 'active':
+                    # Check rate limit for each item
+                    rate_check = _check_sync_rate_limit(item)
+
+                    if not force and not rate_check['allowed']:
+                        rate_limited.append({
+                            'item_id': item.item_id,
+                            'institution_name': item.institution_name,
+                            'reason': 'Rate limited (1 sync per 24 hours)',
+                            'last_sync': rate_check['last_sync'],
+                            'hours_until_next': rate_check['hours_until_next'],
+                            'next_sync_allowed': rate_check['next_sync_allowed']
+                        })
+                        continue
+
                     try:
                         result = plaid.sync_transactions(item.item_id, sync_type='manual')
                         results.append(result.to_dict())
@@ -759,11 +1033,18 @@ def trigger_sync():
             except Exception as e:
                 logger.warning(f"Auto-import failed: {e}")
 
-        return jsonify({
+        response = {
             'success': True,
             'results': results,
             'import': import_result
-        })
+        }
+
+        if rate_limited:
+            response['rate_limited'] = rate_limited
+            response['message'] = f"{len(rate_limited)} item(s) skipped due to daily sync limit. " \
+                                 f"Synced {len(results)} item(s)."
+
+        return jsonify(response)
 
     except Exception as e:
         logger.error(f"Sync error: {e}")
@@ -777,18 +1058,22 @@ def trigger_sync():
 @require_auth
 def sync_status():
     """
-    Get the sync status for all Items.
+    Get the sync status for all Items, including rate limit info.
 
     Response:
         {
             "success": true,
+            "rate_limit_hours": 24,
             "items": [
                 {
                     "item_id": "xxx",
                     "institution_name": "Chase",
                     "status": "active",
                     "last_sync": "2025-12-20T12:00:00Z",
-                    "needs_reauth": false
+                    "needs_reauth": false,
+                    "sync_allowed": true,
+                    "hours_until_sync": 0,
+                    "next_sync_allowed": null
                 }
             ]
         }
@@ -800,16 +1085,21 @@ def sync_status():
 
         items_status = []
         for item in items:
+            rate_check = _check_sync_rate_limit(item)
             items_status.append({
                 'item_id': item.item_id,
                 'institution_name': item.institution_name,
                 'status': item.status.value,
                 'last_sync': item.last_successful_sync.isoformat() if item.last_successful_sync else None,
-                'needs_reauth': item.status.value == 'needs_reauth'
+                'needs_reauth': item.status.value == 'needs_reauth',
+                'sync_allowed': rate_check['allowed'],
+                'hours_until_sync': rate_check.get('hours_until_next', 0),
+                'next_sync_allowed': rate_check.get('next_sync_allowed')
             })
 
         return jsonify({
             'success': True,
+            'rate_limit_hours': _SYNC_RATE_LIMIT_HOURS,
             'items': items_status
         })
 
@@ -1667,9 +1957,12 @@ def sync_refresh():
     This is a convenience endpoint that combines reset + sync.
     Use when you want to re-fetch all transactions for an Item.
 
+    RATE LIMITED: Only 1 sync per 24 hours. Use force=true to override.
+
     Request Body:
         {
-            "item_id": "xxx"  // Required - the Item to refresh
+            "item_id": "xxx",  // Required - the Item to refresh
+            "force": false     // Optional - bypass rate limit
         }
 
     Response:
@@ -1684,6 +1977,7 @@ def sync_refresh():
 
         data = request.get_json() or {}
         item_id = data.get('item_id')
+        force = data.get('force', False)
 
         if not item_id:
             return jsonify({
@@ -1691,13 +1985,27 @@ def sync_refresh():
                 'error': 'item_id is required'
             }), 400
 
-        # Verify ownership
+        # Verify ownership and get item
         items = plaid.get_items(user_id=get_user_id())
-        if not any(i.item_id == item_id for i in items):
+        item = next((i for i in items if i.item_id == item_id), None)
+
+        if not item:
             return jsonify({
                 'success': False,
                 'error': 'Item not found'
             }), 404
+
+        # Check rate limit (unless forced)
+        rate_check = _check_sync_rate_limit(item)
+        if not force and not rate_check['allowed']:
+            return jsonify({
+                'success': False,
+                'error': 'Sync rate limited to once per 24 hours to control costs.',
+                'error_code': 'RATE_LIMITED',
+                'rate_limit': rate_check,
+                'message': f"Last sync was {rate_check['hours_since']} hours ago. "
+                          f"Next sync allowed in {rate_check['hours_until_next']} hours."
+            }), 429
 
         # Reset cursor
         reset_result = plaid.reset_sync_cursor(item_id)

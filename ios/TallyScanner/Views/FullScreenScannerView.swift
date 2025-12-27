@@ -1302,6 +1302,9 @@ struct PremiumPreviewView: View {
     let onConfirm: (Bool) -> Void
 
     @State private var showOCR = false
+    @State private var isCheckingDuplicate = false
+    @State private var duplicateResult: ScannerService.DuplicateCheckResult?
+    @State private var showDuplicateAlert = false
 
     var body: some View {
         ZStack {
@@ -1375,26 +1378,241 @@ struct PremiumPreviewView: View {
                         }
                     }
 
-                    Button(action: { onConfirm(true) }) {
+                    Button(action: handleUsePhoto) {
                         VStack(spacing: 8) {
                             Circle()
                                 .fill(Color.tallyAccent)
                                 .frame(width: 64, height: 64)
                                 .overlay(
-                                    Image(systemName: "checkmark")
-                                        .font(.title2.weight(.bold))
-                                        .foregroundColor(.black)
+                                    Group {
+                                        if isCheckingDuplicate {
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                                        } else {
+                                            Image(systemName: "checkmark")
+                                                .font(.title2.weight(.bold))
+                                                .foregroundColor(.black)
+                                        }
+                                    }
                                 )
                             Text("Use Photo")
                                 .font(.caption.weight(.medium))
                                 .foregroundColor(.white)
                         }
                     }
+                    .disabled(isCheckingDuplicate)
                 }
                 .padding(.bottom, 50)
             }
+
+            // Duplicate Alert Overlay
+            if showDuplicateAlert, let duplicate = duplicateResult {
+                DuplicateReceiptAlert(
+                    result: duplicate,
+                    newImage: image,
+                    onUseExisting: {
+                        showDuplicateAlert = false
+                        onConfirm(false)
+                    },
+                    onUseNew: {
+                        showDuplicateAlert = false
+                        onConfirm(true)
+                    },
+                    onCancel: {
+                        showDuplicateAlert = false
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
         }
         .statusBarHidden()
+        .animation(.spring(response: 0.3), value: showDuplicateAlert)
+    }
+
+    private func handleUsePhoto() {
+        isCheckingDuplicate = true
+
+        Task {
+            // Check for duplicates before confirming
+            let result = await ScannerService.shared.checkForDuplicate(image)
+
+            await MainActor.run {
+                isCheckingDuplicate = false
+
+                if result.isDuplicate {
+                    duplicateResult = result
+                    showDuplicateAlert = true
+                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                } else {
+                    onConfirm(true)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Duplicate Receipt Alert
+
+struct DuplicateReceiptAlert: View {
+    let result: ScannerService.DuplicateCheckResult
+    let newImage: UIImage
+    let onUseExisting: () -> Void
+    let onUseNew: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        ZStack {
+            // Dimmed background
+            Color.black.opacity(0.85)
+                .ignoresSafeArea()
+                .onTapGesture { onCancel() }
+
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.orange.opacity(0.2))
+                            .frame(width: 72, height: 72)
+
+                        Image(systemName: "doc.on.doc.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(.orange)
+                    }
+
+                    Text("Duplicate Detected")
+                        .font(.title2.weight(.bold))
+                        .foregroundColor(.white)
+
+                    Text(result.matchType.rawValue)
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+
+                    if result.matchConfidence > 0 {
+                        HStack(spacing: 4) {
+                            Text("\(Int(result.matchConfidence * 100))%")
+                                .font(.caption.weight(.bold))
+                                .foregroundColor(.tallyAccent)
+                            Text("match confidence")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+
+                // Image Comparison
+                HStack(spacing: 16) {
+                    // Existing Receipt
+                    VStack(spacing: 8) {
+                        if let url = result.existingReceiptUrl, let imageUrl = URL(string: url) {
+                            AsyncImage(url: imageUrl) { phase in
+                                switch phase {
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 120, height: 160)
+                                        .clipped()
+                                        .cornerRadius(12)
+                                case .failure:
+                                    existingPlaceholder
+                                default:
+                                    ProgressView()
+                                        .frame(width: 120, height: 160)
+                                }
+                            }
+                        } else {
+                            existingPlaceholder
+                        }
+
+                        Text("Existing")
+                            .font(.caption.weight(.medium))
+                            .foregroundColor(.gray)
+                    }
+
+                    // Arrow
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.title3)
+                        .foregroundColor(.gray)
+
+                    // New Receipt
+                    VStack(spacing: 8) {
+                        Image(uiImage: newImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 120, height: 160)
+                            .clipped()
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.tallyAccent, lineWidth: 2)
+                            )
+
+                        Text("New")
+                            .font(.caption.weight(.medium))
+                            .foregroundColor(.tallyAccent)
+                    }
+                }
+
+                // Actions
+                VStack(spacing: 12) {
+                    Button(action: onUseExisting) {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Keep Existing Receipt")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.tallyAccent)
+                        .cornerRadius(14)
+                    }
+
+                    Button(action: onUseNew) {
+                        HStack {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                            Text("Replace with New")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.white.opacity(0.15))
+                        .cornerRadius(14)
+                    }
+
+                    Button(action: onCancel) {
+                        Text("Cancel")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .padding(.top, 8)
+                    }
+                }
+            }
+            .padding(24)
+            .frame(maxWidth: 340)
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color(white: 0.12))
+            )
+        }
+    }
+
+    private var existingPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 12)
+            .fill(Color.white.opacity(0.1))
+            .frame(width: 120, height: 160)
+            .overlay(
+                VStack(spacing: 8) {
+                    Image(systemName: "doc.fill")
+                        .font(.title)
+                        .foregroundColor(.gray)
+                    Text("Receipt")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            )
     }
 }
 
