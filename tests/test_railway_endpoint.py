@@ -3,13 +3,14 @@
 Test Railway MySQL and /csv endpoint to diagnose data display issue
 """
 
+import os
 import pymysql
 from urllib.parse import urlparse
 import requests
 
-# MySQL connection
-MYSQL_URL = 'mysql://root:xruqdfYXOPFlfkqAPaRCrPFqxMaXMuiL@metro.proxy.rlwy.net:19800/railway'
-RAILWAY_URL = 'https://web-production-309e.up.railway.app'
+# MySQL connection - use environment variable
+MYSQL_URL = os.environ.get('MYSQL_URL', 'mysql://root:password@localhost:3306/railway')
+RAILWAY_URL = os.environ.get('RAILWAY_URL', 'https://tallyups.com')
 
 def test_mysql():
     print("=" * 80)
