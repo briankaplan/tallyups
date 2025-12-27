@@ -133,15 +133,36 @@ tmp/
 temp/
 
 # ========================================
+# Local Utility Scripts (contain dev credentials)
+# ========================================
+# These are local development/debug scripts
+scripts/
+fix_*.py
+validate_*.py
+verify_*.py
+scan_*.py
+regenerate_*.py
+find_*.py
+create_*_forms.py
+create_*_receipt*.py
+down_home_*.py
+update_*.py
+analyze_*.py
+compile_*.py
+*_reconciliation*.py
+
+# Archive folder
+archive/
+
+# ========================================
 # Keep These Files (Whitelist)
 # ========================================
 # Documentation should be committed
 !*.md
 !README*.md
 
-# Scripts should be committed
-!*.py
-!*.sh
+# Core application Python files (not utility scripts)
+# Note: Utility scripts with hardcoded credentials are excluded above
 
 # HTML/CSS/JS should be committed
 !*.html
