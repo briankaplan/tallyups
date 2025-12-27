@@ -443,7 +443,7 @@ class ReportsViewModel: ObservableObject {
 
             categoryBreakdown = report.categories.map { cat in
                 CategoryAmount(
-                    category: cat.name,
+                    category: cat.category,
                     amount: cat.amount,
                     percentage: totalSpent > 0 ? (cat.amount / totalSpent) * 100 : 0
                 )
