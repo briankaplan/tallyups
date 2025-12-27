@@ -28,6 +28,7 @@
 
   /* Brand & Accents */
   --accent-green: #00ff88;
+  --accent-green-hover: #00e67a;
   --accent-yellow: #ffc107;
   --accent-red: #ff4e6a;
   --accent-orange: #ff8c42;
@@ -535,8 +536,8 @@ body {
 }
 
 .btn--primary:hover {
-  background: #00e67a;
-  border-color: #00e67a;
+  background: var(--accent-green-hover, #00e67a);
+  border-color: var(--accent-green-hover, #00e67a);
 }
 
 .btn--ghost {
