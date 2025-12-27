@@ -255,6 +255,46 @@ xcuserdata/
 credentials_desktop.json
 
 # ========================================
+# Local Databases
+# ========================================
+*.db
+*.sqlite
+*.sqlite3
+metadata/
+
+# ========================================
+# Duplicate/Backup Files
+# ========================================
+* 2.html
+* 2.py
+*.backup
+*-BK.*
+*_backup.*
+*_old.*
+
+# ========================================
+# Report/Verification CSV Files
+# ========================================
+BROKEN_*.csv
+FINAL_*.csv
+GEMINI_*.csv
+LLAMA*.csv
+LLAVA*.csv
+PRIOR_*.csv
+REMAINING_*.csv
+TRUE_*.csv
+WRONG_*.csv
+receipt_review*.csv
+vision_*.csv
+
+# ========================================
+# Temporary JSON Data Files
+# ========================================
+full_verification_results.json
+gmail_receipts_to_download.json
+spotify_date_mapping.json
+
+# ========================================
 # Keep These Files (Whitelist)
 # ========================================
 # Core templates and static files are committed by default
