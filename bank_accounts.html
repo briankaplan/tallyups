@@ -354,21 +354,21 @@
       color: #fff;
     }
 
-    .business-tag.downhome {
+    .business-tag.business {
       background: rgba(0, 255, 136, 0.2);
-      color: var(--downhome);
+      color: var(--business);
     }
-    .business-tag.downhome.selected {
-      background: var(--downhome);
+    .business-tag.business.selected {
+      background: var(--business);
       color: #000;
     }
 
-    .business-tag.mcr {
+    .business-tag.sec {
       background: rgba(245, 158, 11, 0.2);
-      color: var(--mcr);
+      color: var(--sec);
     }
-    .business-tag.mcr.selected {
-      background: var(--mcr);
+    .business-tag.sec.selected {
+      background: var(--sec);
       color: #000;
     }
 
@@ -611,8 +611,8 @@
     // Business types available
     const BUSINESS_TYPES = [
       { id: 'Personal', label: 'Personal', class: 'personal' },
-      { id: 'Down_Home', label: 'Down Home', class: 'downhome' },
-      { id: 'MCR', label: 'Music City Rodeo', class: 'mcr' },
+      { id: 'Business', label: 'Business', class: 'business' },
+      { id: 'MCR', label: 'Secondary', class: 'sec' },
       { id: 'Em.Co', label: 'Em.Co', class: 'emco' }
     ];
 
@@ -724,7 +724,7 @@
           <h4>About Bank Connections</h4>
           <p>
             Connect your bank accounts and credit cards to automatically import transactions.
-            Each account can be assigned to multiple businesses (Personal, Down Home, MCR, Em.Co).
+            Each account can be assigned to multiple businesses (Personal, Business, MCR, Em.Co).
           </p>
         </div>
       `;

@@ -124,7 +124,7 @@ class QueryParser:
     - amount:>100 or amount:<50 or amount:25.99
     - date:today, date:yesterday, date:this-week, date:last-month
     - date:2024-01-15, date:jan-2024
-    - type:mcr or type:personal
+    - type:sec or type:personal
     - status:unmatched or status:ready
     - from:gmail or from:scanner
     - #tag or tag:expense
@@ -166,11 +166,11 @@ class QueryParser:
 
     # Business type aliases
     TYPE_ALIASES = {
-        'dh': 'down_home',
-        'downhome': 'down_home',
-        'down-home': 'down_home',
-        'mcr': 'mcr',
-        'rodeo': 'mcr',
+        'biz': 'business',
+        'business': 'business',
+        'business': 'business',
+        'sec': 'sec',
+        'rodeo': 'sec',
         'personal': 'personal',
         'me': 'personal',
         'ceo': 'ceo',
@@ -194,8 +194,8 @@ class QueryParser:
 
     # Source aliases
     SOURCE_ALIASES = {
-        'gmail': ['gmail_personal', 'gmail_mcr', 'gmail_down_home'],
-        'email': ['gmail_personal', 'gmail_mcr', 'gmail_down_home', 'forwarded_email'],
+        'gmail': ['gmail_personal', 'gmail_sec', 'gmail_business'],
+        'email': ['gmail_personal', 'gmail_sec', 'gmail_business', 'forwarded_email'],
         'scanner': ['scanner_mobile', 'scanner_web'],
         'scan': ['scanner_mobile', 'scanner_web'],
         'upload': ['manual_upload'],
@@ -398,7 +398,7 @@ class ReceiptSearchService:
         Examples:
         - "starbucks" - Search for Starbucks receipts
         - "merchant:starbucks amount:>20" - Starbucks over $20
-        - "type:mcr date:last-month" - MCR receipts from last month
+        - "type:sec date:last-month" - MCR receipts from last month
         - "#client-meal is:favorite" - Favorite client meal receipts
         """
         import time

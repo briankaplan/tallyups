@@ -131,11 +131,11 @@
       background: linear-gradient(90deg, var(--brand-primary), var(--brand-secondary));
     }
 
-    .stat-card.downhome::before {
+    .stat-card.business::before {
       background: linear-gradient(90deg, #10B981, #34D399);
     }
 
-    .stat-card.mcr::before {
+    .stat-card.sec::before {
       background: linear-gradient(90deg, #6366F1, #818CF8);
     }
 
@@ -581,25 +581,25 @@
 
       <!-- Stats Grid -->
       <div class="stats-grid" id="stats-grid">
-        <div class="stat-card downhome" onclick="filterByBusiness('Down Home')">
+        <div class="stat-card business" onclick="filterByBusiness('Business')">
           <div class="stat-card-header">
-            <div class="stat-label">Down Home</div>
+            <div class="stat-label">Business</div>
             <div class="stat-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
               </svg>
             </div>
           </div>
-          <div class="stat-value" id="downhome-total">$0.00</div>
+          <div class="stat-value" id="business-total">$0.00</div>
           <div class="stat-footer">
-            <span class="stat-change positive" id="downhome-change">+0%</span>
+            <span class="stat-change positive" id="business-change">+0%</span>
             <span class="stat-period">vs last month</span>
           </div>
         </div>
 
-        <div class="stat-card mcr" onclick="filterByBusiness('Music City Rodeo')">
+        <div class="stat-card sec" onclick="filterByBusiness('Secondary')">
           <div class="stat-card-header">
-            <div class="stat-label">Music City Rodeo</div>
+            <div class="stat-label">Secondary</div>
             <div class="stat-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 2L2 7l10 5 10-5-10-5z"/>
@@ -607,9 +607,9 @@
               </svg>
             </div>
           </div>
-          <div class="stat-value" id="mcr-total">$0.00</div>
+          <div class="stat-value" id="sec-total">$0.00</div>
           <div class="stat-footer">
-            <span class="stat-change positive" id="mcr-change">+0%</span>
+            <span class="stat-change positive" id="sec-change">+0%</span>
             <span class="stat-period">vs last month</span>
           </div>
         </div>
@@ -744,13 +744,13 @@
         const biz = data.by_business || {};
 
         // Get totals from by_business
-        const downhome = biz['Down Home'] || {};
-        const mcr = biz['Music City Rodeo'] || {};
+        const business = biz['Business'] || {};
+        const sec = biz['Secondary'] || {};
         const personal = biz['Personal'] || {};
 
         // Update stats
-        document.getElementById('downhome-total').textContent = formatCurrency(downhome.total || 0);
-        document.getElementById('mcr-total').textContent = formatCurrency(mcr.total || 0);
+        document.getElementById('business-total').textContent = formatCurrency(business.total || 0);
+        document.getElementById('sec-total').textContent = formatCurrency(sec.total || 0);
         document.getElementById('personal-total').textContent = formatCurrency(personal.total || 0);
         document.getElementById('receipts-count').textContent = formatNumber(data.total_receipts || 0);
 
@@ -760,8 +760,8 @@
           const current = trends[trends.length - 1]?.total || 0;
           const previous = trends[trends.length - 2]?.total || 1;
           const change = Math.round(((current - previous) / previous) * 100);
-          updateChange('downhome-change', change);
-          updateChange('mcr-change', change);
+          updateChange('business-change', change);
+          updateChange('sec-change', change);
           updateChange('personal-change', change);
         }
 

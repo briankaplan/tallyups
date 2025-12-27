@@ -689,7 +689,7 @@ if __name__ == '__main__':
         amount = input("Amount (optional): ").strip()
         amount = float(amount) if amount else None
         date = input("Date YYYY-MM-DD (optional): ").strip() or None
-        business_type = input("Business type (Personal/Down Home/Music City Rodeo): ").strip() or None
+        business_type = input("Business type (Personal/Business/Secondary): ").strip() or None
 
         receipt_id = processor.upload_local_receipt(
             file_path=file_path,

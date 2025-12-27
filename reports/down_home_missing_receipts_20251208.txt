@@ -1,0 +1,61 @@
+================================================================================
+DOWN HOME ENTERTAINMENT LLC - MISSING RECEIPT REPORT
+Generated: December 08, 2025 at 02:04 AM
+================================================================================
+
+The following business expenses require receipts for documentation:
+
+--------------------------------------------------------------------------------
+TRANSACTION #1
+--------------------------------------------------------------------------------
+  Database ID:     38
+  Merchant:        LAZ PARKING M32810
+  Amount:          $5.00
+  Date:            July 17, 2024
+  Category:        DH: Travel Costs - Gas/Rental Car
+  Status:          RECEIPT REQUIRED
+
+--------------------------------------------------------------------------------
+TRANSACTION #2
+--------------------------------------------------------------------------------
+  Database ID:     235
+  Merchant:        201 BELCOURT LOT
+  Amount:          $5.60
+  Date:            September 21, 2024
+  Category:        DH: Travel Costs - Gas/Rental Car
+  Status:          RECEIPT REQUIRED
+
+--------------------------------------------------------------------------------
+TRANSACTION #3
+--------------------------------------------------------------------------------
+  Database ID:     373
+  Merchant:        SO PT CATALINA BAR
+  Amount:          $11.00
+  Date:            December 02, 2024
+  Category:        Company Meetings and Meals
+  Status:          RECEIPT REQUIRED
+
+--------------------------------------------------------------------------------
+TRANSACTION #4
+--------------------------------------------------------------------------------
+  Database ID:     385
+  Merchant:        CURB LV TAXI YCS
+  Amount:          $46.32
+  Date:            December 04, 2024
+  Category:        DH: Travel Costs - Cab/Uber/Bus Fare
+  Status:          RECEIPT REQUIRED
+
+================================================================================
+SUMMARY
+================================================================================
+  Missing Receipts:    4
+  Total Value:         $67.92
+
+RECOMMENDATIONS:
+  1. Check email inbox for digital receipts
+  2. Review parking/transportation apps (Curb, SpotHero, LAZ Parking)
+  3. Contact merchant for receipt copies if needed
+  4. For small transactions under $75, IRS accepts:
+     - Bank/credit card statements
+     - Written expense log with date, amount, business purpose
+================================================================================

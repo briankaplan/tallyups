@@ -116,8 +116,8 @@ class Settings(BaseSettings):
 
     # Gmail tokens for each account
     GMAIL_TOKEN_KAPLAN_BRIAN_GMAIL_COM: str = Field(default="")
-    GMAIL_TOKEN_BRIAN_DOWNHOME_COM: str = Field(default="")
-    GMAIL_TOKEN_BRIAN_MUSICCITYRODEO_COM: str = Field(default="")
+    GMAIL_TOKEN_BRIAN_BUSINESS_COM: str = Field(default="")
+    GMAIL_TOKEN_BRIAN_SECONDARY_COM: str = Field(default="")
     GMAIL_TOKEN_BRIAN_KAPLAN_COM: str = Field(default="")
 
     # Calendar tokens

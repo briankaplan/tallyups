@@ -6,7 +6,7 @@ Generates audit-ready expense reports by business type with multiple export form
 Integrates with existing transaction data, receipts, and business classification.
 
 Report Types:
-- Business Type Summary (Down Home / MCR / Personal / CEO)
+- Business Type Summary (Business / MCR / Personal / CEO)
 - Expense Detail Report (with receipts for tax documentation)
 - Reconciliation Report (matched vs unmatched)
 - Vendor Analysis (spend analysis and trends)
@@ -63,8 +63,8 @@ class ExportFormat(Enum):
 
 class BusinessType(Enum):
     """Business type categories matching existing system."""
-    DOWN_HOME = "Down Home"
-    MUSIC_CITY_RODEO = "Music City Rodeo"
+    BUSINESS = "Business"
+    SECONDARY = "Secondary"
     PERSONAL = "Personal"
     EM_CO = "EM.co"
     ALL = "All"
@@ -72,8 +72,8 @@ class BusinessType(Enum):
 
 # Business type abbreviations for report IDs
 BUSINESS_ABBREV = {
-    "Down Home": "DOW",
-    "Music City Rodeo": "MCR",
+    "Business": "DOW",
+    "Secondary": "MCR",
     "Personal": "PER",
     "EM.co": "EMC",
     "All": "ALL"
@@ -695,7 +695,7 @@ class ExpenseReportGenerator:
         Returns:
             Dict mapping business type to Report
         """
-        business_types = ["Down Home", "Music City Rodeo", "Personal", "EM.co"]
+        business_types = ["Business", "Secondary", "Personal", "EM.co"]
         reports = {}
 
         for bt in business_types:

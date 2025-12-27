@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     receipt_source VARCHAR(50),          -- Source: 'gmail', 'scan', 'manual', 'imessage'
 
     -- Business Classification
-    business_type VARCHAR(50),           -- 'down_home', 'mcr', 'personal'
+    business_type VARCHAR(50),           -- 'business', 'sec', 'personal'
     notes TEXT,                          -- User notes
 
     -- AI Matching Results
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     phone VARCHAR(50),
 
     -- Business Association
-    business_type VARCHAR(50),           -- 'down_home', 'mcr', 'personal'
+    business_type VARCHAR(50),           -- 'business', 'sec', 'personal'
     company VARCHAR(255),
     role VARCHAR(100),
 

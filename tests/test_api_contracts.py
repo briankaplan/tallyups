@@ -137,7 +137,7 @@ class TestTransactionsEndpointContracts:
                 'chase_date': '2025-01-15',
                 'chase_description': 'Test Merchant',
                 'chase_amount': '25.00',
-                'business_type': 'down_home',
+                'business_type': 'business',
                 'review_status': 'accepted',
             }
         ]
@@ -161,7 +161,7 @@ class TestTransactionsEndpointContracts:
                 'chase_date': '2025-01-15',
                 'chase_description': 'Test Merchant',
                 'chase_amount': '25.00',
-                'business_type': 'down_home',
+                'business_type': 'business',
             }
         ]
 
@@ -181,7 +181,7 @@ class TestTransactionsEndpointContracts:
     @pytest.mark.integration
     def test_transactions_filter_by_business_type(self, authenticated_client, mock_db):
         """Filter by business_type works correctly."""
-        response = authenticated_client.get('/api/transactions?business_type=down_home')
+        response = authenticated_client.get('/api/transactions?business_type=business')
 
         # Should return 200 with filtered results or empty list
         assert response.status_code in [200, 302, 401]
@@ -267,7 +267,7 @@ class TestAIEndpointContracts:
         with patch('viewer_server.gemini_categorize_transaction') as mock_categorize:
             mock_categorize.return_value = {
                 'category': 'Software & Subscriptions',
-                'business_type': 'Down Home',
+                'business_type': 'Business',
                 'confidence': 95,
                 'reasoning': 'AI API subscription service'
             }
@@ -289,7 +289,7 @@ class TestAIEndpointContracts:
                 # Should have business_type in response
                 if data.get('ok') and 'business_type' in data:
                     assert data['business_type'] in [
-                        'Down Home', 'Music City Rodeo', 'EM Co', 'Personal', None
+                        'Business', 'Secondary', 'EM Co', 'Personal', None
                     ]
             else:
                 # 401 is acceptable if not authenticated
@@ -468,7 +468,7 @@ class TestExportEndpointContracts:
             '/api/export',
             json={
                 'format': 'csv',
-                'business_type': 'down_home',
+                'business_type': 'business',
                 'start_date': '2025-01-01',
                 'end_date': '2025-01-31'
             }

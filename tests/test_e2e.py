@@ -84,7 +84,7 @@ class TestNewExpenseFlow:
             'merchant': 'ANTHROPIC',
             'amount': Decimal('20.00'),
             'date': datetime(2024, 1, 15),
-            'business_type': 'down_home',
+            'business_type': 'business',
             'category': 'Software & Subscriptions',
         }
 
@@ -106,7 +106,7 @@ class TestNewExpenseFlow:
                     merchant='Anthropic',
                     amount=20.00,
                     date=datetime(2024, 1, 15),
-                    business_type='Down Home',
+                    business_type='Business',
                     category='Software & Subscriptions',
                 )
 
@@ -246,25 +246,25 @@ class TestBulkReviewFlow:
         Full flow: User bulk approves transactions by business type
 
         Steps:
-        1. User filters by business type (Down Home)
+        1. User filters by business type (Business)
         2. User selects all high-confidence matches
         3. User bulk approves
         4. System updates all records
         """
         # Step 1: Filter transactions
         all_transactions = [
-            {'id': 1, 'business_type': 'down_home', 'match_confidence': 0.95, 'review_status': None},
-            {'id': 2, 'business_type': 'down_home', 'match_confidence': 0.88, 'review_status': None},
+            {'id': 1, 'business_type': 'business', 'match_confidence': 0.95, 'review_status': None},
+            {'id': 2, 'business_type': 'business', 'match_confidence': 0.88, 'review_status': None},
             {'id': 3, 'business_type': 'personal', 'match_confidence': 0.92, 'review_status': None},
-            {'id': 4, 'business_type': 'down_home', 'match_confidence': 0.60, 'review_status': None},
-            {'id': 5, 'business_type': 'down_home', 'match_confidence': 0.91, 'review_status': None},
+            {'id': 4, 'business_type': 'business', 'match_confidence': 0.60, 'review_status': None},
+            {'id': 5, 'business_type': 'business', 'match_confidence': 0.91, 'review_status': None},
         ]
 
-        down_home_txs = [t for t in all_transactions if t['business_type'] == 'down_home']
-        assert len(down_home_txs) == 4
+        business_txs = [t for t in all_transactions if t['business_type'] == 'business']
+        assert len(business_txs) == 4
 
         # Step 2: Select high-confidence matches
-        high_confidence = [t for t in down_home_txs if t['match_confidence'] >= 0.85]
+        high_confidence = [t for t in business_txs if t['match_confidence'] >= 0.85]
         assert len(high_confidence) == 3
 
         # Step 3-4: Bulk approve
@@ -315,7 +315,7 @@ class TestReportGenerationFlow:
 
         Steps:
         1. User selects date range (January 2024)
-        2. User selects business type (Down Home)
+        2. User selects business type (Business)
         3. User selects report format (Excel)
         4. System generates report
         5. User downloads report
@@ -324,7 +324,7 @@ class TestReportGenerationFlow:
         report_params = {
             'date_start': datetime(2024, 1, 1),
             'date_end': datetime(2024, 1, 31),
-            'business_type': 'Down Home',
+            'business_type': 'Business',
             'report_type': 'expense_detail',
             'export_format': 'excel',
         }
@@ -337,9 +337,9 @@ class TestReportGenerationFlow:
 
             # Create mock report
             mock_report = Mock()
-            mock_report.report_name = "January 2024 - Down Home"
+            mock_report.report_name = "January 2024 - Business"
             mock_report.report_id = "RPT-2024-001"
-            mock_report.business_type = "Down Home"
+            mock_report.business_type = "Business"
             mock_report.date_range = (report_params['date_start'], report_params['date_end'])
             mock_report.generated_at = datetime.now()
             mock_report.transactions = []
@@ -392,7 +392,7 @@ class TestReportGenerationFlow:
         mock_report = Mock()
         mock_report.report_name = "Test Report"
         mock_report.report_id = "RPT-001"
-        mock_report.business_type = "Down Home"
+        mock_report.business_type = "Business"
         mock_report.date_range = (datetime(2024, 1, 1), datetime(2024, 1, 31))
         mock_report.generated_at = datetime.now()
         mock_report.transactions = []
@@ -462,7 +462,7 @@ class TestClassificationCorrectionFlow:
 
         Steps:
         1. User views transaction classified as Personal
-        2. User corrects to Down Home
+        2. User corrects to Business
         3. System learns from correction
         4. Future similar transactions classified correctly
         """
@@ -491,13 +491,13 @@ class TestClassificationCorrectionFlow:
             transaction_id=1,
             merchant="New Software Tool",
             amount=Decimal("50.00"),
-            correct_type=BusinessType.DOWN_HOME,
+            correct_type=BusinessType.BUSINESS,
             user_notes="AI development tool",
         )
 
         # Step 4: Re-classify should use learned data
         updated_result = classifier.classify(tx)
-        assert updated_result.business_type == BusinessType.DOWN_HOME
+        assert updated_result.business_type == BusinessType.BUSINESS
 
 
 # =============================================================================
@@ -514,7 +514,7 @@ class TestSettingsFlow:
 
         Steps:
         1. User opens report settings
-        2. User configures weekly Down Home report
+        2. User configures weekly Business report
         3. User adds email recipients
         4. System saves schedule
         """
@@ -535,9 +535,9 @@ class TestSettingsFlow:
         # User configures schedule
         schedule = ScheduledReport(
             id="sched_001",
-            name="Weekly Down Home Report",
+            name="Weekly Business Report",
             frequency=ScheduleFrequency.WEEKLY,
-            business_types=["down_home"],
+            business_types=["business"],
             report_type="expense_detail",
             export_format="excel",
             delivery_method=ReportDeliveryMethod.EMAIL,
@@ -553,7 +553,7 @@ class TestSettingsFlow:
         # Verify saved
         saved = service.get_schedule("sched_001")
         assert saved is not None
-        assert saved.name == "Weekly Down Home Report"
+        assert saved.name == "Weekly Business Report"
         assert saved.frequency == ScheduleFrequency.WEEKLY
 
 

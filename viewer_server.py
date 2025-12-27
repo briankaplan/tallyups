@@ -797,8 +797,8 @@ try:
 
             accounts = [
                 'kaplan.brian@gmail.com',
-                'brian@downhome.com',
-                'brian@musiccityrodeo.com'
+                'brian@business.com',
+                'brian@secondary.com'
             ]
 
             # Only scan last 7 days for new receipts (not all history)
@@ -3292,7 +3292,7 @@ def health_check():
     # Check Gmail accounts (check both env vars and files)
     gmail_accounts = []
     gmail_dir = os.path.join(BASE_DIR, 'gmail_tokens')
-    for email in ['kaplan.brian@gmail.com', 'brian@musiccityrodeo.com', 'brian@downhome.com']:
+    for email in ['kaplan.brian@gmail.com', 'brian@secondary.com', 'brian@business.com']:
         # Check environment variable first (Railway persistence)
         env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
         env_token = os.environ.get(env_key)
@@ -3503,15 +3503,15 @@ def dashboard_stats():
         # Note: Data has mixed sign conventions - some sources use positive, some negative for expenses
         # We exclude payments by description and use ABS for all amounts
         # Valid business types only (filter out categories that incorrectly got into business_type field)
-        VALID_BUSINESS_TYPES = ('Down Home', 'Down_Home', 'Music City Rodeo', 'Music_City_Rodeo', 'MCR', 'Personal', 'EM.co', 'EM Co', 'EM_co')
+        VALID_BUSINESS_TYPES = ('Business', 'Business', 'Secondary', 'Secondary', 'MCR', 'Personal', 'EM.co', 'EM Co', 'EM_co')
         business_breakdown = []
         by_business = {}  # Object format for frontend compatibility
         try:
             cursor = db_execute(conn, db_type, """
                 SELECT
                     CASE
-                        WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
-                        WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
                         WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
                         ELSE 'Personal'
                     END AS business,
@@ -3525,8 +3525,8 @@ def dashboard_stats():
                   AND chase_description NOT LIKE '%Thank You%'
                 GROUP BY
                     CASE
-                        WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
-                        WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
                         WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
                         ELSE 'Personal'
                     END
@@ -3816,8 +3816,8 @@ def get_business_types():
             # Return defaults if not found
             default_types = [
                 {"name": "Personal", "color": "#4a9eff"},
-                {"name": "Down Home", "color": "#00ff88"},
-                {"name": "Music City Rodeo", "color": "#ff66aa"},
+                {"name": "Business", "color": "#00ff88"},
+                {"name": "Secondary", "color": "#ff66aa"},
                 {"name": "EM.co", "color": "#00d4ff"}
             ]
             return jsonify({"types": default_types, "ok": True})
@@ -7165,7 +7165,7 @@ def api_ai_auto_process():
     note_result = gemini_generate_ai_note(
         merchant, amount, date,
         cat_result.get("category", ""),
-        cat_result.get("business_type", "Down Home"),
+        cat_result.get("business_type", "Business"),
         row=row
     )
 
@@ -7287,7 +7287,7 @@ def api_ai_regenerate_notes():
         amount = parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0)
         date = row.get("Chase Date") or row.get("transaction_date") or ""
         category = row.get("category") or row.get("Chase Category") or ""
-        business_type = row.get("Business Type") or "Down Home"
+        business_type = row.get("Business Type") or "Business"
 
         result_entry = {
             "_index": idx,
@@ -7494,7 +7494,7 @@ def api_ai_regenerate_birthday_notes():
         amount = parse_amount_str(row.get('chase_amount', 0))
         date = row.get('chase_date', '')
         category = row.get('chase_category', '')
-        business_type = row.get('business_type', 'Down Home')
+        business_type = row.get('business_type', 'Business')
         old_note = row.get('ai_note', '')
 
         result_entry = {
@@ -10241,7 +10241,7 @@ def atlas_sync_google_push():
         from googleapiclient.discovery import build
 
         # Get Gmail token
-        gmail_token = os.getenv('GMAIL_TOKEN_BRIAN_DOWNHOME_COM') or os.getenv('GMAIL_TOKEN_BRIAN_MUSICCITYRODEO_COM')
+        gmail_token = os.getenv('GMAIL_TOKEN_BRIAN_BUSINESS_COM') or os.getenv('GMAIL_TOKEN_BRIAN_SECONDARY_COM')
         if not gmail_token:
             return jsonify({'error': 'No Google token configured', 'success': False}), 400
 
@@ -10374,7 +10374,7 @@ def atlas_sync_google_pull():
         from googleapiclient.discovery import build
 
         # Get Gmail token
-        gmail_token = os.getenv('GMAIL_TOKEN_BRIAN_DOWNHOME_COM') or os.getenv('GMAIL_TOKEN_BRIAN_MUSICCITYRODEO_COM')
+        gmail_token = os.getenv('GMAIL_TOKEN_BRIAN_BUSINESS_COM') or os.getenv('GMAIL_TOKEN_BRIAN_SECONDARY_COM')
         if not gmail_token:
             return jsonify({'error': 'No Google token configured', 'success': False}), 400
 
@@ -12332,8 +12332,8 @@ EXPENSE_CATEGORIES = [
 
 # Business types for Brian's companies
 BUSINESS_TYPES = [
-    "Down Home",           # Music/Entertainment business (artist management, publishing)
-    "Music City Rodeo",    # Event business (concerts, rodeos)
+    "Business",           # Music/Entertainment business (artist management, publishing)
+    "Secondary",    # Event business (concerts, rodeos)
     "EM.co",               # EM.co business
     "Personal",            # Personal expenses
     "Compass RE",          # Real estate
@@ -12362,7 +12362,7 @@ def gemini_categorize_transaction(merchant: str, amount: float, date: str = "", 
     Returns:
         {
             "category": "Meals & Entertainment",
-            "business_type": "Down Home",
+            "business_type": "Business",
             "confidence": 85,
             "reasoning": "Restaurant expense likely for client meeting"
         }
@@ -12431,8 +12431,8 @@ TRANSACTION:
 - Existing Category Hint: {category_hint or "None"}{merchant_context}{attendees_context}{calendar_context}
 
 BRIAN'S BUSINESSES:
-- "Down Home" - Music/entertainment company (artist management, production, publishing)
-- "Music City Rodeo" - Event production company (concerts, festivals)
+- "Business" - Music/entertainment company (artist management, production, publishing)
+- "Secondary" - Event production company (concerts, festivals)
 - "Compass RE" - Real estate business
 - "1099 Contractor" - Freelance consulting work
 - "Personal" - Personal expenses
@@ -12453,13 +12453,13 @@ BUSINESS TYPE (pick one):
 {chr(10).join(f'- {bt}' for bt in BUSINESS_TYPES)}
 
 CATEGORIZATION RULES:
-1. Restaurants in Nashville → "Meals & Entertainment" + "Down Home" (client/artist meetings)
+1. Restaurants in Nashville → "Meals & Entertainment" + "Business" (client/artist meetings)
 2. Airlines → "Travel - Airfare" (check calendar for destination context)
 3. Hotels → "Travel - Hotel"
 4. Uber/Lyft → "Travel - Ground Transportation"
-5. Software/AI/SaaS subscriptions → "Software & Subscriptions" + "Down Home"
-6. Parking near downtown Nashville → Probably "Down Home" meeting
-7. If calendar shows MCR event near date → "Music City Rodeo"
+5. Software/AI/SaaS subscriptions → "Software & Subscriptions" + "Business"
+6. Parking near downtown Nashville → Probably "Business" meeting
+7. If calendar shows MCR event near date → "Secondary"
 8. Amazon under $100 → Likely "Office Supplies"
 9. Amazon over $500 → Likely "Equipment & Hardware"
 
@@ -12479,7 +12479,7 @@ Return ONLY valid JSON:
         if result.get("category") not in EXPENSE_CATEGORIES:
             result["category"] = "Miscellaneous Business Expense"
         if result.get("business_type") not in BUSINESS_TYPES:
-            result["business_type"] = "Down Home"
+            result["business_type"] = "Business"
 
         return result
 
@@ -12490,23 +12490,23 @@ Return ONLY valid JSON:
 
         # Basic keyword matching fallback
         if any(kw in merchant_lower for kw in ['restaurant', 'food', 'cafe', 'bar', 'grill', 'pizza', 'burger', 'taco', 'soho', 'house']):
-            return {"category": "Meals & Entertainment", "business_type": "Down Home", "confidence": 60, "reasoning": "Keyword match: restaurant"}
+            return {"category": "Meals & Entertainment", "business_type": "Business", "confidence": 60, "reasoning": "Keyword match: restaurant"}
         elif any(kw in merchant_lower for kw in ['airline', 'delta', 'american', 'united', 'southwest', 'flight']):
-            return {"category": "Travel - Airfare", "business_type": "Down Home", "confidence": 70, "reasoning": "Keyword match: airline"}
+            return {"category": "Travel - Airfare", "business_type": "Business", "confidence": 70, "reasoning": "Keyword match: airline"}
         elif any(kw in merchant_lower for kw in ['hotel', 'marriott', 'hilton', 'hyatt', 'inn', 'lodge']):
-            return {"category": "Travel - Hotel", "business_type": "Down Home", "confidence": 70, "reasoning": "Keyword match: hotel"}
+            return {"category": "Travel - Hotel", "business_type": "Business", "confidence": 70, "reasoning": "Keyword match: hotel"}
         elif any(kw in merchant_lower for kw in ['uber', 'lyft', 'taxi', 'cab']):
-            return {"category": "Travel - Ground Transportation", "business_type": "Down Home", "confidence": 75, "reasoning": "Keyword match: rideshare"}
+            return {"category": "Travel - Ground Transportation", "business_type": "Business", "confidence": 75, "reasoning": "Keyword match: rideshare"}
         elif any(kw in merchant_lower for kw in ['gas', 'shell', 'exxon', 'chevron', 'fuel', 'bp ']):
-            return {"category": "Fuel & Gas", "business_type": "Down Home", "confidence": 70, "reasoning": "Keyword match: gas station"}
+            return {"category": "Fuel & Gas", "business_type": "Business", "confidence": 70, "reasoning": "Keyword match: gas station"}
         elif any(kw in merchant_lower for kw in ['parking', 'park', 'pmc']):
-            return {"category": "Parking & Tolls", "business_type": "Down Home", "confidence": 65, "reasoning": "Keyword match: parking"}
+            return {"category": "Parking & Tolls", "business_type": "Business", "confidence": 65, "reasoning": "Keyword match: parking"}
         elif any(kw in merchant_lower for kw in ['adobe', 'spotify', 'apple', 'microsoft', 'google', 'dropbox', 'subscription', 'anthropic', 'claude', 'cursor', 'openai']):
-            return {"category": "Software & Subscriptions", "business_type": "Down Home", "confidence": 70, "reasoning": "Keyword match: subscription"}
+            return {"category": "Software & Subscriptions", "business_type": "Business", "confidence": 70, "reasoning": "Keyword match: subscription"}
         elif any(kw in merchant_lower for kw in ['office', 'staples', 'supplies']):
-            return {"category": "Office Supplies", "business_type": "Down Home", "confidence": 65, "reasoning": "Keyword match: office supplies"}
+            return {"category": "Office Supplies", "business_type": "Business", "confidence": 65, "reasoning": "Keyword match: office supplies"}
         else:
-            return {"category": "Miscellaneous Business Expense", "business_type": "Down Home", "confidence": 40, "reasoning": "No specific match found"}
+            return {"category": "Miscellaneous Business Expense", "business_type": "Business", "confidence": 40, "reasoning": "No specific match found"}
 
 
 def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", category: str = "", business_type: str = "", row: dict = None) -> dict:
@@ -12675,17 +12675,17 @@ def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", catego
 
     try:
         prompt = f"""You are Brian Kaplan's executive assistant writing expense notes for IRS tax documentation.
-Brian is a Nashville music industry executive running Down Home (artist management/publishing) and Music City Rodeo (event production).
+Brian is a Nashville music industry executive running Business (artist management/publishing) and Secondary (event production).
 
 TRANSACTION:
 - Merchant: {merchant}
 - Amount: ${amount:.2f}
 - Date: {date}
 - Category: {category or "Unknown"}
-- Business: {business_type or "Down Home"}{merchant_context}{attendees_context}{calendar_context}{ocr_context}{payment_recipient_context}
+- Business: {business_type or "Business"}{merchant_context}{attendees_context}{calendar_context}{ocr_context}{payment_recipient_context}
 
 BRIAN'S KEY CONTACTS (use when relevant):
-- Down Home Team: Jason Ross (GM), Tim Staples, Joel Bergvall, Kevin Sabbe, Andrew Cohen
+- Business Team: Jason Ross (GM), Tim Staples, Joel Bergvall, Kevin Sabbe, Andrew Cohen
 - MCR Team: Patrick Humes, Barry Stephenson
 - Industry Execs: Scott Siman, Cindy Mabe, Ken Robold, Ben Kline
 - Artists: Morgan Wade, Jelly Roll, Wynonna, and other roster artists
@@ -13395,7 +13395,7 @@ def add_manual_expense():
       "date": "YYYY-MM-DD",
       "merchant": "Merchant Name",
       "amount": 123.45,
-      "business_type": "Down Home",
+      "business_type": "Business",
       "category": "Optional Category",
       "notes": "Optional notes",
       "receipt_file": "Optional filename from OCR",
@@ -13679,7 +13679,7 @@ def reports_preview():
     """
     Preview expenses that match report filters.
     Body: {
-      "business_type": "Down Home",
+      "business_type": "Business",
       "date_from": "2024-01-01",
       "date_to": "2024-12-31"
     }
@@ -13741,8 +13741,8 @@ def reports_submit():
     """
     Submit a report and archive selected expenses.
     Body: {
-      "report_name": "Q1 2024 Down Home Expenses",
-      "business_type": "Down Home",
+      "report_name": "Q1 2024 Business Expenses",
+      "business_type": "Business",
       "expense_indexes": [1, 2, 3, 4, 5]
     }
     """
@@ -13804,10 +13804,10 @@ def reports_list():
             report = dict(r) if hasattr(r, 'keys') else r
             # Normalize business_type
             bt = report.get('business_type', '')
-            if bt in ('Down_Home', 'Down Home'):
-                report['business_type'] = 'Down Home'
-            elif bt in ('Music_City_Rodeo', 'Music City Rodeo', 'MCR'):
-                report['business_type'] = 'Music City Rodeo'
+            if bt in ('Business', 'Business'):
+                report['business_type'] = 'Business'
+            elif bt in ('Secondary', 'Secondary', 'MCR'):
+                report['business_type'] = 'Secondary'
             elif bt in ('EM_co', 'EM.co', 'EM Co'):
                 report['business_type'] = 'EM.co'
             normalized_reports.append(report)
@@ -13971,13 +13971,13 @@ def reports_unsubmit(report_id):
 @app.route("/export/reconciliation.csv", methods=["GET"])
 def export_reconciliation_csv():
     """
-    Export all Down Home transactions with reconciliation data as CSV.
+    Export all Business transactions with reconciliation data as CSV.
     No auth required - just exports the data.
 
     Query params:
     - start_date: Start date (default: 2024-07-01)
     - end_date: End date (default: 2025-12-01)
-    - business_type: Business type filter (default: Down Home)
+    - business_type: Business type filter (default: Business)
     """
     if not USE_DATABASE or not db:
         abort(503, "Requires database mode")
@@ -13985,7 +13985,7 @@ def export_reconciliation_csv():
     try:
         start_date = request.args.get('start_date', '2024-07-01')
         end_date = request.args.get('end_date', '2025-12-01')
-        business_type = request.args.get('business_type', 'Down Home')
+        business_type = request.args.get('business_type', 'Business')
 
         conn, db_type = get_db_connection()
 
@@ -14087,7 +14087,7 @@ def api_vision_verify_batch():
                 SELECT _index, chase_date, chase_amount, chase_description,
                        receipt_file, receipt_url, r2_url, review_status
                 FROM transactions
-                WHERE business_type = 'Down Home'
+                WHERE business_type = 'Business'
                 AND chase_date >= '2024-07-01'
                 AND chase_date <= '2025-12-01'
                 ORDER BY chase_date DESC
@@ -14286,7 +14286,7 @@ Respond in this exact JSON format:
 @app.route("/export/vision-verify.csv", methods=["GET"])
 def export_vision_verify_csv():
     """
-    Run vision verification on all Down Home transactions and export as CSV.
+    Run vision verification on all Business transactions and export as CSV.
     This runs server-side where DB connection is stable.
 
     Query params:
@@ -14313,7 +14313,7 @@ def export_vision_verify_csv():
             SELECT _index, chase_date, chase_amount, chase_description,
                    receipt_file, receipt_url, r2_url, review_status
             FROM transactions
-            WHERE business_type = 'Down Home'
+            WHERE business_type = 'Business'
             AND chase_date >= '2024-07-01'
             AND chase_date <= '2025-12-01'
             ORDER BY chase_date DESC
@@ -14433,10 +14433,10 @@ Respond in this exact JSON format:
         abort(500, str(e))
 
 
-@app.route("/reports/<report_id>/export/downhome", methods=["GET"])
-def reports_export_downhome(report_id):
+@app.route("/reports/<report_id>/export/business", methods=["GET"])
+def reports_export_business(report_id):
     """
-    Export a report in Down Home CSV format.
+    Export a report in Business CSV format.
     Format: External ID, Line, Category, Amount, Currency, Date, Project, Memo, Line of Business, Billable
     """
     if not USE_DATABASE or not db:
@@ -14448,7 +14448,7 @@ def reports_export_downhome(report_id):
         if not expenses:
             abort(404, f"No expenses found for report {report_id}")
 
-        # Build CSV rows in Down Home format
+        # Build CSV rows in Business format
         import io
         import csv
 
@@ -14534,15 +14534,15 @@ def reports_export_downhome(report_id):
         # Create response with CSV content
         output.seek(0)
         response = make_response(output.getvalue())
-        response.headers["Content-Disposition"] = f"attachment; filename=downhome_report_{report_id}.csv"
+        response.headers["Content-Disposition"] = f"attachment; filename=business_report_{report_id}.csv"
         response.headers["Content-Type"] = "text/csv"
 
-        print(f"✅ Exported Down Home report {report_id} with {len(expenses)} expenses", flush=True)
+        print(f"✅ Exported Business report {report_id} with {len(expenses)} expenses", flush=True)
 
         return response
 
     except Exception as e:
-        print(f"❌ Down Home export failed: {e}", flush=True)
+        print(f"❌ Business export failed: {e}", flush=True)
         abort(500, str(e))
 
 
@@ -14765,7 +14765,7 @@ def reports_standalone_page(report_id):
 
         # Hardcoded ZIP URLs for known reports (until DB column is added)
         known_zips = {
-            'RPT-DH-20251213': 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/exports/DOWN_HOME_RECEIPTS_2024_2025.zip'
+            'RPT-DH-20251213': 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/exports/BUSINESS_RECEIPTS_2024_2025.zip'
         }
         if not receipts_zip_url and report_id in known_zips:
             receipts_zip_url = known_zips[report_id]
@@ -15295,7 +15295,7 @@ tr:hover .row-actions {{
     <p><strong>{business_type}</strong> &middot; {date_from} to {date_to}</p>
   </div>
   <div class="report-header-right">
-    <a href="/reports/{report_id}/export/downhome" class="btn btn-primary" download>
+    <a href="/reports/{report_id}/export/business" class="btn btn-primary" download>
       <span>📊</span> Export CSV
     </a>
     <a href="{download_receipts_url}" class="btn btn-primary" download>
@@ -16022,9 +16022,9 @@ def gmail_status():
     ]
 
     ACCOUNTS = [
-        {'email': 'brian@downhome.com', 'token_file': 'tokens_brian_downhome_com.json'},
+        {'email': 'brian@business.com', 'token_file': 'tokens_brian_business_com.json'},
         {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json'},
-        {'email': 'brian@musiccityrodeo.com', 'token_file': 'tokens_brian_musiccityrodeo_com.json'},
+        {'email': 'brian@secondary.com', 'token_file': 'tokens_brian_secondary_com.json'},
     ]
 
     statuses = []
@@ -16188,9 +16188,9 @@ def gmail_refresh_all():
 _oauth_states = {}
 
 GMAIL_ACCOUNTS = {
-    'brian@downhome.com': {'token_file': 'tokens_brian_downhome_com.json', 'name': 'Down Home'},
+    'brian@business.com': {'token_file': 'tokens_brian_business_com.json', 'name': 'Business'},
     'kaplan.brian@gmail.com': {'token_file': 'tokens_kaplan_brian_gmail_com.json', 'name': 'Personal Gmail'},
-    'brian@musiccityrodeo.com': {'token_file': 'tokens_brian_musiccityrodeo_com.json', 'name': 'Music City Rodeo'},
+    'brian@secondary.com': {'token_file': 'tokens_brian_secondary_com.json', 'name': 'Secondary'},
     'brian@kaplan.com': {'token_file': 'tokens_brian_kaplan_com.json', 'name': 'Kaplan'},
 }
 
@@ -18641,8 +18641,8 @@ def get_library_receipts():
             'gmail': source_counts.get('gmail', 0),
             'scanner': source_counts.get('scanner', 0),
             'upload': source_counts.get('manual', 0) + source_counts.get('upload', 0),
-            'down_home': source_counts.get('down_home', 0),
-            'mcr': source_counts.get('mcr', 0),
+            'business': source_counts.get('business', 0),
+            'sec': source_counts.get('sec', 0),
             'personal': source_counts.get('personal', 0),
             'ceo': source_counts.get('ceo', 0)
         }
@@ -21531,7 +21531,7 @@ def accept_incoming_receipt():
             merchant_lower = merchant.lower() if merchant else ''
             from_email_str = receipt_data.get('from_email', '').lower()
 
-            # Software/SaaS subscriptions are typically business (EM.co or Down Home)
+            # Software/SaaS subscriptions are typically business (EM.co or Business)
             saas_keywords = ['subscription', 'software', 'api', 'cloud', 'hosting', 'service']
             saas_merchants = ['anthropic', 'openai', 'midjourney', 'stripe', 'railway', 'render',
                             'vercel', 'netlify', 'github', 'gitlab', 'aws', 'azure', 'google cloud',
@@ -21542,17 +21542,17 @@ def accept_incoming_receipt():
 
             if any(kw in incoming_cat for kw in saas_keywords) or any(m in merchant_lower for m in saas_merchants):
                 business_type = 'EM.co'  # Tech/SaaS defaults to EM.co
-            # Music industry merchants go to Music City Rodeo
+            # Music industry merchants go to Secondary
             elif any(m in merchant_lower for m in ['spotify', 'distrokid', 'tunecore', 'cd baby', 'bandcamp', 'soundcloud']):
-                business_type = 'Music City Rodeo'
-            # Down Home for production/studio expenses
+                business_type = 'Secondary'
+            # Business for production/studio expenses
             elif any(m in merchant_lower for m in ['guitar center', 'sweetwater', 'sam ash', 'musician']):
-                business_type = 'Down Home'
+                business_type = 'Business'
             # Check from_email domain for business hints
-            elif 'downhome.com' in from_email_str:
-                business_type = 'Down Home'
-            elif 'musiccityrodeo.com' in from_email_str:
-                business_type = 'Music City Rodeo'
+            elif 'business.com' in from_email_str:
+                business_type = 'Business'
+            elif 'secondary.com' in from_email_str:
+                business_type = 'Secondary'
 
         # Validate we have minimum required data
         if not merchant:
@@ -21877,7 +21877,7 @@ def accept_incoming_receipt():
                 note_result = gemini_generate_ai_note(
                     merchant, amount, trans_date,
                     cat_result.get('category', ''),
-                    cat_result.get('business_type', 'Down Home')
+                    cat_result.get('business_type', 'Business')
                 )
 
                 # Prepare updates
@@ -22785,7 +22785,7 @@ def recategorize_transactions():
     dry_run = data.get('dry_run', False)
     limit = data.get('limit', 1000)
 
-    # Smart categorization rules - Down Home exact categories
+    # Smart categorization rules - Business exact categories
     # Uses pattern matching for known merchants
     CATEGORY_RULES = {
         # Software & Subscriptions - AI tools, dev tools, SaaS
@@ -22864,7 +22864,7 @@ def recategorize_transactions():
             r'pizza', r'burger', r'sushi', r'thai', r'mexican', r'italian',
             # Nashville specific venues
             r'optimist', r'britannia', r'hattie', r'pancho', r'catbird',
-            r'husk', r'bastion', r'peninsula', r'redheaded stranger',
+            r'husk', r'bastion', r'peninsula', r'rebizeaded stranger',
             r'adele', r'mas tacos', r'prince', r'bolton',
             # Generic food terms
             r'food', r'lunch', r'dinner', r'breakfast',
@@ -22885,7 +22885,7 @@ def recategorize_transactions():
             r'desert star', r'chow fun', r'cosmopol', r'blue ribbon',
             r'bonanno', r'nadeen', r'slim.*husk', r'lulu.*landing',
         ],
-        # Client Business Meals (with DH prefix for Down Home client work)
+        # Client Business Meals (with DH prefix for Business client work)
         'DH: BD: Client Business Meals': [
             # Will be set based on ai_note mentioning "client" or specific known client names
         ],
@@ -22939,8 +22939,8 @@ def recategorize_transactions():
             ai_note = (tx['ai_note'] or '').lower()
             new_cat = None
 
-            # Determine if this is Down Home business (for DH: prefix)
-            is_dh = 'down home' in biz_type or 'downhome' in biz_type or 'dh' in biz_type
+            # Determine if this is Business business (for DH: prefix)
+            is_biz = 'business' in biz_type or 'business' in biz_type or 'biz' in biz_type
 
             # Check for client context (for BD: categories)
             is_client = 'client' in ai_note or 'meeting with' in ai_note
@@ -22956,16 +22956,16 @@ def recategorize_transactions():
                 if new_cat:
                     break
 
-            # Apply DH: prefix ONLY for Down Home business transactions
+            # Apply DH: prefix ONLY for Business business transactions
             # For non-DH businesses, use base category without prefix
             if new_cat and new_cat.startswith('DH: '):
-                if not is_dh:
-                    # Remove DH: prefix for non-Down Home transactions
+                if not is_biz:
+                    # Remove DH: prefix for non-Business transactions
                     new_cat = new_cat.replace('DH: ', '')
 
             # Special logic for meals - check if client-related
             if new_cat == 'Company Meetings and Meals' and is_client:
-                if is_dh:
+                if is_biz:
                     new_cat = 'DH: BD: Client Business Meals'
                 else:
                     new_cat = 'BD: Client Business Meals'
@@ -23719,8 +23719,8 @@ def scan_incoming_receipts():
         # Default accounts
         all_accounts = [
             'kaplan.brian@gmail.com',
-            'brian@downhome.com',
-            'brian@musiccityrodeo.com'
+            'brian@business.com',
+            'brian@secondary.com'
         ]
 
         # Use specific accounts if provided, otherwise all
@@ -25039,7 +25039,7 @@ def rematch_missing_receipts():
     POST body:
     {
         "admin_key": "tallyups-admin-2024",  # required for auth
-        "business_type": "Down Home",  # optional filter
+        "business_type": "Business",  # optional filter
         "limit": 50  # max transactions to process
     }
     """
@@ -25625,7 +25625,7 @@ def generate_missing_receipt_form():
     Required fields in request JSON:
     - _index: transaction index
     - reason: reason receipt was lost
-    - company: 'downhome' or 'mcr' (Music City Rodeo)
+    - company: 'business' or 'sec' (Secondary)
 
     Optional fields:
     - meal_attendees: list of attendee names (for meal receipts)
@@ -25643,7 +25643,7 @@ def generate_missing_receipt_form():
         data = request.get_json()
         row_index = data.get('_index')
         reason = data.get('reason', 'Receipt not provided by vendor')
-        company = data.get('company', 'downhome')  # 'downhome' or 'mcr'
+        company = data.get('company', 'business')  # 'business' or 'sec'
         meal_attendees = data.get('meal_attendees', '')
         meal_purpose = data.get('meal_purpose', '')
 
@@ -25683,12 +25683,12 @@ def generate_missing_receipt_form():
             formatted_amount = str(trans_amount)
 
         # Company details
-        if company == 'mcr':
-            company_name = "Music City Rodeo"
-            company_header = "Music City Rodeo"
+        if company == 'sec':
+            company_name = "Secondary"
+            company_header = "Secondary"
         else:
-            company_name = "Down Home Media LLC"
-            company_header = "Down Home Media LLC"
+            company_name = "Business Media LLC"
+            company_header = "Business Media LLC"
 
         # Generate unique filename
         form_id = str(uuid.uuid4())[:8]
@@ -27681,7 +27681,7 @@ CONTACT_HUB_TEMPLATE = '''
                         </div>
                         <div class="form-group">
                             <label>Team/Category</label>
-                            <input type="text" id="contactTeam" placeholder="e.g., MCR, DownHome">
+                            <input type="text" id="contactTeam" placeholder="e.g., MCR, Business">
                         </div>
                     </div>
                     <div class="form-group">
@@ -28692,7 +28692,7 @@ def api_bulk_update():
     {
         "indexes": [int, ...],       # Transaction indexes to update
         "updates": {                  # Fields to update
-            "Business Type": "Down Home",
+            "Business Type": "Business",
             "Review Status": "good",
             ...
         }
@@ -28755,7 +28755,7 @@ def api_bulk_business_type():
     POST body:
     {
         "indexes": [int, ...],
-        "business_type": "Down Home" | "Music City Rodeo" | "Personal" | "EM.co"
+        "business_type": "Business" | "Secondary" | "Personal" | "EM.co"
     }
     """
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
@@ -28903,11 +28903,11 @@ def api_review_stats():
     review_pending = total - review_good - review_bad - review_not_needed
 
     # Business type counts
-    down_home = len(df[df.get("Business Type", "").fillna("") == "Down Home"])
-    mcr = len(df[df.get("Business Type", "").fillna("").isin(["Music City Rodeo", "MCR"])])
+    business = len(df[df.get("Business Type", "").fillna("") == "Business"])
+    sec = len(df[df.get("Business Type", "").fillna("").isin(["Secondary", "MCR"])])
     personal = len(df[df.get("Business Type", "").fillna("") == "Personal"])
     emco = len(df[df.get("Business Type", "").fillna("") == "EM.co"])
-    unassigned = total - down_home - mcr - personal - emco
+    unassigned = total - business - sec - personal - emco
 
     # Validation status counts
     verified = len(df[df.get("receipt_validation_status", "").fillna("") == "verified"])
@@ -28926,8 +28926,8 @@ def api_review_stats():
                 "pending": review_pending
             },
             "business": {
-                "down_home": down_home,
-                "mcr": mcr,
+                "business": business,
+                "sec": sec,
                 "personal": personal,
                 "emco": emco,
                 "unassigned": unassigned
@@ -29218,7 +29218,7 @@ def api_reports_generate():
 
     Request body:
     {
-        "business_type": "Down Home" | "Music City Rodeo" | "Personal" | "EM.co" | "all",
+        "business_type": "Business" | "Secondary" | "Personal" | "EM.co" | "all",
         "date_from": "2024-01-01",
         "date_to": "2024-12-31",
         "report_type": "expense_detail" | "business_summary" | "reconciliation" | "vendor_analysis",
@@ -29461,7 +29461,7 @@ def api_report_export(report_id, export_format):
         elif export_format == "csv":
             from services.csv_exporter import get_csv_exporter
             exporter = get_csv_exporter()
-            content = exporter.export_downhome_csv(report)
+            content = exporter.export_business_csv(report)
             response = make_response(content)
             response.headers["Content-Disposition"] = f"attachment; filename={report_id}.csv"
             response.headers["Content-Type"] = "text/csv"

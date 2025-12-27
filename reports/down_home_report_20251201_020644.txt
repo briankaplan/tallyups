@@ -1,0 +1,65 @@
+================================================================================
+DOWN HOME EXPENSE REPORT
+Period: 2024-07-01 to 2024-12-01
+Generated: 2025-12-01 02:06
+================================================================================
+
+SUMMARY
+----------------------------------------
+Total Transactions: 15
+Total Amount: $1,525.92
+
+Verified Receipts: 0 ($0.00)
+Likely Matches: 0 ($0.00)
+Needs Receipt/Form: 0 ($0.00)
+Mismatched: 0 ($0.00)
+Other/Unverified: 15 ($1,525.92)
+
+================================================================================
+DETAILED TRANSACTIONS
+================================================================================
+
+2024-11-22 | $    34.90 | ? | SH NASHVILLE - OTHER
+    Note: Meeting with Abbi at Soho House Nashville for project discussion.
+
+2024-11-23 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for meetings at Metropolis, Nashville.
+
+2024-11-24 | $    21.95 | ? | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for writing and research needs.
+
+2024-11-24 | $    52.99 | ? | SH NASHVILLE - OTHER
+    Note: Birthday meeting at Soho House for artist collaboration discussion.
+
+2024-11-25 | $    72.89 | ? | CORNER PUB
+    Note: Birthday dinner for Chris, discussing upcoming projects and meetings.
+
+2024-11-25 | $    51.98 | ? | CORNER PUB
+    Note: Birthday lunch for Chris Fabiani, discussing upcoming music projects.
+
+2024-11-25 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for Chris's birthday meeting and MCR/Humes Zoom call.
+
+2024-11-25 | $    38.78 | ? | SH NASHVILLE - OTHER
+    Note: Meeting and celebration for Chris Fabiani's birthday at Soho House.
+
+2024-11-26 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for Songscapes event on 11/26.
+
+2024-11-27 | $    12.84 | ? | PMC - PAID PARKING
+    Note: Parking for Nashville meeting prep on December 2-4.
+
+2024-11-27 | $   884.98 | ? | SOUTHWES 5262584463367
+    Note: Southwest flight to Nashville for December meetings and opportunities.
+
+2024-11-29 | $   123.17 | ? | GOLDEN NUGGET HOTEL LV
+    Note: Hotel stay for NFR event in Las Vegas.
+
+2024-11-30 | $   100.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music project planning and management.
+
+2024-11-30 | $    32.93 | ? | MIDJOURNEY INC.
+    Note: AI visuals for artist promotion and marketing.
+
+2024-12-01 | $    19.76 | ? | EXPENSIFY INC.
+    Note: Expense for using Expensify to manage music publishing costs.

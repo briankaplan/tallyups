@@ -428,8 +428,8 @@ Return ONLY a number (minutes). Examples: 30, 60, 120"""
             'colorId': self._get_color_for_task_type(self.classify_task_type(task))
         }
 
-        # Create event in primary calendar (Down Home)
-        calendar_event = self.calendar.create_event('brian@downhome.com', event_data)
+        # Create event in primary calendar (Business)
+        calendar_event = self.calendar.create_event('brian@business.com', event_data)
 
         return {
             'success': True,

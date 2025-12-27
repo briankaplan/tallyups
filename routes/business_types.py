@@ -2,7 +2,7 @@
 Business Types API Routes
 
 Per-user custom business type management for multi-tenant support.
-Each user can have their own business categories (e.g., Personal, Business, Down Home, etc.)
+Each user can have their own business categories (e.g., Personal, Business, Business, etc.)
 """
 
 import logging

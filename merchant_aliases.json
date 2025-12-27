@@ -1,0 +1,427 @@
+{
+  "_description": "Bank statement merchant name to canonical merchant mapping",
+  "_version": "2.0.0",
+  "_last_updated": "2024-12-10",
+
+  "aliases": {
+    "apple_ecosystem": {
+      "patterns": [
+        "apple.com/bill",
+        "apple com bill",
+        "applecombill",
+        "app store",
+        "itunes",
+        "icloud"
+      ],
+      "canonical": "Apple",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+    "apple_retail": {
+      "patterns": ["apple store"],
+      "canonical": "Apple Store",
+      "category": "retail",
+      "is_subscription": false
+    },
+
+    "amazon_retail": {
+      "patterns": [
+        "amzn mktp",
+        "amazon mktp",
+        "amzn.com",
+        "amazon.com"
+      ],
+      "canonical": "Amazon",
+      "category": "retail",
+      "is_subscription": false
+    },
+    "amazon_digital": {
+      "patterns": [
+        "amzn digital",
+        "amazon prime",
+        "prime video"
+      ],
+      "canonical": "Amazon Prime",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+    "amazon_groceries": {
+      "patterns": [
+        "whole foods",
+        "amzn fresh",
+        "amazon fresh"
+      ],
+      "canonical": "Amazon Grocery",
+      "category": "groceries",
+      "is_subscription": false
+    },
+
+    "starbucks": {
+      "patterns": [
+        "sq *starbucks",
+        "tst* starbucks",
+        "starbucks"
+      ],
+      "canonical": "Starbucks",
+      "category": "food_beverage",
+      "is_subscription": false
+    },
+
+    "uber_rides": {
+      "patterns": [
+        "uber trip",
+        "uber *trip"
+      ],
+      "canonical": "Uber",
+      "category": "transportation",
+      "is_subscription": false
+    },
+    "uber_eats": {
+      "patterns": [
+        "uber eats",
+        "uber* eats",
+        "ubereats"
+      ],
+      "canonical": "Uber Eats",
+      "category": "delivery",
+      "is_subscription": false
+    },
+
+    "doordash": {
+      "patterns": [
+        "doordash",
+        "dd doordash",
+        "dd *"
+      ],
+      "canonical": "DoorDash",
+      "category": "delivery",
+      "is_subscription": false
+    },
+
+    "anthropic": {
+      "patterns": [
+        "anthropic",
+        "claude ai",
+        "claude.ai"
+      ],
+      "canonical": "Anthropic",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "openai": {
+      "patterns": [
+        "openai",
+        "chatgpt"
+      ],
+      "canonical": "OpenAI",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "midjourney": {
+      "patterns": ["midjourney"],
+      "canonical": "Midjourney",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "cursor": {
+      "patterns": [
+        "cursor",
+        "cursor ai"
+      ],
+      "canonical": "Cursor",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "github": {
+      "patterns": ["github"],
+      "canonical": "GitHub",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "huggingface": {
+      "patterns": [
+        "huggingface",
+        "hugging face"
+      ],
+      "canonical": "Hugging Face",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "cloudflare": {
+      "patterns": ["cloudflare"],
+      "canonical": "Cloudflare",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "railway": {
+      "patterns": ["railway"],
+      "canonical": "Railway",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "vercel": {
+      "patterns": ["vercel"],
+      "canonical": "Vercel",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "digitalocean": {
+      "patterns": ["digitalocean"],
+      "canonical": "DigitalOcean",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "aws": {
+      "patterns": [
+        "aws",
+        "amazon web services"
+      ],
+      "canonical": "AWS",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "spotify": {
+      "patterns": ["spotify"],
+      "canonical": "Spotify",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "netflix": {
+      "patterns": ["netflix"],
+      "canonical": "Netflix",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "hulu": {
+      "patterns": ["hulu"],
+      "canonical": "Hulu",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "disney_plus": {
+      "patterns": [
+        "disney+",
+        "disney plus"
+      ],
+      "canonical": "Disney+",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "google": {
+      "patterns": [
+        "google",
+        "google *",
+        "google play",
+        "google one",
+        "google cloud"
+      ],
+      "canonical": "Google",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "microsoft": {
+      "patterns": [
+        "microsoft",
+        "msft *",
+        "microsoft 365",
+        "xbox"
+      ],
+      "canonical": "Microsoft",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "paypal": {
+      "patterns": [
+        "paypal *",
+        "pp*"
+      ],
+      "canonical": "PayPal",
+      "category": "payment",
+      "is_subscription": false
+    },
+
+    "pmc_parking": {
+      "patterns": [
+        "pmc parking",
+        "pmc paid parking"
+      ],
+      "canonical": "PMC Parking",
+      "category": "parking",
+      "is_subscription": false
+    },
+
+    "metropolis_parking": {
+      "patterns": ["metropolis"],
+      "canonical": "Metropolis Parking",
+      "category": "parking",
+      "is_subscription": false
+    },
+
+    "southwest": {
+      "patterns": [
+        "southwest",
+        "southwest air"
+      ],
+      "canonical": "Southwest Airlines",
+      "category": "travel",
+      "is_subscription": false
+    },
+
+    "marriott": {
+      "patterns": ["marriott"],
+      "canonical": "Marriott",
+      "category": "travel",
+      "is_subscription": false
+    },
+
+    "airbnb": {
+      "patterns": ["airbnb"],
+      "canonical": "Airbnb",
+      "category": "travel",
+      "is_subscription": false
+    },
+
+    "verizon": {
+      "patterns": [
+        "verizon",
+        "vzwrlss"
+      ],
+      "canonical": "Verizon",
+      "category": "subscriptions",
+      "is_subscription": true
+    },
+
+    "soho_house": {
+      "patterns": [
+        "soho house",
+        "sh nashville"
+      ],
+      "canonical": "Soho House",
+      "category": "restaurant",
+      "is_subscription": false
+    },
+
+    "twelve_south_taproom": {
+      "patterns": ["12 south taproom"],
+      "canonical": "12 South Taproom",
+      "category": "restaurant",
+      "is_subscription": false
+    },
+
+    "corner_pub": {
+      "patterns": ["corner pub"],
+      "canonical": "Corner Pub",
+      "category": "restaurant",
+      "is_subscription": false
+    },
+
+    "optimist": {
+      "patterns": [
+        "optimist",
+        "the optimist"
+      ],
+      "canonical": "The Optimist",
+      "category": "restaurant",
+      "is_subscription": false
+    },
+
+    "hattie_bs": {
+      "patterns": ["hattie b"],
+      "canonical": "Hattie B's",
+      "category": "restaurant",
+      "is_subscription": false
+    },
+
+    "first_watch": {
+      "patterns": ["first watch"],
+      "canonical": "First Watch",
+      "category": "restaurant",
+      "is_subscription": false
+    },
+
+    "white_rhino": {
+      "patterns": ["white rhino"],
+      "canonical": "White Rhino Coffee",
+      "category": "food_beverage",
+      "is_subscription": false
+    },
+
+    "in_n_out": {
+      "patterns": [
+        "in n out",
+        "in-n-out"
+      ],
+      "canonical": "In-N-Out",
+      "category": "restaurant",
+      "is_subscription": false
+    }
+  },
+
+  "pos_prefixes": [
+    "sq *",
+    "sq*",
+    "tst *",
+    "tst*",
+    "dd *",
+    "dd*",
+    "pp *",
+    "pp*",
+    "ppl*",
+    "zzz*",
+    "chk*",
+    "pos ",
+    "pos*",
+    "dbt ",
+    "ach "
+  ],
+
+  "categories": {
+    "restaurant": {
+      "keywords": ["bar", "grill", "pub", "house", "kitchen", "tavern", "cafe", "restaurant", "bistro", "brasserie"],
+      "typical_tip_range": [0.15, 0.25],
+      "date_tolerance_days": 2
+    },
+    "delivery": {
+      "keywords": ["doordash", "uber eats", "grubhub", "postmates", "instacart"],
+      "typical_tip_range": [0.10, 0.20],
+      "date_tolerance_days": 5
+    },
+    "subscriptions": {
+      "keywords": ["subscription", "monthly", "renewal", "membership", "saas", "software"],
+      "typical_tip_range": null,
+      "date_tolerance_days": 7
+    },
+    "travel": {
+      "keywords": ["airlines", "hotel", "airbnb", "car rental"],
+      "typical_tip_range": null,
+      "date_tolerance_days": 14
+    },
+    "parking": {
+      "keywords": ["parking", "garage", "valet"],
+      "typical_tip_range": null,
+      "date_tolerance_days": 3
+    },
+    "retail": {
+      "keywords": ["store", "shop", "market"],
+      "typical_tip_range": null,
+      "date_tolerance_days": 3
+    }
+  }
+}

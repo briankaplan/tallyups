@@ -154,8 +154,8 @@ struct ReceiptCardView: View {
 
     private func businessColor(_ business: String) -> Color {
         switch business.lowercased() {
-        case "down home", "downhome": return .orange
-        case "mcr", "music city rodeo": return .purple
+        case "business", "business": return .orange
+        case "sec", "secondary": return .purple
         case "em.co", "emco": return .teal
         case "personal": return .blue
         default: return .gray

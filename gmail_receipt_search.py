@@ -15,8 +15,8 @@ GMAIL_TOKENS_DIR = "../Task/receipt-system/gmail_tokens"
 # Gmail accounts to search
 GMAIL_ACCOUNTS = [
     ("kaplan.brian@gmail.com", "tokens_kaplan_brian_gmail_com.json"),
-    ("brian@downhome.com", "tokens_brian_downhome_com.json"),
-    ("brian@musiccityrodeo.com", "tokens_brian_musiccityrodeo_com.json"),
+    ("brian@business.com", "tokens_brian_business_com.json"),
+    ("brian@secondary.com", "tokens_brian_secondary_com.json"),
 ]
 
 def load_gmail_service(token_file):

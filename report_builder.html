@@ -461,8 +461,8 @@ body {
   font-weight: 700;
 }
 
-.business-logo.dh { background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; }
-.business-logo.mcr { background: linear-gradient(135deg, #ffd85e, #ffb800); color: #000; }
+.business-logo.biz { background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; }
+.business-logo.sec { background: linear-gradient(135deg, #ffd85e, #ffb800); color: #000; }
 .business-logo.personal { background: linear-gradient(135deg, #6eb5ff, #4a9eff); color: #000; }
 .business-logo.other { background: var(--bg-elevated); color: var(--text-secondary); }
 
@@ -483,8 +483,8 @@ body {
   font-weight: 700;
 }
 
-.business-badge.dh { background: rgba(0,255,136,0.15); color: #00ff88; }
-.business-badge.mcr { background: rgba(255,216,94,0.15); color: #ffd85e; }
+.business-badge.biz { background: rgba(0,255,136,0.15); color: #00ff88; }
+.business-badge.sec { background: rgba(255,216,94,0.15); color: #ffd85e; }
 .business-badge.personal { background: rgba(110,181,255,0.15); color: #6eb5ff; }
 
 .business-amount {
@@ -1644,12 +1644,12 @@ body { padding-bottom: 80px; }
         </button>
       </div>
       <div class="export-grid">
-        <div class="export-option selected" data-format="downhome" onclick="selectExportFormat('downhome')">
+        <div class="export-option selected" data-format="business" onclick="selectExportFormat('business')">
           <div class="export-option-header">
             <div class="export-format">
               <div class="export-format-icon" style="background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000;">DH</div>
               <div>
-                <div class="export-format-name">Down Home Format</div>
+                <div class="export-format-name">Business Format</div>
                 <div class="export-format-type">Accounting ready</div>
               </div>
             </div>
@@ -1657,7 +1657,7 @@ body { padding-bottom: 80px; }
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
           </div>
-          <div class="export-desc">CSV format ready for Down Home Media accounting with receipt URLs</div>
+          <div class="export-desc">CSV format ready for Business Media accounting with receipt URLs</div>
           <div class="export-features">
             <span class="export-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Receipt URLs</span>
             <span class="export-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Categories</span>
@@ -1901,8 +1901,8 @@ body { padding-bottom: 80px; }
             <label class="form-label">Business Entity</label>
             <select class="form-select" id="report-business">
               <option value="all">All Entities</option>
-              <option value="Down Home">Down Home Media</option>
-              <option value="Music City Rodeo">Music City Rodeo</option>
+              <option value="Business">Business Media</option>
+              <option value="Secondary">Secondary</option>
               <option value="Personal">Personal</option>
               <option value="EM.co">EM.co</option>
             </select>
@@ -2145,10 +2145,10 @@ body { padding-bottom: 80px; }
               <span class="template-meta-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approval</span>
             </div>
           </div>
-          <div class="template-card" onclick="useTemplate('downhome')">
+          <div class="template-card" onclick="useTemplate('business')">
             <div class="template-icon">🏠</div>
-            <div class="template-name">Down Home Format</div>
-            <div class="template-desc">Custom format for Down Home Media accounting requirements</div>
+            <div class="template-name">Business Format</div>
+            <div class="template-desc">Custom format for Business Media accounting requirements</div>
             <div class="template-meta">
               <span class="template-meta-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg> Excel</span>
               <span class="template-meta-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Custom</span>
@@ -2177,7 +2177,7 @@ let dashboardData = null;
 let spendingChart = null;
 let categoryChart = null;
 let currentTab = 'all';
-let selectedExportFormat = 'downhome';
+let selectedExportFormat = 'business';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -2394,8 +2394,8 @@ function renderBusinessBreakdown() {
   const total = Object.values(byBusiness).reduce((sum, b) => sum + b.total, 0);
 
   const businessConfig = {
-    'Down Home': { class: 'dh', logo: 'DH', badge: 'dh' },
-    'Music City Rodeo': { class: 'mcr', logo: 'MC', badge: 'mcr' },
+    'Business': { class: 'biz', logo: 'DH', badge: 'biz' },
+    'Secondary': { class: 'sec', logo: 'MC', badge: 'sec' },
     'Personal': { class: 'personal', logo: 'P', badge: 'personal' },
   };
 
@@ -2558,9 +2558,9 @@ async function runExport() {
   try {
     // For bulk export, we need to select reports first or export all
     // For now, redirect to the appropriate export endpoint
-    if (format === 'downhome') {
-      // Down Home format - primary export format
-      window.location.href = '/reports/export/downhome';
+    if (format === 'business') {
+      // Business format - primary export format
+      window.location.href = '/reports/export/business';
     } else if (format === 'csv') {
       window.location.href = '/reports/export/csv';
     } else if (format === 'excel') {
@@ -2590,7 +2590,7 @@ function previewExport() {
 }
 
 function exportSingleReport(reportId) {
-  window.location.href = `/reports/${reportId}/export/downhome`;
+  window.location.href = `/reports/${reportId}/export/business`;
 }
 
 // Modal functions

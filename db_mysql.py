@@ -1765,8 +1765,8 @@ class MySQLReceiptDatabase:
             INSERT IGNORE INTO app_settings (setting_key, setting_value)
             VALUES ('business_types', JSON_ARRAY(
                 JSON_OBJECT('name', 'Personal', 'color', '#4a9eff'),
-                JSON_OBJECT('name', 'Down Home', 'color', '#00ff88'),
-                JSON_OBJECT('name', 'Music City Rodeo', 'color', '#ff66aa'),
+                JSON_OBJECT('name', 'Business', 'color', '#00ff88'),
+                JSON_OBJECT('name', 'Secondary', 'color', '#ff66aa'),
                 JSON_OBJECT('name', 'EM.co', 'color', '#00d4ff')
             ))
         """)
@@ -2557,17 +2557,17 @@ class MySQLReceiptDatabase:
     def seed_default_contacts(self):
         """Seed default VIP contacts from contacts_engine.py"""
         VIP_PEOPLE = [
-            ("Brian Kaplan", "mcr", True),
-            ("Patrick Humes", "mcr", True),
-            ("Barry Stephenson", "mcr", True),
-            ("Paige", "mcr", True),
-            ("Jason Ross", "downhome", True),
-            ("Tim Staples", "downhome", True),
-            ("Joel Bergvall", "downhome", True),
-            ("Kevin Sabbe", "downhome", True),
-            ("Andrew Cohen", "downhome", True),
-            ("Celeste Stange", "downhome", True),
-            ("Tom May", "downhome", True),
+            ("Brian Kaplan", "sec", True),
+            ("Patrick Humes", "sec", True),
+            ("Barry Stephenson", "sec", True),
+            ("Paige", "sec", True),
+            ("Jason Ross", "business", True),
+            ("Tim Staples", "business", True),
+            ("Joel Bergvall", "business", True),
+            ("Kevin Sabbe", "business", True),
+            ("Andrew Cohen", "business", True),
+            ("Celeste Stange", "business", True),
+            ("Tom May", "business", True),
             ("Stephen Person", "industry", True),
             ("Tom Etzel", "industry", True),
             ("Cindy Mabe", "industry", True),

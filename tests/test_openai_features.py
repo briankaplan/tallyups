@@ -90,7 +90,7 @@ class TestAINoteGeneration:
             'Chase Amount': '20.00',
             'Chase Date': '01/15/2024',
             'Chase Category': 'Software',
-            'Business Type': 'Down Home',
+            'Business Type': 'Business',
             'merchant': 'Anthropic',
             'amount': 20.00,
         }
@@ -185,7 +185,7 @@ class TestAICategorization:
         with patch('viewer_server.gemini_categorize_transaction') as mock_categorize:
             mock_categorize.return_value = {
                 'category': 'Software & Subscriptions',
-                'business_type': 'Down Home',
+                'business_type': 'Business',
                 'confidence': 95,
                 'reasoning': 'AI API subscription service'
             }
@@ -279,7 +279,7 @@ class TestBusinessClassifierAI:
 
     @pytest.mark.unit
     def test_classify_ai_company(self, classifier):
-        """AI companies should classify as Down Home."""
+        """AI companies should classify as Business."""
         try:
             from business_classifier import Transaction, BusinessType
         except ImportError:
@@ -292,11 +292,11 @@ class TestBusinessClassifierAI:
             date=datetime.now(),
         )
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_classify_anthropic(self, classifier):
-        """Anthropic should classify as Down Home."""
+        """Anthropic should classify as Business."""
         try:
             from business_classifier import Transaction, BusinessType
         except ImportError:
@@ -309,7 +309,7 @@ class TestBusinessClassifierAI:
             date=datetime.now(),
         )
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
 
 # =============================================================================

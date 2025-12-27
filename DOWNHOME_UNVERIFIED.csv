@@ -1,0 +1,268 @@
+index,date,amount,merchant,description,receipt_url,has_receipt,gemini_verdict,llama_verdict,final_status,verification_sources
+24,2024-07-06,$82.32,DISCO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/Screenshot 2025-11-20 at 10.55.22 PM.png,Yes,UNCLEAR,,UNVERIFIED,gemini_csv
+35,2024-07-17,$17.55,APPLE.COM/BILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-07-17_17_55_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+38,2024-07-17,$5.00,LAZ PARKING M32810,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/laz_parking_m32810_2024-07-17_5_0.jpg,Yes,RATE_LIMITED,ERROR,UNVERIFIED,"gemini_csv,resume_csv"
+44,2024-07-22,$54.86,APPLE.COM/BILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-07-22_54_86.jpg,Yes,RATE_LIMITED,ERROR,UNVERIFIED,"gemini_csv,llama_log"
+46,2024-07-22,$8.15,PARK HAPPY LLC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/Screenshot 2025-11-21 at 3.00.52 AM.png,Yes,UNCLEAR,,UNVERIFIED,gemini_csv
+56,2024-07-27,$40.33,APPLE.COM/BILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-07-27_40_33.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+66,2024-08-02,$39.52,TST*NADEENS HERMITAGE HA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tstnadeens_hermitage_ha_2024-08-02_39_52.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+68,2024-08-03,$251.33,APPLE.COM/BILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-08-03_251_33_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+75,2024-08-06,$82.32,DISCO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/Screenshot 2025-11-20 at 10.56.42 PM.png,Yes,UNCLEAR,,UNVERIFIED,gemini_csv
+84,2024-08-10,$94.10,DD *DOORDASH JIMNNICKS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dd_doordash_jimnnicks_2024-08-10_94_1.jpg,Yes,RATE_LIMITED,ERROR,UNVERIFIED,"gemini_csv,llama_log"
+135,2024-08-24,$7.63,PARK HAPPY LLC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/Screenshot 2025-11-21 at 3.02.18 AM.png,Yes,UNCLEAR,,UNVERIFIED,gemini_csv
+154,2024-08-29,$67.81,CHAR GREEN HILLS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/char_green_hills_2024-08-29_67_81_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+155,2024-08-29,$9.29,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-08-29_9_29.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+180,2024-09-07,$10.96,APPLE.COM/BILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-09-07_10_96_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+190,2024-09-08,$13.13,SPOTIFY USA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2024-09-08_13_13_3.jpg,Yes,RATE_LIMITED,ERROR,UNVERIFIED,"gemini_csv,llama_log"
+210,2024-09-12,$55.53,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-09-12_55_53_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+212,2024-09-13,$313.01,GOLDEN NUGGET HOTEL LV,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/golden_nugget_hotel_lv_2024-09-13_313_01.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+224,2024-09-16,$144.06,TST*MARTINS BAR-B-QUE JO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tstmartins_bar_b_que_jo_2024-09-16_144_06.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+226,2024-09-17,$38.79,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-09-17_38_79.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+249,2024-09-28,$40.33,APPLE.COM/BILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-09-28_40_33.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+252,2024-10-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2024-10-01_19_76_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+253,2024-10-01,$61.00,TST* THE GREENHOUSE BAR,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tst_the_greenhouse_bar_2024-10-01_61_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+272,2024-10-08,$13.13,SPOTIFY USA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2024-10-08_13_13_3.jpg,Yes,RATE_LIMITED,ERROR,UNVERIFIED,"gemini_csv,llama_log"
+283,2024-10-15,$422.72,CHAR GREEN HILLS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/char_green_hills_2024-10-15_422_72_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+286,2024-10-16,$133.44,CORNER PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-10-16_133_44.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+287,2024-10-16,$19.94,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-10-16_19_94.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+290,2024-10-16,$29.73,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-10-16_29_73.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+291,2024-10-16,$84.35,SH NASHVILLE F&AMP;B,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_fampb_2024-10-16_84_35.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+292,2024-10-18,$160.00,CHARTMETRIC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/chartmetric_2024-10-18_160_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+300,2024-10-25,$50.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-10-25_50_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+301,2024-10-26,$19.99,IMDBPRO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/imdbpro_2024-10-26_19_99.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+302,2024-10-26,$427.56,LE MERIDIEN ST. LOUIS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/le_meridien_st_louis_2024-10-26_427_56_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+303,2024-10-26,$49.71,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-10-26_49_71_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+306,2024-10-30,$159.74,12 SOUTH TAPROOM &AMP; GRILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/12_south_taproom_amp_grill_2024-10-30_159_74_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+307,2024-10-30,$49.24,DD *DOORDASH TACOBAMBA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dd_doordash_tacobamba_2024-10-30_49_24_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+308,2024-10-30,$32.93,MIDJOURNEY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2024-10-30_32_93.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+309,2024-10-31,$67.97,DD *DOORDASH KALAMATAS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dd_doordash_kalamatas_2024-10-31_67_97.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+310,2024-11-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2024-11-01_19_76_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+311,2024-11-01,$25.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-11-01_25_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+312,2024-11-01,$21.00,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-01_21_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+313,2024-11-01,$52.68,NOTION LABS INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/notion_labs_inc_2024-11-01_52_68.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+314,2024-11-01,$23.27,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-01_23_27.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+315,2024-11-03,$25.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-11-03_25_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+316,2024-11-04,$39.87,CORNER PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-11-04_39_87.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+318,2024-11-06,$23.21,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-11-06_23_21_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+319,2024-11-06,$102.26,SH NASHVILLE F&AMP;B,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_fb_2024-11-06_102_26.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+320,2024-11-07,$50.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/imadaai_2024-11-07_50_00.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+321,2024-11-07,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-07_26_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+322,2024-11-07,$20.64,SQ *CANNERY HALL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sq_cannery_hall_2024-11-07_20_64_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+323,2024-11-07,$12.46,SQ *DISTRICT COFFEE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sq_district_coffee_2024-11-07_12_46_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+324,2024-11-08,$10.00,CALENDARBRIDGE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/calendarbridge_2024-11-08_10_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+325,2024-11-08,$25.57,DD *DOORDASH LASPALMAS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dd_doordash_laspalmas_2024-11-08_25_57.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+326,2024-11-08,$10.99,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-08_10_99_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+328,2024-11-08,$13.13,SPOTIFY USA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2024-11-08_13_13_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+329,2024-11-09,$50.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-11-09_50_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+330,2024-11-12,$176.99,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-12_176_99.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+331,2024-11-12,$361.72,SH NASHVILLE F&AMP;B,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_fampb_2024-11-12_361_72.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+332,2024-11-13,$1043.66,GIVERGY: CHARITY EVENT,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/givergy_charity_event_2024-11-13_1043_66_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+333,2024-11-13,$15.99,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-13_15_99_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+334,2024-11-13,$9.00,SOURCEGRAPH INC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2024-11-13_9_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+335,2024-11-13,$42.01,SQ *THE PERCH,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sq_the_perch_2024-11-13_42_01.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+336,2024-11-14,$279.44,12 SOUTH TAPROOM &AMP; GRILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/12_south_taproom_amp_grill_2024-11-14_279_44.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+337,2024-11-14,$27.44,ANTHROPIC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/anthropic_2024-11-14_27_44.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+338,2024-11-14,$5.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2024-11-14_5_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+339,2024-11-14,$15.99,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-14_15_99_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+340,2024-11-14,$7.76,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-14_7_76.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+342,2024-11-15,$15.99,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-15_15_99_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+344,2024-11-15,$16.80,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-15_16_8.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+346,2024-11-16,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-16_26_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+347,2024-11-17,$47.34,BROADWAY BREWHOUSE DOWNTO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/broadway_brewhouse_downto_2024-11-17_47_34_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+348,2024-11-18,$160.00,CHARTMETRIC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/chartmetric_2024-11-18_160_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+349,2024-11-19,$30.69,MARSH HOUSE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/marsh_house_2024-11-19_30_69.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+350,2024-11-20,$100.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-11-20_100_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+352,2024-11-21,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-21_26_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+353,2024-11-21,$34.96,PARKING OMNI NASHVILLE PA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/parking_omni_nashville_pa_2024-11-21_34_96_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+354,2024-11-22,$34.90,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-22_34_9.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+355,2024-11-22,$59.46,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-22_59_46.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+356,2024-11-22,$15.51,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-22_15_51.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+357,2024-11-23,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-23_26_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+358,2024-11-24,$21.95,CLAUDE.AI SUBSCRIPTION,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/claudeai_subscription_2024-11-24_21_95.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+360,2024-11-24,$52.99,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-24_52_99.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+361,2024-11-25,$72.89,CORNER PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-11-25_72_89_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+363,2024-11-25,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-25_26_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+364,2024-11-25,$38.78,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-25_38_78.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+365,2024-11-26,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-26_26_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+366,2024-11-27,$12.84,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-11-27_12_84.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+367,2024-11-27,$884.98,SOUTHWES 5262584463367,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/southwes_5262584463367_2024-11-27_884_98.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+370,2024-11-30,$100.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-11-30_100_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+371,2024-11-30,$32.93,MIDJOURNEY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2024-11-30_32_93.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+372,2024-12-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2024-12-01_19_76_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+373,2024-12-02,$11.00,SO PT CATALINA BAR,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/so_pt_catalina_bar_2024-12-02_11_00.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+374,2024-12-02,$12.25,THE URBAN JUICER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/the_urban_juicer_2024-12-02_12_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+375,2024-12-02,$51.07,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-02_51_07_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+376,2024-12-02,$37.14,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-02_37_14_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+377,2024-12-02,$20.14,WENDYS #652,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/wendys_652_2024-12-02_20_14.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+378,2024-12-03,$708.64,COSMOPOL-BLUE RIBBON,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cosmopol_blue_ribbon_2024-12-03_708_64.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+379,2024-12-03,$31.67,RWLV RW STORE HILTON,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/rwlv_rw_store_hilton_2024-12-03_31_67_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+380,2024-12-03,$22.37,STARBUCKS 65853,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/starbucks_65853_2024-12-03_22_37_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+381,2024-12-03,$28.46,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-03_28_46_3.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+382,2024-12-03,$48.15,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-03_48_15.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+383,2024-12-03,$24.22,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-03_24_22.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+384,2024-12-04,$37.18,CURB LV TAXI NELLIS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/curb_lv_taxi_nellis_2024-12-04_37_18.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+386,2024-12-04,$75.00,PROFESSIONAL RODEO COWBO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/professional_rodeo_cowbo_2024-12-04_75_0.jpeg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+388,2024-12-05,$38.82,BONANNOS NY PIZZERIA D,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/bonannos_ny_pizzeria_d_2024-12-05_38_82_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+389,2024-12-05,$24.25,CHICK-FIL-A LAS VEGAS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/chick_fil_a_las_vegas_2024-12-05_24_25.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+391,2024-12-05,$26.50,LAS VEGAS CONVENTION CTR,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/las_vegas_convention_ctr_2024-12-05_26_5.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+393,2024-12-05,$21.51,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-05_21_51_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+394,2024-12-06,$33.38,COSMOPOL-BANG BAR,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cosmopol_bang_bar_2024-12-06_33_38.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+396,2024-12-06,$18.89,CURB LV TAXI YCS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/curb_lv_taxi_ycs_2024-12-06_18_89_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+397,2024-12-06,$43.49,DESERT CAB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/desert_cab_2024-12-06_43_49_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+398,2024-12-06,$17.55,PORT OF SUBS 0053,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/port_of_subs_0053_2024-12-06_17_55_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+400,2024-12-06,$20.84,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-06_20_84.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+401,2024-12-06,$54.93,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-06_54_93.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+402,2024-12-06,$35.21,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-06_35_21_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+406,2024-12-07,$1142.43,GOLDEN NUGGET HOTEL LV,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/golden_nugget_hotel_lv_2024-12-07_1142_43.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+407,2024-12-07,$355.00,HOTELTONIGHT*VIRGIN HO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/hoteltonightvirgin_ho_2024-12-07_355_0.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+409,2024-12-07,$664.98,SOUTHWES 5262587584631,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/southwes_5262587584631_2024-12-07_664_98.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+410,2024-12-07,$34.68,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-07_34_68.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+411,2024-12-07,$40.60,VHLV-CHOW FUN,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/vhlv_chow_fun_2024-12-07_40_6.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+412,2024-12-08,$10.00,CALENDARBRIDGE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/calendarbridge_2024-12-08_10_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+413,2024-12-08,$13.13,SPOTIFY USA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2024-12-08_13_13_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+414,2024-12-08,$35.00,VHLV-KITCHEN AT COMMON,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/vhlv_kitchen_at_common_2024-12-08_35_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+416,2024-12-09,$34.07,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-09_34_07_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+417,2024-12-09,$46.83,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-09_46_83.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+418,2024-12-12,$21.00,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-12-12_21_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+419,2024-12-12,$15.51,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-12-12_15_51.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+445,2024-12-30,$51.30,LITTLE CAESARS 1890-0003,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/little_caesars_1890_0003_2024-12-30_51_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+446,2024-12-30,$32.93,MIDJOURNEY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2024-12-30_32_93.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+447,2025-01-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2025-01-01_19_76_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+448,2025-01-04,$78.36,DEL FRISCOS GRIL BRNTWOD,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/del_friscos_gril_brntwod_2025-01-04_78_36.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+449,2025-01-04,$65.88,DEL FRISCOS GRIL BRNTWOD,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/del_friscos_gril_brntwod_2025-01-04_65_88.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+461,2025-01-08,$24.56,TST*DICEYS TAVERN - NAS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tstdiceys_tavern_nas_2025-01-08_24_56.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+462,2025-01-09,$21.00,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-01-09_21_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+463,2025-01-09,$23.21,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-01-09_23_21.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+466,2025-01-13,$9.00,SOURCEGRAPH INC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2025-01-13_9_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+467,2025-01-14,$5.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-01-14_5_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+468,2025-01-14,$9.73,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-01-14_9_73_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+469,2025-01-14,$26.22,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-01-14_26_22.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+470,2025-01-15,$4.84,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-01-15_4_84.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+471,2025-01-15,$50.28,JERSEY MIKES ONLINE UC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/jersey_mikes_online_uc_2025-01-15_50_28_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+474,2025-01-16,$78.00,TST* MELROSE BILLIARD PAR,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tst_melrose_billiard_par_2025-01-16_78_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+475,2025-01-17,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-01-17_26_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+476,2025-01-18,$160.00,CHARTMETRIC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/chartmetric_2025-01-18_160_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+477,2025-01-18,$10.23,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-01-18_10_23_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+479,2025-01-21,$7.76,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-01-21_7_76.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+480,2025-01-21,$45.24,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-01-21_45_24.PNG,Yes,,,HAS_RECEIPT_UNVERIFIED,
+481,2025-01-21,$15.51,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-01-21_15_51.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+483,2025-01-22,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-01-22_26_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+484,2025-01-22,$52.99,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-01-22_52_99.PNG,Yes,,,HAS_RECEIPT_UNVERIFIED,
+485,2025-01-22,$7.76,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-01-22_7_76.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+486,2025-01-23,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-01-23_26_25_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+487,2025-01-24,$21.95,CLAUDE.AI SUBSCRIPTION,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/claudeai_subscription_2025-01-24_21_95.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+488,2025-01-24,$35.00,PIKA.ART,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pikaart_2025-01-24_35_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+489,2025-01-25,$44.25,SHOEBOXED.COM,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/shoeboxedcom_2025-01-25_44_25.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+490,2025-01-29,$12.72,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2025-01-29_12_72_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+491,2025-01-30,$32.93,MIDJOURNEY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2025-01-30_32_93.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+492,2025-01-30,$59.62,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2025-01-30_59_62.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+493,2025-02-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2025-02-01_19_76_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+497,2025-02-05,$15.99,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-02-05_15_99_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+498,2025-02-05,$8.40,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-02-05_8_40.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+499,2025-02-05,$65.86,SH NASHVILLE F&AMP;B,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_fampb_2025-02-05_65_86.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+500,2025-02-05,$105.38,TST*BROWNS DINER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tstbrowns_diner_2025-02-05_105_38.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+502,2025-02-07,$19.37,CHAR GREEN HILLS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/char_green_hills_2025-02-07_19_37_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+504,2025-02-07,$38.73,FIRST WATCH - 0462,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/first_watch_0462_2025-02-07_38_73.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+505,2025-02-07,$17.29,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-02-07_17_29.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+506,2025-02-07,$12.35,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-02-07_12_35.png,Yes,,,HAS_RECEIPT_UNVERIFIED,
+507,2025-02-08,$10.00,CALENDARBRIDGE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/calendarbridge_2025-02-08_10_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+508,2025-02-08,$13.13,SPOTIFY USA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2025-02-08_13_13_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+509,2025-02-11,$24.05,4289 TONY &AMP; BENNYS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/4289_tony_amp_bennys_2025-02-11_24_05_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+510,2025-02-11,$44.75,ARTHOUSE HOTEL NEW YORK C,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/arthouse_hotel_new_york_c_2025-02-11_44_75_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+512,2025-02-11,$14.24,SQ *BREADS BAKERY UPPER E,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sq_breads_bakery_upper_e_2025-02-11_14_24_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+525,2025-02-13,$9.00,SOURCEGRAPH INC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2025-02-13_9_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+526,2025-02-14,$10.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-02-14_10_0.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+527,2025-02-14,$55.95,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2025-02-14_55_95_3.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+533,2025-02-18,$57.62,UBER *TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2025-02-18_57_62.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+535,2025-02-20,$7.79,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-02-20_7_79.PNG,Yes,,,HAS_RECEIPT_UNVERIFIED,
+536,2025-02-20,$261.61,SH NASHVILLE F&AMP;B,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_fampb_2025-02-20_261_61.jpg,Yes,,,HAS_RECEIPT_UNVERIFIED,
+540,2025-02-25,$44.25,SHOEBOXED.COM,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/shoeboxedcom_2025-02-25_44_25_3.jpg,Yes,UNCLEAR,,UNVERIFIED,gemini_csv
+543,2025-02-26,$65.36,CORNER PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2025-02-26_65_36.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+547,2025-02-26,$85.64,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-02-26_85_64.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+549,2025-02-28,$9.73,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-02-28_9_73_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+550,2025-02-28,$32.93,MIDJOURNEY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2025-02-28_32_93.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+558,2025-03-06,$26.18,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-03-06_26_18.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+559,2025-03-06,$29.63,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-03-06_29_63.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+560,2025-03-06,$49.31,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-03-06_49_31.PNG,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+561,2025-03-06,$23.36,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-03-06_23_36.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+562,2025-03-06,$30.92,TST* JUST LOVE COFFEE - M,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tst_just_love_coffee_m_2025-03-06_30_92.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+566,2025-03-07,$4.88,LAZ PARKING M32180-FLOWB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/laz_parking_m32180_flowb_2025-03-07_4_88.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+567,2025-03-08,$10.00,CALENDARBRIDGE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/calendarbridge_2025-03-08_10_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+568,2025-03-08,$13.13,SPOTIFY USA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2025-03-08_13_13_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+598,2025-03-29,$47.88,ELEMENTOR.COM,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/elementor-invoice-ZINV00318467.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+600,2025-03-30,$32.93,MIDJOURNEY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2025-03-30_32_93.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+602,2025-03-31,$21.00,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-03-31_21_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+603,2025-03-31,$36.88,SH NASHVILLE F&AMP;B,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_fampb_2025-03-31_36_88.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+604,2025-04-01,$27.44,ANTHROPIC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/anthropic_2025-04-01_27_44.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+605,2025-04-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2025-04-01_19_76_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+629,2025-04-12,$318.28,KIT.COM,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/kitcom_2025-04-12_318_28.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+631,2025-04-12,$11.27,TST*WHITE RHINO COFFEE -,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tstwhite_rhino_coffee_2025-04-12_11_27.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+636,2025-04-13,$25.05,DD *DOORDASH BROTHERSP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dd_doordash_brothersp_2025-04-13_25_05_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+639,2025-04-13,$9.00,SOURCEGRAPH INC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2025-04-13_9_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+641,2025-04-14,$10.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-04-14_10_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+652,2025-04-22,$9.00,HUGGINGFACE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/huggingface_2025-04-22_9_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+654,2025-04-24,$21.95,CLAUDE.AI SUBSCRIPTION,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/claudeai_subscription_2025-04-24_21_95.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+667,2025-04-30,$5.00,EVERY STUDIO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/every_studio_2025-04-30_5_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+668,2025-04-30,$32.93,MIDJOURNEY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2025-04-30_32_93.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+669,2025-04-30,$62.28,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-04-30_62_28.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+670,2025-04-30,$7.67,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-04-30_7_67.PNG,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+671,2025-04-30,$7.79,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-04-30_7_79.PNG,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+672,2025-05-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2025-05-01_19_76_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+674,2025-05-02,$54.90,ANTHROPIC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/anthropic_2025-05-02_54_9.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+681,2025-05-08,$10.00,CALENDARBRIDGE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/calendarbridge_2025-05-08_10_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+682,2025-05-08,$13.13,SPOTIFY USA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2025-05-08_13_13.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+683,2025-05-09,$7.38,LAZ PARKING M32180-FLOWB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/laz_parking_m32180_flowb_2025-05-09_7_38.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+684,2025-05-09,$28.45,VIRGIN HOTEL - COMMONS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/virgin_hotel_commons_2025-05-09_28_45.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+685,2025-05-10,$20.00,VZWRLSS*PREPAID PYMNT,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/vzwrlssprepaid_pymnt_2025-05-10_20_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+687,2025-05-13,$9.00,SOURCEGRAPH INC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2025-05-13_9_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+688,2025-05-13,$120.00,TASKADE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/taskade_2025-05-13_120_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+690,2025-05-14,$10.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-05-14_10_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+691,2025-05-14,$49.00,RESPONSIVE-MENU-PRO-4,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/responsive_menu_pro_4_2025-05-14_49_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+694,2025-05-15,$60.00,AI.FYXER.COM,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/aifyxercom_2025-05-15_60_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+695,2025-05-15,$54.86,ELEMENTOR.COM,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/elementorcom_2025-05-15_54_86.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+702,2025-05-23,$9.00,HUGGINGFACE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/huggingface_2025-05-23_9_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+703,2025-05-24,$21.95,CLAUDE.AI SUBSCRIPTION,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/claudeai_subscription_2025-05-24_21_95.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+705,2025-05-26,$9.99,COWBOY CHANNEL PLUS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cowboy_channel_plus_2025-05-26_9_99_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+710,2025-05-30,$5.00,EVERY STUDIO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/every_studio_2025-05-30_5_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+711,2025-05-30,$32.93,MIDJOURNEY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2025-05-30_32_93.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+713,2025-05-31,$65.84,DASHLANE U* DASHLANE P,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dashlane_u_dashlane_p_2025-05-31_65_84_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+716,2025-06-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2025-06-01_19_76_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+719,2025-06-04,$79.25,CORNER PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2025-06-04_79_25_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+724,2025-06-08,$10.00,CALENDARBRIDGE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/calendarbridge_2025-06-08_10_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+726,2025-06-08,$13.13,SPOTIFY USA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2025-06-08_13_13_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+729,2025-06-13,$9.00,SOURCEGRAPH INC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2025-06-13_9_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+730,2025-06-13,$5.84,TST*THE FLOWER KITCHEN,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tstthe_flower_kitchen_2025-06-13_5_84.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+731,2025-06-14,$10.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-06-14_10_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+738,2025-06-24,$21.95,CLAUDE.AI SUBSCRIPTION,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/claudeai_subscription_2025-06-24_21_95.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+739,2025-06-24,$9.00,HUGGINGFACE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/huggingface_2025-06-24_9_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+742,2025-06-27,$32.32,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-06-27_32_32.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+744,2025-06-30,$32.93,MIDJOURNEY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2025-06-30_32_93.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+745,2025-07-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2025-07-01_19_76_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+748,2025-07-08,$37.67,MONGODBCLOUD BRIANS...,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/mongodbcloud_brians_2025-07-08_37_67_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+749,2025-07-08,$13.13,SPOTIFY USA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2025-07-08_13_13_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+751,2025-07-11,$5.00,EVERY STUDIO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/every_studio_2025-07-11_5_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+753,2025-07-14,$10.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-07-14_10_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+757,2025-07-21,$75.56,TST*LEMONGRASS SUSHI AND,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tstlemongrass_sushi_and_2025-07-21_75_56_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+758,2025-07-24,$21.95,CLAUDE.AI SUBSCRIPTION,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/claudeai_subscription_2025-07-24_21_95.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+759,2025-07-24,$23.45,VZWRLSS*ETM SCT1456901,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/vzwrlssetm_sct1456901_2025-07-24_23_45.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+760,2025-07-25,$9.00,HUGGINGFACE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/huggingface_2025-07-25_9_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+762,2025-07-28,$0.75,HIVE CO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/hive_co_2025-07-28_0_75_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+763,2025-07-30,$5.00,EVERY STUDIO,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/every_studio_2025-07-30_5_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+764,2025-07-30,$20.00,VZWRLSS*PREPAID PYMNT,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/vzwrlssprepaid_pymnt_2025-07-30_20_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+765,2025-08-01,$19.76,EXPENSIFY INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2025-08-01_19_76_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+766,2025-08-02,$30.16,MONGODBCLOUD BRIANS...,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/mongodbcloud_brians_2025-08-02_30_16_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+771,2025-08-08,$49.25,SODEXO AT BELMONT UNIVER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sodexo_at_belmont_univer_2025-08-08_49_25.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+791,2025-10-03,$20.00,IDEOGRAM AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/ideogram_ai_2025-10-03_20_0.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+792,2025-10-04,$5.68,ANTHROPIC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/anthropic_2025-10-04_5_68.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+796,2025-10-21,$334.00,CLEAR *CLEARME.COM,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/clear_clearmecom_2025-10-21_334_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+799,2025-11-01,$52.68,NOTION LABS INC.,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/notion_labs_inc_2025-11-01_52_68.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+801,2024-07-12,$9.29,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-07-12_9_29.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+802,2024-08-06,$21.00,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-08-06_21_00.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+805,2024-10-18,$25.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-10-18_25_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+812,2024-09-28,$25.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-09-28_25_0_3.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+813,2024-10-18,$25.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-10-18_25_0_2.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+815,2024-07-12,$9.29,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-07-12_9_29_2.png,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+816,2024-08-06,$21.00,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-08-06_21_0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+829,2025-10-22,$158.04,runway,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/incoming/receipt_19a0b09638e6_att0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+830,2025-09-10,$120.00,taskade,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/incoming/receipt_199314a94cc4_att0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv
+831,2025-10-28,$5.00,railway corporation,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/incoming/receipt_19a28cbc06ea_att0.jpg,Yes,RATE_LIMITED,,UNVERIFIED,gemini_csv

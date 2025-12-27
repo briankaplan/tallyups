@@ -1,0 +1,1214 @@
+{
+  "timestamp": "2025-12-09T18:23:50.961049",
+  "stats": {
+    "verified": 128,
+    "mismatch": 82,
+    "not_receipt": 8,
+    "skipped": 3,
+    "error": 2
+  },
+  "mismatches": [
+    {
+      "id": 4287,
+      "merchant": "Soho House",
+      "amount": 3120.0,
+      "date": "2025-12-02",
+      "reason": "Date not visible on receipt",
+      "result": {
+        "extracted_merchant": "Soho House",
+        "extracted_amount": 3120.0,
+        "extracted_date": null,
+        "is_match": false,
+        "reason": "Date not visible on receipt"
+      }
+    },
+    {
+      "id": 4294,
+      "merchant": "SH NASHVILLE",
+      "amount": 37.63,
+      "date": "2025-11-24",
+      "reason": "Merchant name matches but amount and date do not; expected amount is $37.63 and date is 2025-11-24.",
+      "result": {
+        "extracted_merchant": "Soho House Nashville",
+        "extracted_amount": 51.7,
+        "extracted_date": "2023-08-19",
+        "is_match": false,
+        "reason": "Merchant name matches but amount and date do not; expected amount is $37.63 and date is 2025-11-24."
+      }
+    },
+    {
+      "id": 4267,
+      "merchant": "metropolis",
+      "amount": 8.0,
+      "date": "2025-11-19",
+      "reason": "Merchant name matches but amount and date have discrepancies.",
+      "result": {
+        "extracted_merchant": "metropolis",
+        "extracted_amount": 8.99,
+        "extracted_date": "2025-11-18",
+        "is_match": false,
+        "reason": "Merchant name matches but amount and date have discrepancies."
+      }
+    },
+    {
+      "id": 4277,
+      "merchant": "cloudflare",
+      "amount": 0.01,
+      "date": "2025-11-14",
+      "reason": "amount charged is $0.00 which does not match expected $0.01",
+      "result": {
+        "extracted_merchant": "Cloudflare",
+        "extracted_amount": 0.0,
+        "extracted_date": "2025-11-14",
+        "is_match": false,
+        "reason": "amount charged is $0.00 which does not match expected $0.01"
+      }
+    },
+    {
+      "id": 4275,
+      "merchant": "cloudflare",
+      "amount": 0.01,
+      "date": "2025-11-05",
+      "reason": "Date is not within the acceptable range; expected date was 2025-11-05.",
+      "result": {
+        "extracted_merchant": "Cloudflare",
+        "extracted_amount": 0.0,
+        "extracted_date": "2025-10-14",
+        "is_match": false,
+        "reason": "Date is not within the acceptable range; expected date was 2025-11-05."
+      }
+    },
+    {
+      "id": 1619,
+      "merchant": "NOTION LABS INC.",
+      "amount": 52.68,
+      "date": "2025-11-01",
+      "reason": "date mismatch: expected 2025-11-01, received 2024-11-01",
+      "result": {
+        "extracted_merchant": "Notion Labs, Inc.",
+        "extracted_amount": 52.68,
+        "extracted_date": "2024-11-01",
+        "is_match": false,
+        "reason": "date mismatch: expected 2025-11-01, received 2024-11-01"
+      }
+    },
+    {
+      "id": 4298,
+      "merchant": "CORNER PUB GREEN HILLS",
+      "amount": 50.0,
+      "date": "2025-10-23",
+      "reason": "Merchant name and amount do not match the expected values",
+      "result": {
+        "extracted_merchant": "THE DONELSON PUB",
+        "extracted_amount": 42.0,
+        "extracted_date": "2025-01-05",
+        "is_match": false,
+        "reason": "Merchant name and amount do not match the expected values"
+      }
+    },
+    {
+      "id": 4291,
+      "merchant": "PARKING - 600 12TH AVE S",
+      "amount": 16.29,
+      "date": "2025-10-15",
+      "reason": "Merchant does not match; date is beyond acceptable range",
+      "result": {
+        "extracted_merchant": "Icon Garage",
+        "extracted_amount": 16.29,
+        "extracted_date": "2024-12-18",
+        "is_match": false,
+        "reason": "Merchant does not match; date is beyond acceptable range"
+      }
+    },
+    {
+      "id": 4302,
+      "merchant": "SH NASHVILLE",
+      "amount": 15.8,
+      "date": "2025-10-09",
+      "reason": "amount is different: expected $15.8 versus extracted $15.51; date is also not within acceptable range",
+      "result": {
+        "extracted_merchant": "Soho House Nashville",
+        "extracted_amount": 15.51,
+        "extracted_date": "2022-12-12",
+        "is_match": false,
+        "reason": "amount is different: expected $15.8 versus extracted $15.51; date is also not within acceptable range"
+      }
+    },
+    {
+      "id": 4290,
+      "merchant": "PARKING - 206 2ND AVE S",
+      "amount": 9.82,
+      "date": "2025-10-07",
+      "reason": "Merchant name and date do not match expected values",
+      "result": {
+        "extracted_merchant": "Gulch Crossing Garage",
+        "extracted_amount": 9.73,
+        "extracted_date": "2025-02-28",
+        "is_match": false,
+        "reason": "Merchant name and date do not match expected values"
+      }
+    },
+    {
+      "id": 4296,
+      "merchant": "SH NASHVILLE",
+      "amount": 15.57,
+      "date": "2025-10-01",
+      "reason": "merchant and amount match, but date is not acceptable",
+      "result": {
+        "extracted_merchant": "Soho House Nashville",
+        "extracted_amount": 15.51,
+        "extracted_date": "2023-11-22",
+        "is_match": false,
+        "reason": "merchant and amount match, but date is not acceptable"
+      }
+    },
+    {
+      "id": 4292,
+      "merchant": "PARKING - 501 COMMERCE ST",
+      "amount": 44.1,
+      "date": "2025-09-23",
+      "reason": "Date is 1 year earlier than expected",
+      "result": {
+        "extracted_merchant": "PARKING - 501 COMMERCE ST",
+        "extracted_amount": 44.1,
+        "extracted_date": "2023-09-23",
+        "is_match": false,
+        "reason": "Date is 1 year earlier than expected"
+      }
+    },
+    {
+      "id": 1571,
+      "merchant": "CLOUDFLARE",
+      "amount": 10.0,
+      "date": "2025-08-14",
+      "reason": "amount and date differ from expected",
+      "result": {
+        "extracted_merchant": "CLOUDFLARE",
+        "extracted_amount": 5.0,
+        "extracted_date": "2025-01-14",
+        "is_match": false,
+        "reason": "amount and date differ from expected"
+      }
+    },
+    {
+      "id": 1563,
+      "merchant": "SODEXO AT BELMONT UNIVER",
+      "amount": 49.25,
+      "date": "2025-08-08",
+      "reason": "Merchant name and date do not match; expected SODEXO AT BELMONT UNIVER and 2025-08-08.",
+      "result": {
+        "extracted_merchant": "Taco Bamba",
+        "extracted_amount": 49.24,
+        "extracted_date": "2024-10-29",
+        "is_match": false,
+        "reason": "Merchant name and date do not match; expected SODEXO AT BELMONT UNIVER and 2025-08-08."
+      }
+    },
+    {
+      "id": 1561,
+      "merchant": "EASYFAQ.IO",
+      "amount": 4.0,
+      "date": "2025-08-07",
+      "reason": "Date differs by more than 3 days",
+      "result": {
+        "extracted_merchant": "EasyFAQ",
+        "extracted_amount": 4.0,
+        "extracted_date": "2025-06-07",
+        "is_match": false,
+        "reason": "Date differs by more than 3 days"
+      }
+    },
+    {
+      "id": 1553,
+      "merchant": "MONGODBCLOUD BRIANS...",
+      "amount": 30.16,
+      "date": "2025-08-02",
+      "reason": "Merchant name and date do not match expected values.",
+      "result": {
+        "extracted_merchant": "MongoDB",
+        "extracted_amount": 30.16,
+        "extracted_date": "2025-03-28",
+        "is_match": false,
+        "reason": "Merchant name and date do not match expected values."
+      }
+    },
+    {
+      "id": 1537,
+      "merchant": "CLAUDE.AI SUBSCRIPTION",
+      "amount": 21.95,
+      "date": "2025-07-24",
+      "reason": "merchant name does not match expected name",
+      "result": {
+        "extracted_merchant": "Anthropic, PBC",
+        "extracted_amount": 21.95,
+        "extracted_date": "2025-07-23",
+        "is_match": false,
+        "reason": "merchant name does not match expected name"
+      }
+    },
+    {
+      "id": 1527,
+      "merchant": "CLOUDFLARE",
+      "amount": 10.0,
+      "date": "2025-07-14",
+      "reason": "Date differs by more than 3 days",
+      "result": {
+        "extracted_merchant": "CLOUDFLARE",
+        "extracted_amount": 10.0,
+        "extracted_date": "2025-04-14",
+        "is_match": false,
+        "reason": "Date differs by more than 3 days"
+      }
+    },
+    {
+      "id": 1521,
+      "merchant": "UBER *EATS",
+      "amount": 25.72,
+      "date": "2025-07-10",
+      "reason": "Merchant name does not match expected. Expected: UBER *EATS",
+      "result": {
+        "extracted_merchant": "Cracker Barrel Old Country Store",
+        "extracted_amount": 25.72,
+        "extracted_date": "2025-07-10",
+        "is_match": false,
+        "reason": "Merchant name does not match expected. Expected: UBER *EATS"
+      }
+    },
+    {
+      "id": 1519,
+      "merchant": "SPOTIFY USA",
+      "amount": 13.13,
+      "date": "2025-07-08",
+      "reason": "Date is outside acceptable range",
+      "result": {
+        "extracted_merchant": "Spotify USA",
+        "extracted_amount": 13.13,
+        "extracted_date": "2025-08-08",
+        "is_match": false,
+        "reason": "Date is outside acceptable range"
+      }
+    },
+    {
+      "id": 1517,
+      "merchant": "MONGODBCLOUD BRIANS...",
+      "amount": 37.67,
+      "date": "2025-07-08",
+      "reason": "Merchant name does not match; date is outside acceptable range.",
+      "result": {
+        "extracted_merchant": "MongoDB Atlas",
+        "extracted_amount": 37.67,
+        "extracted_date": "2025-03-28",
+        "is_match": false,
+        "reason": "Merchant name does not match; date is outside acceptable range."
+      }
+    },
+    {
+      "id": 1497,
+      "merchant": "CLAUDE.AI SUBSCRIPTION",
+      "amount": 21.95,
+      "date": "2025-06-24",
+      "reason": "merchant name does not match expected",
+      "result": {
+        "extracted_merchant": "Anthropic, PBC",
+        "extracted_amount": 21.95,
+        "extracted_date": "2025-06-23",
+        "is_match": false,
+        "reason": "merchant name does not match expected"
+      }
+    },
+    {
+      "id": 1495,
+      "merchant": "HOLIDAY PARKING",
+      "amount": 15.0,
+      "date": "2025-06-22",
+      "reason": "Merchant name does not match expected; total amount charged exceeds expected; date is beyond acceptable range.",
+      "result": {
+        "extracted_merchant": "metropolis",
+        "extracted_amount": 15.99,
+        "extracted_date": "2024-11-14",
+        "is_match": false,
+        "reason": "Merchant name does not match expected; total amount charged exceeds expected; date is beyond acceptable range."
+      }
+    },
+    {
+      "id": 1493,
+      "merchant": "HOLIDAY PARKING",
+      "amount": 15.0,
+      "date": "2025-06-21",
+      "reason": "Merchant and amount do not match; date is outside acceptable range.",
+      "result": {
+        "extracted_merchant": "metropolis",
+        "extracted_amount": 26.25,
+        "extracted_date": "2024-09-19",
+        "is_match": false,
+        "reason": "Merchant and amount do not match; date is outside acceptable range."
+      }
+    },
+    {
+      "id": 1483,
+      "merchant": "CLOUDFLARE",
+      "amount": 10.0,
+      "date": "2025-06-14",
+      "reason": "Date differs by more than 3 days",
+      "result": {
+        "extracted_merchant": "CLOUDFLARE",
+        "extracted_amount": 10.0,
+        "extracted_date": "2025-05-14",
+        "is_match": false,
+        "reason": "Date differs by more than 3 days"
+      }
+    },
+    {
+      "id": 1479,
+      "merchant": "SOURCEGRAPH INC",
+      "amount": 9.0,
+      "date": "2025-06-13",
+      "reason": "Date is not within acceptable range; expected date is in 2025.",
+      "result": {
+        "extracted_merchant": "Sourcegraph, Inc.",
+        "extracted_amount": 9.0,
+        "extracted_date": "2024-10-13",
+        "is_match": false,
+        "reason": "Date is not within acceptable range; expected date is in 2025."
+      }
+    },
+    {
+      "id": 1459,
+      "merchant": "GOOGLE *GSUITE_MUSICCI",
+      "amount": 244.87,
+      "date": "2025-06-01",
+      "reason": "Date is not within acceptable range; expected date was 2025-06-01",
+      "result": {
+        "extracted_merchant": "Google LLC",
+        "extracted_amount": 244.87,
+        "extracted_date": "2025-05-31",
+        "is_match": false,
+        "reason": "Date is not within acceptable range; expected date was 2025-06-01"
+      }
+    },
+    {
+      "id": 1443,
+      "merchant": "TST* TN731 - CAMBRIA - NA",
+      "amount": 109.35,
+      "date": "2025-05-28",
+      "reason": "extracted amount does not match expected amount; dates are close but not exact",
+      "result": {
+        "extracted_merchant": "Cambria Hotel Nashville Downtown",
+        "extracted_amount": 1745.84,
+        "extracted_date": "2025-05-27",
+        "is_match": false,
+        "reason": "extracted amount does not match expected amount; dates are close but not exact"
+      }
+    },
+    {
+      "id": 1438,
+      "merchant": "CLAUDE.AI SUBSCRIPTION",
+      "amount": 21.95,
+      "date": "2025-05-24",
+      "reason": "Merchant name does not match expected name",
+      "result": {
+        "extracted_merchant": "Anthropic, PBC",
+        "extracted_amount": 21.95,
+        "extracted_date": "2025-05-23",
+        "is_match": false,
+        "reason": "Merchant name does not match expected name"
+      }
+    },
+    {
+      "id": 1426,
+      "merchant": "RESPONSIVE-MENU-PRO-4",
+      "amount": 49.0,
+      "date": "2025-05-14",
+      "reason": "Merchant name does not match expected: RESPONSIVE-MENU-PRO-4",
+      "result": {
+        "extracted_merchant": "Expresstech Systems",
+        "extracted_amount": 49.0,
+        "extracted_date": "2025-05-14",
+        "is_match": false,
+        "reason": "Merchant name does not match expected: RESPONSIVE-MENU-PRO-4"
+      }
+    },
+    {
+      "id": 1423,
+      "merchant": "TASKADE",
+      "amount": 120.0,
+      "date": "2025-05-13",
+      "reason": "Date difference exceeds acceptable range",
+      "result": {
+        "extracted_merchant": "TASKADE",
+        "extracted_amount": 120.0,
+        "extracted_date": "2025-05-12",
+        "is_match": false,
+        "reason": "Date difference exceeds acceptable range"
+      }
+    },
+    {
+      "id": 1422,
+      "merchant": "SOURCEGRAPH INC",
+      "amount": 9.0,
+      "date": "2025-05-13",
+      "reason": "Date is not within the acceptable range; expected date is in 2025",
+      "result": {
+        "extracted_merchant": "Sourcegraph, Inc.",
+        "extracted_amount": 9.0,
+        "extracted_date": "2024-11-13",
+        "is_match": false,
+        "reason": "Date is not within the acceptable range; expected date is in 2025"
+      }
+    },
+    {
+      "id": 1420,
+      "merchant": "VZWRLSS*PREPAID PYMNT",
+      "amount": 20.0,
+      "date": "2025-05-10",
+      "reason": "Date is outside acceptable range (expected 2025-05-10)",
+      "result": {
+        "extracted_merchant": "Verizon",
+        "extracted_amount": 20.0,
+        "extracted_date": "2025-05-09",
+        "is_match": false,
+        "reason": "Date is outside acceptable range (expected 2025-05-10)"
+      }
+    },
+    {
+      "id": 1415,
+      "merchant": "EASYFAQ.IO",
+      "amount": 4.0,
+      "date": "2025-05-07",
+      "reason": "Date is not matching the expected; it differs by more than 3 days.",
+      "result": {
+        "extracted_merchant": "EasyFAQ",
+        "extracted_amount": 4.0,
+        "extracted_date": "2025-07-07",
+        "is_match": false,
+        "reason": "Date is not matching the expected; it differs by more than 3 days."
+      }
+    },
+    {
+      "id": 1410,
+      "merchant": "RENTALTOLL240384544",
+      "amount": 23.33,
+      "date": "2025-05-02",
+      "reason": "Merchant name does not match; date is within acceptable range.",
+      "result": {
+        "extracted_merchant": "National",
+        "extracted_amount": 23.33,
+        "extracted_date": "2025-04-11",
+        "is_match": false,
+        "reason": "Merchant name does not match; date is within acceptable range."
+      }
+    },
+    {
+      "id": 1405,
+      "merchant": "SH NASHVILLE - OTHER",
+      "amount": 62.28,
+      "date": "2025-04-30",
+      "reason": "Amount is not matching (expected: $62.28), date is not in expected range (expected: 2025-04-30)",
+      "result": {
+        "extracted_merchant": "Soho House Nashville",
+        "extracted_amount": 62.04,
+        "extracted_date": "2022-10-11",
+        "is_match": false,
+        "reason": "Amount is not matching (expected: $62.28), date is not in expected range (expected: 2025-04-30)"
+      }
+    },
+    {
+      "id": 1394,
+      "merchant": "LS THE BEST HAT STORE",
+      "amount": 389.57,
+      "date": "2025-04-25",
+      "reason": "Merchant name does not match expected; amount matches expected.",
+      "result": {
+        "extracted_merchant": "BIG BEND HAT CO",
+        "extracted_amount": 389.57,
+        "extracted_date": "2025-04-25",
+        "is_match": false,
+        "reason": "Merchant name does not match expected; amount matches expected."
+      }
+    },
+    {
+      "id": 1389,
+      "merchant": "HUGGINGFACE",
+      "amount": 9.0,
+      "date": "2025-04-22",
+      "reason": "date differs by 1 day",
+      "result": {
+        "extracted_merchant": "Hugging Face Inc",
+        "extracted_amount": 9.0,
+        "extracted_date": "2025-04-21",
+        "is_match": false,
+        "reason": "date differs by 1 day"
+      }
+    },
+    {
+      "id": 1387,
+      "merchant": "HIVE CO",
+      "amount": 199.2,
+      "date": "2025-04-21",
+      "reason": "Date is not the expected date; it's 1 month earlier.",
+      "result": {
+        "extracted_merchant": "HIVE",
+        "extracted_amount": 199.2,
+        "extracted_date": "2025-03-20",
+        "is_match": false,
+        "reason": "Date is not the expected date; it's 1 month earlier."
+      }
+    },
+    {
+      "id": 1382,
+      "merchant": "ZOOM.COM 888-799-9666",
+      "amount": 350.98,
+      "date": "2025-04-14",
+      "reason": "amount does not match; expected amount was $350.98",
+      "result": {
+        "extracted_merchant": "Zoom Communications, Inc.",
+        "extracted_amount": 350.8,
+        "extracted_date": "2025-04-14",
+        "is_match": false,
+        "reason": "amount does not match; expected amount was $350.98"
+      }
+    },
+    {
+      "id": 1379,
+      "merchant": "UBER *TRIP",
+      "amount": 46.95,
+      "date": "2025-04-14",
+      "reason": "date difference of 1 day from expected",
+      "result": {
+        "extracted_merchant": "Uber",
+        "extracted_amount": 46.95,
+        "extracted_date": "2025-04-13",
+        "is_match": false,
+        "reason": "date difference of 1 day from expected"
+      }
+    },
+    {
+      "id": 1376,
+      "merchant": "SOURCEGRAPH INC",
+      "amount": 9.0,
+      "date": "2025-04-13",
+      "reason": "date is not within acceptable range, expected date is in 2025",
+      "result": {
+        "extracted_merchant": "Sourcegraph, Inc.",
+        "extracted_amount": 9.0,
+        "extracted_date": "2024-11-13",
+        "is_match": false,
+        "reason": "date is not within acceptable range, expected date is in 2025"
+      }
+    },
+    {
+      "id": 1373,
+      "merchant": "DD *DOORDASH BROTHERSP",
+      "amount": 25.05,
+      "date": "2025-04-13",
+      "reason": "Mismatch in merchant name: expected 'DD *DOORDASH BROTHERSP'",
+      "result": {
+        "extracted_merchant": "Brother's Pizza",
+        "extracted_amount": 25.05,
+        "extracted_date": "2025-04-12",
+        "is_match": false,
+        "reason": "Mismatch in merchant name: expected 'DD *DOORDASH BROTHERSP'"
+      }
+    },
+    {
+      "id": 1365,
+      "merchant": "METROPOLIS PARKING",
+      "amount": 21.0,
+      "date": "2025-04-11",
+      "reason": "Merchant name is partially matched; date is within acceptable range.",
+      "result": {
+        "extracted_merchant": "METROPOLIS",
+        "extracted_amount": 21.0,
+        "extracted_date": "2025-04-10",
+        "is_match": false,
+        "reason": "Merchant name is partially matched; date is within acceptable range."
+      }
+    },
+    {
+      "id": 1357,
+      "merchant": "EASYFAQ.IO",
+      "amount": 4.0,
+      "date": "2025-04-07",
+      "reason": "Date differs from expected by more than 3 days",
+      "result": {
+        "extracted_merchant": "EasyFAQ",
+        "extracted_amount": 4.0,
+        "extracted_date": "2025-07-12",
+        "is_match": false,
+        "reason": "Date differs from expected by more than 3 days"
+      }
+    },
+    {
+      "id": 1352,
+      "merchant": "SH NASHVILLE - OTHER",
+      "amount": 11.68,
+      "date": "2025-04-04",
+      "reason": "merchant name differs from expected; date is outside acceptable range",
+      "result": {
+        "extracted_merchant": "Soho House Nashville",
+        "extracted_amount": 11.63,
+        "extracted_date": "2023-09-19",
+        "is_match": false,
+        "reason": "merchant name differs from expected; date is outside acceptable range"
+      }
+    },
+    {
+      "id": 1350,
+      "merchant": "METROPOLIS PARKING",
+      "amount": 26.25,
+      "date": "2025-04-04",
+      "reason": "Total amount and date do not match expected values",
+      "result": {
+        "extracted_merchant": "metropolis",
+        "extracted_amount": 15.99,
+        "extracted_date": "2024-11-12",
+        "is_match": false,
+        "reason": "Total amount and date do not match expected values"
+      }
+    },
+    {
+      "id": 1349,
+      "merchant": "METROPOLIS PARKING",
+      "amount": 15.15,
+      "date": "2025-04-04",
+      "reason": "merchant name does not match: expected 'METROPOLIS PARKING', amount differs: expected $15.15, found $15.99, date differs: expected 2025-04-04, found 2024-11-12",
+      "result": {
+        "extracted_merchant": "metropolis",
+        "extracted_amount": 15.99,
+        "extracted_date": "2024-11-12",
+        "is_match": false,
+        "reason": "merchant name does not match: expected 'METROPOLIS PARKING', amount differs: expected $15.15, found $15.99, date differs: expected 2025-04-04, found 2024-11-12"
+      }
+    },
+    {
+      "id": 1346,
+      "merchant": "GOOGLE *GSUITE_MUSICCI",
+      "amount": 123.37,
+      "date": "2025-04-01",
+      "reason": "Date difference of 1 day exceeds acceptable range, expected: 2025-04-01",
+      "result": {
+        "extracted_merchant": "Google LLC",
+        "extracted_amount": 123.37,
+        "extracted_date": "2025-03-31",
+        "is_match": false,
+        "reason": "Date difference of 1 day exceeds acceptable range, expected: 2025-04-01"
+      }
+    },
+    {
+      "id": 1331,
+      "merchant": "METROPOLIS PARKING",
+      "amount": 36.72,
+      "date": "2025-03-25",
+      "reason": "Merchant name does not match expected",
+      "result": {
+        "extracted_merchant": "St. Marys Church",
+        "extracted_amount": 36.72,
+        "extracted_date": "2025-03-25",
+        "is_match": false,
+        "reason": "Merchant name does not match expected"
+      }
+    },
+    {
+      "id": 1329,
+      "merchant": "HOTELTONIGHT*HOLIDAY I",
+      "amount": 220.0,
+      "date": "2025-03-24",
+      "reason": "Amount and date do not match expected values; extracted amount is $522.00, extracted date is 2024-05-15",
+      "result": {
+        "extracted_merchant": "HotelTonight",
+        "extracted_amount": 522.0,
+        "extracted_date": "2024-05-15",
+        "is_match": false,
+        "reason": "Amount and date do not match expected values; extracted amount is $522.00, extracted date is 2024-05-15"
+      }
+    },
+    {
+      "id": 1328,
+      "merchant": "DD *DOORDASH SHIPLEYDO",
+      "amount": 26.65,
+      "date": "2025-03-24",
+      "reason": "Date differs by 1 day",
+      "result": {
+        "extracted_merchant": "Shipley Donuts",
+        "extracted_amount": 26.65,
+        "extracted_date": "2025-03-23",
+        "is_match": false,
+        "reason": "Date differs by 1 day"
+      }
+    },
+    {
+      "id": 1327,
+      "merchant": "CLAUDE.AI SUBSCRIPTION",
+      "amount": 21.95,
+      "date": "2025-03-24",
+      "reason": "Merchant name does not match; expected 'CLAUDE.AI SUBSCRIPTION'",
+      "result": {
+        "extracted_merchant": "Anthropic, PBC",
+        "extracted_amount": 21.95,
+        "extracted_date": "2025-03-23",
+        "is_match": false,
+        "reason": "Merchant name does not match; expected 'CLAUDE.AI SUBSCRIPTION'"
+      }
+    },
+    {
+      "id": 1321,
+      "merchant": "METROPOLIS PARKING",
+      "amount": 15.99,
+      "date": "2025-03-21",
+      "reason": "Merchant name does not match expected merchant",
+      "result": {
+        "extracted_merchant": "Prima Garage",
+        "extracted_amount": 15.99,
+        "extracted_date": "2025-03-21",
+        "is_match": false,
+        "reason": "Merchant name does not match expected merchant"
+      }
+    },
+    {
+      "id": 1319,
+      "merchant": "HIVE CO",
+      "amount": 199.2,
+      "date": "2025-03-20",
+      "reason": "Date mismatch: expected 2025-03-20",
+      "result": {
+        "extracted_merchant": "HIVE",
+        "extracted_amount": 199.2,
+        "extracted_date": "2025-08-20",
+        "is_match": false,
+        "reason": "Date mismatch: expected 2025-03-20"
+      }
+    },
+    {
+      "id": 1315,
+      "merchant": "CLOUDFLARE",
+      "amount": 10.0,
+      "date": "2025-03-14",
+      "reason": "Date differs by more than 3 days",
+      "result": {
+        "extracted_merchant": "CLOUDFLARE",
+        "extracted_amount": 10.0,
+        "extracted_date": "2025-02-14",
+        "is_match": false,
+        "reason": "Date differs by more than 3 days"
+      }
+    },
+    {
+      "id": 1314,
+      "merchant": "SOURCEGRAPH INC",
+      "amount": 9.0,
+      "date": "2025-03-13",
+      "reason": "date is out of expected range, expected date in 2025",
+      "result": {
+        "extracted_merchant": "Sourcegraph, Inc.",
+        "extracted_amount": 9.0,
+        "extracted_date": "2024-11-13",
+        "is_match": false,
+        "reason": "date is out of expected range, expected date in 2025"
+      }
+    },
+    {
+      "id": 1310,
+      "merchant": "SH NASHVILLE - OTHER",
+      "amount": 112.84,
+      "date": "2025-03-09",
+      "reason": "Date is not within acceptable range (expected 2025-03-09)",
+      "result": {
+        "extracted_merchant": "Soho House Nashville",
+        "extracted_amount": 100.82,
+        "extracted_date": "2023-09-05",
+        "is_match": false,
+        "reason": "Date is not within acceptable range (expected 2025-03-09)"
+      }
+    },
+    {
+      "id": 1309,
+      "merchant": "SPOTIFY USA",
+      "amount": 13.13,
+      "date": "2025-03-08",
+      "reason": "Date is not within acceptable range",
+      "result": {
+        "extracted_merchant": "Spotify USA Inc.",
+        "extracted_amount": 13.13,
+        "extracted_date": "2024-07-08",
+        "is_match": false,
+        "reason": "Date is not within acceptable range"
+      }
+    },
+    {
+      "id": 1306,
+      "merchant": "EASYFAQ.IO",
+      "amount": 4.0,
+      "date": "2025-03-07",
+      "reason": "Date discrepancy: extracted date is 2025-06-07, expected date is 2025-03-07",
+      "result": {
+        "extracted_merchant": "EasyFAQ",
+        "extracted_amount": 4.0,
+        "extracted_date": "2025-06-07",
+        "is_match": false,
+        "reason": "Date discrepancy: extracted date is 2025-06-07, expected date is 2025-03-07"
+      }
+    },
+    {
+      "id": 1303,
+      "merchant": "TST* JUST LOVE COFFEE - M",
+      "amount": 30.92,
+      "date": "2025-03-06",
+      "reason": "Merchant name is similar but slightly different; amount is lower than expected; date is outside acceptable range.",
+      "result": {
+        "extracted_merchant": "JUST LOVE COFFEE CAFE",
+        "extracted_amount": 27.89,
+        "extracted_date": "2025-08-21",
+        "is_match": false,
+        "reason": "Merchant name is similar but slightly different; amount is lower than expected; date is outside acceptable range."
+      }
+    },
+    {
+      "id": 1300,
+      "merchant": "PMC - PAID PARKING",
+      "amount": 29.63,
+      "date": "2025-03-06",
+      "reason": "Date not visible",
+      "result": {
+        "extracted_merchant": "PMC",
+        "extracted_amount": 29.63,
+        "extracted_date": null,
+        "is_match": false,
+        "reason": "Date not visible"
+      }
+    },
+    {
+      "id": 1297,
+      "merchant": "SIR SPEEDY MUSIC CITY",
+      "amount": 807.76,
+      "date": "2025-03-05",
+      "reason": "amount not visible",
+      "result": {
+        "extracted_merchant": "Sir Speedy Music City",
+        "extracted_amount": 0.0,
+        "extracted_date": "2025-03-05",
+        "is_match": false,
+        "reason": "amount not visible"
+      }
+    },
+    {
+      "id": 1291,
+      "merchant": "METROPOLIS PARKING",
+      "amount": 9.73,
+      "date": "2025-02-28",
+      "reason": "Merchant name does not match expected merchant",
+      "result": {
+        "extracted_merchant": "Gulch Crossing Garage",
+        "extracted_amount": 9.73,
+        "extracted_date": "2025-02-28",
+        "is_match": false,
+        "reason": "Merchant name does not match expected merchant"
+      }
+    },
+    {
+      "id": 1289,
+      "merchant": "SH NASHVILLE - OTHER",
+      "amount": 85.64,
+      "date": "2025-02-26",
+      "reason": "amount differs from expected by 0.42, date is not within acceptable range",
+      "result": {
+        "extracted_merchant": "Soho House Nashville",
+        "extracted_amount": 85.22,
+        "extracted_date": "2024-06-11",
+        "is_match": false,
+        "reason": "amount differs from expected by 0.42, date is not within acceptable range"
+      }
+    },
+    {
+      "id": 1284,
+      "merchant": "TST* TN731 - CAMBRIA - NA",
+      "amount": 51.0,
+      "date": "2025-02-25",
+      "reason": "Date is within acceptable range but merchant name format does not match; amount matches.",
+      "result": {
+        "extracted_merchant": "Cambria",
+        "extracted_amount": 51.0,
+        "extracted_date": "2025-02-24",
+        "is_match": false,
+        "reason": "Date is within acceptable range but merchant name format does not match; amount matches."
+      }
+    },
+    {
+      "id": 1279,
+      "merchant": "METROPOLIS PARKING",
+      "amount": 26.25,
+      "date": "2025-02-21",
+      "reason": "Date does not match expected date by 1 day",
+      "result": {
+        "extracted_merchant": "metropolis",
+        "extracted_amount": 26.25,
+        "extracted_date": "2025-02-20",
+        "is_match": false,
+        "reason": "Date does not match expected date by 1 day"
+      }
+    },
+    {
+      "id": 1278,
+      "merchant": "SH NASHVILLE F&AMP;B",
+      "amount": 261.61,
+      "date": "2025-02-20",
+      "reason": "date is mismatched; actual date is 2023-02-20",
+      "result": {
+        "extracted_merchant": "Soho House Nashville",
+        "extracted_amount": 261.61,
+        "extracted_date": "2025-02-20",
+        "is_match": false,
+        "reason": "date is mismatched; actual date is 2023-02-20"
+      }
+    },
+    {
+      "id": 1269,
+      "merchant": "UBER *TRIP",
+      "amount": 55.95,
+      "date": "2025-02-14",
+      "reason": "Date is one day earlier than expected",
+      "result": {
+        "extracted_merchant": "Uber",
+        "extracted_amount": 55.95,
+        "extracted_date": "2025-02-13",
+        "is_match": false,
+        "reason": "Date is one day earlier than expected"
+      }
+    },
+    {
+      "id": 1267,
+      "merchant": "SOURCEGRAPH INC",
+      "amount": 9.0,
+      "date": "2025-02-13",
+      "reason": "Date is outside acceptable range (expected date is 2025-02-13)",
+      "result": {
+        "extracted_merchant": "Sourcegraph, Inc.",
+        "extracted_amount": 9.0,
+        "extracted_date": "2024-10-13",
+        "is_match": false,
+        "reason": "Date is outside acceptable range (expected date is 2025-02-13)"
+      }
+    },
+    {
+      "id": 1261,
+      "merchant": "UBER *TRIP",
+      "amount": 37.98,
+      "date": "2025-02-11",
+      "reason": "date is not an exact match (expected: 2025-02-11)",
+      "result": {
+        "extracted_merchant": "UBER",
+        "extracted_amount": 37.98,
+        "extracted_date": "2025-02-10",
+        "is_match": false,
+        "reason": "date is not an exact match (expected: 2025-02-11)"
+      }
+    },
+    {
+      "id": 1255,
+      "merchant": "UBER *TRIP",
+      "amount": 7.0,
+      "date": "2025-02-11",
+      "reason": "Amount does not match expected amount of $7.0",
+      "result": {
+        "extracted_merchant": "Uber",
+        "extracted_amount": 40.95,
+        "extracted_date": "2025-02-11",
+        "is_match": false,
+        "reason": "Amount does not match expected amount of $7.0"
+      }
+    },
+    {
+      "id": 1253,
+      "merchant": "HOTELTONIGHT*ARTHOUSE",
+      "amount": 159.0,
+      "date": "2025-02-11",
+      "reason": "Date mismatch (expected 2025-02-11)",
+      "result": {
+        "extracted_merchant": "HotelTonight",
+        "extracted_amount": 159.0,
+        "extracted_date": "2025-02-10",
+        "is_match": false,
+        "reason": "Date mismatch (expected 2025-02-11)"
+      }
+    },
+    {
+      "id": 1244,
+      "merchant": "CHAR GREEN HILLS",
+      "amount": 19.37,
+      "date": "2025-02-07",
+      "reason": "Merchant name does not match expected. Amount is different from expected.",
+      "result": {
+        "extracted_merchant": "Char-Nashville",
+        "extracted_amount": 15.37,
+        "extracted_date": "2025-02-07",
+        "is_match": false,
+        "reason": "Merchant name does not match expected. Amount is different from expected."
+      }
+    },
+    {
+      "id": 1243,
+      "merchant": "CLOUDFLARE",
+      "amount": 240.0,
+      "date": "2025-02-06",
+      "reason": "date difference is more than 3 days",
+      "result": {
+        "extracted_merchant": "CLOUDFLARE",
+        "extracted_amount": 240.0,
+        "extracted_date": "2025-05-14",
+        "is_match": false,
+        "reason": "date difference is more than 3 days"
+      }
+    },
+    {
+      "id": 1242,
+      "merchant": "TST*BROWNS DINER",
+      "amount": 105.38,
+      "date": "2025-02-05",
+      "reason": "Total amount differs due to tip",
+      "result": {
+        "extracted_merchant": "Brown's Diner",
+        "extracted_amount": 105.32,
+        "extracted_date": "2025-02-05",
+        "is_match": false,
+        "reason": "Total amount differs due to tip"
+      }
+    },
+    {
+      "id": 1659,
+      "merchant": "IM-ADA.AI",
+      "amount": 50.0,
+      "date": "2024-10-21",
+      "reason": "merchant name mismatches (Ada AI vs IM-ADA.AI); date is outside acceptable range",
+      "result": {
+        "extracted_merchant": "Ada AI",
+        "extracted_amount": 50.0,
+        "extracted_date": "2024-10-25",
+        "is_match": false,
+        "reason": "merchant name mismatches (Ada AI vs IM-ADA.AI); date is outside acceptable range"
+      }
+    },
+    {
+      "id": 1633,
+      "merchant": "IM-ADA.AI",
+      "amount": 50.0,
+      "date": "2024-10-21",
+      "reason": "Merchant name does not match the expected name.",
+      "result": {
+        "extracted_merchant": "Ada AI",
+        "extracted_amount": 50.0,
+        "extracted_date": "2024-10-25",
+        "is_match": false,
+        "reason": "Merchant name does not match the expected name."
+      }
+    },
+    {
+      "id": 1647,
+      "merchant": "IM-ADA.AI",
+      "amount": 25.0,
+      "date": "2024-10-18",
+      "reason": "Date difference exceeds acceptable range",
+      "result": {
+        "extracted_merchant": "Ada AI",
+        "extracted_amount": 25.0,
+        "extracted_date": "2024-11-03",
+        "is_match": false,
+        "reason": "Date difference exceeds acceptable range"
+      }
+    },
+    {
+      "id": 1631,
+      "merchant": "IM-ADA.AI",
+      "amount": 25.0,
+      "date": "2024-10-18",
+      "reason": "Date difference exceeds acceptable range",
+      "result": {
+        "extracted_merchant": "Ada AI",
+        "extracted_amount": 25.0,
+        "extracted_date": "2024-11-03",
+        "is_match": false,
+        "reason": "Date difference exceeds acceptable range"
+      }
+    },
+    {
+      "id": 1643,
+      "merchant": "IM-ADA.AI",
+      "amount": 25.0,
+      "date": "2024-09-28",
+      "reason": "Merchant name is not a match; date is beyond acceptable range",
+      "result": {
+        "extracted_merchant": "Ada AI",
+        "extracted_amount": 25.0,
+        "extracted_date": "2024-11-11",
+        "is_match": false,
+        "reason": "Merchant name is not a match; date is beyond acceptable range"
+      }
+    },
+    {
+      "id": 1627,
+      "merchant": "IM-ADA.AI",
+      "amount": 25.0,
+      "date": "2024-09-28",
+      "reason": "Merchant name differs and date is outside acceptable range",
+      "result": {
+        "extracted_merchant": "Ada AI",
+        "extracted_amount": 25.0,
+        "extracted_date": "2024-11-03",
+        "is_match": false,
+        "reason": "Merchant name differs and date is outside acceptable range"
+      }
+    }
+  ],
+  "not_receipts": [
+    {
+      "id": 1449,
+      "merchant": "BESTBUY.COM",
+      "reason": "not a receipt: order confirmation"
+    },
+    {
+      "id": 1442,
+      "merchant": "HIVE CO",
+      "reason": "not a receipt: invoice"
+    },
+    {
+      "id": 1441,
+      "merchant": "MICHAELS #9490",
+      "reason": "not a receipt: table"
+    },
+    {
+      "id": 1431,
+      "merchant": "SP MYFONTS INC",
+      "reason": "not a receipt: email confirmation"
+    },
+    {
+      "id": 1427,
+      "merchant": "RETROSUPPLY",
+      "reason": "not a receipt: order confirmation"
+    },
+    {
+      "id": 1400,
+      "merchant": "HIVE CO",
+      "reason": "not a receipt: invoice"
+    },
+    {
+      "id": 1337,
+      "merchant": "HIVE CO",
+      "reason": "not a receipt: invoice"
+    },
+    {
+      "id": 1302,
+      "merchant": "SH NASHVILLE - OTHER",
+      "reason": "not a receipt: parking session notification"
+    }
+  ],
+  "errors": [
+    {
+      "id": 4274,
+      "merchant": "amazon",
+      "error": "Unsupported image format"
+    },
+    {
+      "id": 1433,
+      "merchant": "HIVE CO",
+      "error": "Error code: 400 - {'error': {'message': 'Timeout while downloading https://pub-35015e19c4b442b9af31f"
+    }
+  ]
+}

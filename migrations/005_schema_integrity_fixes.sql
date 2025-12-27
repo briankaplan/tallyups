@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS business_types (
 
 -- Insert standard business types
 INSERT IGNORE INTO business_types (code, name, color, sort_order) VALUES
-('down_home', 'Down Home', '#10B981', 1),
-('mcr', 'Music City Rodeo', '#6366F1', 2),
+('business', 'Business', '#10B981', 1),
+('sec', 'Secondary', '#6366F1', 2),
 ('personal', 'Personal', '#8B5CF6', 3),
 ('emco', 'EMCO', '#3B82F6', 4),
 ('ceo', 'CEO', '#F59E0B', 5);

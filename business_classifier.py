@@ -164,7 +164,7 @@ class Contact:
 # Comprehensive merchant to business type mappings
 MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     # =========================================================================
-    # DOWN HOME - AI & SOFTWARE
+    # BUSINESS - AI & SOFTWARE
     # =========================================================================
     "anthropic": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "ai_tools"},
     "claude": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "ai_tools"},
@@ -189,7 +189,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "github copilot": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "dev_tools"},
     "replit": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "dev_tools"},
 
-    # DOWN HOME - Cloud & Infrastructure
+    # BUSINESS - Cloud & Infrastructure
     "aws": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
     "amazon web services": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
     "google cloud": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
@@ -209,7 +209,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "neon": {"type": BusinessType.BUSINESS, "confidence": 0.96, "category": "cloud"},
     "upstash": {"type": BusinessType.BUSINESS, "confidence": 0.96, "category": "cloud"},
 
-    # DOWN HOME - Design & Creative Software
+    # BUSINESS - Design & Creative Software
     "figma": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "design"},
     "adobe": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "design"},
     "adobe creative cloud": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "design"},
@@ -219,7 +219,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "invision": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "design"},
     "framer": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "design"},
 
-    # DOWN HOME - Audio/Video Production
+    # BUSINESS - Audio/Video Production
     "final cut": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "production"},
     "final cut pro": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "production"},
     "logic pro": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "production"},
@@ -238,7 +238,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "tunecore": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
     "cd baby": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
 
-    # DOWN HOME - Music Industry
+    # BUSINESS - Music Industry
     "spotify for artists": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "music_industry"},
     "ascap": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "music_industry"},
     "bmi": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "music_industry"},
@@ -249,7 +249,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "royalty exchange": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "music_industry"},
     "music reports": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "music_industry"},
 
-    # DOWN HOME - Productivity & Collaboration
+    # BUSINESS - Productivity & Collaboration
     "notion": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "productivity"},
     "slack": {"type": BusinessType.BUSINESS, "confidence": 0.93, "category": "productivity"},
     "asana": {"type": BusinessType.BUSINESS, "confidence": 0.93, "category": "productivity"},
@@ -264,7 +264,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "zoom": {"type": BusinessType.BUSINESS, "confidence": 0.88, "category": "productivity"},
     "webex": {"type": BusinessType.BUSINESS, "confidence": 0.88, "category": "productivity"},
 
-    # DOWN HOME - Equipment & Rentals
+    # BUSINESS - Equipment & Rentals
     "b&h photo": {"type": BusinessType.BUSINESS, "confidence": 0.92, "category": "equipment"},
     "bhphoto": {"type": BusinessType.BUSINESS, "confidence": 0.92, "category": "equipment"},
     "adorama": {"type": BusinessType.BUSINESS, "confidence": 0.92, "category": "equipment"},
@@ -275,7 +275,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "reverb.com": {"type": BusinessType.BUSINESS, "confidence": 0.88, "category": "equipment"},
     "thomann": {"type": BusinessType.BUSINESS, "confidence": 0.90, "category": "equipment"},
 
-    # DOWN HOME - Studios & Production Services
+    # BUSINESS - Studios & Production Services
     "ocean way": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
     "blackbird studio": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
     "blackbird studios": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
@@ -286,13 +286,13 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "abbey road": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
     "electric lady": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
 
-    # DOWN HOME - Entertainment Industry Travel (major hubs)
+    # BUSINESS - Entertainment Industry Travel (major hubs)
     "american airlines": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "travel"},
     "delta": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "travel"},
     "united": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "travel"},
 
     # =========================================================================
-    # MUSIC CITY RODEO - Venue & Event
+    # SECONDARY - Venue & Event
     # =========================================================================
     "bridgestone arena": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "venue"},
     "nissan stadium": {"type": BusinessType.SECONDARY, "confidence": 0.95, "category": "venue"},
@@ -302,7 +302,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "grand ole opry": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "venue"},
     "ryman auditorium": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "venue"},
 
-    # MUSIC CITY RODEO - Rodeo Industry
+    # SECONDARY - Rodeo Industry
     "prca": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "rodeo"},
     "professional rodeo cowboys association": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "rodeo"},
     "nfr": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "rodeo"},
@@ -318,14 +318,14 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "boot barn": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "rodeo"},
     "sheplers": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "rodeo"},
 
-    # MUSIC CITY RODEO - Stock Contractors
+    # SECONDARY - Stock Contractors
     "flying u rodeo": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "stock_contractor"},
     "cervi championship rodeo": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "stock_contractor"},
     "harry vold rodeo": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "stock_contractor"},
     "sankey rodeo": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "stock_contractor"},
     "j bar j": {"type": BusinessType.SECONDARY, "confidence": 0.98, "category": "stock_contractor"},
 
-    # MUSIC CITY RODEO - Talent & Booking
+    # SECONDARY - Talent & Booking
     "caa": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "talent"},
     "creative artists agency": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "talent"},
     "wme": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "talent"},
@@ -337,7 +337,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "vector management": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "talent"},
     "big machine": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "talent"},
 
-    # MUSIC CITY RODEO - Event Production
+    # SECONDARY - Event Production
     "live nation": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "event_production"},
     "aeg": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "event_production"},
     "messina touring": {"type": BusinessType.SECONDARY, "confidence": 0.95, "category": "event_production"},
@@ -347,7 +347,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "clair global": {"type": BusinessType.SECONDARY, "confidence": 0.93, "category": "event_production"},
     "sound image": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "event_production"},
 
-    # MUSIC CITY RODEO - Nashville Hotels (high-end business)
+    # SECONDARY - Nashville Hotels (high-end business)
     "thompson nashville": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "nashville_hotel"},
     "jw marriott nashville": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "nashville_hotel"},
     "omni nashville": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "nashville_hotel"},
@@ -356,7 +356,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "gaylord opryland": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "nashville_hotel"},
     "loews vanderbilt": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "nashville_hotel"},
 
-    # MUSIC CITY RODEO - Nashville Restaurants (business dining)
+    # SECONDARY - Nashville Restaurants (business dining)
     "the catbird seat": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "nashville_dining"},
     "husk nashville": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "nashville_dining"},
     "kayne prime": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "nashville_dining"},
@@ -365,7 +365,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "rolf and daughters": {"type": BusinessType.SECONDARY, "confidence": 0.82, "category": "nashville_dining"},
     "bastion": {"type": BusinessType.SECONDARY, "confidence": 0.82, "category": "nashville_dining"},
 
-    # MUSIC CITY RODEO - Marketing & Advertising
+    # SECONDARY - Marketing & Advertising
     "billboard": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "marketing"},
     "lamar advertising": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "marketing"},
     "clear channel": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "marketing"},
@@ -420,7 +420,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "caremark": {"type": BusinessType.PERSONAL, "confidence": 0.98, "category": "medical"},
     "optum rx": {"type": BusinessType.PERSONAL, "confidence": 0.98, "category": "medical"},
     "kaiser permanente": {"type": BusinessType.PERSONAL, "confidence": 0.98, "category": "medical"},
-    "unitedhealth": {"type": BusinessType.PERSONAL, "confidence": 0.98, "category": "medical"},
+    "unitebizealth": {"type": BusinessType.PERSONAL, "confidence": 0.98, "category": "medical"},
     "humana": {"type": BusinessType.PERSONAL, "confidence": 0.98, "category": "medical"},
     "aetna": {"type": BusinessType.PERSONAL, "confidence": 0.98, "category": "medical"},
     "cigna": {"type": BusinessType.PERSONAL, "confidence": 0.98, "category": "medical"},
@@ -469,7 +469,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "chilis": {"type": BusinessType.PERSONAL, "confidence": 0.95, "category": "family_dining"},
     "outback": {"type": BusinessType.PERSONAL, "confidence": 0.93, "category": "family_dining"},
     "red lobster": {"type": BusinessType.PERSONAL, "confidence": 0.95, "category": "family_dining"},
-    "texas roadhouse": {"type": BusinessType.PERSONAL, "confidence": 0.95, "category": "family_dining"},
+    "texas roabizouse": {"type": BusinessType.PERSONAL, "confidence": 0.95, "category": "family_dining"},
     "cracker barrel": {"type": BusinessType.PERSONAL, "confidence": 0.95, "category": "family_dining"},
     "ihop": {"type": BusinessType.PERSONAL, "confidence": 0.95, "category": "family_dining"},
     "denny's": {"type": BusinessType.PERSONAL, "confidence": 0.95, "category": "family_dining"},
@@ -569,7 +569,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "liberty mutual": {"type": BusinessType.PERSONAL, "confidence": 0.98, "category": "utilities"},
 
     # =========================================================================
-    # DOWN HOME - Rideshare & Delivery (per actual data)
+    # BUSINESS - Rideshare & Delivery (per actual data)
     # =========================================================================
     "uber": {"type": BusinessType.BUSINESS, "confidence": 0.85, "category": "rideshare"},
     "uber *trip": {"type": BusinessType.BUSINESS, "confidence": 0.85, "category": "rideshare"},
@@ -595,7 +595,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "southwest": {"type": BusinessType.PERSONAL, "confidence": 0.85, "category": "travel"},
 
     # =========================================================================
-    # DOWN HOME - Hotels & Travel (per actual data)
+    # BUSINESS - Hotels & Travel (per actual data)
     # =========================================================================
     "airbnb": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "hotel"},
     "marriott": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "hotel"},
@@ -706,7 +706,7 @@ KEYWORD_PATTERNS: Dict[BusinessType, List[Dict]] = {
 # =============================================================================
 
 EMAIL_DOMAIN_RULES: Dict[str, Dict] = {
-    # DOWN HOME domains
+    # BUSINESS domains
     "anthropic.com": {"type": BusinessType.BUSINESS, "confidence": 0.99},
     "openai.com": {"type": BusinessType.BUSINESS, "confidence": 0.99},
     "midjourney.com": {"type": BusinessType.BUSINESS, "confidence": 0.99},
@@ -728,7 +728,7 @@ EMAIL_DOMAIN_RULES: Dict[str, Dict] = {
     "sweetwater.com": {"type": BusinessType.BUSINESS, "confidence": 0.95},
     "bhphoto.com": {"type": BusinessType.BUSINESS, "confidence": 0.92},
 
-    # MUSIC CITY RODEO domains
+    # SECONDARY domains
     "prorodeo.com": {"type": BusinessType.SECONDARY, "confidence": 0.99},
     "prca.com": {"type": BusinessType.SECONDARY, "confidence": 0.99},
     "pbr.com": {"type": BusinessType.SECONDARY, "confidence": 0.98},
@@ -1212,9 +1212,9 @@ class BusinessTypeClassifier:
                 # Analyze event for business type signals
                 event_text = f"{event.title} {event.description or ''} {event.location or ''}".lower()
 
-                # Check for Down Home signals
-                dh_keywords = ['tim', 'mcgraw', 'production', 'music', 'studio', 'recording']
-                if any(kw in event_text for kw in dh_keywords):
+                # Check for Business signals
+                biz_keywords = ['tim', 'mcgraw', 'production', 'music', 'studio', 'recording']
+                if any(kw in event_text for kw in biz_keywords):
                     return ClassificationSignal(
                         signal_type='calendar',
                         business_type=BusinessType.BUSINESS,
@@ -1224,8 +1224,8 @@ class BusinessTypeClassifier:
                     )
 
                 # Check for MCR signals
-                mcr_keywords = ['rodeo', 'mcr', 'bridgestone', 'nashville', 'event', 'prca']
-                if any(kw in event_text for kw in mcr_keywords):
+                sec_keywords = ['rodeo', 'sec', 'bridgestone', 'nashville', 'event', 'prca']
+                if any(kw in event_text for kw in sec_keywords):
                     return ClassificationSignal(
                         signal_type='calendar',
                         business_type=BusinessType.SECONDARY,
@@ -1234,7 +1234,7 @@ class BusinessTypeClassifier:
                         weight=1.2,
                     )
 
-                # Generic business meeting - defaults to Down Home
+                # Generic business meeting - defaults to Business
                 business_keywords = ['meeting', 'client', 'call', 'presentation']
                 if any(kw in event_text for kw in business_keywords):
                     return ClassificationSignal(
@@ -1271,7 +1271,7 @@ class BusinessTypeClassifier:
                     # Check contact tags for business type hints
                     for tag in contact.tags:
                         tag_lower = tag.lower()
-                        if 'down home' in tag_lower or 'dh' in tag_lower:
+                        if 'business' in tag_lower or 'biz' in tag_lower:
                             return ClassificationSignal(
                                 signal_type='contact',
                                 business_type=BusinessType.BUSINESS,
@@ -1279,7 +1279,7 @@ class BusinessTypeClassifier:
                                 reasoning=f"Contact tag match: {contact.name} tagged '{tag}'",
                                 weight=1.0,
                             )
-                        elif 'rodeo' in tag_lower or 'mcr' in tag_lower:
+                        elif 'rodeo' in tag_lower or 'sec' in tag_lower:
                             return ClassificationSignal(
                                 signal_type='contact',
                                 business_type=BusinessType.SECONDARY,
@@ -1297,11 +1297,11 @@ class BusinessTypeClassifier:
     ) -> ClassificationResult:
         """Calculate final classification from all signals."""
         if not signals:
-            # No signals - default to Down Home (most common business type)
+            # No signals - default to Business (most common business type)
             return ClassificationResult(
                 business_type=BusinessType.BUSINESS,
                 confidence=0.50,
-                reasoning="No classification signals found - defaulting to Down Home for review",
+                reasoning="No classification signals found - defaulting to Business for review",
                 signals=[],
                 needs_review=True,
             )

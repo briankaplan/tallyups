@@ -145,7 +145,6 @@ regenerate_*.py
 find_*.py
 create_*_forms.py
 create_*_receipt*.py
-down_home_*.py
 update_*.py
 analyze_*.py
 compile_*.py

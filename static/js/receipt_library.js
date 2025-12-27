@@ -85,8 +85,8 @@
       gmail: 0,
       scanner: 0,
       upload: 0,
-      downHome: 0,
-      mcr: 0,
+      business: 0,
+      sec: 0,
       personal: 0,
       ceo: 0
     }
@@ -485,8 +485,8 @@
     setCount('count-gmail', counts.gmail);
     setCount('count-scanner', counts.scanner);
     setCount('count-upload', counts.upload);
-    setCount('count-down-home', counts.down_home);
-    setCount('count-mcr', counts.mcr);
+    setCount('count-business', counts.business);
+    setCount('count-sec', counts.sec);
     setCount('count-personal', counts.personal);
     setCount('count-ceo', counts.ceo);
   }
@@ -513,8 +513,8 @@
     const source = receipt.source || 'unknown';
     const labels = {
       'gmail_personal': 'Gmail',
-      'gmail_mcr': 'Gmail',
-      'gmail_down_home': 'Gmail',
+      'gmail_sec': 'Gmail',
+      'gmail_business': 'Gmail',
       'scanner_mobile': 'Scan',
       'scanner_web': 'Scan',
       'manual_upload': 'Upload',
@@ -973,8 +973,8 @@
   function formatSource(source) {
     const sources = {
       'gmail_personal': 'Gmail',
-      'gmail_mcr': 'Gmail MCR',
-      'gmail_down_home': 'Gmail DH',
+      'gmail_sec': 'Gmail MCR',
+      'gmail_business': 'Gmail DH',
       'scanner_mobile': 'Mobile Scan',
       'scanner_web': 'Web Scan',
       'manual_upload': 'Upload',
@@ -987,8 +987,8 @@
 
   function formatBusinessType(type) {
     const types = {
-      'down_home': 'Down Home',
-      'mcr': 'Music City Rodeo',
+      'business': 'Business',
+      'sec': 'Secondary',
       'personal': 'Personal',
       'ceo': 'CEO',
       'unknown': 'Unknown'

@@ -1,0 +1,195 @@
+{
+  "verified": [
+    115,
+    279,
+    433,
+    541
+  ],
+  "tip_difference": [
+    {
+      "index": 757,
+      "tip": 0
+    }
+  ],
+  "true_mismatch": [
+    {
+      "index": 49,
+      "bank_amount": 43.6,
+      "ocr_amount": 36.6,
+      "ocr_merchant": "Char-Nashville",
+      "reason": "Receipt total does not match the bank amount."
+    },
+    {
+      "index": 198,
+      "bank_amount": 43.5,
+      "ocr_amount": 36.5,
+      "ocr_merchant": "Front Bar\nBinions Gambling Hall & Hotel",
+      "reason": "Amount on receipt is $36.50, does not match bank amount of $43.50."
+    },
+    {
+      "index": 341,
+      "bank_amount": 29.4,
+      "ocr_amount": 15.99,
+      "ocr_merchant": "metropolis",
+      "reason": "Amount and date do not match bank statement"
+    },
+    {
+      "index": 395,
+      "bank_amount": 29.87,
+      "ocr_amount": 18.89,
+      "ocr_merchant": "844167307884",
+      "reason": "Receipt total is $18.89, which does not match or align with the bank amount of $29.87."
+    },
+    {
+      "index": 569,
+      "bank_amount": 112.84,
+      "ocr_amount": 100.82,
+      "ocr_merchant": "Soho House Nashville",
+      "reason": "Total on receipt does not match bank amount; different merchant name."
+    },
+    {
+      "index": 609,
+      "bank_amount": 15.15,
+      "ocr_amount": 15.99,
+      "ocr_merchant": "metropolis",
+      "reason": "Receipt total does not match bank amount and date is different."
+    },
+    {
+      "index": 610,
+      "bank_amount": 26.25,
+      "ocr_amount": 15.99,
+      "ocr_merchant": "metropolis",
+      "reason": "Total amount on receipt ($15.99) does not match the bank amount ($26.25)."
+    }
+  ],
+  "errors": [
+    {
+      "index": 31,
+      "reason": "unclear"
+    },
+    {
+      "index": 38,
+      "reason": "unclear"
+    },
+    {
+      "index": 42,
+      "reason": "unclear"
+    },
+    {
+      "index": 46,
+      "reason": "unclear"
+    },
+    {
+      "index": 66,
+      "reason": "unclear"
+    },
+    {
+      "index": 89,
+      "reason": "unclear"
+    },
+    {
+      "index": 90,
+      "reason": "unclear"
+    },
+    {
+      "index": 91,
+      "reason": "unclear"
+    },
+    {
+      "index": 93,
+      "reason": "unclear"
+    },
+    {
+      "index": 97,
+      "reason": "unclear"
+    },
+    {
+      "index": 107,
+      "reason": "unclear"
+    },
+    {
+      "index": 165,
+      "reason": "unclear"
+    },
+    {
+      "index": 167,
+      "reason": "unclear"
+    },
+    {
+      "index": 187,
+      "reason": "unclear"
+    },
+    {
+      "index": 211,
+      "reason": "unclear"
+    },
+    {
+      "index": 235,
+      "reason": "unclear"
+    },
+    {
+      "index": 283,
+      "reason": "unclear"
+    },
+    {
+      "index": 361,
+      "reason": "unclear"
+    },
+    {
+      "index": 373,
+      "reason": "unclear"
+    },
+    {
+      "index": 385,
+      "reason": "unclear"
+    },
+    {
+      "index": 390,
+      "reason": "unclear"
+    },
+    {
+      "index": 391,
+      "reason": "unclear"
+    },
+    {
+      "index": 403,
+      "reason": "unclear"
+    },
+    {
+      "index": 455,
+      "reason": "unclear"
+    },
+    {
+      "index": 562,
+      "reason": "unclear"
+    },
+    {
+      "index": 625,
+      "reason": "unclear"
+    },
+    {
+      "index": 683,
+      "reason": "unclear"
+    },
+    {
+      "index": 684,
+      "reason": "unclear"
+    },
+    {
+      "index": 775,
+      "reason": "unclear"
+    },
+    {
+      "index": 832,
+      "reason": "unclear"
+    },
+    {
+      "index": 857,
+      "reason": "unclear"
+    }
+  ],
+  "pdfs": [
+    864,
+    846
+  ]
+}

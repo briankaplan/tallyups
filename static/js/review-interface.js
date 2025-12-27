@@ -969,8 +969,8 @@ class TransactionReviewInterface {
 
     getBusinessBadge(type) {
         const badges = {
-            'Down Home': '<span class="biz-badge down-home">🏠 DH</span>',
-            'Music City Rodeo': '<span class="biz-badge mcr">🤠 MCR</span>',
+            'Business': '<span class="biz-badge business">🏠 DH</span>',
+            'Secondary': '<span class="biz-badge sec">🤠 MCR</span>',
             'Personal': '<span class="biz-badge personal">👤 Personal</span>',
             'EM.co': '<span class="biz-badge emco">🏢 EM.co</span>',
         };

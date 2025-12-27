@@ -205,8 +205,8 @@
       flex-shrink: 0;
     }
 
-    .business-dot.down-home { background: #00ff88; }
-    .business-dot.mcr { background: #64c8ff; }
+    .business-dot.business { background: #00ff88; }
+    .business-dot.sec { background: #64c8ff; }
     .business-dot.personal { background: #a55eea; }
     .business-dot.ceo { background: #ffa502; }
 

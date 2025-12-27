@@ -118,12 +118,12 @@ class ReceiptUploadService:
 
             # Step 4: Determine prefix based on business_type
             # STANDARD PREFIXES:
-            #   - downhome/ : Down Home business receipts
-            #   - receipts/ : Music City Rodeo and other business receipts
+            #   - business/ : Business business receipts
+            #   - receipts/ : Secondary and other business receipts
             #   - inbox/    : Incoming unmatched receipts from Gmail/mobile
             business_type = metadata.get('business_type', '') if metadata else ''
-            if business_type == 'Down Home':
-                r2_key = f'downhome/{r2_filename}'
+            if business_type == 'Business':
+                r2_key = f'business/{r2_filename}'
             elif source in ['gmail_inbox', 'mobile_inbox', 'inbox']:
                 r2_key = f'inbox/{r2_filename}'
             else:

@@ -1,0 +1,705 @@
+{
+  "found": [
+    {
+      "txn_id": 1571,
+      "idx": 775,
+      "merchant": "CLOUDFLARE",
+      "date": "2025-08-14",
+      "amount": 10.0,
+      "matched_receipt": "cloudflare_2025-08-14_10_00.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 1567,
+      "idx": 773,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2025-08-09",
+      "amount": 40.39,
+      "matched_receipt": "pmc_paid_parking_2025-08-09_40_39_3.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 1553,
+      "idx": 766,
+      "merchant": "MONGODBCLOUD BRIANS...",
+      "date": "2025-08-02",
+      "amount": 30.16,
+      "matched_receipt": "mongodbcloud_brians_2025-08-02_30_16_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1517,
+      "idx": 748,
+      "merchant": "MONGODBCLOUD BRIANS...",
+      "date": "2025-07-08",
+      "amount": 37.67,
+      "matched_receipt": "mongodbcloud_brians_2025-07-08_37_67_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1429,
+      "idx": 694,
+      "merchant": "AI.FYXER.COM",
+      "date": "2025-05-15",
+      "amount": 60.0,
+      "matched_receipt": "aifyxercom_2025-05-15_60_0.jpg",
+      "match_score": 100
+    },
+    {
+      "txn_id": 1363,
+      "idx": 625,
+      "merchant": "TST*GREEN HILLS GRILLE",
+      "date": "2025-04-10",
+      "amount": 217.4,
+      "matched_receipt": "tstgreen_hills_grille_2025-04-10_217_4.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 1349,
+      "idx": 609,
+      "merchant": "METROPOLIS PARKING",
+      "date": "2025-04-04",
+      "amount": 15.15,
+      "matched_receipt": "metropolis_parking_2025-04-04_15_15.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1321,
+      "idx": 581,
+      "merchant": "METROPOLIS PARKING",
+      "date": "2025-03-21",
+      "amount": 15.99,
+      "matched_receipt": "metropolis_parking_2025-03-21_15_99_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1315,
+      "idx": 575,
+      "merchant": "CLOUDFLARE",
+      "date": "2025-03-14",
+      "amount": 10.0,
+      "matched_receipt": "cloudflare_2025-03-14_10_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 1231,
+      "idx": 489,
+      "merchant": "SHOEBOXED.COM",
+      "date": "2025-01-25",
+      "amount": 44.25,
+      "matched_receipt": "shoeboxedcom_2025-01-25_44_25.jpg",
+      "match_score": 100
+    },
+    {
+      "txn_id": 1208,
+      "idx": 466,
+      "merchant": "SOURCEGRAPH INC",
+      "date": "2025-01-13",
+      "amount": 9.0,
+      "matched_receipt": "sourcegraph_inc_2025-01-13_9_0.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1200,
+      "idx": 458,
+      "merchant": "CALENDARBRIDGE",
+      "date": "2025-01-08",
+      "amount": 10.0,
+      "matched_receipt": "calendarbridge_2025-01-08_10_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 1138,
+      "idx": 395,
+      "merchant": "CURB LV TAXI YCS",
+      "date": "2024-12-06",
+      "amount": 29.87,
+      "matched_receipt": "curb_lv_taxi_ycs_2024-12-06_29_87.jpg",
+      "match_score": 140
+    },
+    {
+      "txn_id": 1133,
+      "idx": 390,
+      "merchant": "DESERT CAB",
+      "date": "2024-12-05",
+      "amount": 34.44,
+      "matched_receipt": "desert_cab_2024-12-05_34_44.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1111,
+      "idx": 368,
+      "merchant": "GOLDEN NUGGET HOTEL LV",
+      "date": "2024-11-29",
+      "amount": 123.17,
+      "matched_receipt": "golden_nugget_hotel_lv_2024-11-29_123_17.png",
+      "match_score": 140
+    },
+    {
+      "txn_id": 1110,
+      "idx": 367,
+      "merchant": "SOUTHWES 5262584463367",
+      "date": "2024-11-27",
+      "amount": 884.98,
+      "matched_receipt": "southwes_5262584463367_2024-11-27_884_98.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1094,
+      "idx": 351,
+      "merchant": "METROPOLIS PARKING",
+      "date": "2024-11-20",
+      "amount": 20.66,
+      "matched_receipt": "metropolis_parking_2024-11-20_20_66.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1657,
+      "idx": 818,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-10-16",
+      "amount": 26.22,
+      "matched_receipt": "pmc_paid_parking_2024-10-16_26_22.png",
+      "match_score": 130
+    },
+    {
+      "txn_id": 1030,
+      "idx": 287,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-10-16",
+      "amount": 19.94,
+      "matched_receipt": "pmc_paid_parking_2024-10-16_19_94.png",
+      "match_score": 130
+    },
+    {
+      "txn_id": 1629,
+      "idx": 804,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-10-16",
+      "amount": 26.22,
+      "matched_receipt": "pmc_paid_parking_2024-10-16_26_22.png",
+      "match_score": 130
+    },
+    {
+      "txn_id": 1026,
+      "idx": 283,
+      "merchant": "CHAR GREEN HILLS",
+      "date": "2024-10-15",
+      "amount": 422.72,
+      "matched_receipt": "char_green_hills_2024-10-15_422_72_3.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 1025,
+      "idx": 282,
+      "merchant": "CLOUDFLARE",
+      "date": "2024-10-14",
+      "amount": 5.0,
+      "matched_receipt": "cloudflare_2024-10-14_5_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 1022,
+      "idx": 279,
+      "merchant": "SH NASHVILLE - OTHER",
+      "date": "2024-10-11",
+      "amount": 62.04,
+      "matched_receipt": "sh_nashville_other_2024-10-11_62_04.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 1021,
+      "idx": 278,
+      "merchant": "SH NASHVILLE - OTHER",
+      "date": "2024-10-11",
+      "amount": 27.14,
+      "matched_receipt": "sh_nashville_other_2024-10-11_27_14.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 1016,
+      "idx": 273,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-10-09",
+      "amount": 30.05,
+      "matched_receipt": "pmc_paid_parking_2024-10-09_30_05.png",
+      "match_score": 130
+    },
+    {
+      "txn_id": 1015,
+      "idx": 272,
+      "merchant": "SPOTIFY USA",
+      "date": "2024-10-08",
+      "amount": 13.13,
+      "matched_receipt": "spotify_usa_2024-10-08_13_13_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1013,
+      "idx": 270,
+      "merchant": "IM-ADA.AI",
+      "date": "2024-10-08",
+      "amount": 50.0,
+      "matched_receipt": "im_adaai_2024-10-08_50_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 741,
+      "idx": 266,
+      "merchant": "SH NASHVILLE - OTHER",
+      "date": "2024-10-07",
+      "amount": 52.99,
+      "matched_receipt": "sh_nashville_other_2024-10-07_52_99.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 737,
+      "idx": 262,
+      "merchant": "IM-ADA.AI",
+      "date": "2024-10-04",
+      "amount": 25.0,
+      "matched_receipt": "im_adaai_2024-10-04_25_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 739,
+      "idx": 264,
+      "merchant": "SH NASHVILLE - OTHER",
+      "date": "2024-10-04",
+      "amount": 23.27,
+      "matched_receipt": "sh_nashville_other_2024-10-04_23_27.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 999,
+      "idx": 256,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-10-03",
+      "amount": 20.76,
+      "matched_receipt": "pmc_paid_parking_2024-10-03_20_76.png",
+      "match_score": 130
+    },
+    {
+      "txn_id": 731,
+      "idx": 255,
+      "merchant": "IM-ADA.AI",
+      "date": "2024-10-02",
+      "amount": 10.0,
+      "matched_receipt": "im_adaai_2024-10-02_10_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 726,
+      "idx": 250,
+      "merchant": "IM-ADA.AI",
+      "date": "2024-09-30",
+      "amount": 50.0,
+      "matched_receipt": "im_adaai_2024-09-30_50_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 725,
+      "idx": 249,
+      "merchant": "APPLE.COM/BILL",
+      "date": "2024-09-28",
+      "amount": 40.33,
+      "matched_receipt": "applecombill_2024-09-28_40_33.jpg",
+      "match_score": 100
+    },
+    {
+      "txn_id": 1645,
+      "idx": 812,
+      "merchant": "IM-ADA.AI",
+      "date": "2024-09-28",
+      "amount": 25.0,
+      "matched_receipt": "im_adaai_2024-09-28_25_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 1627,
+      "idx": 803,
+      "merchant": "IM-ADA.AI",
+      "date": "2024-09-28",
+      "amount": 25.0,
+      "matched_receipt": "im_adaai_2024-09-28_25_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 1643,
+      "idx": 811,
+      "merchant": "IM-ADA.AI",
+      "date": "2024-09-28",
+      "amount": 25.0,
+      "matched_receipt": "im_adaai_2024-09-28_25_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 141,
+      "idx": 243,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-09-25",
+      "amount": 26.22,
+      "matched_receipt": "pmc_paid_parking_2024-09-25_26_22.png",
+      "match_score": 130
+    },
+    {
+      "txn_id": 721,
+      "idx": 245,
+      "merchant": "THE GATEWAY TO NASHVILLE",
+      "date": "2024-09-25",
+      "amount": 20.0,
+      "matched_receipt": "the_gateway_to_nashville_2024-09-25_20_0.jpg",
+      "match_score": 140
+    },
+    {
+      "txn_id": 711,
+      "idx": 235,
+      "merchant": "201 BELCOURT LOT",
+      "date": "2024-09-21",
+      "amount": 5.6,
+      "matched_receipt": "201_belcourt_lot_2024-09-21_5_6.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 706,
+      "idx": 230,
+      "merchant": "AMERICANO LOUNGE",
+      "date": "2024-09-19",
+      "amount": 14.09,
+      "matched_receipt": "americano_lounge_2024-09-19_14_09.png",
+      "match_score": 120
+    },
+    {
+      "txn_id": 971,
+      "idx": 228,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-09-18",
+      "amount": 29.22,
+      "matched_receipt": "pmc_paid_parking_2024-09-18_29_22.png",
+      "match_score": 130
+    },
+    {
+      "txn_id": 140,
+      "idx": 221,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-09-16",
+      "amount": 26.22,
+      "matched_receipt": "pmc_paid_parking_2024-09-16_26_22.png",
+      "match_score": 130
+    },
+    {
+      "txn_id": 692,
+      "idx": 215,
+      "merchant": "APPLE.COM/BILL",
+      "date": "2024-09-15",
+      "amount": 76.81,
+      "matched_receipt": "applecombill_2024-09-15_76_81_3.jpg",
+      "match_score": 100
+    },
+    {
+      "txn_id": 691,
+      "idx": 214,
+      "merchant": "CLOUDFLARE",
+      "date": "2024-09-14",
+      "amount": 5.0,
+      "matched_receipt": "cloudflare_2024-09-14_5_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 678,
+      "idx": 198,
+      "merchant": "BINION'S BARS",
+      "date": "2024-09-10",
+      "amount": 43.5,
+      "matched_receipt": "binions_bars_2024-09-10_43_5.jpg",
+      "match_score": 100
+    },
+    {
+      "txn_id": 139,
+      "idx": 187,
+      "merchant": "CLEAR *CLEARME.COM",
+      "date": "2024-09-08",
+      "amount": 318.0,
+      "matched_receipt": "clear_clearmecom_2024-09-08_318_0.png",
+      "match_score": 110
+    },
+    {
+      "txn_id": 662,
+      "idx": 182,
+      "merchant": "METROPOLIS PARKING",
+      "date": "2024-09-07",
+      "amount": 26.25,
+      "matched_receipt": "metropolis_parking_2024-09-07_26_25_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 660,
+      "idx": 180,
+      "merchant": "APPLE.COM/BILL",
+      "date": "2024-09-07",
+      "amount": 10.96,
+      "matched_receipt": "applecombill_2024-09-07_10_96_3.jpg",
+      "match_score": 100
+    },
+    {
+      "txn_id": 911,
+      "idx": 168,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-09-04",
+      "amount": 24.59,
+      "matched_receipt": "pmc_paid_parking_2024-09-04_24_59.png",
+      "match_score": 130
+    },
+    {
+      "txn_id": 134,
+      "idx": 165,
+      "merchant": "12 SOUTH TAPROOM &AMP; GRILL",
+      "date": "2024-09-04",
+      "amount": 59.16,
+      "matched_receipt": "12_south_taproom_amp_grill_2024-09-04_59_16.jpg",
+      "match_score": 150
+    },
+    {
+      "txn_id": 135,
+      "idx": 166,
+      "merchant": "CORNER PUB",
+      "date": "2024-09-04",
+      "amount": 39.78,
+      "matched_receipt": "corner_pub_2024-09-04_39_78_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 136,
+      "idx": 167,
+      "merchant": "CORNER PUB",
+      "date": "2024-09-04",
+      "amount": 45.15,
+      "matched_receipt": "corner_pub_2024-09-04_45_15.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 129,
+      "idx": 159,
+      "merchant": "APPLE.COM/BILL",
+      "date": "2024-08-31",
+      "amount": 23.14,
+      "matched_receipt": "applecombill_2024-08-31_23_14_3.jpg",
+      "match_score": 100
+    },
+    {
+      "txn_id": 124,
+      "idx": 154,
+      "merchant": "CHAR GREEN HILLS",
+      "date": "2024-08-29",
+      "amount": 67.81,
+      "matched_receipt": "char_green_hills_2024-08-29_67_81_3.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 632,
+      "idx": 151,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-08-28",
+      "amount": 26.22,
+      "matched_receipt": "pmc_paid_parking_2024-08-28_26_22.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 102,
+      "idx": 124,
+      "merchant": "CORNER PUB",
+      "date": "2024-08-23",
+      "amount": 79.64,
+      "matched_receipt": "corner_pub_2024-08-23_79_64_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 99,
+      "idx": 121,
+      "merchant": "PMC - PAID PARKING",
+      "date": "2024-08-22",
+      "amount": 22.51,
+      "matched_receipt": "pmc_paid_parking_2024-08-22_22_51_3.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 91,
+      "idx": 112,
+      "merchant": "METROPOLIS PARKING",
+      "date": "2024-08-20",
+      "amount": 27.42,
+      "matched_receipt": "metropolis_parking_2024-08-20_27_42_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 85,
+      "idx": 105,
+      "merchant": "TM *PBR TEAMS",
+      "date": "2024-08-17",
+      "amount": 623.1,
+      "matched_receipt": "tm_pbr_teams_2024-08-17_623_1.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 578,
+      "idx": 97,
+      "merchant": "SH NASHVILLE - OTHER",
+      "date": "2024-08-14",
+      "amount": 27.14,
+      "matched_receipt": "sh_nashville_other_2024-08-14_27_14.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 78,
+      "idx": 94,
+      "merchant": "METROPOLIS PARKING",
+      "date": "2024-08-14",
+      "amount": 10.99,
+      "matched_receipt": "metropolis_parking_2024-08-14_10_99_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 77,
+      "idx": 93,
+      "merchant": "MAFIAOZAS",
+      "date": "2024-08-14",
+      "amount": 15.38,
+      "matched_receipt": "mafiaozas_2024-08-14_15_38_3.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 75,
+      "idx": 91,
+      "merchant": "OPTIMIST NASHVILLE",
+      "date": "2024-08-13",
+      "amount": 896.44,
+      "matched_receipt": "optimist_nashville_2024-08-13_896_44_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 74,
+      "idx": 90,
+      "merchant": "OPTIMIST NASHVILLE",
+      "date": "2024-08-13",
+      "amount": 44.32,
+      "matched_receipt": "optimist_nashville_2024-08-13_44_32_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 73,
+      "idx": 89,
+      "merchant": "O-KU NASHVILLE",
+      "date": "2024-08-13",
+      "amount": 58.21,
+      "matched_receipt": "o_ku_nashville_2024-08-13_58_21.jpeg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 63,
+      "idx": 77,
+      "merchant": "TST*HOMEGROWN TAPROOM &AMP;",
+      "date": "2024-08-06",
+      "amount": 84.2,
+      "matched_receipt": "tsthomegrown_taproom_amp_2024-08-06_84_2.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 62,
+      "idx": 76,
+      "merchant": "SH NASHVILLE - OTHER",
+      "date": "2024-08-06",
+      "amount": 18.1,
+      "matched_receipt": "sh_nashville_other_2024-08-06_18_1.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 33,
+      "idx": 42,
+      "merchant": "AUDREY - SEAN BROCK GROU",
+      "date": "2024-07-19",
+      "amount": 1487.8,
+      "matched_receipt": "audrey_sean_brock_grou_2024-07-19_1487_8.jpg",
+      "match_score": 130
+    },
+    {
+      "txn_id": 25,
+      "idx": 32,
+      "merchant": "CLEAR *CLEARME.COM",
+      "date": "2024-07-15",
+      "amount": 12.62,
+      "matched_receipt": "clear_clearmecom_2024-07-15_12_62.png",
+      "match_score": 110
+    },
+    {
+      "txn_id": 510,
+      "idx": 29,
+      "merchant": "CLOUDFLARE",
+      "date": "2024-07-14",
+      "amount": 5.0,
+      "matched_receipt": "cloudflare_2024-07-14_5_0.jpg",
+      "match_score": 110
+    },
+    {
+      "txn_id": 507,
+      "idx": 26,
+      "merchant": "SPOTIFY USA",
+      "date": "2024-07-08",
+      "amount": 13.13,
+      "matched_receipt": "spotify_usa_2024-07-08_13_13_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 497,
+      "idx": 16,
+      "merchant": "UBER TRIP",
+      "date": "2024-07-01",
+      "amount": 81.66,
+      "matched_receipt": "uber_trip_2024-07-01_81_66.png",
+      "match_score": 120
+    },
+    {
+      "txn_id": 10,
+      "idx": 13,
+      "merchant": "EXPENSIFY INC.",
+      "date": "2024-07-01",
+      "amount": 19.76,
+      "matched_receipt": "expensify_inc_2024-07-01_19_76_3.jpg",
+      "match_score": 120
+    },
+    {
+      "txn_id": 1,
+      "idx": 0,
+      "merchant": "DD DOORDASH DOLLARGEN",
+      "date": "2024-06-22",
+      "amount": 8.5,
+      "matched_receipt": "dd_doordash_dollargen_2024-06-22_8_5.jpg",
+      "match_score": 120
+    }
+  ],
+  "not_found": [
+    {
+      "txn_id": 4273,
+      "idx": 837,
+      "merchant": "midjourney",
+      "date": "2025-12-01",
+      "amount": 21.95,
+      "note": "Mismatch: Merchant does not match. Date is off by more than 3 days (October 26 vs December 1)."
+    },
+    {
+      "txn_id": 4272,
+      "idx": 836,
+      "merchant": "ideogram",
+      "date": "2025-12-01",
+      "amount": 20.0,
+      "note": "Mismatch: Merchant matches. Amount matches. Date is October 28, 2025, which is not within 3 days of December 1, 2025."
+    },
+    {
+      "txn_id": 4271,
+      "idx": 835,
+      "merchant": "claude",
+      "date": "2025-12-01",
+      "amount": 109.75,
+      "note": "Mismatch: Merchant name does not match (claude vs Anthropic, PBC) and date is off by more than 3 days (2025-10-29 vs 2025-12-01)."
+    }
+  ]
+}

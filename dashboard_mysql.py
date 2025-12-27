@@ -2,7 +2,7 @@
 """
 Receipt Dashboard - All Business Types
 =======================================
-Live dashboard with real-time stats for Down Home, Personal, and Music City Rodeo
+Live dashboard with real-time stats for Business, Personal, and Secondary
 """
 
 from flask import Flask, jsonify, render_template_string, request
@@ -185,7 +185,7 @@ DASHBOARD_HTML = '''
 
     <script>
         const R2_PUBLIC = '{{ r2_public }}';
-        let currentBusiness = 'Down Home';
+        let currentBusiness = 'Business';
         let refreshInterval = null;
         let countdown = 30;
 
@@ -365,7 +365,7 @@ def get_all_stats():
 
 @app.route('/api/transactions')
 def get_transactions():
-    business = request.args.get('business', 'Down Home')
+    business = request.args.get('business', 'Business')
     search = request.args.get('search', '')
     status = request.args.get('status', '')
     sort = request.args.get('sort', 'date_desc')
@@ -445,7 +445,7 @@ def get_transactions():
 
 @app.route('/api/stats')
 def get_stats():
-    business = request.args.get('business', 'Down Home')
+    business = request.args.get('business', 'Business')
     conn = get_db()
     cursor = conn.cursor()
 

@@ -6,14 +6,14 @@ Generates CSV exports compatible with:
 - QuickBooks Online/Desktop
 - Xero
 - Generic accounting software
-- Down Home submission format
+- Business submission format
 - Raw data export
 
 Export Formats:
 - Standard CSV with all fields
 - QuickBooks IIF format
 - Xero CSV format
-- Down Home submission format
+- Business submission format
 - Summary CSV with totals
 """
 
@@ -281,11 +281,11 @@ class CSVExporter:
         output.seek(0)
         return output.getvalue().encode('utf-8')
 
-    def export_downhome_csv(self, report: 'Report') -> bytes:
+    def export_business_csv(self, report: 'Report') -> bytes:
         """
-        Export CSV in Down Home submission format.
+        Export CSV in Business submission format.
 
-        Format matches existing downhome export:
+        Format matches existing business export:
         External ID, Line, Category, Amount, Currency, Date, Project,
         Memo, Line of Business, Billable, Receipt URL
 
@@ -298,7 +298,7 @@ class CSVExporter:
         output = io.StringIO()
         writer = csv.writer(output)
 
-        # Down Home header
+        # Business header
         headers = [
             "External ID",
             "Line",

@@ -148,14 +148,14 @@ struct ReportsView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    FilterChip(
+                    ReportFilterChip(
                         title: "All",
                         isSelected: selectedBusiness == nil,
                         action: { selectedBusiness = nil }
                     )
 
                     ForEach(businessTypeService.businessTypes) { type in
-                        FilterChip(
+                        ReportFilterChip(
                             title: type.displayName,
                             icon: type.icon,
                             color: type.swiftUIColor,
@@ -185,28 +185,28 @@ struct ReportsView: View {
                 GridItem(.flexible()),
                 GridItem(.flexible())
             ], spacing: 16) {
-                SummaryCard(
+                ReportSummaryCard(
                     title: "Total Spent",
                     value: viewModel.formattedTotalSpent,
                     icon: "dollarsign.circle.fill",
                     color: .tallyAccent
                 )
 
-                SummaryCard(
+                ReportSummaryCard(
                     title: "Transactions",
                     value: "\(viewModel.transactionCount)",
                     icon: "creditcard.fill",
                     color: .blue
                 )
 
-                SummaryCard(
+                ReportSummaryCard(
                     title: "Receipts",
                     value: "\(viewModel.receiptCount)",
                     icon: "doc.fill",
                     color: .green
                 )
 
-                SummaryCard(
+                ReportSummaryCard(
                     title: "Avg per Day",
                     value: viewModel.formattedDailyAverage,
                     icon: "chart.line.uptrend.xyaxis",
@@ -428,10 +428,10 @@ class ReportsViewModel: ObservableObject {
         isLoading = true
 
         do {
-            let report = try await APIClient.shared.fetchReport(
-                business: business,
+            let report = try await APIClient.shared.fetchExpenseReport(
                 startDate: startDate,
-                endDate: endDate
+                endDate: endDate,
+                businessType: business
             )
 
             totalSpent = report.totalSpent
@@ -465,7 +465,7 @@ class ReportsViewModel: ObservableObject {
 
 // MARK: - Supporting Views
 
-private struct FilterChip: View {
+private struct ReportFilterChip: View {
     let title: String
     var icon: String? = nil
     var color: Color = .tallyAccent
@@ -495,7 +495,7 @@ private struct FilterChip: View {
     }
 }
 
-private struct SummaryCard: View {
+private struct ReportSummaryCard: View {
     let title: String
     let value: String
     let icon: String
@@ -745,12 +745,11 @@ struct ExportReportSheet: View {
 
         Task {
             do {
-                try await APIClient.shared.exportReport(
-                    format: exportFormat.rawValue.lowercased(),
-                    business: business,
+                _ = try await APIClient.shared.exportReport(
                     startDate: startDate,
                     endDate: endDate,
-                    includeReceipts: includeReceipts
+                    businessType: business,
+                    format: exportFormat.rawValue.lowercased()
                 )
 
                 await MainActor.run {

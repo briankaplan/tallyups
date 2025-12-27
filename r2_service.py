@@ -9,7 +9,7 @@ All receipts MUST follow this naming standard:
   {prefix}/{transaction_id}_{merchant}_{date}_{amount}.{ext}
 
 Where:
-  - prefix: 'downhome/', 'receipts/', or 'inbox/'
+  - prefix: 'business/', 'receipts/', or 'inbox/'
   - transaction_id: Database transaction ID (integer)
   - merchant: snake_case merchant name (max 35 chars)
   - date: YYYY-MM-DD format
@@ -17,7 +17,7 @@ Where:
   - ext: File extension (jpg, png, pdf)
 
 Examples:
-  - downhome/4287_soho_house_2025-12-02_3120_00.jpg
+  - business/4287_soho_house_2025-12-02_3120_00.jpg
   - receipts/1234_hive_co_2025-08-20_199_20.jpg
   - inbox/uber_2025-12-10_36_95_a1b2c3d4.jpg
 
@@ -146,16 +146,16 @@ def generate_standard_r2_key(
         merchant: Merchant/vendor name
         date: Transaction date (any format, will be normalized)
         amount: Transaction amount
-        business_type: 'Down Home', 'Music City Rodeo', etc. (determines prefix)
+        business_type: 'Business', 'Secondary', etc. (determines prefix)
         extension: File extension (default: jpg)
         source: Source hint for prefix ('inbox', 'gmail_inbox', etc.)
 
     Returns:
-        Standard R2 key like 'downhome/4287_soho_house_2025-12-02_3120_00.jpg'
+        Standard R2 key like 'business/4287_soho_house_2025-12-02_3120_00.jpg'
     """
     # Determine prefix based on business_type or source
-    if business_type == 'Down Home':
-        prefix = 'downhome'
+    if business_type == 'Business':
+        prefix = 'business'
     elif source in ('inbox', 'gmail_inbox', 'mobile_inbox', 'incoming'):
         prefix = 'inbox'
     else:

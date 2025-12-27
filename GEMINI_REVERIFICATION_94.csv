@@ -1,0 +1,95 @@
+index,amount,merchant,date,receipt_url,gemini_verdict,gemini_reason,gemini_receipt_total,old_category
+154,$67.81,CHAR GREEN HILLS,2024-08-29,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/char_green_hills_2024-08-29_67_81_3.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+250,$50.00,IM-ADA.AI,2024-09-30,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-09-30_50_0.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+283,$422.72,CHAR GREEN HILLS,2024-10-15,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/char_green_hills_2024-10-15_422_72_3.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+367,$884.98,SOUTHWES 5262584463367,2024-11-27,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/southwes_5262584463367_2024-11-27_884_98.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+378,$708.64,COSMOPOL-BLUE RIBBON,2024-12-03,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cosmopol_blue_ribbon_2024-12-03_708_64.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+398,$17.55,PORT OF SUBS 0053,2024-12-06,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/port_of_subs_0053_2024-12-06_17_55_3.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+416,$34.07,UBER *TRIP,2024-12-09,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-12-09_34_07_3.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+458,$10.00,CALENDARBRIDGE,2025-01-08,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/calendarbridge_2025-01-08_10_0.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+466,$9.00,SOURCEGRAPH INC,2025-01-13,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2025-01-13_9_0.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+533,$57.62,UBER *TRIP,2025-02-18,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2025-02-18_57_62.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+575,$10.00,CLOUDFLARE,2025-03-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-03-14_10_0.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+581,$15.99,METROPOLIS PARKING,2025-03-21,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-03-21_15_99_3.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+609,$15.15,METROPOLIS PARKING,2025-04-04,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-04-04_15_15.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+625,$217.40,TST*GREEN HILLS GRILLE,2025-04-10,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tstgreen_hills_grille_2025-04-10_217_4.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+682,$13.13,SPOTIFY USA,2025-05-08,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2025-05-08_13_13.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+691,$49.00,RESPONSIVE-MENU-PRO-4,2025-05-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/responsive_menu_pro_4_2025-05-14_49_0.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+694,$60.00,AI.FYXER.COM,2025-05-15,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/aifyxercom_2025-05-15_60_0.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+705,$9.99,COWBOY CHANNEL PLUS,2025-05-26,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cowboy_channel_plus_2025-05-26_9_99_3.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+764,$20.00,VZWRLSS*PREPAID PYMNT,2025-07-30,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/vzwrlssprepaid_pymnt_2025-07-30_20_0.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+775,$10.00,CLOUDFLARE,2025-08-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-08-14_10_00.jpg,ERROR,API error: 404,,AMOUNT_MISMATCH
+42,$1487.80,AUDREY - SEAN BROCK GROU,2024-07-19,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/audrey_sean_brock_grou_2024-07-19_1487_8.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+76,$18.10,SH NASHVILLE - OTHER,2024-08-06,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-08-06_18_1.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+77,$84.20,TST*HOMEGROWN TAPROOM &AMP;,2024-08-06,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tsthomegrown_taproom_amp_2024-08-06_84_2.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+89,$58.21,O-KU NASHVILLE,2024-08-13,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/o_ku_nashville_2024-08-13_58_21.jpeg,ERROR,API error: 404,,NO_REASON_GIVEN
+90,$44.32,OPTIMIST NASHVILLE,2024-08-13,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/optimist_nashville_2024-08-13_44_32_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+91,$896.44,OPTIMIST NASHVILLE,2024-08-13,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/optimist_nashville_2024-08-13_896_44_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+93,$15.38,MAFIAOZAS,2024-08-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/mafiaozas_2024-08-14_15_38_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+94,$10.99,METROPOLIS PARKING,2024-08-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-08-14_10_99_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+97,$27.14,SH NASHVILLE - OTHER,2024-08-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-08-14_27_14.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+105,$623.10,TM *PBR TEAMS,2024-08-17,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tm_pbr_teams_2024-08-17_623_1.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+112,$27.42,METROPOLIS PARKING,2024-08-20,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-08-20_27_42_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+121,$22.51,PMC - PAID PARKING,2024-08-22,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-08-22_22_51_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+124,$79.64,CORNER PUB,2024-08-23,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-08-23_79_64_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+151,$26.22,PMC - PAID PARKING,2024-08-28,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-08-28_26_22.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+159,$23.14,APPLE.COM/BILL,2024-08-31,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-08-31_23_14_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+165,$59.16,12 SOUTH TAPROOM &AMP; GRILL,2024-09-04,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/12_south_taproom_amp_grill_2024-09-04_59_16.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+166,$39.78,CORNER PUB,2024-09-04,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-09-04_39_78_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+168,$24.59,PMC - PAID PARKING,2024-09-04,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-09-04_24_59.png,ERROR,API error: 404,,NO_REASON_GIVEN
+182,$26.25,METROPOLIS PARKING,2024-09-07,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-09-07_26_25_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+187,$318.00,CLEAR *CLEARME.COM,2024-09-08,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/clear_clearmecom_2024-09-08_318_0.png,ERROR,API error: 404,,NO_REASON_GIVEN
+198,$43.50,BINION'S BARS,2024-09-10,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/binions_bars_2024-09-10_43_5.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+208,$27.22,GNLV THE GRILLE,2024-09-12,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/gnlv_the_grille_2024-09-12_27_22.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+214,$5.00,CLOUDFLARE,2024-09-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2024-09-14_5_0.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+221,$26.22,PMC - PAID PARKING,2024-09-16,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-09-16_26_22.png,ERROR,API error: 404,,NO_REASON_GIVEN
+227,$10.99,METROPOLIS PARKING,2024-09-18,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-09-18_10_99_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+228,$29.22,PMC - PAID PARKING,2024-09-18,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-09-18_29_22.png,ERROR,API error: 404,,NO_REASON_GIVEN
+230,$14.09,AMERICANO LOUNGE,2024-09-19,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/americano_lounge_2024-09-19_14_09.png,ERROR,API error: 404,,NO_REASON_GIVEN
+234,$26.25,METROPOLIS PARKING,2024-09-20,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-09-20_26_25_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+235,$5.60,201 BELCOURT LOT,2024-09-21,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/201_belcourt_lot_2024-09-21_5_6.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+239,$21.95,CLAUDE.AI SUBSCRIPTION,2024-09-24,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/claudeai_subscription_2024-09-24_21_95.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+242,$5.18,LAZGO NASHVILLE M32180,2024-09-25,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/lazgo_nashville_m32180_2024-09-25_5_18.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+243,$26.22,PMC - PAID PARKING,2024-09-25,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-09-25_26_22.png,ERROR,API error: 404,,NO_REASON_GIVEN
+256,$20.76,PMC - PAID PARKING,2024-10-03,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-10-03_20_76.png,ERROR,API error: 404,,NO_REASON_GIVEN
+259,$27.40,TST*HEARTS CAFE,2024-10-03,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tsthearts_cafe_2024-10-03_27_4.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+261,$23.14,APPLE.COM/BILL,2024-10-04,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-10-04_23_14_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+262,$25.00,IM-ADA.AI,2024-10-04,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-10-04_25_0.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+264,$23.27,SH NASHVILLE - OTHER,2024-10-04,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-10-04_23_27.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+269,$83.92,CORNER PUB,2024-10-08,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-10-08_83_92.heic,ERROR,API error: 404,,NO_REASON_GIVEN
+270,$50.00,IM-ADA.AI,2024-10-08,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-10-08_50_0.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+274,$123.79,12 SOUTH TAPROOM &AMP; GRILL,2024-10-10,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/12_south_taproom_amp_grill_2024-10-10_123_79_3.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+276,$24.22,DD *DOORDASH LASPALMAS,2024-10-11,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dd_doordash_laspalmas_2024-10-11_24_22.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+278,$27.14,SH NASHVILLE - OTHER,2024-10-11,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-10-11_27_14.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+279,$62.04,SH NASHVILLE - OTHER,2024-10-11,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-10-11_62_04.jpg,ERROR,API error: 404,,NO_REASON_GIVEN
+362,$51.98,CORNER PUB,2024-11-25,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-11-25_51_98.heic,ERROR,API error: 404,,NO_REASON_GIVEN
+180,$10.96,APPLE.COM/BILL,2024-09-07,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-09-07_10_96_3.jpg,ERROR,API error: 404,,OTHER
+351,$20.66,METROPOLIS PARKING,2024-11-20,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-20_20_66.jpg,ERROR,API error: 404,,OTHER
+380,$22.37,STARBUCKS 65853,2024-12-03,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/starbucks_65853_2024-12-03_22_37_3.jpg,ERROR,API error: 404,,OTHER
+386,$75.00,PROFESSIONAL RODEO COWBO,2024-12-04,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/professional_rodeo_cowbo_2024-12-04_75_0.jpeg,ERROR,API error: 404,,OTHER
+695,$54.86,ELEMENTOR.COM,2025-05-15,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/elementorcom_2025-05-15_54_86.jpg,ERROR,API error: 404,,OTHER
+766,$30.16,MONGODBCLOUD BRIANS...,2025-08-02,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/mongodbcloud_brians_2025-08-02_30_16_3.jpg,ERROR,API error: 404,,OTHER
+395,$29.87,CURB LV TAXI YCS,2024-12-06,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/curb_lv_taxi_ycs_2024-12-06_29_87.jpg,ERROR,API error: 404,,UNREADABLE
+13,$19.76,EXPENSIFY INC.,2024-07-01,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2024-07-01_19_76_3.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+16,$81.66,UBER TRIP,2024-07-01,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-07-01_81_66.png,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+26,$13.13,SPOTIFY USA,2024-07-08,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2024-07-08_13_13_3.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+29,$5.00,CLOUDFLARE,2024-07-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2024-07-14_5_0.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+32,$12.62,CLEAR *CLEARME.COM,2024-07-15,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/clear_clearmecom_2024-07-15_12_62.png,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+167,$45.15,CORNER PUB,2024-09-04,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-09-04_45_15.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+211,$41.98,UBER *TRIP,2024-09-12,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-09-12_41_98.png,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+212,$313.01,GOLDEN NUGGET HOTEL LV,2024-09-13,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/golden_nugget_hotel_lv_2024-09-13_313_01.png,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+245,$20.00,THE GATEWAY TO NASHVILLE,2024-09-25,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/the_gateway_to_nashville_2024-09-25_20_0.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+327,$45.24,SH NASHVILLE - OTHER,2024-11-08,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-08_45_24.PNG,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+368,$123.17,GOLDEN NUGGET HOTEL LV,2024-11-29,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/golden_nugget_hotel_lv_2024-11-29_123_17.png,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+371,$32.93,MIDJOURNEY INC.,2024-11-30,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2024-11-30_32_93.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+390,$34.44,DESERT CAB,2024-12-05,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/desert_cab_2024-12-05_34_44.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+407,$355.00,HOTELTONIGHT*VIRGIN HO,2024-12-07,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/hoteltonightvirgin_ho_2024-12-07_355_0.png,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+413,$13.13,SPOTIFY USA,2024-12-08,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2024-12-08_13_13_3.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+467,$5.00,CLOUDFLARE,2025-01-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-01-14_5_0.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+489,$44.25,SHOEBOXED.COM,2025-01-25,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/shoeboxedcom_2025-01-25_44_25.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+526,$10.00,CLOUDFLARE,2025-02-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-02-14_10_0.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+641,$10.00,CLOUDFLARE,2025-04-14,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-04-14_10_0.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+685,$20.00,VZWRLSS*PREPAID PYMNT,2025-05-10,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/vzwrlssprepaid_pymnt_2025-05-10_20_0.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+748,$37.67,MONGODBCLOUD BRIANS...,2025-07-08,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/mongodbcloud_brians_2025-07-08_37_67_3.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+762,$0.75,HIVE CO,2025-07-28,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/hive_co_2025-07-28_0_75_3.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED
+773,$40.39,PMC - PAID PARKING,2025-08-09,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-08-09_40_39_3.jpg,ERROR,API error: 404,,WRONG_FILE_ATTACHED

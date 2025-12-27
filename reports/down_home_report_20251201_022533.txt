@@ -1,0 +1,903 @@
+================================================================================
+DOWN HOME EXPENSE REPORT
+Period: 2024-07-01 to 2024-12-01
+Generated: 2025-12-01 02:25
+================================================================================
+
+SUMMARY
+----------------------------------------
+Total Transactions: 291
+Total Amount: $21,026.09
+
+Verified Receipts: 0 ($0.00)
+Likely Matches: 0 ($0.00)
+Needs Receipt/Form: 2 ($80.00)
+Mismatched: 0 ($0.00)
+Other/Unverified: 289 ($20,946.09)
+
+================================================================================
+DETAILED TRANSACTIONS
+================================================================================
+
+2024-07-01 | $   140.00 | ? | CHARTMETRIC
+    Note: Chartmetric subscription for tracking artist analytics.
+
+2024-07-01 | $    19.76 | ? | EXPENSIFY INC.
+    Note: Expense for Expensify subscription to manage business expenses efficiently.
+
+2024-07-01 | $   189.50 | ? | LULUS LANDING INC
+    Note: Music publishing meeting at LULUS LANDING for artist management.
+
+2024-07-01 | $    20.66 | ? | TST* PYRAMIDS CAFE - AIRP
+    Note: Café meeting expense for Brian's Alabama trip.
+
+2024-07-01 | $    81.66 | ? | UBER TRIP
+    Note: Uber to meet with artists in Alabama.
+
+2024-07-02 | $    24.56 | ? | SLIM &AMP; HUSKIES
+    Note: Lunch meeting for Brian's artist management discussions.
+
+2024-07-02 | $    39.56 | ? | UBER TRIP
+    Note: Uber ride for Brian's meetings in Alabama on July 2.
+
+2024-07-02 | $   103.99 | ? | LYFT *RIDE TUE 4AM
+    Note: Lyft ride to Alabama for music business meetings.
+
+2024-07-05 | $    21.94 | ? | APPLE.COM/BILL
+    Note: iCloud storage for Down Home's music files and calendar management.
+
+2024-07-06 | $    82.32 | ? | DISCO
+    Note: Client meeting at DISCO for Glen Lake project.
+
+2024-07-08 | $    10.00 | ? | CALENDARBRIDGE
+    Note: CalendarBridge subscription for scheduling Glen Lake events.
+
+2024-07-08 | $    13.13 | ? | SPOTIFY USA
+    Note: Spotify subscription for music research and playlist curation.
+
+2024-07-10 | $    10.98 | ? | MIDJOURNEY INC.
+    Note: AI-generated visuals for Down Home's upcoming artist project.
+
+2024-07-12 | $     9.29 | ? | PMC - PAID PARKING
+    Note: Parking for DeepRoots Chat meeting on July 12.
+
+2024-07-12 | $     9.29 | ? | PMC - PAID PARKING
+    Note: Parking for DeepRoots Chat on July 12.
+
+2024-07-14 | $   168.87 | ? | TST* IL FORNO PIZZERIA
+    Note: Anniversary dinner for client relationship building with David Kaplan.
+
+2024-07-14 | $     5.00 | ? | CLOUDFLARE
+    Note: Cloudflare subscription for website hosting and security services.
+
+2024-07-15 | $    12.62 | ? | CLEAR *CLEARME.COM
+    Note: TSA Clear membership for smooth travel to industry events.
+
+2024-07-17 | $    17.55 | ? | APPLE.COM/BILL
+    Note: iCloud storage for managing Down Home's music files and projects.
+
+2024-07-17 | $    94.22 | ? | DD *DOORDASH KALAMATAS
+    Note: Lunch for Bridgestone walkthrough meeting with team.
+
+2024-07-17 | $     5.00 | ? | LAZ PARKING M32810
+    Note: Parking for Bridgestone walkthrough on July 17.
+
+2024-07-17 | $    11.32 | ? | METROPOLIS PARKING
+    Note: Parking for Bridgestone Walkthrough meeting on 07/17.
+
+2024-07-17 | $     4.49 | ? | METROPOLIS PARKING
+    Note: Parking for Bridgestone walkthrough on July 17th.
+
+2024-07-17 | $     7.55 | ? | METROPOLIS PARKING
+    Note: Parking for Bridgestone walkthrough on July 17.
+
+2024-07-19 | $ 1,487.80 | ? | AUDREY - SEAN BROCK GROU
+    Note: CCDI dinner reservation at Audrey for client meeting.
+
+2024-07-22 | $     8.15 | ? | PARK HAPPY LLC
+    Note: Birthday lunch for Scott and Jason.
+
+2024-07-22 | $    54.86 | ? | APPLE.COM/BILL
+    Note: iCloud storage for music files and project management.
+
+2024-07-24 | $    21.95 | ? | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for music publishing tasks.
+
+2024-07-25 | $    43.60 | ? | CHAR GREEN HILLS
+    Note: Coffee meeting with Brian and Jules for artist management discussions.
+
+2024-07-25 | $     8.85 | ? | PARK HAPPY LLC
+    Note: Coffee meeting with Brian and Jules for artist management discussions.
+
+2024-07-25 | $     9.29 | ? | PMC - PAID PARKING
+    Note: Parking for meetings on Angela's birthday.
+
+2024-07-25 | $    50.00 | ? | ROSTR PRO
+    Note: Coffee meeting with Brian and Jules for artist management discussion.
+
+2024-07-26 | $    19.99 | ? | IMDBPRO
+    Note: IMDBPRO subscription for artist management research and events.
+
+2024-07-26 | $     8.85 | ? | PARK HAPPY LLC
+    Note: Birthday coffee for Angela, team celebration at PARK HAPPY.
+
+2024-07-26 | $     9.05 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussions.
+
+2024-07-27 | $    40.33 | ? | APPLE.COM/BILL
+    Note: iCloud storage for Down Home's music files and documents.
+
+2024-07-28 | $    11.00 | ? | CARTA NORTH GARAGE
+    Note: Parking for meeting with artist at CARTA North Garage.
+
+2024-07-29 | $     8.00 | ? | PARKING MANAGEMENT CO.
+    Note: Parking for Down Home Weekly Check-in with Sony Music Nashville.
+
+2024-07-30 | $    15.99 | ? | METROPOLIS PARKING
+    Note: Parking for UMG + Down Home meetings on 7/30.
+
+2024-07-30 | $    24.91 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for UMG and Down Home discussions.
+
+2024-07-31 | $    23.14 | ? | APPLE.COM/BILL
+    Note: iCloud storage for managing Down Home's music publishing files.
+
+2024-08-01 | $    19.76 | ? | EXPENSIFY INC.
+    Note: Breakfast meeting for Studio Convo and Ten Year Town pitch.
+
+2024-08-01 | $    15.99 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on August 1, including breakfast and studio convo.
+
+2024-08-01 | $    22.28 | ? | SH NASHVILLE F&AMP;B
+    Note: Breakfast meeting for studio convo with David Marshall Grant.
+
+2024-08-02 | $    39.52 | ? | TST*NADEENS HERMITAGE HA
+    Note: Breakfast meeting for Down Home artist management discussions.
+
+2024-08-03 | $   251.33 | ? | APPLE.COM/BILL
+    Note: iCloud services for music publishing and artist management needs.
+
+2024-08-05 | $     9.05 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House Nashville for artist collaboration discussion.
+
+2024-08-05 | $    38.78 | ? | SH NASHVILLE - OTHER
+    Note: Soho House meeting for Down Home project discussions.
+
+2024-08-05 | $    58.16 | ? | SH NASHVILLE - OTHER
+    Note: Meeting with artists at Soho House Nashville.
+
+2024-08-05 | $    53.98 | ? | SH NASHVILLE F&AMP;B
+    Note: Meeting at Soho House for Down Home planning session.
+
+2024-08-05 | $    21.00 | ? | METROPOLIS PARKING
+    Note: Downtown parking for Luanne's meetings in LA.
+
+2024-08-06 | $    82.32 | ? | DISCO
+    Note: Birthday dinner for Jaime Marconette, client relationship building.
+
+2024-08-06 | $    18.10 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House Nashville for artist management discussions.
+
+2024-08-06 | $    84.20 | ? | TST*HOMEGROWN TAPROOM &AMP;
+    Note: Client meeting lunch with Jaime for artist management discussions.
+
+2024-08-06 | $    21.00 | ? | METROPOLIS PARKING
+    Note: Parking for Luanne's LA meeting on 8/6.
+
+2024-08-06 | $    21.00 | ? | METROPOLIS PARKING
+    Note: Parking for meeting with Jaime Marconette in Nashville.
+
+2024-08-08 | $    10.00 | ? | CALENDARBRIDGE
+    Note: CalendarBridge subscription for scheduling Luanne and Sean's events.
+
+2024-08-08 | $    38.03 | ? | PMC - PAID PARKING
+    Note: Parking for Luanne's LA meetings on 8/8.
+
+2024-08-08 | $    13.13 | ? | SPOTIFY USA
+    Note: Spotify subscription for music research and artist management.
+
+2024-08-09 | $   163.77 | ? | TST*GREEN HILLS GRILLE
+    Note: Lunch meeting with Sean Swarner for MCR project discussion.
+
+2024-08-10 | $    17.52 | ? | APPLE.COM/BILL
+    Note: iCloud subscription for music publishing and management tools.
+
+2024-08-10 | $   119.34 | ? | DD *DOORDASH EDLEYSBAR
+    Note: Client lunch meeting for artist management discussion.
+
+2024-08-10 | $    10.98 | ? | MIDJOURNEY INC.
+    Note: AI artwork generation for Down Home promotional materials.
+
+2024-08-10 | $    94.10 | ? | DD *DOORDASH JIMNNICKS
+    Note: Client meeting lunch with Brian, food delivery via DoorDash.
+
+2024-08-11 | $    17.55 | ? | APPLE.COM/BILL
+    Note: iCloud storage for music publishing and artist management.
+
+2024-08-11 | $   288.00 | ? | SUNO INC.
+    Note: SUNO INC. - Music publishing services for Down Home project.
+
+2024-08-13 | $    58.21 | ? | O-KU NASHVILLE
+    Note: Birthday dinner for Clay Jackson.
+
+2024-08-13 | $    44.32 | ? | OPTIMIST NASHVILLE
+    Note: Lunch meeting for Clay's birthday and Weekly Rodeo Touchbase.
+
+2024-08-13 | $   896.44 | ? | OPTIMIST NASHVILLE
+    Note: Weekly Rodeo Touchbase meeting expenses at OPTIMIST NASHVILLE.
+
+2024-08-14 | $     5.00 | ? | CLOUDFLARE
+    Note: Cloudflare subscription for website management and artist promotion.
+
+2024-08-14 | $    15.38 | ? | MAFIAOZAS
+    Note: Lunch for Clay's birthday celebration with the team.
+
+2024-08-14 | $    10.99 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on Clay and Heather's birthdays.
+
+2024-08-14 | $     8.85 | ? | PARK HAPPY LLC
+    Note: Birthday lunch for Clay Jackson and Heather Horvath.
+
+2024-08-14 | $    27.14 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussions.
+
+2024-08-15 | $    76.81 | ? | APPLE.COM/BILL
+    Note: iCloud subscription for managing music files and projects.
+
+2024-08-15 | $     8.85 | ? | PARK HAPPY LLC
+    Note: Coffee for birthday meeting with Heather and new patient appointment.
+
+2024-08-15 | $    74.97 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussions.
+
+2024-08-17 | $    42.00 | ? | METROPOLIS PARKING
+    Note: Parking for meeting and bike return on 8/17.
+
+2024-08-17 | $   623.10 | ? | TM *PBR TEAMS
+    Note: PBR Teams event expenses for artist management meetings.
+
+2024-08-18 | $    31.50 | ? | METROPOLIS PARKING
+    Note: Parking for meetings at Metropolis, Nashville on 08/18.
+
+2024-08-18 | $    78.00 | ? | TST*LOSERS - DOWNTOWN
+    Note: Client meeting dinner at TST*LOSERS, Downtown.
+
+2024-08-19 | $    51.70 | ? | SH NASHVILLE - OTHER
+    Note: Lunch meeting with Kate for style and grooming consultation.
+
+2024-08-19 | $    47.82 | ? | SH NASHVILLE - OTHER
+    Note: Lunch meeting at Soho House with Kate from Pivot Image Consulting.
+
+2024-08-19 | $    31.02 | ? | SH NASHVILLE - OTHER
+    Note: Lunch meeting with Kate for Style+Grooming roadmap discussion.
+
+2024-08-20 | $    27.42 | ? | METROPOLIS PARKING
+    Note: Parking for Bill Dinner meeting on 08/20.
+
+2024-08-20 | $    10.26 | ? | PARK HAPPY LLC
+    Note: Dinner meeting with Jigsaw and Jason Ross partners.
+
+2024-08-20 | $    23.21 | ? | PMC - PAID PARKING
+    Note: Parking for PMC meeting on 8/20 for artist management.
+
+2024-08-20 | $    28.39 | ? | TST*PANCHO AND LEFTYS CA
+    Note: Dinner meeting with Jigsaw and Jason Ross for collaboration.
+
+2024-08-21 | $    38.03 | ? | PMC - PAID PARKING
+    Note: Parking for Patrick's birthday meeting on 8/21.
+
+2024-08-22 | $   174.56 | ? | LINKEDIN JOB 9849229796
+    Note: LinkedIn job posting for artist management recruitment.
+
+2024-08-22 | $    22.51 | ? | PMC - PAID PARKING
+    Note: Parking for MCR Logo Comp Review meeting.
+
+2024-08-22 | $    29.28 | ? | PMC - PAID PARKING
+    Note: Parking for MCR Logo Comp Review meeting on 8/22.
+
+2024-08-23 | $    79.64 | ? | CORNER PUB
+    Note: Lunch meeting with artist at Corner Pub.
+
+2024-08-23 | $    10.99 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on August 23 at Metropolis.
+
+2024-08-23 | $     9.05 | ? | SH NASHVILLE - OTHER
+    Note: Lunch meeting at Soho House Nashville with potential artist.
+
+2024-08-24 | $    21.95 | ? | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for research and contract drafting.
+
+2024-08-24 | $     7.63 | ? | PARK HAPPY LLC
+    Note: Soccer game expenses for Brian's artist management event.
+
+2024-08-25 | $    50.00 | ? | ROSTR PRO
+    Note: Rostr Pro subscription for music publishing tools.
+
+2024-08-26 | $    19.99 | ? | IMDBPRO
+    Note: IMDBPRO subscription for artist research and management tools.
+
+2024-08-26 | $    23.21 | ? | PMC - PAID PARKING
+    Note: Parking for meeting and interview with Taylor on 08/26.
+
+2024-08-26 | $    24.91 | ? | SH NASHVILLE F&AMP;B
+    Note: Meeting at Soho House Nashville for artist management discussions.
+
+2024-08-27 | $    40.33 | ? | APPLE.COM/BILL
+    Note: iCloud storage for Down Home music management and scheduling.
+
+2024-08-27 | $   418.98 | ? | SOUTHWES 5262554636372
+    Note: Southwest flight for Brian's meeting with Michael on 8/27.
+
+2024-08-28 | $    18.10 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House Nashville to discuss artist management.
+
+2024-08-28 | $    26.22 | ? | PMC - PAID PARKING
+    Note: Parking for meeting with Philip Alms on 08/28.
+
+2024-08-29 | $    67.81 | ? | CHAR GREEN HILLS
+    Note: Lunch meeting with Todd to discuss artist management strategies.
+
+2024-08-29 | $     9.29 | ? | PMC - PAID PARKING
+    Note: Paid parking for meetings with Brian and Todd.
+
+2024-08-30 | $    84.47 | ? | CHUY'S 110
+    Note: Dinner meeting with artist during River's soccer practice.
+
+2024-08-30 | $    16.99 | ? | METROPOLIS PARKING
+    Note: Parking for Brian's meeting during River's soccer practice.
+
+2024-08-30 | $    32.93 | ? | MIDJOURNEY INC.
+    Note: AI visuals for promotional materials and artist branding.
+
+2024-08-31 | $    23.14 | ? | APPLE.COM/BILL
+    Note: iCloud storage upgrade for managing artist files and schedules.
+
+2024-09-01 | $    19.76 | ? | EXPENSIFY INC.
+    Note: Expense for managing birthday event for Leo Ferrante.
+
+2024-09-03 | $    17.88 | ? | METROPOLIS PARKING
+    Note: Parking for Down Home meetings on September 3rd.
+
+2024-09-03 | $    24.17 | ? | SQ *HIGH POINT COFFEE TN
+    Note: Coffee meeting for Down Home planning session.
+
+2024-09-04 | $    59.16 | ? | 12 SOUTH TAPROOM &AMP; GRILL
+    Note: Lunch meeting with artists at 12 South Taproom & Grill.
+
+2024-09-04 | $    39.78 | ? | CORNER PUB
+    Note: Lunch meeting with artist at Corner Pub.
+
+2024-09-04 | $    45.15 | ? | CORNER PUB
+    Note: Lunch meeting with artist at Corner Pub.
+
+2024-09-04 | $     5.46 | ? | SQ *WELL COFFEEHOUSE BREN
+    Note: Coffee meeting to discuss artist management strategies.
+
+2024-09-04 | $    24.59 | ? | PMC - PAID PARKING
+    Note: Parking for meetings on 9/4 with clients.
+
+2024-09-05 | $    21.00 | ? | METROPOLIS PARKING
+    Note: Parking for meeting on Brian's birthday at Metropolis.
+
+2024-09-05 | $    10.99 | ? | METROPOLIS PARKING
+    Note: Parking for Brian's birthday meeting at Metropolis.
+
+2024-09-05 | $   100.82 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussions.
+
+2024-09-06 | $    10.96 | ? | APPLE.COM/BILL
+    Note: iCloud storage for music files and project backups.
+
+2024-09-06 | $    40.07 | ? | SH NASHVILLE - OTHER
+    Note: Soho House meeting for Brian's birthday celebration planning.
+
+2024-09-06 | $    24.56 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for Brian's birthday discussion.
+
+2024-09-07 | $   100.57 | ? | GOLDEN NUGGET HOTEL LV
+    Note: Hotel stay for NFR event planning and artist meetings.
+
+2024-09-07 | $    10.96 | ? | APPLE.COM/BILL
+    Note: iCloud storage for managing music files and scheduling events.
+
+2024-09-07 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for River's soccer game event on 09/07.
+
+2024-09-08 | $   318.00 | ? | CLEAR *CLEARME.COM
+    Note: CLEAR membership for expedited airport security during business travel.
+
+2024-09-08 | $    10.00 | ? | CALENDARBRIDGE
+    Note: CalendarBridge subscription for scheduling artist meetings.
+
+2024-09-08 | $    13.13 | ? | SPOTIFY USA
+    Note: Spotify subscription for music research and artist management.
+
+2024-09-09 | $    93.26 | ? | APPLE.COM/BILL
+    Note: iCloud storage for music publishing and management files.
+
+2024-09-09 | $     7.55 | ? | METROPOLIS PARKING
+    Note: Parking for meetings at Metropolis during artist management events.
+
+2024-09-10 | $    43.50 | ? | BINION'S BARS
+    Note: Drinks at Binion's for Blake's birthday celebration.
+
+2024-09-10 | $    69.90 | ? | DEL FRISCOS GRILL NASHVL
+    Note: Birthday dinner for Blake Chancey, client relationship building.
+
+2024-09-11 | $    86.62 | ? | CADILLAC BAR LAS VEGAS
+    Note: Birthday dinner for Blake Chancey, client relationship building.
+
+2024-09-11 | $    20.66 | ? | TST* PYRAMIDS CAFE - AIRP
+    Note: Coffee meeting for Blake's birthday planning at Pyramids Cafe.
+
+2024-09-11 | $    44.78 | ? | UBER *TRIP
+    Note: Uber ride to Blake Chancey's birthday celebration in Las Vegas.
+
+2024-09-11 | $    40.00 | ✗ | SWA*UPGBOARD5264253430990
+    Note: Hotel stay for Blake's birthday celebration and industry networking.
+    ⚠️  No receipt found in local folder or Gmail
+
+2024-09-11 | $    40.00 | ✗ | SWA*UPGBOARD5264253431024
+    Note: Birthday trip for client, Blake Chancey, at Golden Nugget.
+    ⚠️  No receipt found in local folder or Gmail
+
+2024-09-12 | $    27.22 | ? | GNLV THE GRILLE
+    Note: Dinner meeting for Kelly and Stacy's wedding planning.
+
+2024-09-12 | $    26.92 | ? | UBER *TRIP
+    Note: Uber ride to Kelly and Stacy's wedding at Golden Nugget.
+
+2024-09-12 | $    55.53 | ? | UBER *TRIP
+    Note: Uber ride to Kelly and Stacy's wedding in Vegas.
+
+2024-09-12 | $    41.98 | ? | UBER *TRIP
+    Note: Uber ride to Kelly and Stacy's wedding event.
+
+2024-09-13 | $   313.01 | ? | GOLDEN NUGGET HOTEL LV
+    Note: Hotel stay for Kelly and Stacy's wedding event.
+
+2024-09-14 | $     5.00 | ? | CLOUDFLARE
+    Note: Cloudflare subscription for website hosting and management.
+
+2024-09-15 | $    76.81 | ? | APPLE.COM/BILL
+    Note: iCloud storage for Down Home's music files and backups.
+
+2024-09-15 | $    77.89 | ? | APPLE.COM/BILL
+    Note: iCloud subscription for music publishing management.
+
+2024-09-16 | $    26.22 | ? | PMC - PAID PARKING
+    Note: Parking for meeting with Dan Rowe on 09/16.
+
+2024-09-16 | $    17.88 | ? | METROPOLIS PARKING
+    Note: Parking for meetings with Dan Rowe and focus time.
+
+2024-09-16 | $    38.24 | ? | PARKINGMANAGEMENTCOMPANY
+    Note: Parking for meetings with Dan Rowe on 9/16.
+
+2024-09-16 | $    40.07 | ? | SH NASHVILLE - OTHER
+    Note: Meeting and coffee with Dan Rowe at Soho House.
+
+2024-09-16 | $   144.06 | ? | TST*MARTINS BAR-B-QUE JO
+    Note: Client meeting lunch with Dan Rowe and Brian Kaplan.
+
+2024-09-17 | $    38.79 | ? | UBER *TRIP
+    Note: Uber ride to dinner meeting with team members.
+
+2024-09-18 | $    10.99 | ? | METROPOLIS PARKING
+    Note: Parking for meetings with Philip, Randy, Patrick, and Scott.
+
+2024-09-18 | $    71.09 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House with industry contacts.
+
+2024-09-18 | $    29.22 | ? | PMC - PAID PARKING
+    Note: Parking for meetings with Philip, Randy, and Scott.
+
+2024-09-19 | $    14.09 | ? | AMERICANO LOUNGE
+    Note: Coffee meeting at AMERICANO LOUNGE during Nashville Film Festival.
+
+2024-09-19 | $    11.63 | ? | SH NASHVILLE - OTHER
+    Note: Coffee meeting for Nashville Film Festival planning with Dan and Scott.
+
+2024-09-19 | $    38.78 | ? | SH NASHVILLE - OTHER
+    Note: Coffee meeting at Soho House for festival planning with Brian.
+
+2024-09-20 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for Nashville Film Festival meetings on September 20.
+
+2024-09-21 | $     5.60 | ? | 201 BELCOURT LOT
+    Note: Parking for Nashville Film Festival event attendance.
+
+2024-09-24 | $    21.95 | ? | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for writing and project management tasks.
+
+2024-09-24 | $   689.59 | ? | SH NASHVILLE - OTHER
+    Note: Nashville Film Festival meetings and networking expenses.
+
+2024-09-25 | $    26.22 | ? | PMC - PAID PARKING
+    Note: Parking for meetings at Soho during Nashville Film Festival.
+
+2024-09-25 | $     5.18 | ? | LAZGO NASHVILLE M32180
+    Note: Coffee during Nashville Film Festival meetings with Brian and Margaret.
+
+2024-09-25 | $   224.64 | ? | SH NASHVILLE - OTHER
+    Note: Soho House meeting during Nashville Film Festival for Brian x Margaret.
+
+2024-09-25 | $    20.00 | ? | THE GATEWAY TO NASHVILLE
+    Note: Parking for Nashville Film Festival meeting with Brian and Margaret.
+
+2024-09-26 | $     8.85 | ? | PARK HAPPY LLC
+    Note: Coffee during Nashville Film Festival meetings.
+
+2024-09-26 | $    19.99 | ? | IMDBPRO
+    Note: IMDBPRO subscription for Nashville Film Festival research and networking.
+
+2024-09-26 | $    14.22 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House during Nashville Film Festival.
+
+2024-09-28 | $    40.33 | ? | APPLE.COM/BILL
+    Note: iCloud storage for managing Brian's music files and schedules.
+
+2024-09-28 | $    25.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for managing artist schedules and events.
+
+2024-09-28 | $    25.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for managing calendar events and scheduling.
+
+2024-09-28 | $    25.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music project management.
+
+2024-09-30 | $    50.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for event management and artist development.
+
+2024-09-30 | $    32.93 | ? | MIDJOURNEY INC.
+    Note: Midjourney subscription for album artwork visuals.
+
+2024-10-01 | $    19.76 | ? | EXPENSIFY INC.
+    Note: Subscription payment for managing business expenses on Expensify.
+
+2024-10-01 | $    61.00 | ? | TST* THE GREENHOUSE BAR
+    Note: Meeting at The Greenhouse Bar with Michael for strategy session.
+
+2024-10-01 | $    10.49 | ? | TST*BONGO JAVA BELMONT
+    Note: Coffee meeting for Brian and Michael's weekly thought-partnering session.
+
+2024-10-02 | $    10.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music project management.
+
+2024-10-03 | $   106.85 | ? | TST* SMOKIN THIGHS LLC
+    Note: Birthday dinner for Tom and Wyatt, client relationship building.
+
+2024-10-03 | $    27.40 | ? | TST*HEARTS CAFE
+    Note: Birthday lunch for Tom and Wyatt's celebrations.
+
+2024-10-03 | $    20.76 | ? | PMC - PAID PARKING
+    Note: Parking for meetings on Tom and Wyatt's birthdays.
+
+2024-10-04 | $    23.14 | ? | APPLE.COM/BILL
+    Note: iCloud subscription for music publishing and artist management tools.
+
+2024-10-04 | $    25.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music publishing tasks.
+
+2024-10-04 | $    21.00 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on Wyatt's birthday and soccer practice day.
+
+2024-10-04 | $    23.27 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist collaboration discussion.
+
+2024-10-07 | $    52.99 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussion.
+
+2024-10-07 | $    29.73 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussion.
+
+2024-10-08 | $    83.92 | ? | CORNER PUB
+    Note: Birthday dinner for Wayne, discussing upcoming projects.
+
+2024-10-08 | $    10.00 | ? | CALENDARBRIDGE
+    Note: CalendarBridge subscription for scheduling Wayne's birthday and focus time.
+
+2024-10-08 | $    50.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music publishing and artist management.
+
+2024-10-08 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on Wayne's birthday, 10/8.
+
+2024-10-08 | $    13.13 | ? | SPOTIFY USA
+    Note: Spotify subscription for music research and playlist curation.
+
+2024-10-09 | $    30.05 | ? | PMC - PAID PARKING
+    Note: Parking for meetings on Tracey's birthday.
+
+2024-10-10 | $   123.79 | ? | 12 SOUTH TAPROOM &AMP; GRILL
+    Note: Client meeting dinner for Tracey and Linda's birthdays.
+
+2024-10-11 | $    24.22 | ? | DD *DOORDASH LASPALMAS
+    Note: Lunch for team during music planning session on Linda's birthday.
+
+2024-10-11 | $    23.27 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist collaboration discussion.
+
+2024-10-11 | $    27.14 | ? | SH NASHVILLE - OTHER
+    Note: Meeting with artists at Soho House Nashville.
+
+2024-10-11 | $    62.04 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House Nashville for artist collaboration discussion.
+
+2024-10-13 | $     9.00 | ? | SOURCEGRAPH INC
+    Note: Sourcegraph subscription for music project management tools.
+
+2024-10-14 | $     5.00 | ? | CLOUDFLARE
+    Note: Cloudflare subscription for website hosting and security.
+
+2024-10-15 | $   422.72 | ? | CHAR GREEN HILLS
+    Note: Meeting and planning session at Char Green Hills.
+
+2024-10-16 | $ 1,450.00 | ? | ACADEMY OF COUNTRY MUS
+    Note: Music event expenses for artist management meetings with Brian.
+
+2024-10-16 | $   133.44 | ? | CORNER PUB
+    Note: Client meeting meal with Tim and Brian at Corner Pub.
+
+2024-10-16 | $    19.94 | ? | PMC - PAID PARKING
+    Note: Parking for meeting with Tim at PMC.
+
+2024-10-16 | $    37.48 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussion with Brian.
+
+2024-10-16 | $    29.73 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussions.
+
+2024-10-16 | $    84.35 | ? | SH NASHVILLE F&AMP;B
+    Note: Meeting with Tim and Brian at Soho House Nashville.
+
+2024-10-16 | $    26.22 | ? | PMC - PAID PARKING
+    Note: Parking for meeting with Tim on 10/16.
+
+2024-10-16 | $    26.22 | ? | PMC - PAID PARKING
+    Note: Parking for meeting with Tim regarding artist management.
+
+2024-10-18 | $   160.00 | ? | CHARTMETRIC
+    Note: Chartmetric subscription for tracking artists and analytics.
+
+2024-10-18 | $    25.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music project management.
+
+2024-10-18 | $    25.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music publishing tasks.
+
+2024-10-21 | $    50.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music project management.
+
+2024-10-21 | $    50.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for scheduling and managing music events.
+
+2024-10-22 | $   144.00 | ? | RUNWAY STANDARD PLAN
+    Note: Subscription for RUNWAY Standard Plan to streamline project management.
+
+2024-10-23 | $     6.73 | ? | Belcourt Luke II
+    Note: Coffee for meetings on Danielle's birthday celebration.
+
+2024-10-23 | $     6.73 | ? | 201 BELCOURT LOT
+    Note: Parking for meetings on Danielle's birthday.
+
+2024-10-23 | $    34.75 | ? | TST*FIDO BONGO JAVA
+    Note: Coffee meeting for Danielle's birthday planning on October 23rd.
+
+2024-10-24 | $    21.95 | ? | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for writing and contracts.
+
+2024-10-25 | $    27.00 | ? | BONHOMME PLACE GARAGE
+    Note: Parking for meetings on October 25 at Bonhomme Place Garage.
+
+2024-10-25 | $    50.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music project management.
+
+2024-10-26 | $    19.99 | ? | IMDBPRO
+    Note: Subscription for IMDBPRO to research artist opportunities.
+
+2024-10-26 | $   427.56 | ? | LE MERIDIEN ST. LOUIS
+    Note: Hotel stay for music event planning and Melissa's birthday celebration.
+
+2024-10-26 | $    49.71 | ? | UBER *TRIP
+    Note: Uber ride to Melissa's birthday event planning meeting.
+
+2024-10-28 | $    60.00 | ? | JJK FOUNDATION
+    Note: Lunch meeting for Music City Rodeo planning with Polsinelli.
+
+2024-10-30 | $   159.74 | ? | 12 SOUTH TAPROOM &AMP; GRILL
+    Note: Client meeting dinner at 12 South Taproom & Grill.
+
+2024-10-30 | $    49.24 | ? | DD *DOORDASH TACOBAMBA
+    Note: Lunch meeting with artist during focus time session.
+
+2024-10-30 | $    32.93 | ? | MIDJOURNEY INC.
+    Note: AI visuals for Down Home marketing materials.
+
+2024-10-31 | $    67.97 | ? | DD *DOORDASH KALAMATAS
+    Note: Lunch meeting for project discussions with team on 10/31.
+
+2024-11-01 | $    19.76 | ? | EXPENSIFY INC.
+    Note: Expense for using Expensify for expense management.
+
+2024-11-01 | $    25.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music project management.
+
+2024-11-01 | $    21.00 | ? | METROPOLIS PARKING
+    Note: Parking for CMS Nashville meeting on 11/1.
+
+2024-11-01 | $    52.68 | ? | NOTION LABS INC.
+    Note: Notion subscription for project management and organization.
+
+2024-11-01 | $    23.27 | ? | SH NASHVILLE - OTHER
+    Note: Lunch meeting at Soho House for CMS Nashville project.
+
+2024-11-03 | $    25.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music industry analytics and management.
+
+2024-11-04 | $    39.87 | ? | CORNER PUB
+    Note: Dinner meeting for Anne-Marie's birthday and Music City Rodeo discussion.
+
+2024-11-06 | $    23.21 | ? | PMC - PAID PARKING
+    Note: Parking for meetings with Philip Alms and other clients.
+
+2024-11-06 | $   102.26 | ? | SH NASHVILLE F&AMP;B
+    Note: Meeting with Philip Alms at Soho House Nashville.
+
+2024-11-07 | $    50.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music publishing and artist management.
+
+2024-11-07 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for meetings with Ben Kline and Firebird.
+
+2024-11-07 | $    20.64 | ? | SQ *CANNERY HALL
+    Note: Coffee meeting with Ben Kline to discuss artist management.
+
+2024-11-07 | $    12.46 | ? | SQ *DISTRICT COFFEE
+    Note: Coffee meeting with Ben Kline for artist management discussion.
+
+2024-11-08 | $    10.00 | ? | CALENDARBRIDGE
+    Note: CalendarBridge subscription for managing artist birthday reminders.
+
+2024-11-08 | $    25.57 | ? | DD *DOORDASH LASPALMAS
+    Note: Lunch delivery for Tom and Doug's birthday celebrations.
+
+2024-11-08 | $    10.99 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on Tom and Doug's birthdays.
+
+2024-11-08 | $    45.24 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for Tom and Doug's birthdays.
+
+2024-11-08 | $    13.13 | ? | SPOTIFY USA
+    Note: Spotify subscription for music research and artist management.
+
+2024-11-09 | $    50.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for music project management.
+
+2024-11-12 | $   176.99 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussions.
+
+2024-11-12 | $   361.72 | ? | SH NASHVILLE F&AMP;B
+    Note: Meeting and birthday celebration at Soho House for client relations.
+
+2024-11-13 | $ 1,043.66 | ? | GIVERGY: CHARITY EVENT
+    Note: Donation for Givergy charity event supporting local music initiatives.
+
+2024-11-13 | $    15.99 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on 11/13 with clients.
+
+2024-11-13 | $     9.00 | ? | SOURCEGRAPH INC
+    Note: Sourcegraph subscription for music project collaboration tools.
+
+2024-11-13 | $    42.01 | ? | SQ *THE PERCH
+    Note: Birthday lunch for Sarah Moore Pivetta, client relationship building.
+
+2024-11-14 | $   279.44 | ? | 12 SOUTH TAPROOM &AMP; GRILL
+    Note: Client meeting meal with Wesley before film and TV discussions.
+
+2024-11-14 | $    27.44 | ? | ANTHROPIC
+    Note: AI assistant subscription for contract writing and research.
+
+2024-11-14 | $     5.00 | ? | CLOUDFLARE
+    Note: Cloudflare fee for website hosting related to Down Home operations.
+
+2024-11-14 | $    15.99 | ? | METROPOLIS PARKING
+    Note: Parking for meetings with Wesley and Joel on 11/14.
+
+2024-11-14 | $     7.76 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House with Wesley for project discussion.
+
+2024-11-15 | $    29.40 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on 11/15 with Rae Del Bianco.
+
+2024-11-15 | $    15.99 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on 11/15 with Rae Del Bianco.
+
+2024-11-15 | $    16.80 | ? | SH NASHVILLE - OTHER
+    Note: Dinner meeting with Rae Del Bianco at Soho House.
+
+2024-11-16 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for meeting at Metropolis with potential artist collaborator.
+
+2024-11-17 | $    47.34 | ? | BROADWAY BREWHOUSE DOWNTO
+    Note: Client meeting dinner with artists at Broadway Brewhouse.
+
+2024-11-18 | $    32.93 | ? | Midjourney
+    Note: AI visuals for artist promotion and marketing materials.
+
+2024-11-18 | $   160.00 | ? | CHARTMETRIC
+    Note: Chartmetric subscription for artist analytics and tracking.
+
+2024-11-19 | $    30.69 | ? | MARSH HOUSE
+    Note: Dinner meeting with Steiners to discuss upcoming projects.
+
+2024-11-20 | $   100.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for event planning and artist management.
+
+2024-11-20 | $    20.66 | ? | METROPOLIS PARKING
+    Note: Parking for Nashville Bourbon Auction and pitch meeting.
+
+2024-11-21 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for meetings on November 21 at Metropolis.
+
+2024-11-21 | $    34.96 | ? | PARKING OMNI NASHVILLE PA
+    Note: Parking for meetings on 11/21 related to film & TV project.
+
+2024-11-22 | $    34.90 | ? | SH NASHVILLE - OTHER
+    Note: Soho House meeting with Abbi about upcoming artist projects.
+
+2024-11-22 | $    59.46 | ? | SH NASHVILLE - OTHER
+    Note: Meeting with Abbi at Soho House for artist management discussions.
+
+2024-11-22 | $    15.51 | ? | SH NASHVILLE - OTHER
+    Note: Meeting with Abbi at Soho House Nashville.
+
+2024-11-23 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for meetings in downtown Nashville.
+
+2024-11-24 | $    21.95 | ? | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for writing and research tasks.
+
+2024-11-24 | $    52.99 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for Chris's birthday celebration.
+
+2024-11-25 | $    72.89 | ? | CORNER PUB
+    Note: Birthday dinner meeting for Chris Fabiani and team.
+
+2024-11-25 | $    51.98 | ? | CORNER PUB
+    Note: Birthday dinner for Chris Fabiani, discussing artist management strategies.
+
+2024-11-25 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for Chris Fabiani's birthday meeting and Zoom discussion.
+
+2024-11-25 | $    38.78 | ? | SH NASHVILLE - OTHER
+    Note: Soho House meeting for Chris's birthday and project discussions.
+
+2024-11-26 | $    26.25 | ? | METROPOLIS PARKING
+    Note: Parking for Songscapes event on November 26.
+
+2024-11-27 | $    12.84 | ? | PMC - PAID PARKING
+    Note: Parking for Nashville meeting on December 2-4.
+
+2024-11-27 | $   884.98 | ? | SOUTHWES 5262584463367
+    Note: Southwest flight for Nashville meetings on December 2-4.
+
+2024-11-29 | $   123.17 | ? | GOLDEN NUGGET HOTEL LV
+    Note: Hotel stay for NFR event, Brian Kaplan.
+
+2024-11-30 | $   100.00 | ? | IM-ADA.AI
+    Note: AI tool subscription for artist management tasks.
+
+2024-11-30 | $    32.93 | ? | MIDJOURNEY INC.
+    Note: AI visuals for album artwork planning.
+
+2024-12-01 | $    19.76 | ? | EXPENSIFY INC.
+    Note: Expense for using Expensify for financial management tools.
+
+================================================================================
+MISSING RECEIPT FORMS NEEDED
+================================================================================
+2024-09-11 | $    40.00 | SWA*UPGBOARD5264253430990
+    Purpose: Hotel stay for Blake's birthday celebration and industry networking.
+2024-09-11 | $    40.00 | SWA*UPGBOARD5264253431024
+    Purpose: Birthday trip for client, Blake Chancey, at Golden Nugget.

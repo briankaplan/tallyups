@@ -1,0 +1,216 @@
+[
+  {
+    "merchant": "test restaurant",
+    "original": "Business expense",
+    "corrected": "Dinner with investors from Skydance",
+    "context": {
+      "amount": 200.0
+    },
+    "timestamp": "2025-12-10T22:55:09.581641"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-10T22:55:09.584231"
+  },
+  {
+    "merchant": "test restaurant",
+    "original": "Business expense",
+    "corrected": "Dinner with investors from Skydance",
+    "context": {
+      "amount": 200.0
+    },
+    "timestamp": "2025-12-10T22:55:21.660790"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-10T22:55:21.685334"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-10T22:55:35.540514"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-11T12:15:16.466001"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-11T12:17:23.023109"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-14T10:22:05.709810"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-14T10:23:28.615950"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-14T10:31:47.800699"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-14T10:34:55.137813"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-14T10:40:52.978108"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-14T10:57:35.334942"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T22:20:23.406752"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T22:29:58.419325"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T22:33:08.576861"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T22:35:10.233200"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T23:19:20.678750"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T23:22:56.904035"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T23:25:36.956359"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T23:29:03.936419"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T23:31:23.411309"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T23:35:04.770152"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T23:38:08.613233"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T23:57:17.062141"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-20T23:59:13.725833"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-21T00:28:54.867927"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-21T00:36:45.720517"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-21T00:42:55.237198"
+  },
+  {
+    "merchant": "soho house",
+    "original": "expense",
+    "corrected": "Networking dinner at Soho House with industry contacts",
+    "context": {},
+    "timestamp": "2025-12-21T00:48:05.925084"
+  }
+]

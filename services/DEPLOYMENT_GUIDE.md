@@ -30,12 +30,12 @@ R2_PUBLIC_URL=https://pub-946b7d51aa2c4a0fb92c1ba15bf5c520.r2.dev
 R2_CUSTOM_DOMAIN=
 
 # Gmail OAuth Credentials
-GMAIL_CREDENTIALS_DOWNHOME=credentials/downhome_gmail.json
-GMAIL_TOKEN_DOWNHOME=credentials/token_downhome.json
+GMAIL_CREDENTIALS_BUSINESS=credentials/business_gmail.json
+GMAIL_TOKEN_BUSINESS=credentials/token_business.json
 GMAIL_CREDENTIALS_PERSONAL=credentials/personal_gmail.json
 GMAIL_TOKEN_PERSONAL=credentials/token_personal.json
-GMAIL_CREDENTIALS_MCR=credentials/mcr_gmail.json
-GMAIL_TOKEN_MCR=credentials/token_mcr.json
+GMAIL_CREDENTIALS_MCR=credentials/sec_gmail.json
+GMAIL_TOKEN_MCR=credentials/token_sec.json
 ```
 
 ### 3. Verify Installation
@@ -85,9 +85,9 @@ For each Gmail account (3 total):
 mkdir -p credentials
 
 # Copy downloaded credentials
-cp ~/Downloads/client_secret_*.json credentials/downhome_gmail.json
+cp ~/Downloads/client_secret_*.json credentials/business_gmail.json
 cp ~/Downloads/client_secret_*.json credentials/personal_gmail.json
-cp ~/Downloads/client_secret_*.json credentials/mcr_gmail.json
+cp ~/Downloads/client_secret_*.json credentials/sec_gmail.json
 ```
 
 ### Step 4: Authenticate Accounts
@@ -104,9 +104,9 @@ python services/gmail_receipt_service.py receipts.db
 ```
 
 **Important:** You must authenticate ALL 3 accounts:
-- brian@downhome.com
+- brian@business.com
 - kaplan.brian@gmail.com
-- brian@musiccityrodeo.com
+- brian@secondary.com
 
 ---
 
@@ -212,9 +212,9 @@ pip install google-auth google-auth-oauthlib google-api-python-client
 # Check credentials exist
 ls -la credentials/
 # Should show:
-# downhome_gmail.json
+# business_gmail.json
 # personal_gmail.json
-# mcr_gmail.json
+# sec_gmail.json
 ```
 
 **Error: "OAuth flow failed"**
@@ -225,7 +225,7 @@ ls -la credentials/
 4. Try deleting token file and re-authenticating:
 
 ```bash
-rm credentials/token_downhome.json
+rm credentials/token_business.json
 python services/gmail_receipt_service.py receipts.db
 ```
 
@@ -415,7 +415,7 @@ python3 -c "
 from google.oauth2.credentials import Credentials
 import json
 
-with open('credentials/token_downhome.json') as f:
+with open('credentials/token_business.json') as f:
     token_data = json.load(f)
     creds = Credentials.from_authorized_user_info(token_data)
     print(f'Valid: {creds.valid}')

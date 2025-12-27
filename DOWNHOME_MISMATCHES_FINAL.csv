@@ -1,0 +1,82 @@
+index,date,amount,merchant,description,receipt_url,has_receipt,gemini_verdict,llama_verdict,final_status,verification_sources
+16,2024-07-01,$81.66,UBER TRIP,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-07-01_81_66.png,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,remaining_log"
+29,2024-07-14,$5.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2024-07-14_5_0.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,resume_csv"
+31,2024-07-14,$168.87,TST* IL FORNO PIZZERIA,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tst_il_forno_pizzeria_2024-07-14_168_87_3.jpg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,resume_csv"
+37,2024-07-17,$94.22,DD *DOORDASH KALAMATAS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dd_doordash_kalamatas_2024-07-17_94_22.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,resume_csv"
+42,2024-07-19,$1487.80,AUDREY - SEAN BROCK GROU,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/audrey_sean_brock_grou_2024-07-19_1487_8.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+76,2024-08-06,$18.10,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-08-06_18_1.jpg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,llama_log"
+77,2024-08-06,$84.20,TST*HOMEGROWN TAPROOM &AMP;,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tsthomegrown_taproom_amp_2024-08-06_84_2.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+89,2024-08-13,$58.21,O-KU NASHVILLE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/o_ku_nashville_2024-08-13_58_21.jpeg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,llama_log"
+90,2024-08-13,$44.32,OPTIMIST NASHVILLE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/optimist_nashville_2024-08-13_44_32_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+91,2024-08-13,$896.44,OPTIMIST NASHVILLE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/optimist_nashville_2024-08-13_896_44_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+93,2024-08-14,$15.38,MAFIAOZAS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/mafiaozas_2024-08-14_15_38_3.jpg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,llama_log"
+94,2024-08-14,$10.99,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-08-14_10_99_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+97,2024-08-14,$27.14,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-08-14_27_14.jpg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,llama_log"
+105,2024-08-17,$623.10,TM *PBR TEAMS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tm_pbr_teams_2024-08-17_623_1.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+112,2024-08-20,$27.42,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-08-20_27_42_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+121,2024-08-22,$22.51,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-08-22_22_51_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+124,2024-08-23,$79.64,CORNER PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-08-23_79_64_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+151,2024-08-28,$26.22,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-08-28_26_22.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+159,2024-08-31,$23.14,APPLE.COM/BILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-08-31_23_14_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+165,2024-09-04,$59.16,12 SOUTH TAPROOM &AMP; GRILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/12_south_taproom_amp_grill_2024-09-04_59_16.jpg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,llama_log"
+166,2024-09-04,$39.78,CORNER PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-09-04_39_78_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+167,2024-09-04,$45.15,CORNER PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-09-04_45_15.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+168,2024-09-04,$24.59,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-09-04_24_59.png,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+182,2024-09-07,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-09-07_26_25_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+187,2024-09-08,$318.00,CLEAR *CLEARME.COM,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/clear_clearmecom_2024-09-08_318_0.png,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+198,2024-09-10,$43.50,BINION'S BARS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/binions_bars_2024-09-10_43_5.jpg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,llama_log"
+208,2024-09-12,$27.22,GNLV THE GRILLE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/gnlv_the_grille_2024-09-12_27_22.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+214,2024-09-14,$5.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2024-09-14_5_0.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+221,2024-09-16,$26.22,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-09-16_26_22.png,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+227,2024-09-18,$10.99,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-09-18_10_99_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+230,2024-09-19,$14.09,AMERICANO LOUNGE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/americano_lounge_2024-09-19_14_09.png,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+234,2024-09-20,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-09-20_26_25_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+235,2024-09-21,$5.60,201 BELCOURT LOT,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/201_belcourt_lot_2024-09-21_5_6.jpg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,llama_log"
+239,2024-09-24,$21.95,CLAUDE.AI SUBSCRIPTION,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/claudeai_subscription_2024-09-24_21_95.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+242,2024-09-25,$5.18,LAZGO NASHVILLE M32180,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/lazgo_nashville_m32180_2024-09-25_5_18.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+243,2024-09-25,$26.22,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-09-25_26_22.png,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+245,2024-09-25,$20.00,THE GATEWAY TO NASHVILLE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/the_gateway_to_nashville_2024-09-25_20_0.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+250,2024-09-30,$50.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-09-30_50_0.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+255,2024-10-02,$10.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-10-02_10_0.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+256,2024-10-03,$20.76,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-10-03_20_76.png,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+259,2024-10-03,$27.40,TST*HEARTS CAFE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tsthearts_cafe_2024-10-03_27_4.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+261,2024-10-04,$23.14,APPLE.COM/BILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-10-04_23_14_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+262,2024-10-04,$25.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-10-04_25_0.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+264,2024-10-04,$23.27,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-10-04_23_27.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+270,2024-10-08,$50.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-10-08_50_0.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+274,2024-10-10,$123.79,12 SOUTH TAPROOM &AMP; GRILL,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/12_south_taproom_amp_grill_2024-10-10_123_79_3.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+276,2024-10-11,$24.22,DD *DOORDASH LASPALMAS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dd_doordash_laspalmas_2024-10-11_24_22.jpg,Yes,RATE_LIMITED,MISMATCH,MISMATCH,"gemini_csv,llama_log"
+278,2024-10-11,$27.14,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-10-11_27_14.jpg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,llama_log"
+279,2024-10-11,$62.04,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-10-11_62_04.jpg,Yes,MISMATCH,MISMATCH,MISMATCH,"gemini_csv,targeted_csv,llama_log"
+299,2024-10-25,$27.00,BONHOMME PLACE GARAGE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/bonhomme_place_garage_2024-10-25_27_0.png,Yes,MISMATCH,,MISMATCH,targeted_csv
+305,2024-10-28,$60.00,JJK FOUNDATION,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/jjk_foundation_2024-10-28_60_0.jpg,Yes,MISMATCH,,MISMATCH,targeted_csv
+341,2024-11-15,$29.40,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-15_29_4.jpg,Yes,MISMATCH,,MISMATCH,targeted_csv
+351,2024-11-20,$20.66,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-20_20_66.jpg,Yes,MISMATCH,,MISMATCH,targeted_csv
+368,2024-11-29,$123.17,GOLDEN NUGGET HOTEL LV,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/golden_nugget_hotel_lv_2024-11-29_123_17.png,Yes,MISMATCH,,MISMATCH,targeted_csv
+385,2024-12-04,$46.32,CURB LV TAXI YCS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/curb_lv_taxi_ycs_2024-12-04_46_32.jpg,Yes,MISMATCH,,MISMATCH,targeted_csv
+390,2024-12-05,$34.44,DESERT CAB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/desert_cab_2024-12-05_34_44.jpg,Yes,MISMATCH,,MISMATCH,targeted_csv
+395,2024-12-06,$29.87,CURB LV TAXI YCS,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/curb_lv_taxi_ycs_2024-12-06_29_87.jpg,Yes,MISMATCH,,MISMATCH,targeted_csv
+420,2024-12-13,$9.00,SOURCEGRAPH INC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2024-12-13_9_0.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+422,2024-12-14,$5.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2024-12-14_5_0.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+426,2024-12-16,$45.24,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-12-16_45_24.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+433,2024-12-19,$130.12,CORNER PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-12-19_130_12_3.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+443,2024-12-25,$44.25,SHOEBOXED.* TRIAL PROF,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/shoeboxed_trial_prof_2024-12-25_44_25_3.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+453,2025-01-06,$72.38,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-01-06_72_38.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+454,2025-01-06,$13.50,THE DONELSON PUB,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/the_donelson_pub_2025-01-06_13_5.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+458,2025-01-08,$10.00,CALENDARBRIDGE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/calendarbridge_2025-01-08_10_0.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+569,2025-03-09,$112.84,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-03-09_112_84.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+573,2025-03-13,$9.00,SOURCEGRAPH INC,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2025-03-13_9_0.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+575,2025-03-14,$10.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-03-14_10_0.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+581,2025-03-21,$15.99,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-03-21_15_99_3.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+595,2025-03-28,$299.88,ELEMENTOR.COM,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/elementorcom_2025-03-28_299_88.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+609,2025-04-04,$15.15,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-04-04_15_15.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+610,2025-04-04,$26.25,METROPOLIS PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-04-04_26_25_3.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+613,2025-04-04,$11.68,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-04-04_11_68.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+614,2025-04-04,$37.63,SH NASHVILLE - OTHER,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2025-04-04_37_63.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+625,2025-04-10,$217.40,TST*GREEN HILLS GRILLE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tstgreen_hills_grille_2025-04-10_217_4.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+773,2025-08-09,$40.39,PMC - PAID PARKING,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2025-08-09_40_39_3.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+775,2025-08-14,$10.00,CLOUDFLARE,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2025-08-14_10_00.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv
+803,2024-09-28,$25.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-09-28_25_0.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+811,2024-09-28,$25.00,IM-ADA.AI,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-09-28_25_0_2.jpg,Yes,MISMATCH,,MISMATCH,"gemini_csv,targeted_csv"
+823,2024-11-18,$32.93,Midjourney,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/receipt_19a2665bba37_att1.jpg,Yes,MISMATCH,,MISMATCH,targeted_csv
+824,2025-11-21,$32.93,midjourney,,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/receipt_198ec087021a_att1.jpg,Yes,MISMATCH,,MISMATCH,gemini_csv

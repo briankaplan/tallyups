@@ -541,8 +541,8 @@ def api_reports_dashboard():
         cursor.execute('''
             SELECT
                 CASE
-                    WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
-                    WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                    WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                    WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
                     WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
                     WHEN business_type = 'Personal' THEN 'Personal'
                     ELSE 'Personal'
@@ -673,8 +673,8 @@ def api_business_summary():
         cursor.execute('''
             SELECT
                 CASE
-                    WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
-                    WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                    WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                    WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
                     WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
                     WHEN business_type = 'Personal' THEN 'Personal'
                     ELSE 'Personal'

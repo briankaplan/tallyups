@@ -1,0 +1,2534 @@
+{
+  "rules": {
+    "dd doordash dollargen": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "doordash": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "dollar general": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dd doordash cvs": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "medical"
+    },
+    "cvs": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "medical"
+    },
+    "peppermill front desk": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "peppermill resort spa casino": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "southwes 5262533925711": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwest airlines": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "ai_tools"
+    },
+    "here'": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dd doordash baycities": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "noah's new york bagels via doordash": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "dd doordash noahsnewy": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "flora - bama": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "flora-bama": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the wharf f&amp;b": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the wharf fampb": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the wharf f&b": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "uber trip": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "rideshare"
+    },
+    "uber": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "rideshare"
+    },
+    "uber *trip help.uber.com": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "rideshare"
+    },
+    "apple.com/bill": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "tech"
+    },
+    "apple/app store": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "apple": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "tech"
+    },
+    "chartmetric, inc.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "chartmetric": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "expensify": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "expensify inc.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "lulu's": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "lulus landing inc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst* pyramids cafe - airp": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "pyramids cafe - airport": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "lyft *ride tue 4am": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "rideshare"
+    },
+    "lyft": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "rideshare"
+    },
+    "slim & husky's": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "slim &amp; huskies": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "slim & huskies": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262535334395": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwest": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "travel"
+    },
+    "app store": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "disco": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "calendarbridge": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "spotify": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "spotify usa": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "midjourney inc.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "midjourney inc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "midjourney": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "cloudflare": {
+      "type": "down_home",
+      "confidence": 0.88,
+      "category": "general"
+    },
+    "prime video channels": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "apple store": {
+      "type": "personal",
+      "confidence": 0.91,
+      "category": "tech"
+    },
+    "tst* il forno pizzeria": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "il forno pizzeria": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "clear": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "clear *clearme.com": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "amazon prime*rs5ou2471": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "purchase interest charge": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "chase interest charge": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dd *doordash kalamatas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "kalamata's": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "metropolis parking": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "laz parking m32810": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "metropolis": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "audrey - sean brock grou": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "audrey & june": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "margarita house bar": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "apple.com": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "tech"
+    },
+    "park happy": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "park happy llc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "claude pro": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "claude.ai subscription": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "claude ai": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "char green hills": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "char-nashville": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "pmc parking": {
+      "type": "down_home",
+      "confidence": 0.97,
+      "category": "parking"
+    },
+    "pmc - paid parking": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "rostr, inc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "rostr pro": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "imdb.com, inc.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "imdbpro": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "soho house nashville": {
+      "type": "down_home",
+      "confidence": 0.99,
+      "category": "general"
+    },
+    "sh nashville - other": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "apple.com services": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "carta north garage": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "flash carta north": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "1201 garage": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "parking management co.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "sh nashville f&amp;b": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*nadeens hermitage ha": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "vanderbilt university medical center": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "med*vanderbilt university": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*homegrown taproom &": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*homegrown taproom &amp;": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "homegrown taproom & kitchen": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "pmc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "spotify usa inc.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "tst*green hills grille": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "dining"
+    },
+    "green hills grille": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "dd *doordash edleysbar": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "edley's bar-b-que": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "10/11/25.12.59am": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dd *doordash jimnnicks": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "suno inc.": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "suno": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "late fee": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "o-ku nashville": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "optimist nashville": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "mafiaozas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "2024 03.12.27 0ooo gmt": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "wf*mtjulietdentistry": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "amazon prime*ru4d733w0": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "pbr: nashville stampede days": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tm *pbr teams": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "losers - downtown": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*losers - downtown": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*pancho and leftys ca": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "pancho leftys": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "chase payment": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "payment thank you - web": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "linkedin job 9849229796": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "linkedin corporation": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "charles tyrwhitt": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "charles tyrwhitt inc.": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "corner pub green hills": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "corner pub": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "nordstrom": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "nordstrom direct #0808": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "suitsupply": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "buck mason": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "anthropic": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "itunes store": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sonofatailor.com": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "apple services": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "southwes 5262554636372": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262554636538": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262554639287": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262554639394": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262554639613": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "paige llc": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "chuy's 110": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "chuy's": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "guardianbikes": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "guardian bikes": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "amazon": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "tech"
+    },
+    "sq *high point coffee tn": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "12 south taproom": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "12 south taproom &amp; grill": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "12 south taproom & grill": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "the well coffeehouse": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sq *well coffeehouse bren": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "golden nugget hotel lv": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "golden nugget las vegas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "amazon mktpl*z82mq1z72": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "amazon mktpl*zt49g6ih0": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "nordstrom the mall at green hills": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "nordstrom #0759": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "southwes 5262558734553": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262558734943": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "virtual consultation": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "front bar binions gambling hall & hotel": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "binion's bars": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "del friscos grill nashvl": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "cadillac bar las vegas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "cadillac bar": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "southwes 5262559542910": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262559543118": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "swa*upgboard5264253430990": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "swa*upgboard5264253431024": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "pyramids caf\u00e9 - airport": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "uber *trip": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "rideshare"
+    },
+    "the grille las vegas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "gnlv the grille": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "away": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "audible*eg9u55603": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "parkingmanagementcompany": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "truist plaza": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "stoppingby": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "martin's bar-b-que joint": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "tst*martins bar-b-que jo": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "americano lounge": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "travel"
+    },
+    "201 belcourt lot": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "lazgo nashville m32180": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "lazgo": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the gateway to nashville": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cursor": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "im-ada.ai": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "ada ai": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "tst* the greenhouse bar": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "the greenhouse": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "bongo java belmont": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*bongo java belmont": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "imadaai": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "n/a": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "replit inc.": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst* smokin thighs llc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "smokin thighs": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*hearts cafe": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "hearts cafe": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "s7.00": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dd *doordash laspalmas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "las palmas mexican restaurant": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "sh nashville other 2024 10 11 500": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sourcegraph": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sourcegraph inc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sourcegraph, inc.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "academy of country music": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "academy of country mus": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "audible*3z1515tz3": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "runway standard plan": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "runway ai, inc.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "belcourt lot 201": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "tst*fido bongo java": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "fido": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "bonhomme place garage": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "apple app store": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "le meridien st. louis clayton": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "le meridien st. louis": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "gamestop 7623": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "jjk foundation": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "taco bamba": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dd *doordash tacobamba": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "notion labs inc.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "notion labs, inc.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "py *trimlight nashville": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cannery hall": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sq *cannery hall": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sq *district coffee": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "district coffee": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tacos por favor": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "givergy: nashville bourbon auction to benefit nashvillehealth": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "givergy: charity event": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sq *the perch": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the perch": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "audible*c56xe5hn3": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "broadway brewhouse downto": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "broadway brewhouse downtown": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "marsh house": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "pmc paid parking": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "parking omni nashville pa": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "omni nashville": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the original corner pub": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "southwes 5262584463367": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "golden nugget hotel lv 2024 11 29 1015151515": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "amzn mktp us*z326k25q1": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "so pt catalina bar": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "the urban juicer": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "wendy's restaurant #6527": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "wendys #652": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "blue ribbon las vegas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cosmopol-blue ribbon": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "resorts world": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "rwlv rw store hilton": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "starbucks": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "starbucks 65853": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "curb lv taxi nellis": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "rideshare"
+    },
+    "nellis cab": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "rideshare"
+    },
+    "curb lv taxi ycs": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "rideshare"
+    },
+    "national": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "professional rodeo cowbo": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "professional rodeo cowboy": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "amazon.com*zr2c09zc2": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "amazoncomzr2c09zc2": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "bonanno's pizzeria mgm dome": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "bonannos ny pizzeria d": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "chick-fil-a las vegas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "chick-fil-a": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "desert cab": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "rideshare"
+    },
+    "las vegas convention ctr": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sp schaefer outfitte": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the cosmopolitan": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cosmopol-bang bar": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "curb lv taxi ycs 2024 12 06 700": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "rideshare"
+    },
+    "not listed (implied taxi service)": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "rideshare"
+    },
+    "port of subs 0053": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "port of subs #053": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "starbucks store 00661": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cursor ai powered ide": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "desert star bar": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "desert star lounge": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "hoteltonight for virgin hotels las vegas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "hoteltonight*virgin ho": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "pizza forte hard rock": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "pizza forte": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262587584631": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "vhlv-chow fun": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "vhlv-kitchen at common": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "vhlv-lodging": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sourcegraph inc 2024 11": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "amazon mktpl*z12m40p52": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "audible*z14989w12": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*crows nest": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "crow's nest": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "w nashville": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "rostr pro* trial over": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "amazon mktpl*z954y0gi0": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "cursor usage mid jun": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "pika.art": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "prika": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "shoeboxed trial prof": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "shoeboxed.* trial prof": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "little caesars": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "little caesars 1890-0003": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "del frisco's grille": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "del friscos gril brntwod": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the goat mount juliet": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "unknown - address suggests nashville, tn business": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the donelson pub": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "cursor ai": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "sq *monamie coffee": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "monamie coffee": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*diceys tavern - nas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dicey's pizza & tavern - chicago": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "amzn mktp us": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "jersey mikes online uc 2025 01 15 600": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "jersey mikes online uc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "audible*z59zq9dz0": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "melrose billiard parlor": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst* melrose billiard par": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "barlines omni nashville hotel": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "barlines omni nashvill": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "pika": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "shoeboxedcom": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "shoeboxed.com": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "cursor usage jan": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "shopify": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "shopify* 326422835": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262307132361": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sohb house": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*browns diner": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "first watch 0462 2025 02 07 600": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "first watch - 0462": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "4289 tony &amp; bennys": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tony & bennys": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "4289 tony & bennys": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "arthouse hotel new york c": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "arthouse hotel new york city": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "hoteltonight*arthouse": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "hoteltonight - arthouse hotel new york city": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "breads bakery upper east side": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sq *breads bakery upper e": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst* pura vida williamsbu": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "hamilton's kitchen": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "audible*ri2246v93": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the alfond inn at rollins": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "cursor usage mid feb 2025 02 20 700": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "cursor usage mid feb": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "atha mnuae": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sh nashville": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "anthropic, pbc - claude pro": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "hattiebs": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst* bootleggers inn": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "bootleggers inn": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "cambria": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst* tn731 - cambria - na": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "jersey oven bagels": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "google *gsuite_musicci": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "google llc 2025": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "cursor usage feb": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "shopify* 338140302": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sir speedy music city 2025 03 05 1004347826": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sir speedy music city": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "taco bell #723232": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sh nashville other 2025 03 06 500": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst* just love coffee - m": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "just love coffee m 2025 03 06 900": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "apple.com/us": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "cursor ai powered ide 2025 03 07 700": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "easyfaq.io": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "easyfaqio": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "easyfaq": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "laz parking m32180-flowb": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "nashville": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cursor usage mid mar": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "jelly rolls good night na": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "good night nashville": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "uncle julio's brentwood": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "audible*yy4hr14q3": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "hive": {
+      "type": "music_city_rodeo",
+      "confidence": 0.92,
+      "category": "general"
+    },
+    "hive co": {
+      "type": "music_city_rodeo",
+      "confidence": 0.92,
+      "category": "general"
+    },
+    "hugging face": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "hugging face inc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "huggingface": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262325012995": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "two hands nashvill 2025 03 22 700": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst* two hands - nashvill": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "heads or tails": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "holiday inn nrg/medica": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "holiday inn houston nrg - houad sidelines bar": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "anthropic, pbc": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "shipley donuts": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dd *doordash shipleydo": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "hoteltonight*holiday i": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "hoteltonight holiday inn": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "obsidian": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "obsidian.md": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "elementor.com": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "envato *70322639": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "elementor ltd.": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "htl*springhillsuit": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "springhill suites by marriott fort worth historic stockyards": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "google workspace": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "nashville boot co.": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sh nashville other 2025 04 04 500": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cursor usage mar": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "cursor usage mid apr": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "southwes 5262331370012": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "topaz labs": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "topaz labs software": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "hoteltonight for holiday inn arlington northeast rangers ballpark": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "kit.com": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "kit": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "texas bb club level": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "texas rangers pos order": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*white rhino coffee -": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "ycv vf": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "049 torchys north arlingt": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dd *doordash brothersp": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "delivery"
+    },
+    "brother's pizza": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "national car rental": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "zoom.com 888-799-9666": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "zoom communications, inc.": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "zoomcom": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "audible*8e28h6z43": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "southwes 5262336286732": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "ls the best hat store": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cowboy channel plus": {
+      "type": "personal",
+      "confidence": 0.86,
+      "category": "general"
+    },
+    "cowboy channel +": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*river ranch stockyar": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "mnaa parking 2023": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "moe's southwest grill": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "moes sw grill/manchu w": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "stockyard saloon": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "every studio": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "rentaltoll240384544": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cursor usage apr": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "cursor usage apr 2025 05 07 400": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "virgin hotel - commons": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "virgin hotel commons 2025 05 09 600": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "vzwrlss*prepaid pymnt": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "pond5": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "taskade": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "responsive menu pro": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "responsive-menu-pro-4": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "retrosupply": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "roseanna sales photography": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sq *roseanna sales photog": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "aifyxercom": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "ai.fyxer.com": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "ai_tools"
+    },
+    "sp myfonts inc": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cambria hotel nashville d": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "cent aishetlle acte": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "server zackary c": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "michaels": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "michaels #9490": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cambria hotel nashville downtown": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "gruhn guitars": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "bestbuy.com": {
+      "type": "music_city_rodeo",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "dashlane": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "dashlane u* dashlane p": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "annual membership fee": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cambria hotel nashville": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "hotel"
+    },
+    "google llc": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "valet tips": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cursor usage may": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "vzwrlss*prpay autopay": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tst*the flower kitchen": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "the flower kitchen": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "dining"
+    },
+    "la fresh food": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "greenwaykia hickhollow": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "cursor october": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "brian's org - mongodb": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "mongodbcloud brians...": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "uber *eats": {
+      "type": "down_home",
+      "confidence": 0.7,
+      "category": "delivery"
+    },
+    "amazon mktpl*zi7dn13i3": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "tech"
+    },
+    "tst*lemongrass sushi and": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "lemongrass sushi and thai": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "verizon wireless": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "vzwrlss*etm sct1456901": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "mongodb atlas": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "tn orofacial pain": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "sodexo at belmont university": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "sodexo at belmont univer": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "audible*ie6q69ne3": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "davinci ai": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "ai_tools"
+    },
+    "ideogram ai": {
+      "type": "down_home",
+      "confidence": 0.85,
+      "category": "ai_tools"
+    },
+    "gamestop .com #0480": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "2the forum-levy fb-s4": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "vertis commercial garage": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "parking"
+    },
+    "hattie b's": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "the ups store": {
+      "type": "music_city_rodeo",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "belcourt luke ii": {
+      "type": "down_home",
+      "confidence": 1.0,
+      "category": "general"
+    },
+    "runway": {
+      "type": "personal",
+      "confidence": 0.85,
+      "category": "general"
+    },
+    "paramount+": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "paramount plus": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "stormwatch": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "stormwatch+": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "walgreens": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "medical"
+    },
+    "vanderbilt": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "medical"
+    },
+    "vanderbilt med": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "medical"
+    },
+    "netflix": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "hulu": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "disney+": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "streaming"
+    },
+    "kroger": {
+      "type": "personal",
+      "confidence": 1.0,
+      "category": "groceries"
+    },
+    "target": {
+      "type": "personal",
+      "confidence": 0.95,
+      "category": "retail"
+    },
+    "walmart": {
+      "type": "personal",
+      "confidence": 0.95,
+      "category": "retail"
+    }
+  },
+  "metadata": {
+    "total_merchants": 492,
+    "source": "transactions.json",
+    "generated": "2025-12-10"
+  }
+}

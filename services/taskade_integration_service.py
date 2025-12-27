@@ -35,7 +35,7 @@ PROJECTS = {
     'today': 'KaQUiX8RDjs45aS3',       # 🗓️ TODAY - Daily Command Center
     'finance': 'Y7pcw5ZkbWPHqQ7o',     # 💰 FINANCE - Money Management
     'family': 'hyY8yA7L3NqmXbno',      # 👨‍👩‍👧 FAMILY - Kids, School, Home
-    'work': 'BNK1KykggEEsPmCs',        # 💼 WORK - MCR & Down Home
+    'work': 'BNK1KykggEEsPmCs',        # 💼 WORK - MCR & Business
     'personal': '591XcLXTFf2LrmKA',    # 🏠 PERSONAL - Life Admin
     'creative': 'r5pd54kVd8GciDNd',    # 🎨 CREATIVE - Content Pipeline
     'health': '4v5uBsAzbkTrVRy2',      # ❤️ HEALTH - Wellness Tracking
@@ -443,7 +443,7 @@ class TaskadeIntegration:
             return 'family'
 
         # Work-related
-        if any(word in content_lower for word in ['meeting', 'call', 'down home', 'mcr', 'client', 'partner']):
+        if any(word in content_lower for word in ['meeting', 'call', 'business', 'sec', 'client', 'partner']):
             return 'work'
 
         # Creative-related

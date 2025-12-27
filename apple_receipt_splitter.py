@@ -35,45 +35,45 @@ RECEIPTS_DIR = BASE_DIR / "receipts"
 # Items that are clearly business-related for Brian Kaplan
 BUSINESS_SUBSCRIPTIONS = {
     # AI & Productivity
-    'chatgpt': 'Down Home',
-    'openai': 'Down Home',
-    'claude': 'Down Home',
-    'anthropic': 'Down Home',
-    'midjourney': 'Down Home',
-    'runway': 'Down Home',
-    'taskade': 'Down Home',
-    'notion': 'Down Home',
-    'obsidian': 'Down Home',
-    'craft': 'Down Home',
+    'chatgpt': 'Business',
+    'openai': 'Business',
+    'claude': 'Business',
+    'anthropic': 'Business',
+    'midjourney': 'Business',
+    'runway': 'Business',
+    'taskade': 'Business',
+    'notion': 'Business',
+    'obsidian': 'Business',
+    'craft': 'Business',
 
     # Business Tools
-    'linkedin': 'Down Home',
-    'slack': 'Down Home',
-    'zoom': 'Down Home',
-    'microsoft 365': 'Down Home',
-    'office': 'Down Home',
-    'canva': 'Down Home',
-    'adobe': 'Down Home',
-    'figma': 'Down Home',
+    'linkedin': 'Business',
+    'slack': 'Business',
+    'zoom': 'Business',
+    'microsoft 365': 'Business',
+    'office': 'Business',
+    'canva': 'Business',
+    'adobe': 'Business',
+    'figma': 'Business',
 
     # Security & VPN (for business travel)
-    'nordvpn': 'Down Home',
-    'expressvpn': 'Down Home',
-    '1password': 'Down Home',
-    'lastpass': 'Down Home',
+    'nordvpn': 'Business',
+    'expressvpn': 'Business',
+    '1password': 'Business',
+    'lastpass': 'Business',
 
     # Development
-    'github': 'Down Home',
-    'cursor': 'Down Home',
-    'copilot': 'Down Home',
-    'xcode': 'Down Home',
+    'github': 'Business',
+    'cursor': 'Business',
+    'copilot': 'Business',
+    'xcode': 'Business',
 
     # Music Industry
-    'splice': 'Down Home',
-    'distrokid': 'Down Home',
-    'soundcloud': 'Down Home',
-    'bandcamp': 'Down Home',
-    'spotify for artists': 'Down Home',
+    'splice': 'Business',
+    'distrokid': 'Business',
+    'soundcloud': 'Business',
+    'bandcamp': 'Business',
+    'spotify for artists': 'Business',
 }
 
 # Items that are clearly personal
@@ -119,7 +119,7 @@ MIXED_SUBSCRIPTIONS = {
 
 def classify_subscription(app_name: str, description: str = "") -> Tuple[str, str]:
     """
-    Classify a subscription as Personal or Business (Down Home).
+    Classify a subscription as Personal or Business (Business).
 
     Returns: (business_type, reasoning)
     """
@@ -147,7 +147,7 @@ def classify_subscription(app_name: str, description: str = "") -> Tuple[str, st
     # Default: assume business for productivity apps
     productivity_hints = ['pro', 'premium', 'business', 'professional', 'plus', 'team']
     if any(hint in app_lower or hint in desc_lower for hint in productivity_hints):
-        return ('Down Home', "Productivity subscription (likely business)")
+        return ('Business', "Productivity subscription (likely business)")
 
     # Unknown - flag for review
     return ('Review', "Unknown subscription - needs manual classification")
@@ -166,7 +166,7 @@ def analyze_apple_receipt(image_path: str) -> Dict[str, Any]:
                 "app_name": "ChatGPT",
                 "description": "ChatGPT Plus (Monthly)",
                 "amount": 19.99,
-                "business_type": "Down Home",
+                "business_type": "Business",
                 "reasoning": "AI business tool"
             },
             ...
@@ -265,7 +265,7 @@ Extract ALL items visible on the receipt. Return only the JSON, no other text.""
             # Sum up totals by type
             if business_type == "Personal":
                 result["personal_total"] += amount
-            elif business_type in ["Down Home", "Music City Rodeo", "EM.co"]:
+            elif business_type in ["Business", "Secondary", "EM.co"]:
                 result["business_total"] += amount
             else:
                 result["needs_review"].append(line_item)
@@ -295,7 +295,7 @@ def split_apple_receipt(image_path: str) -> Dict[str, Any]:
 
     # Group items by business type
     personal_items = [i for i in analysis["line_items"] if i["business_type"] == "Personal"]
-    business_items = [i for i in analysis["line_items"] if i["business_type"] in ["Down Home", "Music City Rodeo", "EM.co"]]
+    business_items = [i for i in analysis["line_items"] if i["business_type"] in ["Business", "Secondary", "EM.co"]]
     review_items = [i for i in analysis["line_items"] if i["business_type"] in ["Review", "Split"]]
 
     if personal_items:
@@ -311,7 +311,7 @@ def split_apple_receipt(image_path: str) -> Dict[str, Any]:
     if business_items:
         business_names = ", ".join([i["app_name"] for i in business_items])
         splits.append({
-            "business_type": "Down Home",
+            "business_type": "Business",
             "amount": analysis["business_total"],
             "tax_portion": round(analysis["tax"] * (analysis["business_total"] / analysis["subtotal"]), 2) if analysis["subtotal"] > 0 else 0,
             "items": business_items,

@@ -477,9 +477,9 @@ struct LibraryStats: Codable {
         var needs_review: Int?
         var recent: Int?
         var verified: Int?
-        var down_home: Int?
+        var business: Int?
         var personal: Int?
-        var mcr: Int?
+        var sec: Int?
     }
 
     struct IncomingReceipts: Codable {

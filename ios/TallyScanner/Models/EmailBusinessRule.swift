@@ -3,8 +3,8 @@ import Foundation
 /// Rule for automatically mapping email domains to business types
 struct EmailBusinessRule: Identifiable, Codable, Hashable {
     let id: String
-    var emailPattern: String      // e.g., "@downhomemusic.com" or "*@company.com"
-    var businessType: String      // e.g., "Down Home"
+    var emailPattern: String      // e.g., "@businessmusic.com" or "*@company.com"
+    var businessType: String      // e.g., "Business"
     var priority: Int             // Higher priority rules match first
     var isActive: Bool
     var matchCount: Int           // How many times this rule has matched

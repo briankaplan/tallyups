@@ -627,13 +627,13 @@ def get_scheduled_report_service(db=None, **kwargs) -> ScheduledReportService:
 def create_default_schedules(service: ScheduledReportService):
     """Create default scheduled reports."""
 
-    # Weekly Down Home Summary (Monday 9 AM)
-    if 'weekly_downhome' not in service.schedules:
+    # Weekly Business Summary (Monday 9 AM)
+    if 'weekly_business' not in service.schedules:
         service.create_schedule(ScheduledReport(
-            id='weekly_downhome',
-            name='Weekly Down Home Summary',
+            id='weekly_business',
+            name='Weekly Business Summary',
             frequency=ScheduleFrequency.WEEKLY,
-            business_types=['Down Home'],
+            business_types=['Business'],
             report_type='expense_detail',
             export_format='excel',
             delivery_method=ReportDeliveryMethod.SAVE_TO_DISK,

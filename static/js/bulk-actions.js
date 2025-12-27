@@ -37,11 +37,11 @@ class BulkActions {
                     <div class="bulk-section">
                         <h3>🏢 Set Business Type</h3>
                         <div class="bulk-buttons">
-                            <button class="bulk-btn" data-action="business" data-value="Down Home">
+                            <button class="bulk-btn" data-action="business" data-value="Business">
                                 <span class="btn-icon">🏠</span>
-                                <span class="btn-text">Down Home</span>
+                                <span class="btn-text">Business</span>
                             </button>
-                            <button class="bulk-btn" data-action="business" data-value="Music City Rodeo">
+                            <button class="bulk-btn" data-action="business" data-value="Secondary">
                                 <span class="btn-icon">🤠</span>
                                 <span class="btn-text">MCR</span>
                             </button>

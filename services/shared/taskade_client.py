@@ -49,7 +49,7 @@ PROJECTS = {
     'today': 'KaQUiX8RDjs45aS3',       # Daily Command Center
     'finance': 'Y7pcw5ZkbWPHqQ7o',     # Money Management
     'family': 'hyY8yA7L3NqmXbno',      # Kids, School, Home
-    'work': 'BNK1KykggEEsPmCs',        # MCR & Down Home
+    'work': 'BNK1KykggEEsPmCs',        # MCR & Business
     'personal': '591XcLXTFf2LrmKA',    # Life Admin
     'creative': 'r5pd54kVd8GciDNd',    # Content Pipeline
     'health': '4v5uBsAzbkTrVRy2',      # Wellness Tracking
@@ -138,7 +138,7 @@ TASK_ROUTING_RULES = {
 
     # Work
     'work': {
-        'keywords': ['meeting', 'call', 'down home', 'mcr', 'music city', 'rodeo',
+        'keywords': ['meeting', 'call', 'business', 'sec', 'music city', 'rodeo',
                      'client', 'partner', 'contract', 'sponsor', 'venue', 'artist'],
         'patterns': [r'zoom\s+call', r'teams\s+meet'],
     },

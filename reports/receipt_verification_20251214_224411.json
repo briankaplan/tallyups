@@ -1,0 +1,11 @@
+{
+  "generated_at": "2025-12-14T22:44:09.882143",
+  "issues": {
+    "orphaned_references": 27,
+    "amount_mismatches": 3,
+    "duplicate_attachments": 0,
+    "transactions_without_receipts": 50,
+    "receipts_without_images": 232
+  },
+  "summary": {}
+}

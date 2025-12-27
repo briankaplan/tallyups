@@ -346,13 +346,13 @@ class ContactManager:
         if business_type:
             biz_lower = business_type.lower()
 
-            if 'music city rodeo' in biz_lower or 'mcr' in biz_lower:
+            if 'secondary' in biz_lower or 'sec' in biz_lower:
                 # Music/rodeo industry contacts
                 music_contacts = self.search_by_category('Music Industry', limit=30)
                 for contact in music_contacts:
                     candidates[contact.id] = max(candidates[contact.id], 0.4)
 
-            elif 'down home' in biz_lower:
+            elif 'business' in biz_lower:
                 # Tech/streaming/business contacts
                 exec_contacts = self.search_by_category('Executive / Leadership', limit=20)
                 for contact in exec_contacts:
@@ -657,7 +657,7 @@ if __name__ == "__main__":
         print(f"\n=== Likely Attendees for: {args.attendees} ===")
         attendees = manager.find_likely_attendees(
             merchant=args.attendees,
-            business_type="Down Home"
+            business_type="Business"
         )
         for contact, score in attendees:
             print(f"  {contact.name} ({score:.0%}) - {contact.title}")

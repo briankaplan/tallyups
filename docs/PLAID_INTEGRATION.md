@@ -6,7 +6,7 @@ Tallyups integrates with Plaid to provide automatic bank account and credit card
 
 - **Connect multiple bank accounts and credit cards** from any supported institution
 - **Automatically sync transactions** every hour (or manually)
-- **Assign accounts to business types** (Personal, Down Home, Music City Rodeo, Em.Co)
+- **Assign accounts to business types** (Personal, Business, Secondary, Em.Co)
 - **Same card can belong to multiple businesses** - just select all that apply
 - **Never lose data** - transactions are synced incrementally, never deleted
 
@@ -228,8 +228,8 @@ python services/plaid_sync_worker.py --daemon
 Each account can be assigned to multiple business types:
 
 - **Personal** - Personal expenses
-- **Down Home** - Down Home Productions
-- **MCR** - Music City Rodeo
+- **Business** - Business Productions
+- **MCR** - Secondary
 - **Em.Co** - Em.Co expenses
 
 ### Setting Business Types

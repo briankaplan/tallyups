@@ -59,7 +59,7 @@ def find_birthday_transactions(transactions):
                     'date': tx.get('chase_date') or tx.get('Chase Date') or '',
                     'category': tx.get('chase_category') or tx.get('Chase Category') or '',
                     'ai_note': tx.get('ai_note'),
-                    'business_type': tx.get('business_type') or tx.get('Business Type') or 'Down Home',
+                    'business_type': tx.get('business_type') or tx.get('Business Type') or 'Business',
                     'keyword': kw
                 })
                 break
@@ -97,7 +97,7 @@ def generate_note_via_api(merchant, amount, date, category, business_type):
         "amount": amount_float,
         "date": date_str,
         "category": category or "",
-        "business_type": business_type or "Down Home"
+        "business_type": business_type or "Business"
     }
 
     data = json.dumps(payload).encode()

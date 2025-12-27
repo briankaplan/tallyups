@@ -265,8 +265,8 @@ def trigger_gmail_scan():
 
     accounts = data.get('accounts', [
         'kaplan.brian@gmail.com',
-        'brian@downhome.com',
-        'brian@musiccityrodeo.com'
+        'brian@business.com',
+        'brian@secondary.com'
     ])
     days_back = int(data.get('days_back', 7))
 

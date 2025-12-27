@@ -137,8 +137,8 @@ Date Score:    15% weight
 
 **Accounts Monitored:**
 - kaplan.brian@gmail.com
-- brian@downhome.com
-- brian@musiccityrodeo.com
+- brian@business.com
+- brian@secondary.com
 
 **Spam Filtering:**
 - 80+ blocked domains (mailchimp, sendgrid, etc.)

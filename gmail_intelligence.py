@@ -165,7 +165,7 @@ class GmailIntelligence:
                     return self.data["merchant_to_account"][base_merchant]
 
         # Return accounts sorted by success rate
-        accounts = ["brian_personal", "brian_mcr", "brian_downhome"]
+        accounts = ["brian_personal", "brian_sec", "brian_business"]
         return sorted(
             accounts,
             key=lambda a: self.data["account_success_rate"][a]["found"],

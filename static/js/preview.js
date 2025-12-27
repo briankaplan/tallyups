@@ -135,10 +135,10 @@ class ReceiptPreview {
                     <div class="business-section">
                         <h4>🏢 Business Type</h4>
                         <div class="business-buttons">
-                            <button class="biz-btn" data-business="Down Home">
-                                <span class="biz-icon">🏠</span> Down Home
+                            <button class="biz-btn" data-business="Business">
+                                <span class="biz-icon">🏠</span> Business
                             </button>
-                            <button class="biz-btn" data-business="Music City Rodeo">
+                            <button class="biz-btn" data-business="Secondary">
                                 <span class="biz-icon">🤠</span> MCR
                             </button>
                             <button class="biz-btn" data-business="Personal">

@@ -63,8 +63,8 @@ BASE_DIR = Path(__file__).resolve().parent
 # Gmail accounts configuration
 GMAIL_ACCOUNTS = [
     "kaplan.brian@gmail.com",
-    "brian@downhome.com",
-    "brian@musiccityrodeo.com",
+    "brian@business.com",
+    "brian@secondary.com",
 ]
 
 # Token directories to search

@@ -60,8 +60,8 @@ logger = logging.getLogger(__name__)
 
 class ReceiptSource(Enum):
     GMAIL_PERSONAL = "gmail_personal"
-    GMAIL_MCR = "gmail_mcr"
-    GMAIL_DOWN_HOME = "gmail_down_home"
+    GMAIL_MCR = "gmail_sec"
+    GMAIL_BUSINESS = "gmail_business"
     SCANNER_MOBILE = "scanner_mobile"
     SCANNER_WEB = "scanner_web"
     MANUAL_UPLOAD = "manual_upload"
@@ -80,8 +80,8 @@ class ReceiptStatus(Enum):
 
 
 class BusinessType(Enum):
-    DOWN_HOME = "down_home"
-    MCR = "mcr"
+    BUSINESS = "business"
+    MCR = "sec"
     PERSONAL = "personal"
     CEO = "ceo"
     EM_CO = "em_co"

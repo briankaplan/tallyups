@@ -175,8 +175,8 @@ class TestClassificationAccuracy:
         except ImportError:
             pytest.skip("business_classifier not available")
 
-    # Known Down Home merchants
-    DOWN_HOME_MERCHANTS = [
+    # Known Business merchants
+    BUSINESS_MERCHANTS = [
         ("Anthropic", 20.00),
         ("OpenAI", 20.00),
         ("Midjourney", 30.00),
@@ -208,14 +208,14 @@ class TestClassificationAccuracy:
     ]
 
     @pytest.mark.data_quality
-    def test_down_home_accuracy(self, classifier):
-        """Down Home classification should be 98%+ accurate."""
+    def test_business_accuracy(self, classifier):
+        """Business classification should be 98%+ accurate."""
         from business_classifier import BusinessType, Transaction
 
         correct = 0
-        total = len(self.DOWN_HOME_MERCHANTS)
+        total = len(self.BUSINESS_MERCHANTS)
 
-        for merchant, amount in self.DOWN_HOME_MERCHANTS:
+        for merchant, amount in self.BUSINESS_MERCHANTS:
             tx = Transaction(
                 id=1,
                 merchant=merchant,
@@ -223,14 +223,14 @@ class TestClassificationAccuracy:
                 date=datetime.now(),
             )
             result = classifier.classify(tx)
-            if result.business_type == BusinessType.DOWN_HOME:
+            if result.business_type == BusinessType.BUSINESS:
                 correct += 1
 
         accuracy = correct / total
-        assert accuracy >= 0.98, f"Down Home accuracy {accuracy:.1%} below 98%"
+        assert accuracy >= 0.98, f"Business accuracy {accuracy:.1%} below 98%"
 
     @pytest.mark.data_quality
-    def test_mcr_accuracy(self, classifier):
+    def test_sec_accuracy(self, classifier):
         """MCR classification should be 95%+ accurate."""
         from business_classifier import BusinessType, Transaction
 
@@ -245,7 +245,7 @@ class TestClassificationAccuracy:
                 date=datetime.now(),
             )
             result = classifier.classify(tx)
-            if result.business_type == BusinessType.MUSIC_CITY_RODEO:
+            if result.business_type == BusinessType.SECONDARY:
                 correct += 1
 
         accuracy = correct / total
@@ -279,7 +279,7 @@ class TestClassificationAccuracy:
         from business_classifier import Transaction
 
         all_merchants = (
-            self.DOWN_HOME_MERCHANTS +
+            self.BUSINESS_MERCHANTS +
             self.MCR_MERCHANTS +
             self.PERSONAL_MERCHANTS
         )

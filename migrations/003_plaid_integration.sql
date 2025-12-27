@@ -235,7 +235,7 @@ CREATE TABLE IF NOT EXISTS plaid_transactions (
     pending_transaction_id VARCHAR(255),             -- ID of pending transaction (before it posts)
 
     -- Business classification (matching existing system)
-    business_type VARCHAR(50),                       -- 'Down_Home', 'MCR', 'Personal', etc.
+    business_type VARCHAR(50),                       -- 'Business', 'MCR', 'Personal', etc.
 
     -- Receipt matching
     receipt_matched BOOLEAN DEFAULT FALSE,           -- Whether a receipt has been matched
@@ -567,7 +567,7 @@ JOIN plaid_items pi ON pa.item_id = pi.item_id
 WHERE pt.processing_status IN ('new', 'unmatched')
     AND pt.pending = FALSE
     AND pt.amount < 0  -- Expenses only
-    AND pt.business_type IN ('Down_Home', 'MCR')  -- Business expenses
+    AND pt.business_type IN ('Business', 'MCR')  -- Business expenses
 ORDER BY pt.date DESC;
 
 

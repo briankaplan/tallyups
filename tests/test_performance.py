@@ -144,7 +144,7 @@ class TestPerformanceBenchmarks:
         mock_report = Mock()
         mock_report.report_name = "Test Report"
         mock_report.report_id = "RPT-001"
-        mock_report.business_type = "Down Home"
+        mock_report.business_type = "Business"
         mock_report.date_range = (datetime(2024, 1, 1), datetime(2024, 12, 31))
         mock_report.generated_at = datetime.now()
 

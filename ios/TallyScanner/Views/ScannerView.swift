@@ -418,8 +418,8 @@ struct ReceiptEditorView: View {
     let categories = ["Food & Dining", "Transportation", "Shopping", "Entertainment", "Travel", "Business", "Other"]
     let businesses = [
         ("Personal", "Personal"),
-        ("Down Home", "Down Home"),
-        ("Music City Rodeo", "Music City Rodeo"),
+        ("Business", "Business"),
+        ("Secondary", "Secondary"),
         ("Em.co", "Em.co")
     ]
 

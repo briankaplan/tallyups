@@ -1,0 +1,961 @@
+================================================================================
+DOWN HOME EXPENSE REPORT
+Period: 2024-07-01 to 2024-12-01
+Generated: 2025-12-01 03:07
+================================================================================
+
+SUMMARY
+----------------------------------------
+Total Transactions: 291
+Total Amount: $21,026.09
+
+Verified Receipts: 159 ($10,910.07)
+Likely Matches: 72 ($6,183.13)
+Needs Receipt/Form: 2 ($80.00)
+Mismatched: 48 ($3,404.11)
+Other/Unverified: 10 ($448.78)
+
+================================================================================
+DETAILED TRANSACTIONS
+================================================================================
+
+2024-07-01 | $   140.00 | ✓ | CHARTMETRIC
+    Note: Music analytics subscription for artist tracking and management.
+
+2024-07-01 | $    19.76 | ✓ | EXPENSIFY INC.
+    Note: Expense for Expensify subscription to manage business finances.
+
+2024-07-01 | $   189.50 | ✓ | LULUS LANDING INC
+    Note: Lulus Landing: catering for Todd's birthday celebration.
+
+2024-07-01 | $    20.66 | ✓ | TST* PYRAMIDS CAFE - AIRP
+    Note: Lunch meeting at Pyramids Cafe during Alabama trip.
+
+2024-07-01 | $    81.66 | ✓ | UBER TRIP
+    Note: Uber ride to meeting in Alabama on July 1.
+
+2024-07-02 | $    24.56 | ✓ | SLIM &AMP; HUSKIES
+    Note: Lunch meeting with Todd for artist management discussion.
+
+2024-07-02 | $    39.56 | ✓ | UBER TRIP
+    Note: Uber ride for Brian's Alabama trip on July 2nd.
+
+2024-07-02 | $   103.99 | ✓ | LYFT *RIDE TUE 4AM
+    Note: Lyft ride for Brian's Alabama trip on July 2nd.
+
+2024-07-05 | $    21.94 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for music management and publishing needs.
+
+2024-07-06 | $    82.32 | ? | DISCO
+    Note: Glen Lake event planning meeting at DISCO.
+    ⚠️  Receipt file not found: Screenshot 2025-11-20 at 10.55.22 PM.png
+
+2024-07-08 | $    10.00 | ✓ | CALENDARBRIDGE
+    Note: CalendarBridge subscription for scheduling music meetings while traveling.
+
+2024-07-08 | $    13.13 | ~ | SPOTIFY USA
+    Note: Spotify subscription for music research and playlist curation.
+
+2024-07-10 | $    10.98 | ✓ | MIDJOURNEY INC.
+    Note: AI artwork generation for Down Home's music project.
+
+2024-07-12 | $     9.29 | ✓ | PMC - PAID PARKING
+    Note: Parking for DeepRoots Chat on July 12.
+
+2024-07-12 | $     9.29 | ~ | PMC - PAID PARKING
+    Note: Paid parking for DeepRoots Chat meeting on July 12.
+
+2024-07-14 | $   168.87 | ✓ | TST* IL FORNO PIZZERIA
+    Note: Anniversary dinner for client relationship building.
+
+2024-07-14 | $     5.00 | ~ | CLOUDFLARE
+    Note: Cloudflare fee for website hosting on July 14.
+
+2024-07-15 | $    12.62 | ! | CLEAR *CLEARME.COM
+    Note: CLEAR membership for expedited airport security during travel.
+    ⚠️  Receipt mismatch: The merchant name and amount match the transaction, but the date is significantly different, which suggests a different transaction.
+
+2024-07-17 | $    17.55 | ~ | APPLE.COM/BILL
+    Note: iCloud storage for managing music files and artist schedules.
+
+2024-07-17 | $    94.22 | ~ | DD *DOORDASH KALAMATAS
+    Note: Client meeting meal for Bridgestone walkthrough on 7/17.
+
+2024-07-17 | $     5.00 | ! | LAZ PARKING M32810
+    Note: Parking for Bridgestone walkthrough meeting on July 17.
+    ⚠️  Receipt mismatch: The merchant name, date, and total amount do not match the bank transaction details.
+
+2024-07-17 | $    11.32 | ✓ | METROPOLIS PARKING
+    Note: Parking for Bridgestone Walkthrough on July 17.
+
+2024-07-17 | $     4.49 | ✓ | METROPOLIS PARKING
+    Note: Parking for Bridgestone walkthrough meeting on 7/17.
+
+2024-07-17 | $     7.55 | ✓ | METROPOLIS PARKING
+    Note: Parking for Bridgestone walkthrough on 07/17.
+
+2024-07-19 | $ 1,487.80 | ~ | AUDREY - SEAN BROCK GROU
+    Note: CCDI Dinner reservation for artist management networking at Audrey.
+
+2024-07-22 | $     8.15 | ? | PARK HAPPY LLC
+    Note: Birthday lunch for Scott Siman and Jason Owen.
+    ⚠️  Receipt file not found: Screenshot 2025-11-21 at 3.00.52 AM.png
+
+2024-07-22 | $    54.86 | ✓ | APPLE.COM/BILL
+    Note: iCloud subscription for managing music files and calendar events.
+
+2024-07-24 | $    21.95 | ~ | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for music publishing tasks.
+
+2024-07-25 | $    43.60 | ~ | CHAR GREEN HILLS
+    Note: Coffee meeting with Brian and Jules about artist management strategies.
+
+2024-07-25 | $     8.85 | ✓ | PARK HAPPY LLC
+    Note: Coffee meeting regarding artist management with Brian and Jules.
+
+2024-07-25 | $     9.29 | ✓ | PMC - PAID PARKING
+    Note: Parking for meetings on Angela's birthday, July 25.
+
+2024-07-25 | $    50.00 | ✓ | ROSTR PRO
+    Note: Coffee meeting with Brian Kaplan and Jules Wortman.
+
+2024-07-26 | $    19.99 | ! | IMDBPRO
+    Note: IMDBPRO subscription for artist research and management.
+    ⚠️  Receipt mismatch: The merchant and date do not match the bank transaction details.
+
+2024-07-26 | $     8.85 | ✓ | PARK HAPPY LLC
+    Note: Birthday lunch for Angela Sanchez, client relationship building.
+
+2024-07-26 | $     9.05 | ! | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussion.
+    ⚠️  Receipt mismatch: The merchant name 'Soho House Nashville' does not match 'SH NASHVILLE' and might not align with 'SQ *STARBUCKS'. The amount matches. The date matches. However, the discrepancy in merchant name suggests different transactions.
+
+2024-07-27 | $    40.33 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for managing music files and artist projects.
+
+2024-07-28 | $    11.00 | ✓ | CARTA NORTH GARAGE
+    Note: Parking for meeting with artist at CARTA North Garage.
+
+2024-07-29 | $     8.00 | ~ | PARKING MANAGEMENT CO.
+    Note: Parking for Sony Music Nashville meeting with Pat and Jason.
+
+2024-07-30 | $    15.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for in-person meeting with UMG and WMN team.
+
+2024-07-30 | $    24.91 | ~ | SH NASHVILLE - OTHER
+    Note: Soho House meeting for UMG and Down Home collaboration.
+
+2024-07-31 | $    23.14 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for managing music publishing files and calendars.
+
+2024-08-01 | $    19.76 | ✓ | EXPENSIFY INC.
+    Note: Breakfast meeting for David Marshall Grant's Ten Year Town pitch.
+
+2024-08-01 | $    15.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for studio meeting and breakfast with David Marshall Grant.
+
+2024-08-01 | $    22.28 | ~ | SH NASHVILLE F&AMP;B
+    Note: Breakfast meeting for studio convo with David Marshall Grant.
+
+2024-08-02 | $    39.52 | ~ | TST*NADEENS HERMITAGE HA
+    Note: Breakfast meeting with team to discuss upcoming projects.
+
+2024-08-03 | $   251.33 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for Down Home music publishing needs.
+
+2024-08-05 | $     9.05 | ! | SH NASHVILLE - OTHER
+    Note: Meeting expenses at Soho House Nashville for artist management discussions.
+    ⚠️  Receipt mismatch: The merchant name on the receipt is 'Soho House Nashville', which does not match the bank transaction's merchant 'SH NASHVILLE - OTHER'. The amount and date do match, but the merchant discrepancy suggests a different transaction.
+
+2024-08-05 | $    38.78 | ~ | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussions.
+
+2024-08-05 | $    58.16 | ~ | SH NASHVILLE - OTHER
+    Note: Meeting with artists at Soho House Nashville.
+
+2024-08-05 | $    53.98 | ~ | SH NASHVILLE F&AMP;B
+    Note: Soho House meeting for Down Home artist management discussions.
+
+2024-08-05 | $    21.00 | ✓ | METROPOLIS PARKING
+    Note: Parking for Luanne's meeting in LA on 8/5.
+
+2024-08-06 | $    82.32 | ? | DISCO
+    Note: Dinner meeting for Jaime's birthday celebration with clients.
+    ⚠️  Receipt file not found: Screenshot 2025-11-20 at 10.56.42 PM.png
+
+2024-08-06 | $    18.10 | ! | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House Nashville for artist management discussions.
+    ⚠️  Receipt mismatch: The receipt is from Soho House Nashville with a total of $84.35 on 2024-10-16, which does not match the bank transaction details.
+
+2024-08-06 | $    84.20 | ✓ | TST*HOMEGROWN TAPROOM &AMP;
+    Note: Birthday dinner for Jaime Marconette, client relationship building.
+
+2024-08-06 | $    21.00 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings in downtown Nashville on 08/06.
+
+2024-08-06 | $    21.00 | ✓ | METROPOLIS PARKING
+    Note: Parking for Luanne's LA meeting on August 6.
+
+2024-08-08 | $    10.00 | ✓ | CALENDARBRIDGE
+    Note: CalendarBridge subscription for scheduling Luanne and Sean's events.
+
+2024-08-08 | $    38.03 | ~ | PMC - PAID PARKING
+    Note: Parking for Luanne's LA meetings on 08/08.
+
+2024-08-08 | $    13.13 | ✓ | SPOTIFY USA
+    Note: Spotify subscription for music research and playlist curation.
+
+2024-08-09 | $   163.77 | ✓ | TST*GREEN HILLS GRILLE
+    Note: Lunch meeting with Sean Swarner for MCR project discussion.
+
+2024-08-10 | $    17.52 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for Down Home music publishing.
+
+2024-08-10 | $   119.34 | ✓ | DD *DOORDASH EDLEYSBAR
+    Note: Client meeting lunch delivery for Edley's BBQ.
+
+2024-08-10 | $    10.98 | ✓ | MIDJOURNEY INC.
+    Note: AI visuals for album artwork design.
+
+2024-08-10 | $    94.10 | ✓ | DD *DOORDASH JIMNNICKS
+    Note: Client meeting meal for Brian Kaplan's music publishing business.
+
+2024-08-11 | $    17.55 | ~ | APPLE.COM/BILL
+    Note: iCloud storage for managing Down Home’s music files.
+
+2024-08-11 | $   288.00 | ~ | SUNO INC.
+    Note: Artwork creation for artist project with SUNO INC.
+
+2024-08-13 | $    58.21 | ~ | O-KU NASHVILLE
+    Note: Birthday lunch for Clay Jackson, team planning session afterwards.
+
+2024-08-13 | $    44.32 | ! | OPTIMIST NASHVILLE
+    Note: Birthday dinner for Clay Jackson, client relationship building.
+    ⚠️  Receipt mismatch: The merchant name and date do not match the bank transaction details. The total amount is different as well.
+
+2024-08-13 | $   896.44 | ✓ | OPTIMIST NASHVILLE
+    Note: Client dinner and birthday celebration for Clay Jackson at Optimist Nashville.
+
+2024-08-14 | $     5.00 | ~ | CLOUDFLARE
+    Note: Cloudflare fee for website hosting services.
+
+2024-08-14 | $    15.38 | ! | MAFIAOZAS
+    Note: Birthday lunch for Clay Jackson and Heather Horvath.
+    ⚠️  Receipt mismatch: The merchant name matches, but the total amount on the receipt is $10.33, which is less than the $15.38 in the bank transaction. No tip is included on the receipt to account for the difference.
+
+2024-08-14 | $    10.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings on Clay and Heather's birthdays.
+
+2024-08-14 | $     8.85 | ✓ | PARK HAPPY LLC
+    Note: Birthday celebration for Clay Jackson, client relationship building.
+
+2024-08-14 | $    27.14 | ! | SH NASHVILLE - OTHER
+    Note: Meeting with artists at Soho House Nashville for birthdays.
+    ⚠️  Receipt mismatch: The merchant name and total amount on the receipt do not match the bank transaction details.
+
+2024-08-15 | $    76.81 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for managing music files and client data.
+
+2024-08-15 | $     8.85 | ✓ | PARK HAPPY LLC
+    Note: Birthday celebration for Heather, discussing new artist opportunities.
+
+2024-08-15 | $    74.97 | ! | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist collaboration discuss.
+    ⚠️  Receipt mismatch: The merchant name on the receipt does not match the bank transaction description.
+
+2024-08-17 | $    42.00 | ✓ | METROPOLIS PARKING
+    Note: Parking for Carys bike return meeting at Metropolis.
+
+2024-08-17 | $   623.10 | ✓ | TM *PBR TEAMS
+    Note: Covering event expenses for Carys' bike return on 8/17.
+
+2024-08-18 | $    31.50 | ✓ | METROPOLIS PARKING
+    Note: Parking at Metropolis for client meeting on August 18.
+
+2024-08-18 | $    78.00 | ~ | TST*LOSERS - DOWNTOWN
+    Note: Client meeting dinner at TST*LOSERS, Downtown.
+
+2024-08-19 | $    51.70 | ✓ | SH NASHVILLE - OTHER
+    Note: Lunch meeting with Kate for Style+Grooming roadmap discussion.
+
+2024-08-19 | $    47.82 | ~ | SH NASHVILLE - OTHER
+    Note: Lunch meeting with Kate for Style+Grooming Roadmap call.
+
+2024-08-19 | $    31.02 | ? | SH NASHVILLE - OTHER
+    Note: Lunch meeting with Kate for style and grooming roadmap discussion.
+    ⚠️  Receipt file not found: receipts/sh_nashville_other_2024-08-19_31_02.PNG
+
+2024-08-20 | $    27.42 | ! | METROPOLIS PARKING
+    Note: Parking for meetings on 8/20 with Jason Ross and partners.
+    ⚠️  Receipt mismatch: The receipt is for a different date in 2025 and matches an identical amount but is not the same year as the transaction from 2024.
+
+2024-08-20 | $    10.26 | ✓ | PARK HAPPY LLC
+    Note: Dinner meeting with Jason Ross and partners.
+
+2024-08-20 | $    23.21 | ✓ | PMC - PAID PARKING
+    Note: Parking for meetings on 08/20 with Jason Ross and partners.
+
+2024-08-20 | $    28.39 | ✓ | TST*PANCHO AND LEFTYS CA
+    Note: Dinner meeting with Jigsaw/Partners on travel day.
+
+2024-08-21 | $    38.03 | ~ | PMC - PAID PARKING
+    Note: Parking for meeting on Patrick’s birthday.
+
+2024-08-22 | $   174.56 | ✓ | LINKEDIN JOB 9849229796
+    Note: LinkedIn job posting for potential artist management candidates.
+
+2024-08-22 | $    22.51 | ~ | PMC - PAID PARKING
+    Note: Parking for MCR Logo Comp Review meeting on 8/22.
+
+2024-08-22 | $    29.28 | ~ | PMC - PAID PARKING
+    Note: Parking for MCR Logo Comp Review meeting.
+
+2024-08-23 | $    79.64 | ✓ | CORNER PUB
+    Note: Lunch meeting with artists at Corner Pub.
+
+2024-08-23 | $    10.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings on 8/23 at Metropolis.
+
+2024-08-23 | $     9.05 | ! | SH NASHVILLE - OTHER
+    Note: Lunch meeting at Soho House Nashville for artist management.
+    ⚠️  Receipt mismatch: The merchant names do not match, and the dates are significantly different.
+
+2024-08-24 | $    21.95 | ! | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for research and contract drafting.
+    ⚠️  Receipt mismatch: Merchant name on receipt 'Anthropic' does not match 'CLAUDE.AI SUBSCRIPTION' from the bank transaction. The amount and date are similar, but the merchant names do not correspond.
+
+2024-08-24 | $     7.63 | ? | PARK HAPPY LLC
+    Note: Soccer game event for artist management networking.
+    ⚠️  Receipt file not found: Screenshot 2025-11-21 at 3.02.18 AM.png
+
+2024-08-25 | $    50.00 | ✓ | ROSTR PRO
+    Note: Music licensing fee for upcoming artist project.
+
+2024-08-26 | $    19.99 | ✓ | IMDBPRO
+    Note: IMDBPRO subscription for artist research and industry insights.
+
+2024-08-26 | $    23.21 | ~ | PMC - PAID PARKING
+    Note: Parking for interview with Taylor on 08/26.
+
+2024-08-26 | $    24.91 | ~ | SH NASHVILLE F&AMP;B
+    Note: Meeting at Soho House Nashville for artist interview prep.
+
+2024-08-27 | $    40.33 | ✓ | APPLE.COM/BILL
+    Note: iCloud subscription for managing Down Home's digital assets.
+
+2024-08-27 | $   418.98 | ! | SOUTHWES 5262554636372
+    Note: Flight to Nashville for Brian's weekly thought-partnering session.
+    ⚠️  Receipt mismatch: The merchant name on the receipt does not match the bank transaction details. The receipt is for Southwest, while the bank transaction is listed as SOUTHWES, which resembles Southwest, but the transaction details do not align with the receipt. Additionally, the receipt date is 9/10/2024, not close to the transaction date.
+
+2024-08-28 | $    18.10 | ~ | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House Nashville with potential artist collaboration.
+
+2024-08-28 | $    26.22 | ~ | PMC - PAID PARKING
+    Note: Parking for meeting with Philip Alms on 8/28.
+
+2024-08-29 | $    67.81 | ✓ | CHAR GREEN HILLS
+    Note: Lunch meeting with Todd to discuss upcoming artist projects.
+
+2024-08-29 | $     9.29 | ~ | PMC - PAID PARKING
+    Note: Parking for lunch meeting with Todd and Brian.
+
+2024-08-30 | $    84.47 | ✓ | CHUY'S 110
+    Note: Team dinner after River's soccer practice.
+
+2024-08-30 | $    16.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for River's soccer practice meeting.
+
+2024-08-30 | $    32.93 | ✓ | MIDJOURNEY INC.
+    Note: AI visuals for promoting artist projects and events.
+
+2024-08-31 | $    23.14 | ! | APPLE.COM/BILL
+    Note: iCloud storage for managing Down Home music files.
+    ⚠️  Receipt mismatch: The receipt details match the merchant and total amount, but the date is different, and likely refers to a different transaction.
+
+2024-09-01 | $    19.76 | ✓ | EXPENSIFY INC.
+    Note: Expense for Expensify subscription to manage business expenses.
+
+2024-09-03 | $    17.88 | ✓ | METROPOLIS PARKING
+    Note: Parking for Down Home meetings at Metropolis.
+
+2024-09-03 | $    24.17 | ✓ | SQ *HIGH POINT COFFEE TN
+    Note: Coffee meeting for Down Home planning session.
+
+2024-09-04 | $    59.16 | ~ | 12 SOUTH TAPROOM &AMP; GRILL
+    Note: Lunch meeting at 12 South Taproom with artist.
+
+2024-09-04 | $    39.78 | ✓ | CORNER PUB
+    Note: Lunch meeting with artist at Corner Pub.
+
+2024-09-04 | $    45.15 | ~ | CORNER PUB
+    Note: Lunch meeting with artist at Corner Pub.
+
+2024-09-04 | $     5.46 | ✓ | SQ *WELL COFFEEHOUSE BREN
+    Note: Coffee meeting with artist to discuss new project.
+
+2024-09-04 | $    24.59 | ✓ | PMC - PAID PARKING
+    Note: Parking for meetings on 09/04 while managing artists.
+
+2024-09-05 | $    21.00 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings on Brian's birthday.
+
+2024-09-05 | $    10.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for Brian's birthday meeting at Metropolis.
+
+2024-09-05 | $   100.82 | ! | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for Brian's birthday celebration.
+    ⚠️  Receipt mismatch: The merchant names do not closely match. Receipt is from 'Soho House Nashville' but transaction is for 'SH NASHVILLE - OTHER'. The amount and date are correct.
+
+2024-09-06 | $    10.96 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for managing Down Home music files and schedules.
+
+2024-09-06 | $    40.07 | ✓ | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist discussions and networking.
+
+2024-09-06 | $    24.56 | ~ | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist collaboration discussion.
+
+2024-09-07 | $   100.57 | ~ | GOLDEN NUGGET HOTEL LV
+    Note: Hotel stay for NFR event planning and artist meetings.
+
+2024-09-07 | $    10.96 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for managing music files and calendar events.
+
+2024-09-07 | $    26.25 | ✓ | METROPOLIS PARKING
+    Note: Parking for River's soccer game on 9/7.
+
+2024-09-08 | $   318.00 | ! | CLEAR *CLEARME.COM
+    Note: TSA Clear membership for Brian's business travel convenience.
+    ⚠️  Receipt mismatch: The merchant and amount do not match, and the date is over a year off.
+
+2024-09-08 | $    10.00 | ✓ | CALENDARBRIDGE
+    Note: CalendarBridge subscription for scheduling music meetings.
+
+2024-09-08 | $    13.13 | ✓ | SPOTIFY USA
+    Note: Spotify subscription for music research and artist management.
+
+2024-09-09 | $    93.26 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for music files and business organization.
+
+2024-09-09 | $     7.55 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings in downtown Nashville on 9/9.
+
+2024-09-10 | $    43.50 | ! | BINION'S BARS
+    Note: Birthday celebration for Blake Chancey, client relationship building.
+    ⚠️  Receipt mismatch: The merchant matches, but the amount on the receipt ($36.50) is less than the bank transaction ($43.50) and no tip is evident to account for this discrepancy.
+
+2024-09-10 | $    69.90 | ✓ | DEL FRISCOS GRILL NASHVL
+    Note: Birthday dinner for Blake Chancey, client relationship building.
+
+2024-09-11 | $    86.62 | ✓ | CADILLAC BAR LAS VEGAS
+    Note: Birthday dinner for Blake related to artist management discussions.
+
+2024-09-11 | $    20.66 | ✓ | TST* PYRAMIDS CAFE - AIRP
+    Note: Lunch meeting at Pyramids Cafe for Blake's birthday celebration.
+
+2024-09-11 | $    44.78 | ✓ | UBER *TRIP
+    Note: Uber ride to Blake's birthday celebration in Vegas.
+
+2024-09-11 | $    40.00 | ✗ | SWA*UPGBOARD5264253430990
+    Note: Flight upgrade for travel to industry event in Las Vegas.
+    ⚠️  No receipt found in local folder or Gmail
+
+2024-09-11 | $    40.00 | ✗ | SWA*UPGBOARD5264253431024
+    Note: SWA boarding for Blake's birthday trip to Golden Nugget.
+    ⚠️  No receipt found in local folder or Gmail
+
+2024-09-12 | $    27.22 | ~ | GNLV THE GRILLE
+    Note: Dinner meeting for Kelly and Stacy's wedding planning.
+
+2024-09-12 | $    26.92 | ✓ | UBER *TRIP
+    Note: Uber ride to Kelly and Stacy's wedding event.
+
+2024-09-12 | $    55.53 | ✓ | UBER *TRIP
+    Note: Uber ride to Kelly and Stacy's wedding in Vegas.
+
+2024-09-12 | $    41.98 | ~ | UBER *TRIP
+    Note: Uber ride to Kelly and Stacy's wedding event.
+
+2024-09-13 | $   313.01 | ✓ | GOLDEN NUGGET HOTEL LV
+    Note: Hotel stay for Kelly and Stacy's wedding event.
+
+2024-09-14 | $     5.00 | ~ | CLOUDFLARE
+    Note: Cloudflare fee for website hosting and security services.
+
+2024-09-15 | $    76.81 | ~ | APPLE.COM/BILL
+    Note: iCloud subscription for music publishing business tools and storage.
+
+2024-09-15 | $    77.89 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for music files and business documents.
+
+2024-09-16 | $    26.22 | ~ | PMC - PAID PARKING
+    Note: Parking for meeting with Dan Rowe on 09/16.
+
+2024-09-16 | $    17.88 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings with Dan Rowe on 9/16.
+
+2024-09-16 | $    38.24 | ~ | PARKINGMANAGEMENTCOMPANY
+    Note: Parking for meetings with Dan Rowe on September 16.
+
+2024-09-16 | $    40.07 | ~ | SH NASHVILLE - OTHER
+    Note: Coffee meeting with Dan Rowe for project collaboration.
+
+2024-09-16 | $   144.06 | ✓ | TST*MARTINS BAR-B-QUE JO
+    Note: Client meeting lunch with Dan Rowe at Martins Bar-B-Que.
+
+2024-09-17 | $    38.79 | ✓ | UBER *TRIP
+    Note: Uber ride to dinner meeting for Down Home team on 9/17.
+
+2024-09-18 | $    10.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings with Philip Alms and Randy Bernard.
+
+2024-09-18 | $    71.09 | ✓ | SH NASHVILLE - OTHER
+    Note: Meeting expenses with Randy and team at Soho House.
+
+2024-09-18 | $    29.22 | ~ | PMC - PAID PARKING
+    Note: Parking for meetings with Philip and Randy on 9/18.
+
+2024-09-19 | $    14.09 | ~ | AMERICANO LOUNGE
+    Note: Coffee meeting with Dan Rowe and Scott Siman at festival.
+
+2024-09-19 | $    11.63 | ! | SH NASHVILLE - OTHER
+    Note: Coffee meeting at Soho House for festival planning.
+    ⚠️  Receipt mismatch: The merchant names do not match. The bank transaction shows 'SH NASHVILLE - OTHER' whereas the receipt is from 'Soho House Nashville'. The amount and date match; however, different merchant names are significant.
+
+2024-09-19 | $    38.78 | ! | SH NASHVILLE - OTHER
+    Note: Coffee meeting for Nashville Film Festival with industry contacts.
+    ⚠️  Receipt mismatch: The merchant names do not match; the receipt shows Soho House Nashville, while the transaction states SH NASHVILLE - OTHER. The date and amounts align, but the discrepancy in merchant name suggests this is not the correct receipt.
+
+2024-09-20 | $    26.25 | ~ | METROPOLIS PARKING
+    Note: Parking for Nashville Film Festival meetings and events.
+
+2024-09-21 | $     5.60 | ! | 201 BELCOURT LOT
+    Note: Parking for Nashville Film Festival event on 9/21.
+    ⚠️  Receipt mismatch: The merchant, amount, and date do not match the bank transaction details. The receipt is for parking, not a Starbucks transaction.
+
+2024-09-24 | $    21.95 | ! | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for writing and research needs.
+    ⚠️  Receipt mismatch: The merchant name 'Anthropic' does not match the transaction merchant 'CLAUDE.AI SUBSCRIPTION'. The date and amount match, but the discrepancy in the merchant name indicates a mismatch.
+
+2024-09-24 | $   689.59 | ~ | SH NASHVILLE - OTHER
+    Note: Meeting and networking at 55th Nashville Film Festival.
+
+2024-09-25 | $    26.22 | ~ | PMC - PAID PARKING
+    Note: Parking for Nashville Film Festival and Soho House meeting.
+
+2024-09-25 | $     5.18 | ! | LAZGO NASHVILLE M32180
+    Note: Coffee for meeting at Soho with YouTube during film festival.
+    ⚠️  Receipt mismatch: The merchant name on the receipt is LAZgo, not Starbucks. The transaction amount and date match, but the merchant names do not align.
+
+2024-09-25 | $   224.64 | ~ | SH NASHVILLE - OTHER
+    Note: Soho House meeting for Nashville Film Festival planning with Brian and Margaret.
+
+2024-09-25 | $    20.00 | ! | THE GATEWAY TO NASHVILLE
+    Note: Parking for Nashville Film Festival meetings.
+    ⚠️  Receipt mismatch: The merchant name and details in the receipt do not match the bank transaction. Additionally, the receipt shows an unsuccessful payment.
+
+2024-09-26 | $     8.85 | ✓ | PARK HAPPY LLC
+    Note: Coffee during meetings at the Nashville Film Festival.
+
+2024-09-26 | $    19.99 | ✓ | IMDBPRO
+    Note: Subscription for industry insights during Nashville Film Festival.
+
+2024-09-26 | $    14.22 | ! | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House during Nashville Film Festival.
+    ⚠️  Receipt mismatch: Merchant name does not match. Bank transaction shows 'SH NASHVILLE - OTHER' whereas receipt shows 'Soho House Nashville'.
+
+2024-09-28 | $    40.33 | ! | APPLE.COM/BILL
+    Note: iCloud storage for managing music files and event schedules.
+    ⚠️  Receipt mismatch: The merchant name and total amount match, but the date is off by over two months.
+
+2024-09-28 | $    25.00 | ~ | IM-ADA.AI
+    Note: AI tool subscription for music project planning and management.
+
+2024-09-28 | $    25.00 | ! | IM-ADA.AI
+    Note: AI tool subscription for artist management tasks.
+    ⚠️  Receipt mismatch: The receipt date is beyond the transaction date range. The merchant name matches, but the timing suggests a different transaction.
+
+2024-09-28 | $    25.00 | ! | IM-ADA.AI
+    Note: AI tool subscription for event planning and management.
+    ⚠️  Receipt mismatch: The merchant and date on the receipt do not match the bank transaction details.
+
+2024-09-30 | $    50.00 | ! | IM-ADA.AI
+    Note: AI tool subscription for event management and development insights.
+    ⚠️  Receipt mismatch: The receipt date and merchant name do not match the bank transaction details.
+
+2024-09-30 | $    32.93 | ✓ | MIDJOURNEY INC.
+    Note: AI visuals for calendar branding and event promotion.
+
+2024-10-01 | $    19.76 | ✓ | EXPENSIFY INC.
+    Note: Expensify subscription for tracking music publishing expenses.
+
+2024-10-01 | $    61.00 | ✓ | TST* THE GREENHOUSE BAR
+    Note: Team lunch after weekly thought-partnering session.
+
+2024-10-01 | $    10.49 | ✓ | TST*BONGO JAVA BELMONT
+    Note: Coffee meeting for Brian and Michael's weekly thought-partnering session.
+
+2024-10-02 | $    10.00 | ! | IM-ADA.AI
+    Note: AI tool subscription for data analysis and music insights.
+    ⚠️  Receipt mismatch: The receipt is for $50.00 while the bank transaction is for $10.00. The merchant names match, but the amounts do not, and there is no indication of a tip.
+
+2024-10-03 | $   106.85 | ✓ | TST* SMOKIN THIGHS LLC
+    Note: Birthday lunch for Tom May and Wyatt Thomas.
+
+2024-10-03 | $    27.40 | ✓ | TST*HEARTS CAFE
+    Note: Birthday lunch for Tom May and Wyatt Thomas.
+
+2024-10-03 | $    20.76 | ~ | PMC - PAID PARKING
+    Note: Parking for meetings on Tom and Wyatt's birthdays.
+
+2024-10-04 | $    23.14 | ✓ | APPLE.COM/BILL
+    Note: iCloud storage for music files and project management.
+
+2024-10-04 | $    25.00 | ! | IM-ADA.AI
+    Note: AI tool subscription for music project management and artist support.
+    ⚠️  Receipt mismatch: The merchant names on the receipt and bank transaction do not align ('IM-ADA.AI' vs 'Ada AI'). Transaction date and amount match exactly, but merchant mismatch leads to decision.
+
+2024-10-04 | $    21.00 | ✓ | METROPOLIS PARKING
+    Note: Parking at Metropolis for Wyatt's birthday planning meeting.
+
+2024-10-04 | $    23.27 | ! | SH NASHVILLE - OTHER
+    Note: Meeting with an artist at Soho House Nashville.
+    ⚠️  Receipt mismatch: The merchant name is different and the date is almost a month later than the bank transaction date.
+
+2024-10-07 | $    52.99 | ! | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussions.
+    ⚠️  Receipt mismatch: Merchant name and date do not match the bank transaction details.
+
+2024-10-07 | $    29.73 | ~ | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist management discussions.
+
+2024-10-08 | $    83.92 | ? | CORNER PUB
+    Note: Birthday celebration dinner with Wayne for client relationship building.
+    ⚠️  Vision analysis failed
+
+2024-10-08 | $    10.00 | ✓ | CALENDARBRIDGE
+    Note: Birthday reminder for Wayne, promoting artist engagement.
+
+2024-10-08 | $    50.00 | ! | IM-ADA.AI
+    Note: Subscription for AI tool to enhance music publishing efficiency.
+    ⚠️  Receipt mismatch: The merchant name and date on the receipt do not match the bank transaction. The receipt date is significantly later and the merchant name is different.
+
+2024-10-08 | $    26.25 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings on Wayne's birthday, 10/8.
+
+2024-10-08 | $    13.13 | ! | SPOTIFY USA
+    Note: Spotify subscription for music research and artist management.
+    ⚠️  Receipt mismatch: The merchant and amount match the bank transaction, but the date on the receipt is significantly later than the bank transaction date.
+
+2024-10-09 | $    30.05 | ~ | PMC - PAID PARKING
+    Note: Parking for meetings on Tracey's birthday, essential for schedule.
+
+2024-10-10 | $   123.79 | ✓ | 12 SOUTH TAPROOM &AMP; GRILL
+    Note: Client meeting dinner for Tracey and Linda's birthdays.
+
+2024-10-11 | $    24.22 | ✓ | DD *DOORDASH LASPALMAS
+    Note: Lunch for team during Linda's birthday meeting.
+
+2024-10-11 | $    23.27 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for artist collaboration discussion.
+    ⚠️  Receipt file not found: receipts/sh_nashville_other_2024-10-11_23_27.PNG
+
+2024-10-11 | $    27.14 | ! | SH NASHVILLE - OTHER
+    Note: Meeting with potential artist at Soho House Nashville.
+    ⚠️  Receipt mismatch: The receipt is from 'Soho House Nashville' and the transaction is from 'SH NASHVILLE - OTHER'. Furthermore, the total amount is $38.78, which does not match the transaction amount of $27.14. The date on the receipt is not visible.
+
+2024-10-11 | $    62.04 | ! | SH NASHVILLE - OTHER
+    Note: Soho House meeting for artist collaboration discussion.
+    ⚠️  Receipt mismatch: Merchant name does not match and date is different. Amount is close but not sufficient due to other mismatches.
+
+2024-10-13 | $     9.00 | ✓ | SOURCEGRAPH INC
+    Note: Chartmetric subscription for music analytics and artist tracking.
+
+2024-10-14 | $     5.00 | ~ | CLOUDFLARE
+    Note: Cloudflare payment for website hosting services.
+
+2024-10-15 | $   422.72 | ! | CHAR GREEN HILLS
+    Note: Focus time at Char Green Hills for project planning.
+    ⚠️  Receipt mismatch: The merchant and total amount do not match the bank transaction details. No tip is recorded.
+
+2024-10-16 | $ 1,450.00 | ✓ | ACADEMY OF COUNTRY MUS
+    Note: Payment for music event at Academy of Country Music.
+
+2024-10-16 | $   133.44 | ✓ | CORNER PUB
+    Note: Client dinner with Brian at Corner Pub for project discussion.
+
+2024-10-16 | $    19.94 | ~ | PMC - PAID PARKING
+    Note: Parking for meeting with Tim at PMC.
+
+2024-10-16 | $    37.48 | ! | SH NASHVILLE - OTHER
+    Note: Meeting with Tim at Soho House Nashville.
+    ⚠️  Receipt mismatch: Merchant name differs; the transaction shows 'SH NASHVILLE - OTHER' while the receipt is 'Soho House Nashville'. Date and amounts match, but the merchant discrepancy leads to a mismatch.
+
+2024-10-16 | $    29.73 | ✓ | SH NASHVILLE - OTHER
+    Note: Meeting with Tim at Soho House for artist management discussion.
+
+2024-10-16 | $    84.35 | ✓ | SH NASHVILLE F&AMP;B
+    Note: Meeting at Soho House Nashville with Tim and Brian.
+
+2024-10-16 | $    26.22 | ~ | PMC - PAID PARKING
+    Note: Parking for meetings with Tim on 10/16.
+
+2024-10-16 | $    26.22 | ✓ | PMC - PAID PARKING
+    Note: Parking for Tim and Brian’s meeting on 10/16.
+
+2024-10-18 | $   160.00 | ✓ | CHARTMETRIC
+    Note: Music analytics subscription for artist tracking and management.
+
+2024-10-18 | $    25.00 | ! | IM-ADA.AI
+    Note: AI tool subscription for music publishing tasks.
+    ⚠️  Receipt mismatch: Merchant name and date do not match the bank transaction details.
+
+2024-10-18 | $    25.00 | ~ | IM-ADA.AI
+    Note: AI tool subscription for music publishing tasks.
+
+2024-10-21 | $    50.00 | ~ | IM-ADA.AI
+    Note: AI tool subscription for music publishing and artist management.
+
+2024-10-21 | $    50.00 | ~ | IM-ADA.AI
+    Note: AI tool subscription for music publishing operations.
+
+2024-10-22 | $   144.00 | ✓ | RUNWAY STANDARD PLAN
+    Note: Subscription for RUNWAY Standard Plan for event planning and management.
+
+2024-10-23 | $     6.73 | ✓ | Belcourt Luke II
+    Note: Coffee meeting for Danielle's birthday celebration planning.
+
+2024-10-23 | $     6.73 | ✓ | 201 BELCOURT LOT
+    Note: Parking for Danielle's birthday event planning meeting.
+
+2024-10-23 | $    34.75 | ✓ | TST*FIDO BONGO JAVA
+    Note: Coffee meeting for Danielle's birthday planning.
+
+2024-10-24 | $    21.95 | ~ | CLAUDE.AI SUBSCRIPTION
+    Note: AI assistant subscription for writing and research needs.
+
+2024-10-25 | $    27.00 | ! | BONHOMME PLACE GARAGE
+    Note: Parking for Melissa's birthday meeting plans on 10/25.
+    ⚠️  Receipt mismatch: The merchant and the amounts do not match the transaction details. The transaction is from BONHOMME PLACE GARAGE with $27.00, while the receipt is from Apple with $1.09.
+
+2024-10-25 | $    50.00 | ~ | IM-ADA.AI
+    Note: AI tool subscription for music publishing management.
+
+2024-10-26 | $    19.99 | ✓ | IMDBPRO
+    Note: IMDBPRO subscription for artist management research and event planning.
+
+2024-10-26 | $   427.56 | ✓ | LE MERIDIEN ST. LOUIS
+    Note: Hotel stay for client meetings during Melissa's birthday week.
+
+2024-10-26 | $    49.71 | ✓ | UBER *TRIP
+    Note: Uber ride for Melissa's birthday planning meeting.
+
+2024-10-28 | $    60.00 | ! | JJK FOUNDATION
+    Note: Lunch meeting regarding Music City Rodeo planning.
+    ⚠️  Receipt mismatch: The merchant and amount do not match the bank transaction details.
+
+2024-10-30 | $   159.74 | ✓ | 12 SOUTH TAPROOM &AMP; GRILL
+    Note: Client lunch meeting at 12 South Taproom & Grill.
+
+2024-10-30 | $    49.24 | ✓ | DD *DOORDASH TACOBAMBA
+    Note: Lunch during focus time work session for Down Home.
+
+2024-10-30 | $    32.93 | ~ | MIDJOURNEY INC.
+    Note: AI visuals for upcoming album artwork.
+
+2024-10-31 | $    67.97 | ~ | DD *DOORDASH KALAMATAS
+    Note: Lunch meeting with team to discuss upcoming projects.
+
+2024-11-01 | $    19.76 | ✓ | EXPENSIFY INC.
+    Note: Expense for Expensify subscription to manage business expenses.
+
+2024-11-01 | $    25.00 | ✓ | IM-ADA.AI
+    Note: AI tool subscription for music publishing tasks.
+
+2024-11-01 | $    21.00 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings during CMS Nashville event.
+
+2024-11-01 | $    52.68 | ✓ | NOTION LABS INC.
+    Note: Notion subscription for project organization and planning.
+
+2024-11-01 | $    23.27 | ! | SH NASHVILLE - OTHER
+    Note: Lunch meeting at Soho House for CMS Nashville event.
+    ⚠️  Receipt mismatch: Merchant names differ and the date on the receipt does not match the transaction date.
+
+2024-11-03 | $    25.00 | ✓ | IM-ADA.AI
+    Note: AI tool subscription for music project management.
+
+2024-11-04 | $    39.87 | ✓ | CORNER PUB
+    Note: Birthday dinner for Anne-Marie, client relationship building.
+
+2024-11-06 | $    23.21 | ~ | PMC - PAID PARKING
+    Note: Parking for meetings with Philip Alms and DMAT Pitch.
+
+2024-11-06 | $   102.26 | ✓ | SH NASHVILLE F&AMP;B
+    Note: Meeting expenses at Soho House for client discussions.
+
+2024-11-07 | $    50.00 | ✓ | IM-ADA.AI
+    Note: AI tool subscription for music publishing management.
+
+2024-11-07 | $    26.25 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings with Ben Kline and Firebird collaboration.
+
+2024-11-07 | $    20.64 | ✓ | SQ *CANNERY HALL
+    Note: Coffee with Ben Kline for artist management discussion.
+
+2024-11-07 | $    12.46 | ✓ | SQ *DISTRICT COFFEE
+    Note: Coffee meeting with Ben Kline for artist management discussion.
+
+2024-11-08 | $    10.00 | ✓ | CALENDARBRIDGE
+    Note: CalendarBridge subscription for managing events, including artist birthdays.
+
+2024-11-08 | $    25.57 | ~ | DD *DOORDASH LASPALMAS
+    Note: Lunch for team during Tom's birthday celebration.
+
+2024-11-08 | $    10.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings on Tom and Doug's birthdays.
+
+2024-11-08 | $    45.24 | ? | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for Tom and Doug's birthdays.
+    ⚠️  Receipt file not found: receipts/sh_nashville_other_2024-11-08_45_24.PNG
+
+2024-11-08 | $    13.13 | ✓ | SPOTIFY USA
+    Note: Spotify subscription for artist research and playlist curation.
+
+2024-11-09 | $    50.00 | ✓ | IM-ADA.AI
+    Note: AI tool subscription for music publishing and artist management.
+
+2024-11-12 | $   176.99 | ✓ | SH NASHVILLE - OTHER
+    Note: Meeting and celebration for Sarah's birthday with team.
+
+2024-11-12 | $   361.72 | ~ | SH NASHVILLE F&AMP;B
+    Note: Meeting and birthday celebration at Soho House Nashville.
+
+2024-11-13 | $ 1,043.66 | ~ | GIVERGY: CHARITY EVENT
+    Note: Givergy charity event donation for artist community support.
+
+2024-11-13 | $    15.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for Sarah's birthday meeting at Metropolis.
+
+2024-11-13 | $     9.00 | ✓ | SOURCEGRAPH INC
+    Note: Calendar event setup for Sarah's birthday celebration.
+
+2024-11-13 | $    42.01 | ✓ | SQ *THE PERCH
+    Note: Birthday lunch for Sarah Moore Pivetta, client relationship building.
+
+2024-11-14 | $   279.44 | ✓ | 12 SOUTH TAPROOM &AMP; GRILL
+    Note: Dinner meeting with Wesley to discuss upcoming projects.
+
+2024-11-14 | $    27.44 | ✓ | ANTHROPIC
+    Note: AI assistant subscription for writing and research purposes.
+
+2024-11-14 | $     5.00 | ✓ | CLOUDFLARE
+    Note: Cloudflare subscription for website maintenance and security.
+
+2024-11-14 | $    15.99 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings with Wesley and Joel on 11/14.
+
+2024-11-14 | $     7.76 | ~ | SH NASHVILLE - OTHER
+    Note: Meeting with Wesley at Soho House Nashville.
+
+2024-11-15 | $    29.40 | ! | METROPOLIS PARKING
+    Note: Parking for meetings at Staples and dinner with Rae.
+    ⚠️  Receipt mismatch: The date and amount on the receipt do not match the transaction details, and the receipt is likely for a different transaction.
+
+2024-11-15 | $    15.99 | ~ | METROPOLIS PARKING
+    Note: Parking for meetings at Geist and Staples on 11/15.
+
+2024-11-15 | $    16.80 | ~ | SH NASHVILLE - OTHER
+    Note: Dinner meeting with Rae Del Bianco at Soho House.
+
+2024-11-16 | $    26.25 | ✓ | METROPOLIS PARKING
+    Note: Parking for meeting with artists at downtown Nashville.
+
+2024-11-17 | $    47.34 | ✓ | BROADWAY BREWHOUSE DOWNTO
+    Note: Client meeting dinner at Broadway Brewhouse.
+
+2024-11-18 | $    32.93 | ? | Midjourney
+    Note: AI visuals for upcoming rodeo artist promotions and events.
+    ⚠️  Receipt file not found: receipts/incoming/receipt_19a2665bba37_att0.jpg, receipts/incoming/receipt_19a2665bba37_att1.jpg
+
+2024-11-18 | $   160.00 | ✓ | CHARTMETRIC
+    Note: Chartmetric subscription for artist analytics and performance tracking.
+
+2024-11-19 | $    30.69 | ! | MARSH HOUSE
+    Note: Dinner meeting with Steiners to discuss upcoming projects.
+    ⚠️  Receipt mismatch: Merchant name, date, and amount on the receipt do not match the bank transaction details.
+
+2024-11-20 | $   100.00 | ✓ | IM-ADA.AI
+    Note: AI tool subscription for music project management and analytics.
+
+2024-11-20 | $    20.66 | ! | METROPOLIS PARKING
+    Note: Parking for Nashville Bourbon Auction and DH pitch meeting.
+    ⚠️  Receipt mismatch: Merchant name, date, and amount do not match the transaction details. The receipt shows PMC with a total of $89.82, not Metropolis Parking for $20.66.
+
+2024-11-21 | $    26.25 | ~ | METROPOLIS PARKING
+    Note: Parking for meetings on film & TV projects.
+
+2024-11-21 | $    34.96 | ✓ | PARKING OMNI NASHVILLE PA
+    Note: Parking for meetings on 11/21 at Omni Nashville.
+
+2024-11-22 | $    34.90 | ✓ | SH NASHVILLE - OTHER
+    Note: Soho House meeting with Abbi for artist management discussion.
+
+2024-11-22 | $    59.46 | ✓ | SH NASHVILLE - OTHER
+    Note: Soho meeting with Abbi about upcoming Rodeo event planning.
+
+2024-11-22 | $    15.51 | ~ | SH NASHVILLE - OTHER
+    Note: Meeting with Abbi at Soho House Nashville.
+
+2024-11-23 | $    26.25 | ✓ | METROPOLIS PARKING
+    Note: Parking for meeting at Metropolis with potential artist.
+
+2024-11-24 | $    21.95 | ~ | CLAUDE.AI SUBSCRIPTION
+    Note: AI tool subscription for writing and contract assistance.
+
+2024-11-24 | $    52.99 | ✓ | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for Chris Fabiani's birthday celebration.
+
+2024-11-25 | $    72.89 | ✓ | CORNER PUB
+    Note: Birthday dinner for Chris and team planning session.
+
+2024-11-25 | $    51.98 | ? | CORNER PUB
+    Note: Birthday dinner for Chris Fabiani—team celebration and discussion.
+    ⚠️  Vision analysis failed
+
+2024-11-25 | $    26.25 | ✓ | METROPOLIS PARKING
+    Note: Parking for meetings on Chris Fabiani's birthday at Metropolis.
+
+2024-11-25 | $    38.78 | ✓ | SH NASHVILLE - OTHER
+    Note: Meeting at Soho House for Chris's birthday celebration and discussion.
+
+2024-11-26 | $    26.25 | ✓ | METROPOLIS PARKING
+    Note: Parking for Songscapes event on 11/26.
+
+2024-11-27 | $    12.84 | ~ | PMC - PAID PARKING
+    Note: Parking for Nashville meeting prep on December 2-4.
+
+2024-11-27 | $   884.98 | ! | SOUTHWES 5262584463367
+    Note: Flight to Nashville for December meetings with clients.
+    ⚠️  Receipt mismatch: The merchant on the receipt is Southwest, which does not match the merchant on the bank transaction. Additionally, the date and amount do not align with the transaction details provided.
+
+2024-11-29 | $   123.17 | ! | GOLDEN NUGGET HOTEL LV
+    Note: NFR event stay for meetings and networking with artists.
+    ⚠️  Receipt mismatch: The total amount on the receipt is -313.01, which does not match the bank transaction amount of 123.17. Additionally, the receipt shows a negative charge, indicating a refund or reverse transaction, not a payment.
+
+2024-11-30 | $   100.00 | ✓ | IM-ADA.AI
+    Note: AI tool subscription for music project management.
+
+2024-11-30 | $    32.93 | ✓ | MIDJOURNEY INC.
+    Note: AI visuals for promoting artist projects and cover art.
+
+2024-12-01 | $    19.76 | ✓ | EXPENSIFY INC.
+    Note: Expense for using Expensify to manage business costs.
+
+================================================================================
+MISSING RECEIPT FORMS NEEDED
+================================================================================
+2024-09-11 | $    40.00 | SWA*UPGBOARD5264253430990
+    Purpose: Flight upgrade for travel to industry event in Las Vegas.
+2024-09-11 | $    40.00 | SWA*UPGBOARD5264253431024
+    Purpose: SWA boarding for Blake's birthday trip to Golden Nugget.

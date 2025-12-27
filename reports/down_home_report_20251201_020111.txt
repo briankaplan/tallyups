@@ -1,0 +1,35 @@
+================================================================================
+DOWN HOME EXPENSE REPORT
+Period: 2024-07-01 to 2024-12-01
+Generated: 2025-12-01 02:01
+================================================================================
+
+SUMMARY
+----------------------------------------
+Total Transactions: 5
+Total Amount: $288.70
+
+Verified Receipts: 0 ($0.00)
+Likely Matches: 0 ($0.00)
+Needs Receipt/Form: 0 ($0.00)
+Mismatched: 0 ($0.00)
+Other/Unverified: 5 ($288.70)
+
+================================================================================
+DETAILED TRANSACTIONS
+================================================================================
+
+2024-11-27 | $    12.84 | ? | PMC - PAID PARKING
+    Note: Business expense - PMC - PAID PARKING
+
+2024-11-29 | $   123.17 | ? | GOLDEN NUGGET HOTEL LV
+    Note: Business expense - GOLDEN NUGGET HOTEL LV
+
+2024-11-30 | $   100.00 | ? | IM-ADA.AI
+    Note: Business expense - IM-ADA.AI
+
+2024-11-30 | $    32.93 | ? | MIDJOURNEY INC.
+    Note: Business expense - MIDJOURNEY INC.
+
+2024-12-01 | $    19.76 | ? | EXPENSIFY INC.
+    Note: Business expense - EXPENSIFY INC.

@@ -177,7 +177,7 @@ curl -s https://tallyups.com/api/transactions?limit=1
    ```sql
    -- For transactions table
    EXPLAIN SELECT * FROM transactions WHERE chase_date = '2025-01-15';
-   EXPLAIN SELECT * FROM transactions WHERE business_type = 'down_home';
+   EXPLAIN SELECT * FROM transactions WHERE business_type = 'business';
    ```
 
 ### Resolution

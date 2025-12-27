@@ -82,7 +82,7 @@ class TestReceiptProcessingFlow:
             'chase_description': 'ANTHROPIC',
             'chase_amount': '20.00',
             'chase_date': '01/15/2024',
-            'business_type': 'down_home',
+            'business_type': 'business',
         }
 
         # Verify flow logic
@@ -214,12 +214,12 @@ class TestAPIEndpoints:
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchall.return_value = [
-            {'id': 1, 'merchant': 'Anthropic', 'amount': '20.00', 'business_type': 'down_home'},
+            {'id': 1, 'merchant': 'Anthropic', 'amount': '20.00', 'business_type': 'business'},
         ]
         mock_db.return_value = mock_conn
 
         with mock_app.test_client() as client:
-            response = client.get('/api/transactions?business_type=down_home')
+            response = client.get('/api/transactions?business_type=business')
             # Response should be valid (401 if auth required, 200/500 otherwise)
             assert response.status_code in [200, 401, 500]
 
@@ -274,13 +274,13 @@ class TestClassificationIntegration:
             transaction_id=1,
             merchant="New Test Venue",
             amount=Decimal("200.00"),
-            correct_type=BusinessType.MUSIC_CITY_RODEO,
+            correct_type=BusinessType.SECONDARY,
             user_notes="MCR event venue",
         )
 
         # Re-classify should use learned data
         result2 = classifier.classify(tx)
-        assert result2.business_type == BusinessType.MUSIC_CITY_RODEO
+        assert result2.business_type == BusinessType.SECONDARY
 
     @pytest.mark.integration
     def test_batch_classify_with_context(self, tmp_path):
@@ -307,7 +307,7 @@ class TestClassificationIntegration:
         results = classifier.classify_batch(transactions)
 
         assert len(results) == 3
-        assert results[2].business_type == BusinessType.DOWN_HOME
+        assert results[2].business_type == BusinessType.BUSINESS
 
 
 # =============================================================================

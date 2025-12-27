@@ -104,27 +104,27 @@ class TestBusinessTypeEnum:
     @pytest.mark.unit
     def test_enum_values(self):
         """BusinessType should have correct values."""
-        assert BusinessType.DOWN_HOME.value == "down_home"
-        assert BusinessType.MUSIC_CITY_RODEO.value == "music_city_rodeo"
+        assert BusinessType.BUSINESS.value == "business"
+        assert BusinessType.SECONDARY.value == "secondary"
         assert BusinessType.EM_CO.value == "em_co"
         assert BusinessType.PERSONAL.value == "personal"
 
     @pytest.mark.unit
-    def test_from_string_down_home(self):
-        """Various Down Home strings should parse correctly."""
-        assert BusinessType.from_string("down_home") == BusinessType.DOWN_HOME
-        assert BusinessType.from_string("downhome") == BusinessType.DOWN_HOME
-        assert BusinessType.from_string("Down Home") == BusinessType.DOWN_HOME
-        assert BusinessType.from_string("dh") == BusinessType.DOWN_HOME
+    def test_from_string_business(self):
+        """Various Business strings should parse correctly."""
+        assert BusinessType.from_string("business") == BusinessType.BUSINESS
+        assert BusinessType.from_string("business") == BusinessType.BUSINESS
+        assert BusinessType.from_string("Business") == BusinessType.BUSINESS
+        assert BusinessType.from_string("biz") == BusinessType.BUSINESS
 
     @pytest.mark.unit
-    def test_from_string_mcr(self):
+    def test_from_string_sec(self):
         """Various MCR strings should parse correctly."""
-        assert BusinessType.from_string("music_city_rodeo") == BusinessType.MUSIC_CITY_RODEO
-        assert BusinessType.from_string("musiccityrodeo") == BusinessType.MUSIC_CITY_RODEO
-        assert BusinessType.from_string("Music City Rodeo") == BusinessType.MUSIC_CITY_RODEO
-        assert BusinessType.from_string("mcr") == BusinessType.MUSIC_CITY_RODEO
-        assert BusinessType.from_string("rodeo") == BusinessType.MUSIC_CITY_RODEO
+        assert BusinessType.from_string("secondary") == BusinessType.SECONDARY
+        assert BusinessType.from_string("secondary") == BusinessType.SECONDARY
+        assert BusinessType.from_string("Secondary") == BusinessType.SECONDARY
+        assert BusinessType.from_string("sec") == BusinessType.SECONDARY
+        assert BusinessType.from_string("rodeo") == BusinessType.SECONDARY
 
     @pytest.mark.unit
     def test_from_string_em_co(self):
@@ -140,16 +140,16 @@ class TestBusinessTypeEnum:
         assert BusinessType.from_string("PERSONAL") == BusinessType.PERSONAL
 
     @pytest.mark.unit
-    def test_from_string_unknown_defaults_to_down_home(self):
-        """Unknown string should default to DOWN_HOME."""
-        assert BusinessType.from_string("unknown") == BusinessType.DOWN_HOME
-        assert BusinessType.from_string("") == BusinessType.DOWN_HOME
+    def test_from_string_unknown_defaults_to_business(self):
+        """Unknown string should default to BUSINESS."""
+        assert BusinessType.from_string("unknown") == BusinessType.BUSINESS
+        assert BusinessType.from_string("") == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_from_string_case_insensitive(self):
         """Parsing should be case insensitive."""
-        assert BusinessType.from_string("DOWN_HOME") == BusinessType.DOWN_HOME
-        assert BusinessType.from_string("Down_Home") == BusinessType.DOWN_HOME
+        assert BusinessType.from_string("BUSINESS") == BusinessType.BUSINESS
+        assert BusinessType.from_string("Business") == BusinessType.BUSINESS
 
 
 # =============================================================================
@@ -163,11 +163,11 @@ class TestClassificationResult:
     def test_creation(self):
         """ClassificationResult should create correctly."""
         result = ClassificationResult(
-            business_type=BusinessType.DOWN_HOME,
+            business_type=BusinessType.BUSINESS,
             confidence=0.95,
             reasoning="Known merchant",
         )
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
         assert result.confidence == 0.95
         assert result.reasoning == "Known merchant"
 
@@ -175,13 +175,13 @@ class TestClassificationResult:
     def test_to_dict(self):
         """ClassificationResult should serialize to dict."""
         result = ClassificationResult(
-            business_type=BusinessType.DOWN_HOME,
+            business_type=BusinessType.BUSINESS,
             confidence=0.95,
             reasoning="Test",
             signals=[
                 ClassificationSignal(
                     signal_type="merchant_exact",
-                    business_type=BusinessType.DOWN_HOME,
+                    business_type=BusinessType.BUSINESS,
                     confidence=0.99,
                     reasoning="Known merchant",
                 )
@@ -192,7 +192,7 @@ class TestClassificationResult:
 
         d = result.to_dict()
 
-        assert d['business_type'] == 'down_home'
+        assert d['business_type'] == 'business'
         assert d['confidence'] == 0.95
         assert len(d['signals']) == 1
         assert 'personal' in d['alternative_types']
@@ -202,7 +202,7 @@ class TestClassificationResult:
     def test_default_values(self):
         """Default values should be correct."""
         result = ClassificationResult(
-            business_type=BusinessType.DOWN_HOME,
+            business_type=BusinessType.BUSINESS,
             confidence=0.5,
             reasoning="Default",
         )
@@ -223,23 +223,23 @@ class TestClassificationSignal:
         """ClassificationSignal should create correctly."""
         signal = ClassificationSignal(
             signal_type="merchant_exact",
-            business_type=BusinessType.DOWN_HOME,
+            business_type=BusinessType.BUSINESS,
             confidence=0.99,
             reasoning="Known merchant Anthropic",
             weight=1.0,
         )
         assert signal.signal_type == "merchant_exact"
-        assert signal.business_type == BusinessType.DOWN_HOME
+        assert signal.business_type == BusinessType.BUSINESS
         assert signal.confidence == 0.99
         assert signal.weight == 1.0
 
 
 # =============================================================================
-# DOWN HOME CLASSIFICATION TESTS
+# BUSINESS CLASSIFICATION TESTS
 # =============================================================================
 
-class TestDownHomeClassification:
-    """Test suite for Down Home business classification."""
+class TestBusinessClassification:
+    """Test suite for Business business classification."""
 
     @pytest.fixture
     def classifier(self):
@@ -248,105 +248,105 @@ class TestDownHomeClassification:
     # AI & SOFTWARE
     @pytest.mark.unit
     def test_anthropic(self, classifier):
-        """Anthropic should classify as Down Home."""
+        """Anthropic should classify as Business."""
         tx = make_transaction("Anthropic", 20.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
         assert result.confidence >= 0.85  # Confidence depends on signal weighting
 
     @pytest.mark.unit
     def test_claude_ai(self, classifier):
-        """Claude AI should classify as Down Home."""
+        """Claude AI should classify as Business."""
         tx = make_transaction("Claude AI", 20.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_openai(self, classifier):
-        """OpenAI should classify as Down Home."""
+        """OpenAI should classify as Business."""
         tx = make_transaction("OpenAI", 20.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_midjourney(self, classifier):
-        """Midjourney should classify as Down Home."""
+        """Midjourney should classify as Business."""
         tx = make_transaction("Midjourney", 30.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_cursor(self, classifier):
-        """Cursor should classify as Down Home."""
+        """Cursor should classify as Business."""
         tx = make_transaction("Cursor", 20.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_github(self, classifier):
-        """GitHub should classify as Down Home."""
+        """GitHub should classify as Business."""
         tx = make_transaction("GitHub", 7.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_hugging_face(self, classifier):
-        """Hugging Face should classify as Down Home."""
+        """Hugging Face should classify as Business."""
         tx = make_transaction("Hugging Face", 10.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     # CLOUD & INFRASTRUCTURE
     @pytest.mark.unit
     def test_cloudflare(self, classifier):
-        """Cloudflare should classify as Down Home."""
+        """Cloudflare should classify as Business."""
         tx = make_transaction("Cloudflare", 25.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_railway(self, classifier):
-        """Railway should classify as Down Home."""
+        """Railway should classify as Business."""
         tx = make_transaction("Railway", 20.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_vercel(self, classifier):
-        """Vercel should classify as Down Home."""
+        """Vercel should classify as Business."""
         tx = make_transaction("Vercel", 20.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_aws(self, classifier):
-        """AWS should classify as Down Home."""
+        """AWS should classify as Business."""
         tx = make_transaction("AWS", 100.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     # COLLABORATION
     @pytest.mark.unit
     def test_figma(self, classifier):
-        """Figma should classify as Down Home."""
+        """Figma should classify as Business."""
         tx = make_transaction("Figma", 15.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_notion(self, classifier):
-        """Notion should classify as Down Home."""
+        """Notion should classify as Business."""
         tx = make_transaction("Notion", 10.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
-    # DOWN HOME DINING
+    # BUSINESS DINING
     @pytest.mark.unit
     def test_soho_house_nashville(self, classifier):
-        """Soho House Nashville should classify as Down Home."""
+        """Soho House Nashville should classify as Business."""
         tx = make_transaction("Soho House Nashville", 150.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_corner_pub(self, classifier):
@@ -354,16 +354,16 @@ class TestDownHomeClassification:
         tx = make_transaction("Corner Pub", 45.00)
         result = classifier.classify(tx)
         # Classification depends on configured rules; verify valid result
-        assert result.business_type in (BusinessType.DOWN_HOME, BusinessType.PERSONAL)
+        assert result.business_type in (BusinessType.BUSINESS, BusinessType.PERSONAL)
         assert result.confidence > 0
 
 
 # =============================================================================
-# MUSIC CITY RODEO CLASSIFICATION TESTS
+# SECONDARY CLASSIFICATION TESTS
 # =============================================================================
 
-class TestMusicCityRodeoClassification:
-    """Test suite for Music City Rodeo business classification."""
+class TestSecondaryClassification:
+    """Test suite for Secondary business classification."""
 
     @pytest.fixture
     def classifier(self):
@@ -374,14 +374,14 @@ class TestMusicCityRodeoClassification:
         """Bridgestone Arena should classify as MCR."""
         tx = make_transaction("Bridgestone Arena", 500.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.MUSIC_CITY_RODEO
+        assert result.business_type == BusinessType.SECONDARY
 
     @pytest.mark.unit
     def test_cambria_hotel(self, classifier):
         """Cambria Hotel Nashville should classify as MCR."""
         tx = make_transaction("Cambria Hotel Nashville", 189.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.MUSIC_CITY_RODEO
+        assert result.business_type == BusinessType.SECONDARY
 
     @pytest.mark.unit
     def test_hattie_bs(self, classifier):
@@ -509,7 +509,7 @@ class TestClassifierFeatures:
         """Partial merchant name should still match."""
         tx = make_transaction("ANTHROPIC.COM", 20.00)
         result = classifier.classify(tx)
-        assert result.business_type == BusinessType.DOWN_HOME
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_with_prefix(self, classifier):
@@ -517,7 +517,7 @@ class TestClassifierFeatures:
         tx = make_transaction("SQ*CORNER PUB", 45.00)
         result = classifier.classify(tx)
         # Classification depends on configured rules; verify valid result
-        assert result.business_type in (BusinessType.DOWN_HOME, BusinessType.PERSONAL)
+        assert result.business_type in (BusinessType.BUSINESS, BusinessType.PERSONAL)
         assert result.confidence > 0
 
     @pytest.mark.unit
@@ -576,8 +576,8 @@ class TestContextClassification:
             email_domain="anthropic.com",
         )
         result = classifier.classify(tx, receipt=receipt)
-        # Email domain from anthropic.com should suggest DOWN_HOME
-        assert result.business_type == BusinessType.DOWN_HOME
+        # Email domain from anthropic.com should suggest BUSINESS
+        assert result.business_type == BusinessType.BUSINESS
 
     @pytest.mark.unit
     def test_with_calendar_event(self, classifier):
@@ -589,16 +589,16 @@ class TestContextClassification:
             location="Restaurant Nashville",
         )
         result = classifier.classify(tx, calendar_events=[event])
-        # MCR in event title should add a calendar signal for MUSIC_CITY_RODEO
+        # MCR in event title should add a calendar signal for SECONDARY
         calendar_signal = next(
             (s for s in result.signals if s.signal_type == 'calendar'), None
         )
         assert calendar_signal is not None
-        assert calendar_signal.business_type == BusinessType.MUSIC_CITY_RODEO
+        assert calendar_signal.business_type == BusinessType.SECONDARY
         # MCR should appear as alternative if not primary
         assert (
-            result.business_type == BusinessType.MUSIC_CITY_RODEO or
-            BusinessType.MUSIC_CITY_RODEO in result.alternative_types
+            result.business_type == BusinessType.SECONDARY or
+            BusinessType.SECONDARY in result.alternative_types
         )
 
     @pytest.mark.unit
@@ -607,11 +607,11 @@ class TestContextClassification:
         tx = make_transaction("Lunch Meeting", 75.00)
         contact = make_contact(
             "Patrick Humes",
-            company="Music City Rodeo",
-            business_type=BusinessType.MUSIC_CITY_RODEO,
+            company="Secondary",
+            business_type=BusinessType.SECONDARY,
         )
         result = classifier.classify(tx, contacts=[contact])
-        # Contact linked to MCR should suggest MUSIC_CITY_RODEO
+        # Contact linked to MCR should suggest SECONDARY
         # This depends on how contacts are used in classification
 
 
@@ -639,14 +639,14 @@ class TestLearningSystem:
             transaction_id=1,
             merchant="New Business Restaurant",
             amount=Decimal("100.00"),
-            correct_type=BusinessType.MUSIC_CITY_RODEO,
+            correct_type=BusinessType.SECONDARY,
             user_notes="MCR team dinner",
         )
 
         # Re-classify should use learned data
         result = classifier.classify(tx)
         # After learning, should classify as MCR
-        assert result.business_type == BusinessType.MUSIC_CITY_RODEO
+        assert result.business_type == BusinessType.SECONDARY
 
     @pytest.mark.unit
     def test_learned_corrections_persist(self, tmp_path):
@@ -829,7 +829,7 @@ class TestMerchantRulesDatabase:
         """Anthropic rule should be correct."""
         assert "anthropic" in MERCHANT_BUSINESS_RULES
         rule = MERCHANT_BUSINESS_RULES["anthropic"]
-        assert rule['type'] == BusinessType.DOWN_HOME
+        assert rule['type'] == BusinessType.BUSINESS
         assert rule['confidence'] >= 0.95
 
     @pytest.mark.unit

@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.948.0",
+    "mysql2": "^3.15.3"
+  }
+}

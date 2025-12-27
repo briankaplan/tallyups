@@ -38,7 +38,7 @@ class TestReceiptLibraryService:
         """Test that ReceiptSource enum has all expected values."""
         from services.receipt_library_service import ReceiptSource
 
-        expected = ['gmail_personal', 'gmail_mcr', 'gmail_down_home',
+        expected = ['gmail_personal', 'gmail_sec', 'gmail_business',
                    'scanner_mobile', 'scanner_web', 'manual_upload',
                    'forwarded_email', 'bank_statement_pdf', 'import']
 
@@ -58,7 +58,7 @@ class TestReceiptLibraryService:
         """Test that BusinessType enum has all expected values."""
         from services.receipt_library_service import BusinessType
 
-        expected = ['down_home', 'mcr', 'personal', 'ceo', 'em_co', 'unknown']
+        expected = ['business', 'sec', 'personal', 'ceo', 'em_co', 'unknown']
 
         for bt in expected:
             assert hasattr(BusinessType, bt.upper()), f"Missing business type: {bt}"
@@ -104,7 +104,7 @@ class TestReceiptLibraryService:
             text='coffee',
             merchant='Starbucks',
             status=['matched'],
-            business_type=['down_home'],
+            business_type=['business'],
             amount_min=Decimal('10.00'),
             amount_max=Decimal('50.00'),
             date_from=date(2024, 1, 1),
@@ -116,7 +116,7 @@ class TestReceiptLibraryService:
         assert query.text == 'coffee'
         assert query.merchant == 'Starbucks'
         assert query.status == ['matched']
-        assert query.business_type == ['down_home']
+        assert query.business_type == ['business']
         assert query.amount_min == Decimal('10.00')
         assert query.amount_max == Decimal('50.00')
         assert query.date_from == date(2024, 1, 1)
@@ -293,9 +293,9 @@ class TestReceiptSearch:
         from services.receipt_search import QueryParser
 
         parser = QueryParser()
-        parsed = parser.parse('type:down_home')
+        parsed = parser.parse('type:business')
 
-        assert parsed.business_type == 'down_home'
+        assert parsed.business_type == 'business'
 
     def test_query_parser_hashtag(self):
         """Test parsing #hashtag."""

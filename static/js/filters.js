@@ -11,7 +11,7 @@ class TransactionFilter {
             dateRange: null,           // { start: Date, end: Date }
             merchants: [],             // Array of merchant names
             amountRange: null,         // { min: number, max: number }
-            businessTypes: [],         // ['Down Home', 'MCR', 'Personal', 'EM.co', 'Unassigned']
+            businessTypes: [],         // ['Business', 'MCR', 'Personal', 'EM.co', 'Unassigned']
             categories: [],            // Category names
             matchStatus: null,         // 'matched', 'unmatched', 'review'
             reviewStatus: null,        // 'good', 'bad', 'needs_review', 'approved', 'flagged'
@@ -44,18 +44,18 @@ class TransactionFilter {
                     validationStatus: 'mismatch'
                 }
             },
-            'down-home': {
-                name: 'Down Home',
+            'business': {
+                name: 'Business',
                 icon: '🏠',
                 filters: {
-                    businessTypes: ['Down Home']
+                    businessTypes: ['Business']
                 }
             },
-            'mcr': {
-                name: 'Music City Rodeo',
+            'sec': {
+                name: 'Secondary',
                 icon: '🤠',
                 filters: {
-                    businessTypes: ['Music City Rodeo']
+                    businessTypes: ['Secondary']
                 }
             },
             'personal': {

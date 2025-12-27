@@ -137,7 +137,7 @@ def regenerate_notes(transaction_ids):
         amount = parse_amount_str(row.get("Chase Amount") or row.get("amount") or 0)
         date = row.get("Chase Date") or row.get("transaction_date") or ""
         category = row.get("category") or row.get("Chase Category") or ""
-        business_type = row.get("Business Type") or "Down Home"
+        business_type = row.get("Business Type") or "Business"
 
         try:
             result = gemini_generate_ai_note(merchant, amount, date, category, business_type, row=row)

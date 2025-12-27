@@ -699,7 +699,7 @@ def update_account(account_id):
     Request Body:
         {
             "sync_enabled": true,
-            "default_business_type": "Down_Home",
+            "default_business_type": "Business",
             "display_name": "My Checking"
         }
 

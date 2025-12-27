@@ -2,7 +2,7 @@
 R2 Document Management Service
 
 Features:
-- 7 organized categories (Legal, Financial, Auto, Home, Down Home, MCR, Personal)
+- 7 organized categories (Legal, Financial, Auto, Home, Business, MCR, Personal)
 - AI auto-categorization using Claude
 - Email attachment auto-upload
 - Full-text search
@@ -51,16 +51,16 @@ CATEGORIES = {
         'keywords': ['mortgage', 'home insurance', 'utility', 'hoa', 'property', 'lease', 'rent'],
         'retention_days': 2555  # 7 years
     },
-    'downhome': {
-        'name': 'Down Home',
-        'path': 'documents/downhome/',
-        'keywords': ['down home', 'downhome', 'business contract', 'employee', 'payroll', 'vendor'],
+    'business': {
+        'name': 'Business',
+        'path': 'documents/business/',
+        'keywords': ['business', 'business', 'business contract', 'employee', 'payroll', 'vendor'],
         'retention_days': 2555  # 7 years
     },
-    'mcr': {
-        'name': 'Music City Rodeo',
-        'path': 'documents/mcr/',
-        'keywords': ['mcr', 'music city rodeo', 'event contract', 'performer', 'venue'],
+    'sec': {
+        'name': 'Secondary',
+        'path': 'documents/sec/',
+        'keywords': ['sec', 'secondary', 'event contract', 'performer', 'venue'],
         'retention_days': 2555  # 7 years
     },
     'personal': {
@@ -135,14 +135,14 @@ Categories:
 - financial: Tax documents, bank statements, investments, financial reports
 - auto: Vehicle registration, insurance, maintenance, DMV documents
 - home: Mortgage, home insurance, utilities, HOA, property documents
-- downhome: Down Home business contracts, employee docs, business insurance
-- mcr: Music City Rodeo contracts, event documents, MCR specific
+- business: Business business contracts, employee docs, business insurance
+- sec: Secondary contracts, event documents, MCR specific
 - personal: Medical records, personal correspondence, family, school, health
 
 Document:
 {context}
 
-Return ONLY the category name (legal, financial, auto, home, downhome, mcr, or personal).
+Return ONLY the category name (legal, financial, auto, home, business, sec, or personal).
 No explanation, just the category name."""
 
             response = self.anthropic.messages.create(

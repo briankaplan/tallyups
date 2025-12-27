@@ -90,30 +90,30 @@ pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-pyt
 ```
 
 **Gmail Accounts:**
-- `brian@downhome.com` (Down Home business)
+- `brian@business.com` (Business business)
 - `kaplan.brian@gmail.com` (Personal)
-- `brian@musiccityrodeo.com` (Music City Rodeo business)
+- `brian@secondary.com` (Secondary business)
 
 **Setup:**
 
 1. Create OAuth2 credentials in Google Cloud Console
 2. Download credentials JSON for each account
 3. Place credentials in `credentials/` directory:
-   - `credentials/downhome_gmail.json`
+   - `credentials/business_gmail.json`
    - `credentials/personal_gmail.json`
-   - `credentials/mcr_gmail.json`
+   - `credentials/sec_gmail.json`
 
 4. First run will open browser for OAuth consent
 5. Tokens will be saved in `credentials/token_*.json`
 
 **Environment Variables:**
 ```bash
-GMAIL_CREDENTIALS_DOWNHOME=credentials/downhome_gmail.json
-GMAIL_TOKEN_DOWNHOME=credentials/token_downhome.json
+GMAIL_CREDENTIALS_BUSINESS=credentials/business_gmail.json
+GMAIL_TOKEN_BUSINESS=credentials/token_business.json
 GMAIL_CREDENTIALS_PERSONAL=credentials/personal_gmail.json
 GMAIL_TOKEN_PERSONAL=credentials/token_personal.json
-GMAIL_CREDENTIALS_MCR=credentials/mcr_gmail.json
-GMAIL_TOKEN_MCR=credentials/token_mcr.json
+GMAIL_CREDENTIALS_MCR=credentials/sec_gmail.json
+GMAIL_TOKEN_MCR=credentials/token_sec.json
 ```
 
 **Usage:**
@@ -124,11 +124,11 @@ from services.gmail_receipt_service import GmailReceiptService
 gmail = GmailReceiptService(db_path='receipts.db')
 
 # Authenticate account
-gmail.authenticate_account('brian@downhome.com')
+gmail.authenticate_account('brian@business.com')
 
 # Search for receipts (last 30 days)
 receipts = gmail.search_receipts(
-    account_email='brian@downhome.com',
+    account_email='brian@business.com',
     days_back=30,
     max_results=100
 )
@@ -380,12 +380,12 @@ R2_PUBLIC_URL=https://pub-946b7d51aa2c4a0fb92c1ba15bf5c520.r2.dev
 R2_CUSTOM_DOMAIN=
 
 # Gmail OAuth Credentials
-GMAIL_CREDENTIALS_DOWNHOME=credentials/downhome_gmail.json
-GMAIL_TOKEN_DOWNHOME=credentials/token_downhome.json
+GMAIL_CREDENTIALS_BUSINESS=credentials/business_gmail.json
+GMAIL_TOKEN_BUSINESS=credentials/token_business.json
 GMAIL_CREDENTIALS_PERSONAL=credentials/personal_gmail.json
 GMAIL_TOKEN_PERSONAL=credentials/token_personal.json
-GMAIL_CREDENTIALS_MCR=credentials/mcr_gmail.json
-GMAIL_TOKEN_MCR=credentials/token_mcr.json
+GMAIL_CREDENTIALS_MCR=credentials/sec_gmail.json
+GMAIL_TOKEN_MCR=credentials/token_sec.json
 ```
 
 ### Directory Structure
@@ -399,12 +399,12 @@ GMAIL_TOKEN_MCR=credentials/token_mcr.json
 │   ├── receipt_processor_service.py
 │   └── ... (other services)
 ├── credentials/
-│   ├── downhome_gmail.json
-│   ├── token_downhome.json
+│   ├── business_gmail.json
+│   ├── token_business.json
 │   ├── personal_gmail.json
 │   ├── token_personal.json
-│   ├── mcr_gmail.json
-│   └── token_mcr.json
+│   ├── sec_gmail.json
+│   └── token_sec.json
 ├── receipt-system/
 │   └── data/
 │       └── Chase_Activity_MATCHED.csv
@@ -553,7 +553,7 @@ MIT License
 ## Support
 
 For issues or questions:
-- Email: brian@downhome.com
+- Email: brian@business.com
 - Database: receipts.db
 - Logs: Check service output for errors
 

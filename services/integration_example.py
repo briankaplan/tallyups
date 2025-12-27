@@ -91,9 +91,9 @@ def main():
 
     print("\n📧 Gmail Receipt Extraction Demo")
     print("   This would search your Gmail accounts for receipts:")
-    print("   - brian@downhome.com")
+    print("   - brian@business.com")
     print("   - kaplan.brian@gmail.com")
-    print("   - brian@musiccityrodeo.com")
+    print("   - brian@secondary.com")
     print("\n   To run actual extraction, authenticate Gmail accounts first:")
     print("   $ python services/gmail_receipt_service.py receipts.db")
 

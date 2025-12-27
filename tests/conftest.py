@@ -190,7 +190,7 @@ class TestDataGenerator:
 
     # Known merchants by business type
     MERCHANTS = {
-        'down_home': [
+        'business': [
             ('Anthropic', 20.00),
             ('OpenAI', 20.00),
             ('Midjourney', 30.00),
@@ -203,7 +203,7 @@ class TestDataGenerator:
             ('Corner Pub', 45.00),
             ('12 South Taproom', 65.00),
         ],
-        'music_city_rodeo': [
+        'secondary': [
             ('Bridgestone Arena', 500.00),
             ('Cambria Hotel Nashville', 189.00),
             ('Hattie Bs', 35.00),
@@ -262,7 +262,7 @@ class TestDataGenerator:
 
         # Select merchant
         if merchant is None:
-            merchant_data = self.rng.choice(self.MERCHANTS.get(business_type, self.MERCHANTS['down_home']))
+            merchant_data = self.rng.choice(self.MERCHANTS.get(business_type, self.MERCHANTS['business']))
             merchant = merchant_data[0]
             if amount is None:
                 amount = merchant_data[1]
@@ -484,7 +484,7 @@ def sample_transaction():
         date=datetime(2024, 1, 15, 12, 0),
         description="Anthropic subscription",
         category="Software & Subscriptions",
-        business_type="down_home",
+        business_type="business",
     )
 
 

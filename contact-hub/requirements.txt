@@ -1,0 +1,40 @@
+# FastAPI and server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Database
+sqlalchemy>=2.0.0
+pymysql>=1.1.0
+cryptography>=41.0.0
+
+# Validation
+pydantic>=2.5.0
+pydantic[email]>=2.5.0
+
+# Google APIs
+google-api-python-client>=2.100.0
+google-auth-httplib2>=0.1.1
+google-auth-oauthlib>=1.1.0
+
+# vCard parsing
+vobject>=0.9.6
+
+# Phone number normalization
+phonenumbers>=8.13.0
+
+# Fuzzy matching for deduplication
+fuzzywuzzy>=0.18.0
+python-Levenshtein>=0.23.0
+
+# HTTP client for MCP server
+httpx>=0.25.0
+
+# Environment and utilities
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+
+# Date handling for reminders
+python-dateutil>=2.8.2
+
+# MCP server (for Claude integration)
+mcp>=0.9.0

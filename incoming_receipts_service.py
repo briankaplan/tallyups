@@ -871,7 +871,7 @@ SPAM_SUBJECT_PATTERNS = [
     'white house', 'washington', 'capitol hill', 'senate', 'house of',
 
     # === LOYALTY / REWARDS SPAM ===
-    'hilton honors', 'marriott bonvoy', 'ihg rewards', 'wyndham rewards',
+    'hilton honors', 'marriott bonvoy', 'ihg rewards', 'wynbizam rewards',
     'points expiring', 'redeem your points', 'bonus points', 'earn points',
     'miles expiring', 'redeem your miles', 'reward status', 'elite status',
     'tier qualifying', 'free night', 'anniversary night',
@@ -1241,7 +1241,7 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
         return 0
 
     # 2. Internal emails from yourself
-    if any(x in from_email for x in ['kaplan.brian@gmail.com', 'brian@downhome.com', 'brian@musiccityrodeo.com']):
+    if any(x in from_email for x in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']):
         return 0
 
     # 3. Generic vague subjects
@@ -3373,9 +3373,9 @@ def run_intelligent_scan(accounts=None, since_date=None, save=True):
     """
     if accounts is None:
         accounts = [
-            'brian@downhome.com',
+            'brian@business.com',
             'kaplan.brian@gmail.com',
-            'brian@musiccityrodeo.com'
+            'brian@secondary.com'
         ]
 
     print("\n" + "="*60)
@@ -3431,8 +3431,8 @@ if __name__ == '__main__':
     # Scan all Gmail accounts
     accounts = [
         'kaplan.brian@gmail.com',
-        'brian@downhome.com',
-        'brian@musiccityrodeo.com'
+        'brian@business.com',
+        'brian@secondary.com'
     ]
 
     total_found = 0

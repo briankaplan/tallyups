@@ -1494,7 +1494,7 @@ actor APIClient {
     }
 
     struct CategoryBreakdown: Codable, Identifiable {
-        let id: String { category }
+        var id: String { category }
         let category: String
         let amount: Double
         let count: Int
@@ -1502,7 +1502,7 @@ actor APIClient {
     }
 
     struct MerchantBreakdown: Codable, Identifiable {
-        let id: String { merchant }
+        var id: String { merchant }
         let merchant: String
         let amount: Double
         let count: Int

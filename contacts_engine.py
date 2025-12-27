@@ -9,12 +9,12 @@ VIP_PEOPLE = [
     # You
     "Brian Kaplan",
 
-    # Music City Rodeo staff
+    # Secondary staff
     "Patrick Humes",
     "Barry Stephenson",
     "Paige",
 
-    # Down Home Team
+    # Business Team
     "Jason Ross",
     "Tim Staples",
     "Joel Bergvall",
@@ -44,7 +44,7 @@ VIP_PEOPLE = [
 ]
 
 MCR_TEAM = ["Brian Kaplan", "Patrick Humes", "Barry Stephenson", "Paige"]
-DOWN_HOME_TEAM = [
+BUSINESS_TEAM = [
     "Brian Kaplan",
     "Jason Ross",
     "Tim Staples",
@@ -141,10 +141,10 @@ def guess_attendees_for_row(row: Dict) -> List[str]:
 
     base = ["Brian Kaplan"]
 
-    if "music city rodeo" in biz:
+    if "secondary" in biz:
         pool = MCR_TEAM
-    elif "down home" in biz:
-        pool = DOWN_HOME_TEAM
+    elif "business" in biz:
+        pool = BUSINESS_TEAM
     else:
         # Soho / SH Nashville / general exec dinners
         if "soho house" in desc or "sh nashville" in desc:

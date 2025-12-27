@@ -36,8 +36,8 @@ class KeyboardHandler {
                 'v': { action: 'markVerified', desc: 'Mark verified', key: 'v' },
             },
             businessType: {
-                'd': { action: 'setDownHome', desc: 'Mark as Down Home', key: 'd' },
-                'm': { action: 'setMCR', desc: 'Mark as Music City Rodeo', key: 'm' },
+                'd': { action: 'setBusiness', desc: 'Mark as Business', key: 'd' },
+                'm': { action: 'setMCR', desc: 'Mark as Secondary', key: 'm' },
                 'p': { action: 'setPersonal', desc: 'Mark as Personal', key: 'p' },
                 'e': { action: 'setEMco', desc: 'Mark as EM.co', key: 'e' },
             },
@@ -53,7 +53,7 @@ class KeyboardHandler {
             search: {
                 '/': { action: 'focusSearch', desc: 'Focus search', key: '/' },
                 'f': { action: 'openFilter', desc: 'Open filter panel', key: 'f' },
-                '1': { action: 'filterDownHome', desc: 'Filter: Down Home', key: '1' },
+                '1': { action: 'filterBusiness', desc: 'Filter: Business', key: '1' },
                 '2': { action: 'filterMCR', desc: 'Filter: MCR', key: '2' },
                 '3': { action: 'filterPersonal', desc: 'Filter: Personal', key: '3' },
                 '4': { action: 'filterUnassigned', desc: 'Filter: Unassigned', key: '4' },
@@ -209,8 +209,8 @@ class KeyboardHandler {
             detachReceipt: () => this.ui.detachReceipt(),
 
             // Business type
-            setDownHome: () => this.ui.setBusinessType('Down Home'),
-            setMCR: () => this.ui.setBusinessType('Music City Rodeo'),
+            setBusiness: () => this.ui.setBusinessType('Business'),
+            setMCR: () => this.ui.setBusinessType('Secondary'),
             setPersonal: () => this.ui.setPersonal(),
             setEMco: () => this.ui.setBusinessType('EM.co'),
 
@@ -229,8 +229,8 @@ class KeyboardHandler {
             // Search & Filter
             focusSearch: () => this.ui.focusSearch(),
             openFilter: () => this.ui.toggleFilterPanel(),
-            filterDownHome: () => this.ui.quickFilter('business', 'Down Home'),
-            filterMCR: () => this.ui.quickFilter('business', 'Music City Rodeo'),
+            filterBusiness: () => this.ui.quickFilter('business', 'Business'),
+            filterMCR: () => this.ui.quickFilter('business', 'Secondary'),
             filterPersonal: () => this.ui.quickFilter('business', 'Personal'),
             filterUnassigned: () => this.ui.quickFilter('business', 'Unassigned'),
             filterUnmatched: () => this.ui.quickFilter('receipt', 'unmatched'),

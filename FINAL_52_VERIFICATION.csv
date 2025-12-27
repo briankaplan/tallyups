@@ -1,0 +1,62 @@
+index,date,amount,merchant,receipt_url,verdict,reason
+12,2024-07-01,$140.00,CHARTMETRIC,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/chartmetric_2024-07-01_140_0.jpg,VERIFIED,"The receipt matches the details provided. The amount is $140.0, the merchant is CHARTMETRIC, and the"
+13,2024-07-01,$19.76,EXPENSIFY INC.,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2024-07-01_19_76_3.jpg,MISMATCH,The image provided does not contain a receipt. It appears to be a screenshot of a webpage or applica
+14,2024-07-01,$189.50,LULUS LANDING INC,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/lulus_landing_inc_2024-07-01_189_5.jpg,VERIFIED,"The receipt matches the provided details. It shows an amount of $189.5, a merchant named 'LULUS LAND"
+15,2024-07-01,$20.66,TST* PYRAMIDS CAFE - AIRP,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tst_pyramids_cafe_airp_2024-07-01_20_66_3.jpg,MISMATCH,"The amount on the receipt is $20.66, which does not match the expected amount of $20.66."
+16,2024-07-01,$81.66,UBER TRIP,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-07-01_81_66.png,MISMATCH,The image provided does not contain a receipt. It appears to be a screenshot of a mobile device disp
+17,2024-07-02,$103.99,LYFT *RIDE TUE 4AM,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/lyft_ride_tue_4am_2024-07-02_103_99.jpg,VERIFIED,"The receipt matches the details provided. The amount is $103.99, the merchant is LYFT with a note in"
+18,2024-07-02,$24.56,SLIM &AMP; HUSKIES,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/slim_amp_huskies_2024-07-02_24_56.jpg,MISMATCH,"The receipt shows an amount of $24.56, which does not match the expected amount of $24.56."
+19,2024-07-02,$39.56,UBER TRIP,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-07-02_39_56_3.jpg,VERIFIED,"The receipt matches the details provided. The amount is $39.56, the merchant is UBER TRIP, and the d"
+22,2024-07-05,$21.94,APPLE.COM/BILL,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/applecombill_2024-07-05_21_94_3.jpg,VERIFIED,"The receipt matches the details provided. The amount is $21.94, the merchant is APPLE.COM/BILL, and "
+24,2024-07-06,$82.32,DISCO,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/Screenshot 2025-11-20 at 10.55.22 PM.png,ERROR,Image download failed
+25,2024-07-08,$10.00,CALENDARBRIDGE,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/calendarbridge_2024-07-08_10_0.jpg,VERIFIED,"The receipt matches the details provided. The amount is $10.0, the merchant is CALENDARBRIDGE, and t"
+26,2024-07-08,$13.13,SPOTIFY USA,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/spotify_usa_2024-07-08_13_13_3.jpg,MISMATCH,The image provided does not contain a receipt. It appears to be a screenshot of a mobile device disp
+27,2024-07-10,$10.98,MIDJOURNEY INC.,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/midjourney_inc_2024-07-10_10_98_3.jpg,VERIFIED,"The receipt matches the details provided. The amount is $10.98, the merchant is MIDJOURNEY INC., and"
+29,2024-07-14,$5.00,CLOUDFLARE,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/cloudflare_2024-07-14_5_0.jpg,MISMATCH,The image provided does not contain a receipt. It appears to be a screenshot of a webpage with an er
+31,2024-07-14,$168.87,TST* IL FORNO PIZZERIA,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/tst_il_forno_pizzeria_2024-07-14_168_87_3.jpg,VERIFIED,"The receipt matches the provided details. It shows an amount of $168.87, a merchant named 'TST* IL F"
+32,2024-07-15,$12.62,CLEAR *CLEARME.COM,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/clear_clearmecom_2024-07-15_12_62.png,MISMATCH,The image provided does not contain a receipt. It appears to be a screenshot of a webpage with a mes
+37,2024-07-17,$94.22,DD *DOORDASH KALAMATAS,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/dd_doordash_kalamatas_2024-07-17_94_22.jpg,VERIFIED,"The image shows a receipt from DoorDash, and the details provided match the information on the recei"
+39,2024-07-17,$11.32,METROPOLIS PARKING,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-07-17_11_32_3.jpg,VERIFIED,"The receipt matches the details provided. The amount is $11.32, the merchant is METROPOLIS PARKING, "
+40,2024-07-17,$4.49,METROPOLIS PARKING,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-07-17_4_49_3.jpg,VERIFIED,"The receipt matches the details provided. The amount is $4.49, the merchant is METROPOLIS PARKING, a"
+41,2024-07-17,$7.55,METROPOLIS PARKING,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-07-17_7_55.jpg,VERIFIED,"The receipt matches the provided details. It shows an amount of $7.55, a merchant named 'METROPOLIS "
+46,2024-07-22,$8.15,PARK HAPPY LLC,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/Screenshot 2025-11-21 at 3.00.52 AM.png,ERROR,Image download failed
+49,2024-07-25,$43.60,CHAR GREEN HILLS,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/char_green_hills_2024-07-25_43_6.jpg,MISMATCH,"The receipt shows an amount of $43.6, which does not match the provided amount of $43.6."
+75,2024-08-06,$82.32,DISCO,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/Screenshot 2025-11-20 at 10.56.42 PM.png,ERROR,Image download failed
+135,2024-08-24,$7.63,PARK HAPPY LLC,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/Screenshot 2025-11-21 at 3.02.18 AM.png,ERROR,Image download failed
+167,2024-09-04,$45.15,CORNER PUB,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-09-04_45_15.jpg,MISMATCH,The image provided does not contain a receipt. Please provide the actual receipt for verification.
+211,2024-09-12,$41.98,UBER *TRIP,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/uber_trip_2024-09-12_41_98.png,MISMATCH,The image provided does not contain a receipt. It appears to be a screenshot of a mobile device disp
+245,2024-09-25,$20.00,THE GATEWAY TO NASHVILLE,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/the_gateway_to_nashville_2024-09-25_20_0.jpg,MISMATCH,The image provided does not contain a receipt. It appears to be a screenshot of a computer screen di
+250,2024-09-30,$50.00,IM-ADA.AI,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-09-30_50_0.jpg,MISMATCH,The receipt provided does not match the details you have specified. The amount on the receipt is $10
+255,2024-10-02,$10.00,IM-ADA.AI,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-10-02_10_0.jpg,VERIFIED,"The receipt matches the details provided. The amount is $10.0, the merchant is IM-ADA.AI, and the da"
+269,2024-10-08,$83.92,CORNER PUB,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-10-08_83_92.heic,ERROR,No response
+289,2024-10-16,$37.48,SH NASHVILLE - OTHER,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-10-16_37_48.jpg,VERIFIED,"The receipt matches the details provided. The amount is $37.48, the merchant is SH NASHVILLE - OTHER"
+299,2024-10-25,$27.00,BONHOMME PLACE GARAGE,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/bonhomme_place_garage_2024-10-25_27_0.png,VERIFIED,"The receipt matches the details provided. The amount is $27.0, the merchant is BONHOMME PLACE GARAGE"
+305,2024-10-28,$60.00,JJK FOUNDATION,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/jjk_foundation_2024-10-28_60_0.jpg,VERIFIED,"The receipt matches the details provided. The amount is $60.0, the merchant is JJK FOUNDATION, and t"
+327,2024-11-08,$45.24,SH NASHVILLE - OTHER,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sh_nashville_other_2024-11-08_45_24.PNG,MISMATCH,The image provided does not contain a receipt. It appears to be a screenshot of a mobile device disp
+341,2024-11-15,$29.40,METROPOLIS PARKING,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-15_29_4.jpg,UNCLEAR," ```json
+{
+    ""verdict"": ""MISMATCH"",
+    ""reason"": ""The image shows a receipt with the following de"
+351,2024-11-20,$20.66,METROPOLIS PARKING,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2024-11-20_20_66.jpg,MISMATCH,The image provided is not clear enough to read the details accurately. The text on the receipt is to
+362,2024-11-25,$51.98,CORNER PUB,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/corner_pub_2024-11-25_51_98.heic,ERROR,No response
+368,2024-11-29,$123.17,GOLDEN NUGGET HOTEL LV,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/golden_nugget_hotel_lv_2024-11-29_123_17.png,MISMATCH,The image provided does not contain a receipt. It appears to be a screenshot of a webpage with an im
+380,2024-12-03,$22.37,STARBUCKS 65853,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/starbucks_65853_2024-12-03_22_37_3.jpg,MISMATCH,The image provided is of poor quality and the text on the receipt is not clearly legible. It is diff
+385,2024-12-04,$46.32,CURB LV TAXI YCS,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/curb_lv_taxi_ycs_2024-12-04_46_32.jpg,VERIFIED,"The receipt matches the details provided. The amount is $46.32, the merchant is CURB LV TAXI YCS, an"
+390,2024-12-05,$34.44,DESERT CAB,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/desert_cab_2024-12-05_34_44.jpg,MISMATCH,"The image provided does not contain a receipt. It appears to be a screenshot of an Uber receipt, but"
+395,2024-12-06,$29.87,CURB LV TAXI YCS,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/curb_lv_taxi_ycs_2024-12-06_29_87.jpg,MISMATCH,"The image provided is of a receipt, but the text on it is not clearly legible. Therefore, I cannot v"
+420,2024-12-13,$9.00,SOURCEGRAPH INC,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/sourcegraph_inc_2024-12-13_9_0.jpg,VERIFIED,"The receipt matches the details provided. The amount is $9.0, the merchant is SOURCEGRAPH INC, and t"
+443,2024-12-25,$44.25,SHOEBOXED.* TRIAL PROF,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/shoeboxed_trial_prof_2024-12-25_44_25_3.jpg,VERIFIED,"The image provided shows a receipt with the following details:
+
+- Amount: $44.25
+- Merchant: SHOEBOX"
+450,2025-01-05,$155.60,THE GOAT MOUNT JULIET,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/the_goat_mount_juliet_2025-01-05_155_6.jpg,VERIFIED,"The receipt matches the provided details. The amount is $155.6, the merchant is THE GOAT MOUNT JULIE"
+451,2025-01-06,$18.47,METROPOLIS PARKING,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/metropolis_parking_2025-01-06_18_47.jpg,VERIFIED,"The receipt matches the details provided. The amount is $18.47, the merchant is METROPOLIS PARKING, "
+765,2025-08-01,$19.76,EXPENSIFY INC.,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/expensify_inc_2025-08-01_19_76_3.jpg,VERIFIED,"The receipt matches the details provided. The amount is $19.76, the merchant is EXPENSIFY INC., and "
+803,2024-09-28,$25.00,IM-ADA.AI,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-09-28_25_0.jpg,UNCLEAR," ```json
+{
+  ""verdict"": ""MISMATCH"",
+  ""reason"": ""The image provided does not contain a receipt. It a"
+804,2024-10-16,$26.22,PMC - PAID PARKING,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-10-16_26_22.png,VERIFIED,"The receipt matches the details provided. The amount is $26.22, the merchant is PMC - PAID PARKING, "
+811,2024-09-28,$25.00,IM-ADA.AI,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/im_adaai_2024-09-28_25_0_2.jpg,VERIFIED,"The receipt matches the given details. The amount is $25.0, the merchant is IM-ADA.AI, and the date "
+818,2024-10-16,$26.22,PMC - PAID PARKING,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/pmc_paid_parking_2024-10-16_26_22_2.png,VERIFIED,"The receipt matches the details provided. The amount is $26.22, the merchant is PMC - PAID PARKING, "
+823,2024-11-18,$32.93,Midjourney,https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/receipts/receipt_19a2665bba37_att1.jpg,MISMATCH,"The receipt shows an amount of $32.93, but the image provided does not display this amount clearly. "

@@ -57,12 +57,12 @@ localStorage.setItem('theme', 'dark');
       </div>
       <div class="dashboard" id="dashboard">
         <div class="stat">
-          <div class="stat-label">Down Home</div>
-          <div class="stat-value" id="down-home-total">$0</div>
+          <div class="stat-label">Business</div>
+          <div class="stat-value" id="business-total">$0</div>
         </div>
         <div class="stat">
-          <div class="stat-label">Music City Rodeo</div>
-          <div class="stat-value" id="mcr-total">$0</div>
+          <div class="stat-label">Secondary</div>
+          <div class="stat-value" id="sec-total">$0</div>
         </div>
         <div class="stat">
           <div class="stat-label">EM.co</div>
@@ -355,7 +355,7 @@ localStorage.setItem('theme', 'dark');
 
         <!-- Actions -->
         <div style="display:flex;gap:12px;margin-bottom:20px;align-items:center">
-          <input type="text" id="report-name" class="input" placeholder="Report Name (e.g., Q1 2024 Down Home)" style="flex:1">
+          <input type="text" id="report-name" class="input" placeholder="Report Name (e.g., Q1 2024 Business)" style="flex:1">
           <button class="btn-success" onclick="submitReport()">
             📤 Submit Report
           </button>
@@ -629,11 +629,11 @@ localStorage.setItem('theme', 'dark');
         <div class="hotkey-section">
           <div class="hotkey-section-title">🏢 Business Type</div>
           <div class="hotkey-item">
-            <span class="hotkey-desc">Music City Rodeo</span>
+            <span class="hotkey-desc">Secondary</span>
             <span class="hotkey-key"><span class="kbd">M</span></span>
           </div>
           <div class="hotkey-item">
-            <span class="hotkey-desc">Down Home</span>
+            <span class="hotkey-desc">Business</span>
             <span class="hotkey-key"><span class="kbd">D</span></span>
           </div>
           <div class="hotkey-item">
@@ -834,19 +834,19 @@ localStorage.setItem('theme', 'dark');
         </div>
         <div class="settings-row">
           <div>
-            <div class="settings-label">Music City Rodeo</div>
-            <div class="settings-desc">brian@musiccityrodeo.com</div>
+            <div class="settings-label">Secondary</div>
+            <div class="settings-desc">brian@secondary.com</div>
           </div>
-          <span id="gmail-status-mcr" class="badge badge-neutral">Checking...</span>
-          <button class="btn-ghost" onclick="connectGmail('brian@musiccityrodeo.com')" id="gmail-btn-mcr">🔗 Connect</button>
+          <span id="gmail-status-sec" class="badge badge-neutral">Checking...</span>
+          <button class="btn-ghost" onclick="connectGmail('brian@secondary.com')" id="gmail-btn-sec">🔗 Connect</button>
         </div>
         <div class="settings-row">
           <div>
-            <div class="settings-label">Down Home</div>
-            <div class="settings-desc">brian@downhome.com</div>
+            <div class="settings-label">Business</div>
+            <div class="settings-desc">brian@business.com</div>
           </div>
-          <span id="gmail-status-downhome" class="badge badge-neutral">Checking...</span>
-          <button class="btn-ghost" onclick="connectGmail('brian@downhome.com')" id="gmail-btn-downhome">🔗 Connect</button>
+          <span id="gmail-status-business" class="badge badge-neutral">Checking...</span>
+          <button class="btn-ghost" onclick="connectGmail('brian@business.com')" id="gmail-btn-business">🔗 Connect</button>
         </div>
       </div>
 
@@ -1230,8 +1230,8 @@ localStorage.setItem('theme', 'dark');
         <div style="margin-bottom:16px">
           <label class="settings-label" style="display:block;margin-bottom:6px">Company *</label>
           <select id="mrf-company" class="input" style="width:100%" required>
-            <option value="downhome">Down Home Media LLC</option>
-            <option value="mcr">Music City Rodeo</option>
+            <option value="business">Business Media LLC</option>
+            <option value="sec">Secondary</option>
             <option value="emco">EM.co</option>
           </select>
         </div>
@@ -3016,8 +3016,8 @@ async function disconnectGmail(email) {
 async function checkGmailStatus() {
   const emailToId = {
     'kaplan.brian@gmail.com': { status: 'gmail-status-personal', btn: 'gmail-btn-personal' },
-    'brian@musiccityrodeo.com': { status: 'gmail-status-mcr', btn: 'gmail-btn-mcr' },
-    'brian@downhome.com': { status: 'gmail-status-downhome', btn: 'gmail-btn-downhome' }
+    'brian@secondary.com': { status: 'gmail-status-sec', btn: 'gmail-btn-sec' },
+    'brian@business.com': { status: 'gmail-status-business', btn: 'gmail-btn-business' }
   };
 
   try {
@@ -3713,8 +3713,8 @@ function updateDashboard() {
   const getDesc = (r) => (r['Chase Description'] || r['chase_description'] || '').toLowerCase();
   const isPaymentTxn = (desc) => desc.includes('payment thank you') || desc.includes('payment - web');
 
-  const downHomeTotal = dataToUse
-    .filter(r => r['Business Type'] === 'Down Home')
+  const businessTotal = dataToUse
+    .filter(r => r['Business Type'] === 'Business')
     .reduce((sum, r) => {
       const amt = getAmount(r);
       const desc = getDesc(r);
@@ -3723,8 +3723,8 @@ function updateDashboard() {
       return sum + amt;  // Add positive expenses, subtract refunds (negative amounts)
     }, 0);
 
-  const mcrTotal = dataToUse
-    .filter(r => r['Business Type'] === 'Music City Rodeo')
+  const secTotal = dataToUse
+    .filter(r => r['Business Type'] === 'Secondary')
     .reduce((sum, r) => {
       const amt = getAmount(r);
       const desc = getDesc(r);
@@ -3758,8 +3758,8 @@ function updateDashboard() {
       return isPaymentTxn(desc) ? sum + Math.abs(amt) : sum;
     }, 0);
 
-  document.getElementById('down-home-total').textContent = `$${downHomeTotal.toFixed(2)}`;
-  document.getElementById('mcr-total').textContent = `$${mcrTotal.toFixed(2)}`;
+  document.getElementById('business-total').textContent = `$${businessTotal.toFixed(2)}`;
+  document.getElementById('sec-total').textContent = `$${secTotal.toFixed(2)}`;
   document.getElementById('emco-total').textContent = `$${emcoTotal.toFixed(2)}`;
   document.getElementById('personal-total').textContent = `$${personalTotal.toFixed(2)}`;
   document.getElementById('payments-total').textContent = `+$${paymentsTotal.toFixed(2)}`;
@@ -3811,8 +3811,8 @@ function updateDashboard() {
       const amount = parseFloat(r['Chase Amount'] || r['Amount'] || 0);
       return amount < 0 || r['Review Status'] === 'refund';
     }).length,
-    mcr: csvData.filter(r => r['Business Type'] === 'Music City Rodeo').length,
-    downhome: csvData.filter(r => r['Business Type'] === 'Down Home').length,
+    sec: csvData.filter(r => r['Business Type'] === 'Secondary').length,
+    business: csvData.filter(r => r['Business Type'] === 'Business').length,
     emco: csvData.filter(r => r['Business Type'] === 'EM.co').length,
     personal: csvData.filter(r => r['Business Type'] === 'Personal').length,
     unassigned: csvData.filter(r => !r['Business Type'] || r['Business Type'] === 'Unassigned').length,
@@ -3852,8 +3852,8 @@ function updateDashboard() {
   updateBadge('with-receipts-count', counts.withReceipts);
   updateBadge('not-needed-count', counts.notNeeded);
   updateBadge('refunds-count', counts.refunds);
-  updateBadge('mcr-count', counts.mcr);
-  updateBadge('downhome-count', counts.downhome);
+  updateBadge('sec-count', counts.sec);
+  updateBadge('business-count', counts.business);
   updateBadge('emco-count', counts.emco);
   updateBadge('personal-count', counts.personal);
   updateBadge('unassigned-count', counts.unassigned);
@@ -4393,11 +4393,11 @@ document.addEventListener('keydown', (e) => {
     // Business type hotkeys
     case 'm':
       e.preventDefault();
-      quickUpdateField('Business Type', 'Music City Rodeo');
+      quickUpdateField('Business Type', 'Secondary');
       break;
     case 'd':
       e.preventDefault();
-      quickUpdateField('Business Type', 'Down Home');
+      quickUpdateField('Business Type', 'Business');
       break;
     case 'e':
       e.preventDefault();
@@ -4510,14 +4510,14 @@ document.addEventListener('keydown', (e) => {
 
     case 'm':
       e.preventDefault();
-      updateField('Business Type', 'Music City Rodeo');
-      showToast('Business Type: Music City Rodeo', '🎵');
+      updateField('Business Type', 'Secondary');
+      showToast('Business Type: Secondary', '🎵');
       break;
 
     case 'd':
       e.preventDefault();
-      updateField('Business Type', 'Down Home');
-      showToast('Business Type: Down Home', '🏠');
+      updateField('Business Type', 'Business');
+      showToast('Business Type: Business', '🏠');
       break;
 
     case 'e':
@@ -5152,10 +5152,10 @@ function openMissingReceiptModal() {
   // Pre-select company based on Business Type
   const bizType = (selectedRow['Business Type'] || selectedRow['business_type'] || '').toLowerCase();
   const companySelect = document.getElementById('mrf-company');
-  if (bizType.includes('music') || bizType.includes('mcr') || bizType.includes('rodeo')) {
-    companySelect.value = 'mcr';
+  if (bizType.includes('music') || bizType.includes('sec') || bizType.includes('rodeo')) {
+    companySelect.value = 'sec';
   } else {
-    companySelect.value = 'downhome';
+    companySelect.value = 'business';
   }
 
   // Reset form fields
@@ -5400,7 +5400,7 @@ function updateCategoryOptions() {
 
   // Define categories by business type (placeholder - user will provide actual categories)
   const categories = {
-    'Music City Rodeo': [
+    'Secondary': [
       'Artist Management',
       'Event Production',
       'Marketing & Advertising',
@@ -5411,7 +5411,7 @@ function updateCategoryOptions() {
       'Professional Services',
       'Other'
     ],
-    'Down Home': [
+    'Business': [
       'Artist Development',
       'Recording & Production',
       'Marketing & PR',
@@ -5834,10 +5834,10 @@ function setupEventListeners() {
       markReceiptVerified();
     } else if (key === 'm') {
       e.preventDefault();
-      updateField('Business Type', 'Music City Rodeo');
+      updateField('Business Type', 'Secondary');
     } else if (key === 'd') {
       e.preventDefault();
-      updateField('Business Type', 'Down Home');
+      updateField('Business Type', 'Business');
     } else if (key === 'p') {
       e.preventDefault();
       updateField('Business Type', 'Personal');
@@ -6822,7 +6822,7 @@ function downloadReportCSV() {
     showToast('No report selected', '⚠️');
     return;
   }
-  window.location.href = `/reports/${currentReportId}/export/downhome`;
+  window.location.href = `/reports/${currentReportId}/export/business`;
   showToast('Downloading CSV...', '📥');
 }
 
@@ -6974,7 +6974,7 @@ async function loadArchivedReports() {
                   onmouseenter="this.style.transform='scale(1.02)'" onmouseleave="this.style.transform=''">
                   📊 View
                 </button>
-                <button onclick="event.stopPropagation();window.location.href='/reports/${report.report_id}/export/downhome'"
+                <button onclick="event.stopPropagation();window.location.href='/reports/${report.report_id}/export/business'"
                   style="padding:10px 12px;background:rgba(59,130,246,.15);color:var(--brand);border:1px solid rgba(59,130,246,.3);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px"
                   onmouseenter="this.style.background='rgba(59,130,246,.25)'" onmouseleave="this.style.background='rgba(59,130,246,.15)'">
                   📄 CSV
@@ -7947,8 +7947,8 @@ document.addEventListener('bulkSelectionChanged', (e) => {
       <div class="filter-section-title">Business</div>
       <div class="filter-options" id="filter-business-options">
         <button class="filter-option active" data-filter="business" data-value="all">All</button>
-        <button class="filter-option" data-filter="business" data-value="Music City Rodeo">MCR</button>
-        <button class="filter-option" data-filter="business" data-value="Down Home">Down Home</button>
+        <button class="filter-option" data-filter="business" data-value="Secondary">MCR</button>
+        <button class="filter-option" data-filter="business" data-value="Business">Business</button>
         <button class="filter-option" data-filter="business" data-value="EM.co">EM.co</button>
         <button class="filter-option" data-filter="business" data-value="Personal">Personal</button>
       </div>
@@ -9201,13 +9201,13 @@ async function submitCurrentReport() {
   const reportName = openReports.find(r => r.id === currentReportId)?.name || 'Report';
 
   // Determine business type from transactions in the report
-  let businessType = 'Down Home'; // Default
+  let businessType = 'Business'; // Default
   if (indices.length > 0) {
     const firstTx = filteredData.find(t => t._index === indices[0] || t.id === indices[0]);
     if (firstTx) {
       const bt = firstTx['Business Type'] || firstTx.business_type || '';
-      if (bt.toLowerCase().includes('mcr') || bt.toLowerCase().includes('rodeo') || bt.toLowerCase().includes('music city')) {
-        businessType = 'Music City Rodeo';
+      if (bt.toLowerCase().includes('sec') || bt.toLowerCase().includes('rodeo') || bt.toLowerCase().includes('music city')) {
+        businessType = 'Secondary';
       } else if (bt.toLowerCase().includes('personal')) {
         businessType = 'Personal';
       } else if (bt.toLowerCase().includes('em.co') || bt.toLowerCase().includes('emco')) {

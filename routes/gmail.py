@@ -37,9 +37,9 @@ except ImportError:
 
 # Gmail accounts configuration
 GMAIL_ACCOUNTS = [
-    'brian@downhome.com',
+    'brian@business.com',
     'kaplan.brian@gmail.com',
-    'brian@musiccityrodeo.com'
+    'brian@secondary.com'
 ]
 
 
@@ -57,9 +57,9 @@ def list_accounts():
             "success": true,
             "accounts": [
                 {
-                    "email": "brian@downhome.com",
+                    "email": "brian@business.com",
                     "connected": true,
-                    "business_type": "Down_Home",
+                    "business_type": "Business",
                     "last_sync": "2024-12-20T10:30:00Z"
                 },
                 ...
@@ -78,10 +78,10 @@ def list_accounts():
             connected = token_file.exists() or pickle_file.exists()
 
             # Determine business type from email
-            if 'downhome' in email:
-                business_type = 'Down_Home'
-            elif 'musiccityrodeo' in email:
-                business_type = 'Music_City_Rodeo'
+            if 'business' in email:
+                business_type = 'Business'
+            elif 'secondary' in email:
+                business_type = 'Secondary'
             else:
                 business_type = 'Personal'
 
@@ -563,7 +563,7 @@ def get_sync_status():
             "success": true,
             "accounts": [
                 {
-                    "email": "brian@downhome.com",
+                    "email": "brian@business.com",
                     "last_sync": "2024-12-20T10:30:00Z",
                     "receipts_found": 150,
                     "status": "idle"
@@ -613,7 +613,7 @@ def trigger_sync():
 
     Request Body:
         {
-            "account": "brian@downhome.com",  // Optional, syncs all if not specified
+            "account": "brian@business.com",  // Optional, syncs all if not specified
             "days_back": 30  // How many days to look back (default 30)
         }
 
@@ -621,7 +621,7 @@ def trigger_sync():
         {
             "success": true,
             "message": "Sync started",
-            "accounts": ["brian@downhome.com"]
+            "accounts": ["brian@business.com"]
         }
     """
     try:
@@ -678,7 +678,7 @@ def extract_contacts_from_emails():
 
     Request Body:
         {
-            "account": "brian@downhome.com",  // Optional
+            "account": "brian@business.com",  // Optional
             "days_back": 90,  // How far back to scan (default 90)
             "max_messages": 500  // Max messages to process (default 500)
         }

@@ -120,10 +120,10 @@ def api_library_receipts():
 
             if business_type:
                 # Normalize business type filter to match both formats (spaces and underscores)
-                if business_type == 'Down Home':
-                    where_clauses.append("business_type IN ('Down Home', 'Down_Home')")
-                elif business_type == 'Music City Rodeo':
-                    where_clauses.append("business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR')")
+                if business_type == 'Business':
+                    where_clauses.append("business_type IN ('Business', 'Business')")
+                elif business_type == 'Secondary':
+                    where_clauses.append("business_type IN ('Secondary', 'Secondary', 'MCR')")
                 elif business_type == 'EM.co':
                     where_clauses.append("business_type IN ('EM.co', 'EM Co', 'EM_co')")
                 else:
@@ -472,8 +472,8 @@ def api_library_counts():
         cursor = db_execute(conn, db_type, '''
             SELECT
                 CASE
-                    WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
-                    WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                    WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                    WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
                     WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
                     WHEN business_type = 'Personal' THEN 'Personal'
                     ELSE 'Personal'
@@ -509,8 +509,8 @@ def api_library_counts():
             'counts': {
                 'total': transaction_count + total_incoming,
                 'all': transaction_count + total_incoming,
-                'down_home': business_counts.get('Down Home', 0),
-                'mcr': business_counts.get('Music City Rodeo', 0),
+                'business': business_counts.get('Business', 0),
+                'sec': business_counts.get('Secondary', 0),
                 'personal': business_counts.get('Personal', 0),
                 'ceo': business_counts.get('CEO', 0),
                 'favorites': 0,
@@ -559,8 +559,8 @@ def api_library_stats():
         cursor = db_execute(conn, db_type, '''
             SELECT
                 CASE
-                    WHEN business_type IN ('Down Home', 'Down_Home') THEN 'Down Home'
-                    WHEN business_type IN ('Music City Rodeo', 'Music_City_Rodeo', 'MCR') THEN 'Music City Rodeo'
+                    WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                    WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
                     WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
                     WHEN business_type = 'Personal' THEN 'Personal'
                     ELSE 'Personal'
@@ -625,8 +625,8 @@ def api_library_stats():
         counts = {
             'total': total,
             'all': total,
-            'down_home': by_business.get('Down Home', 0),
-            'mcr': by_business.get('Music City Rodeo', 0),
+            'business': by_business.get('Business', 0),
+            'sec': by_business.get('Secondary', 0),
             'personal': by_business.get('Personal', 0),
             'ceo': by_business.get('CEO', 0),
             'favorites': 0,

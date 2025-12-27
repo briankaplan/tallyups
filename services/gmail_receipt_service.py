@@ -3,7 +3,7 @@
 Gmail Receipt Extraction Service
 
 Multi-account Gmail receipt extraction service
-- Connect to 3 Gmail accounts (brian@downhome.com, kaplan.brian@gmail.com, brian@musiccityrodeo.com)
+- Connect to 3 Gmail accounts (brian@business.com, kaplan.brian@gmail.com, brian@secondary.com)
 - Search for receipt emails
 - Extract merchant, amount, date, order number
 - Save to SQLite database + R2 storage
@@ -43,20 +43,20 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 # Gmail accounts to monitor
 GMAIL_ACCOUNTS = {
-    'brian@downhome.com': {
-        'credentials_path': os.getenv('GMAIL_CREDENTIALS_DOWNHOME', 'receipt-system/config/credentials.json'),
-        'token_path': os.getenv('GMAIL_TOKEN_DOWNHOME', 'receipt-system/gmail_tokens/tokens_brian_downhome_com.json'),
-        'business_type': 'Down Home'
+    'brian@business.com': {
+        'credentials_path': os.getenv('GMAIL_CREDENTIALS_BUSINESS', 'receipt-system/config/credentials.json'),
+        'token_path': os.getenv('GMAIL_TOKEN_BUSINESS', 'receipt-system/gmail_tokens/tokens_brian_business_com.json'),
+        'business_type': 'Business'
     },
     'kaplan.brian@gmail.com': {
         'credentials_path': os.getenv('GMAIL_CREDENTIALS_PERSONAL', 'receipt-system/config/credentials.json'),
         'token_path': os.getenv('GMAIL_TOKEN_PERSONAL', 'receipt-system/gmail_tokens/tokens_kaplan_brian_gmail_com.json'),
         'business_type': 'Personal'
     },
-    'brian@musiccityrodeo.com': {
+    'brian@secondary.com': {
         'credentials_path': os.getenv('GMAIL_CREDENTIALS_MCR', 'receipt-system/config/credentials.json'),
-        'token_path': os.getenv('GMAIL_TOKEN_MCR', 'receipt-system/gmail_tokens/tokens_brian_musiccityrodeo_com.json'),
-        'business_type': 'Music City Rodeo'
+        'token_path': os.getenv('GMAIL_TOKEN_MCR', 'receipt-system/gmail_tokens/tokens_brian_secondary_com.json'),
+        'business_type': 'Secondary'
     }
 }
 

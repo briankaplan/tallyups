@@ -66,7 +66,7 @@ def create_mock_transaction(
     amount: float = 100.00,
     date: datetime = None,
     category: str = "Software & Subscriptions",
-    business_type: str = "Down Home",
+    business_type: str = "Business",
     has_receipt: bool = True,
 ) -> Mock:
     """Create a mock transaction for testing."""
@@ -90,7 +90,7 @@ def create_mock_transaction(
 
 
 def create_mock_report(
-    business_type: str = "Down Home",
+    business_type: str = "Business",
     num_transactions: int = 10,
 ) -> Mock:
     """Create a mock report for testing."""
@@ -268,18 +268,18 @@ class TestCSVExporter:
             # Should be YYYY-MM-DD format
             assert len(date_col.split('-')) == 3
 
-    # Down Home CSV Export
+    # Business CSV Export
     @pytest.mark.unit
-    def test_export_downhome_csv(self, exporter, mock_report):
-        """Down Home CSV export should work."""
-        result = exporter.export_downhome_csv(mock_report)
+    def test_export_business_csv(self, exporter, mock_report):
+        """Business CSV export should work."""
+        result = exporter.export_business_csv(mock_report)
         assert isinstance(result, bytes)
         assert len(result) > 0
 
     @pytest.mark.unit
-    def test_downhome_csv_headers(self, exporter, mock_report):
-        """Down Home CSV should have correct headers."""
-        result = exporter.export_downhome_csv(mock_report)
+    def test_business_csv_headers(self, exporter, mock_report):
+        """Business CSV should have correct headers."""
+        result = exporter.export_business_csv(mock_report)
         content = result.decode('utf-8')
         lines = content.strip().split('\n')
         headers = lines[0]
@@ -292,9 +292,9 @@ class TestCSVExporter:
         assert "Receipt URL" in headers
 
     @pytest.mark.unit
-    def test_downhome_csv_currency(self, exporter, mock_report):
-        """Down Home CSV should use USD currency."""
-        result = exporter.export_downhome_csv(mock_report)
+    def test_business_csv_currency(self, exporter, mock_report):
+        """Business CSV should use USD currency."""
+        result = exporter.export_business_csv(mock_report)
         content = result.decode('utf-8')
         assert "USD" in content
 
@@ -347,7 +347,7 @@ class TestCSVExporter:
     def test_export_multi_business_csv(self, exporter):
         """Multi-business CSV export should work."""
         reports = {
-            "Down Home": create_mock_report("Down Home", 5),
+            "Business": create_mock_report("Business", 5),
             "Personal": create_mock_report("Personal", 5),
         }
         result = exporter.export_multi_business_csv(reports)
@@ -358,7 +358,7 @@ class TestCSVExporter:
     def test_multi_business_csv_grand_total(self, exporter):
         """Multi-business CSV should have grand total."""
         reports = {
-            "Down Home": create_mock_report("Down Home", 5),
+            "Business": create_mock_report("Business", 5),
             "Personal": create_mock_report("Personal", 5),
         }
         result = exporter.export_multi_business_csv(reports)

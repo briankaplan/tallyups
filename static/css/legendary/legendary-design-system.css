@@ -305,8 +305,8 @@
   --border-light: var(--border-secondary);
 
   /* Business colors - unified palette */
-  --downhome: #10B981;
-  --mcr: #6366F1;
+  --business: #10B981;
+  --sec: #6366F1;
   --personal: #8B5CF6;
   --emco: #3B82F6;
   --ceo: #F59E0B;

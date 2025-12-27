@@ -302,6 +302,6 @@ Test fixtures are defined in `conftest.py`:
 - `TestReceipt` - Sample receipt structure
 
 Example merchants for each business type:
-- **Down Home:** Anthropic, OpenAI, Midjourney, GitHub
+- **Business:** Anthropic, OpenAI, Midjourney, GitHub
 - **MCR:** Bridgestone Arena, PBR, Justin Boots
 - **Personal:** Netflix, Disney+, Kroger, Target

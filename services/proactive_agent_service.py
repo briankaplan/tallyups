@@ -198,8 +198,8 @@ Let's make today productive! 🚀"""
             # This would integrate with your existing inbox zero service
             # For now, placeholder
             accounts = [
-                'briankaplan@downhomeentertainment.com',
-                'bkdownhome@gmail.com',
+                'briankaplan@businessentertainment.com',
+                'bkbusiness@gmail.com',
                 'brianjkaplan@gmail.com'
             ]
 

@@ -35,8 +35,8 @@ This will:
 
 The system is configured for these accounts:
 - kaplan.brian@gmail.com
-- brian@downhome.com
-- brian@musiccityrodeo.com
+- brian@business.com
+- brian@secondary.com
 
 ### Files
 

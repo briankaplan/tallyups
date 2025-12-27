@@ -18,7 +18,7 @@ Features:
 
 Example Good Notes:
 - "Business dinner with Patrick Humes (MCR co-founder) discussing Q1 2026 MCR marketing budget and Miranda Lambert confirmation. Also present: Tim McGraw. 3 attendees."
-- "Uber from downtown Nashville to BNA airport for flight to LA for Down Home investor meeting with Skydance."
+- "Uber from downtown Nashville to BNA airport for flight to LA for Business investor meeting with Skydance."
 """
 
 import os
@@ -76,7 +76,7 @@ class Contact:
     company: Optional[str] = None
     job_title: Optional[str] = None
     relationship: Optional[str] = None  # client, partner, investor, team, vendor
-    business_type: Optional[str] = None  # Down Home, MCR, Personal
+    business_type: Optional[str] = None  # Business, MCR, Personal
     tags: List[str] = field(default_factory=list)
 
     def get_display_name(self) -> str:
@@ -143,7 +143,7 @@ class TransactionContext:
     date: Optional[datetime] = None
     description: Optional[str] = None
     category: Optional[str] = None
-    business_type: Optional[str] = None  # Down Home, MCR, Personal
+    business_type: Optional[str] = None  # Business, MCR, Personal
     card_used: Optional[str] = None
 
     # Receipt data
@@ -352,9 +352,9 @@ class GoogleCalendarClient:
 
         # Default accounts
         self.accounts = [
-            'brian@downhome.com',
+            'brian@business.com',
             'kaplan.brian@gmail.com',
-            'brian@musiccityrodeo.com',
+            'brian@secondary.com',
         ]
 
     def _get_service(self, account_email: str):
@@ -562,9 +562,9 @@ class GoogleContactsClient:
         self._services: Dict[str, Any] = {}
 
         self.accounts = [
-            'brian@downhome.com',
+            'brian@business.com',
             'kaplan.brian@gmail.com',
-            'brian@musiccityrodeo.com',
+            'brian@secondary.com',
         ]
 
     def _get_service(self, account_email: str):
@@ -865,8 +865,8 @@ Your role is to generate professional expense notes that:
 5. Are factual - only include information that can be verified from the provided data
 
 You work for Brian Kaplan, who runs:
-- Down Home: A production company in partnership with Tim McGraw
-- Music City Rodeo (MCR): A PRCA rodeo event in Nashville
+- Business: A production company in partnership with Tim McGraw
+- Secondary (MCR): A PRCA rodeo event in Nashville
 
 IMPORTANT GUIDELINES:
 - Be SPECIFIC - generic phrases like "business meeting" or "client dinner" are NOT acceptable
@@ -1212,7 +1212,7 @@ class SmartNotesService:
             receipt: Optional OCR receipt data
             description: Optional bank description
             category: Optional category
-            business_type: Down Home, MCR, Personal, etc.
+            business_type: Business, MCR, Personal, etc.
 
         Returns:
             NoteResult with generated note and metadata

@@ -44,9 +44,9 @@ def get_calendar_service():
 def get_user_accounts():
     """Get available calendar accounts."""
     return [
-        'brian@downhome.com',
+        'brian@business.com',
         'kaplan.brian@gmail.com',
-        'brian@musiccityrodeo.com'
+        'brian@secondary.com'
     ]
 
 
@@ -63,7 +63,7 @@ def list_accounts():
         {
             "success": true,
             "accounts": [
-                {"email": "brian@downhome.com", "connected": true},
+                {"email": "brian@business.com", "connected": true},
                 ...
             ]
         }
@@ -164,7 +164,7 @@ def create_event():
 
     Request Body:
         {
-            "account": "brian@downhome.com",
+            "account": "brian@business.com",
             "title": "Meeting",
             "description": "Team sync",
             "start": "2024-12-21T10:00:00",
@@ -380,8 +380,8 @@ def block_time_for_receipts():
 
     Request Body:
         {
-            "account": "brian@downhome.com",
-            "business_type": "Down_Home",
+            "account": "brian@business.com",
+            "business_type": "Business",
             "date_range": {"start": "2024-12-01", "end": "2024-12-31"},
             "create_events": true
         }

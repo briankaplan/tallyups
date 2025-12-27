@@ -22,7 +22,7 @@ struct ExpenseReportExporter: View {
     @State private var isExporting = false
     @State private var exportProgress: Double = 0
 
-    let allBusinessTypes = ["Personal", "Business", "Down Home", "Music City Rodeo"]
+    let allBusinessTypes = ["Personal", "Business", "Business", "Secondary"]
     let allCategories = ["Food & Dining", "Transportation", "Shopping", "Entertainment", "Travel", "Business", "Subscription", "Utilities", "Other"]
 
     var body: some View {

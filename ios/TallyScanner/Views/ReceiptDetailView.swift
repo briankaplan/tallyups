@@ -291,8 +291,8 @@ struct ReceiptDetailView: View {
     private func businessDisplayName(_ business: String) -> String {
         switch business.lowercased() {
         case "personal": return "Personal"
-        case "downhome": return "Down Home"
-        case "mcr": return "MCR"
+        case "business": return "Business"
+        case "sec": return "MCR"
         default: return business
         }
     }

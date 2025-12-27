@@ -7,8 +7,8 @@ Tests based on ACTUAL DATABASE classifications.
 The business types are already set correctly in the database.
 
 Business Types:
-- Down Home: Production company (Tim McGraw partnership)
-- Music City Rodeo: Event (PRCA rodeo in Nashville)
+- Business: Production company (Tim McGraw partnership)
+- Secondary: Event (PRCA rodeo in Nashville)
 - Em.co: Additional business entity
 - Personal: Personal/family expenses
 
@@ -69,205 +69,205 @@ def make_receipt(merchant: str, amount: float, **kwargs) -> Receipt:
 
 
 # =============================================================================
-# DOWN HOME CLASSIFICATION TESTS - AI & SOFTWARE
-# Tests for merchants that are definitively Down Home in the database
+# BUSINESS CLASSIFICATION TESTS - AI & SOFTWARE
+# Tests for merchants that are definitively Business in the database
 # =============================================================================
 
-class TestDownHomeAIAndSoftware(unittest.TestCase):
-    """Tests for Down Home AI & Software classification."""
+class TestBusinessAIAndSoftware(unittest.TestCase):
+    """Tests for Business AI & Software classification."""
 
     def setUp(self):
         self.classifier = BusinessTypeClassifier()
 
     def test_anthropic(self):
-        """Anthropic is Down Home."""
+        """Anthropic is Business."""
         tx = make_transaction("Anthropic", 20.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_claude_ai(self):
-        """Claude AI is Down Home."""
+        """Claude AI is Business."""
         tx = make_transaction("Claude AI", 20.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_midjourney(self):
-        """Midjourney is Down Home."""
+        """Midjourney is Business."""
         tx = make_transaction("Midjourney", 30.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_cursor(self):
-        """Cursor is Down Home."""
+        """Cursor is Business."""
         tx = make_transaction("Cursor", 20.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_hugging_face(self):
-        """Hugging Face is Down Home."""
+        """Hugging Face is Business."""
         tx = make_transaction("Hugging Face", 10.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_ada_ai(self):
-        """Ada AI is Down Home."""
+        """Ada AI is Business."""
         tx = make_transaction("Ada AI", 50.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_cloudflare(self):
-        """Cloudflare is Down Home."""
+        """Cloudflare is Business."""
         tx = make_transaction("Cloudflare", 25.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_expensify(self):
-        """Expensify is Down Home."""
+        """Expensify is Business."""
         tx = make_transaction("Expensify", 5.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_sourcegraph(self):
-        """Sourcegraph is Down Home."""
+        """Sourcegraph is Business."""
         tx = make_transaction("Sourcegraph", 25.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_calendarbridge(self):
-        """CalendarBridge is Down Home."""
+        """CalendarBridge is Business."""
         tx = make_transaction("CalendarBridge", 10.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_chartmetric(self):
-        """Chartmetric is Down Home."""
+        """Chartmetric is Business."""
         tx = make_transaction("Chartmetric", 50.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_imdbpro(self):
-        """IMDbPro is Down Home."""
+        """IMDbPro is Business."""
         tx = make_transaction("IMDbPro", 15.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
 
 # =============================================================================
-# DOWN HOME CLASSIFICATION TESTS - DINING & PARKING
-# Tests for Nashville venues that are Down Home in the database
+# BUSINESS CLASSIFICATION TESTS - DINING & PARKING
+# Tests for Nashville venues that are Business in the database
 # =============================================================================
 
-class TestDownHomeDiningAndParking(unittest.TestCase):
-    """Tests for Down Home dining and parking classification."""
+class TestBusinessDiningAndParking(unittest.TestCase):
+    """Tests for Business dining and parking classification."""
 
     def setUp(self):
         self.classifier = BusinessTypeClassifier()
 
     def test_soho_house_nashville(self):
-        """Soho House Nashville is Down Home."""
+        """Soho House Nashville is Business."""
         tx = make_transaction("Soho House Nashville", 150.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_corner_pub(self):
-        """Corner Pub is Down Home."""
+        """Corner Pub is Business."""
         tx = make_transaction("Corner Pub", 50.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_12_south_taproom(self):
-        """12 South Taproom is Down Home."""
+        """12 South Taproom is Business."""
         tx = make_transaction("12 South Taproom", 60.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_metropolis_parking(self):
-        """Metropolis Parking is Down Home."""
+        """Metropolis Parking is Business."""
         tx = make_transaction("Metropolis Parking", 15.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_pmc_parking(self):
-        """PMC Parking is Down Home."""
+        """PMC Parking is Business."""
         tx = make_transaction("PMC Parking", 10.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_uber(self):
-        """Uber is Down Home (per actual data)."""
+        """Uber is Business (per actual data)."""
         tx = make_transaction("Uber", 25.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_doordash(self):
-        """DoorDash is Down Home (per actual data)."""
+        """DoorDash is Business (per actual data)."""
         tx = make_transaction("DoorDash", 30.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_spotify(self):
-        """Spotify is Down Home (per actual data)."""
+        """Spotify is Business (per actual data)."""
         tx = make_transaction("Spotify", 9.99)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
 
 # =============================================================================
-# MUSIC CITY RODEO CLASSIFICATION TESTS
+# SECONDARY CLASSIFICATION TESTS
 # Tests for merchants that are definitively MCR in the database
 # =============================================================================
 
-class TestMusicCityRodeoClassification(unittest.TestCase):
-    """Tests for Music City Rodeo classification."""
+class TestSecondaryClassification(unittest.TestCase):
+    """Tests for Secondary classification."""
 
     def setUp(self):
         self.classifier = BusinessTypeClassifier()
 
     def test_hive(self):
-        """Hive is Music City Rodeo."""
+        """Hive is Secondary."""
         tx = make_transaction("Hive", 50.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(result.business_type, BusinessType.SECONDARY)
 
     def test_easyfaq(self):
-        """EasyFAQ is Music City Rodeo."""
+        """EasyFAQ is Secondary."""
         tx = make_transaction("EasyFAQ", 30.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(result.business_type, BusinessType.SECONDARY)
 
     def test_google_gsuite_musicci(self):
-        """Google GSuite MusicCi is Music City Rodeo."""
+        """Google GSuite MusicCi is Secondary."""
         tx = make_transaction("Google *GSuite_MusicCi", 12.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(result.business_type, BusinessType.SECONDARY)
 
     def test_hattiebs(self):
-        """Hattie B's is Music City Rodeo."""
+        """Hattie B's is Secondary."""
         tx = make_transaction("HattieBs", 40.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(result.business_type, BusinessType.SECONDARY)
 
-    def test_zoom_mcr(self):
-        """Zoom for MCR is Music City Rodeo."""
+    def test_zoom_sec(self):
+        """Zoom for MCR is Secondary."""
         tx = make_transaction("Zoom.com 888-799-9666", 15.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(result.business_type, BusinessType.SECONDARY)
 
     def test_cambria_hotel_nashville(self):
-        """Cambria Hotel Nashville is Music City Rodeo."""
+        """Cambria Hotel Nashville is Secondary."""
         tx = make_transaction("Cambria Hotel Nashville D", 200.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(result.business_type, BusinessType.SECONDARY)
 
     # NOTE: HotelTonight and some other merchants can be multiple business types
     # depending on the specific transaction context. Tests only cover definitively
     # single-type merchants.
 
-    def test_zoomcom_mcr(self):
-        """Zoomcom (MCR specific) is Music City Rodeo."""
+    def test_zoomcom_sec(self):
+        """Zoomcom (MCR specific) is Secondary."""
         tx = make_transaction("Zoomcom", 15.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(result.business_type, BusinessType.SECONDARY)
 
 
 # =============================================================================
@@ -363,21 +363,21 @@ class TestEmailDomainMatching(unittest.TestCase):
         tx = make_transaction("Unknown Charge", 20.00)
         receipt = make_receipt("Unknown", 20.00, email_domain="anthropic.com")
         result = self.classifier.classify(tx, receipt)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_figma_email(self):
-        """Figma email is Down Home."""
+        """Figma email is Business."""
         tx = make_transaction("Unknown", 15.00)
         receipt = make_receipt("Unknown", 15.00, email_domain="figma.com")
         result = self.classifier.classify(tx, receipt)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_uber_email(self):
-        """Uber email is Down Home (per actual data)."""
+        """Uber email is Business (per actual data)."""
         tx = make_transaction("Unknown", 25.00)
         receipt = make_receipt("Unknown", 25.00, email_domain="uber.com")
         result = self.classifier.classify(tx, receipt)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
 
 # =============================================================================
@@ -397,7 +397,7 @@ class TestLearningSystem(unittest.TestCase):
             transaction_id=1,
             merchant="New Vendor",
             amount=Decimal("100.00"),
-            correct_type=BusinessType.MUSIC_CITY_RODEO,
+            correct_type=BusinessType.SECONDARY,
             user_notes="This is for MCR"
         )
         self.assertTrue(len(self.classifier.learned_corrections) > 0)
@@ -408,11 +408,11 @@ class TestLearningSystem(unittest.TestCase):
             transaction_id=1,
             merchant="Special Vendor XYZ",
             amount=Decimal("100.00"),
-            correct_type=BusinessType.MUSIC_CITY_RODEO,
+            correct_type=BusinessType.SECONDARY,
         )
         tx = make_transaction("Special Vendor XYZ", 100.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(result.business_type, BusinessType.SECONDARY)
 
 
 # =============================================================================
@@ -448,19 +448,19 @@ class TestEdgeCases(unittest.TestCase):
         """Case insensitive matching."""
         tx = make_transaction("ANTHROPIC", 20.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_pos_prefix_handling(self):
         """POS prefix stripped correctly."""
         tx = make_transaction("SQ *ANTHROPIC", 20.00)
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_fuzzy_match(self):
         """Fuzzy matching works."""
         tx = make_transaction("Antropic", 20.00)  # Typo
         result = self.classifier.classify(tx)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_alternative_types(self):
         """Alternative types populated."""
@@ -508,7 +508,7 @@ class TestConvenienceFunctions(unittest.TestCase):
     def test_classify_transaction_function(self):
         """classify_transaction convenience function."""
         result = classify_transaction("Anthropic", 20.00)
-        self.assertEqual(result.business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(result.business_type, BusinessType.BUSINESS)
 
     def test_result_to_dict(self):
         """Result converts to dict."""
@@ -522,10 +522,10 @@ class TestConvenienceFunctions(unittest.TestCase):
 
     def test_business_type_from_string(self):
         """BusinessType.from_string works."""
-        self.assertEqual(BusinessType.from_string('down_home'), BusinessType.DOWN_HOME)
-        self.assertEqual(BusinessType.from_string('Down Home'), BusinessType.DOWN_HOME)
-        self.assertEqual(BusinessType.from_string('music_city_rodeo'), BusinessType.MUSIC_CITY_RODEO)
-        self.assertEqual(BusinessType.from_string('MCR'), BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(BusinessType.from_string('business'), BusinessType.BUSINESS)
+        self.assertEqual(BusinessType.from_string('Business'), BusinessType.BUSINESS)
+        self.assertEqual(BusinessType.from_string('secondary'), BusinessType.SECONDARY)
+        self.assertEqual(BusinessType.from_string('MCR'), BusinessType.SECONDARY)
         self.assertEqual(BusinessType.from_string('personal'), BusinessType.PERSONAL)
         self.assertEqual(BusinessType.from_string('em_co'), BusinessType.EM_CO)
 
@@ -549,9 +549,9 @@ class TestBatchClassification(unittest.TestCase):
         ]
         results = self.classifier.classify_batch(transactions)
         self.assertEqual(len(results), 3)
-        self.assertEqual(results[0].business_type, BusinessType.DOWN_HOME)
+        self.assertEqual(results[0].business_type, BusinessType.BUSINESS)
         self.assertEqual(results[1].business_type, BusinessType.PERSONAL)
-        self.assertEqual(results[2].business_type, BusinessType.MUSIC_CITY_RODEO)
+        self.assertEqual(results[2].business_type, BusinessType.SECONDARY)
 
     def test_empty_batch(self):
         """Empty batch returns empty list."""

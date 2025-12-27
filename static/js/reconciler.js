@@ -1158,8 +1158,8 @@ async function disconnectGmail(email) {
 async function checkGmailStatus() {
   const emailToId = {
     'kaplan.brian@gmail.com': { status: 'gmail-status-personal', btn: 'gmail-btn-personal' },
-    'brian@musiccityrodeo.com': { status: 'gmail-status-mcr', btn: 'gmail-btn-mcr' },
-    'brian@downhome.com': { status: 'gmail-status-downhome', btn: 'gmail-btn-downhome' }
+    'brian@secondary.com': { status: 'gmail-status-sec', btn: 'gmail-btn-sec' },
+    'brian@business.com': { status: 'gmail-status-business', btn: 'gmail-btn-business' }
   };
 
   try {
@@ -2061,8 +2061,8 @@ function updateDashboard() {
   // Helper to get business type (checks both Title Case and snake_case)
   const getBizType = (r) => (r['Business Type'] || r['business_type'] || '').trim();
 
-  const downHomeTotal = dataToUse
-    .filter(r => getBizType(r) === 'Down Home' || getBizType(r) === 'Down_Home')
+  const businessTotal = dataToUse
+    .filter(r => getBizType(r) === 'Business' || getBizType(r) === 'Business')
     .reduce((sum, r) => {
       const amt = getAmount(r);
       const desc = getDesc(r);
@@ -2071,8 +2071,8 @@ function updateDashboard() {
       return sum + amt;  // Add positive expenses, subtract refunds (negative amounts)
     }, 0);
 
-  const mcrTotal = dataToUse
-    .filter(r => getBizType(r) === 'Music City Rodeo' || getBizType(r) === 'Music_City_Rodeo' || getBizType(r) === 'MCR')
+  const secTotal = dataToUse
+    .filter(r => getBizType(r) === 'Secondary' || getBizType(r) === 'Secondary' || getBizType(r) === 'MCR')
     .reduce((sum, r) => {
       const amt = getAmount(r);
       const desc = getDesc(r);
@@ -2107,14 +2107,14 @@ function updateDashboard() {
       return isPaymentTxn(desc) ? sum + Math.abs(amt) : sum;
     }, 0);
 
-  document.getElementById('down-home-total').textContent = `$${downHomeTotal.toFixed(2)}`;
-  document.getElementById('mcr-total').textContent = `$${mcrTotal.toFixed(2)}`;
+  document.getElementById('business-total').textContent = `$${businessTotal.toFixed(2)}`;
+  document.getElementById('sec-total').textContent = `$${secTotal.toFixed(2)}`;
   document.getElementById('emco-total').textContent = `$${emcoTotal.toFixed(2)}`;
   document.getElementById('personal-total').textContent = `$${personalTotal.toFixed(2)}`;
   document.getElementById('payments-total').textContent = `+$${paymentsTotal.toFixed(2)}`;
 
   // Update collapsed dashboard summary
-  const totalBusiness = downHomeTotal + mcrTotal + emcoTotal;
+  const totalBusiness = businessTotal + secTotal + emcoTotal;
   const summaryEl = document.getElementById('dashboard-summary');
   if (summaryEl) {
     summaryEl.innerHTML = `
@@ -2166,8 +2166,8 @@ function updateDashboard() {
       const amount = parseFloat(r['Chase Amount'] || r['Amount'] || 0);
       return amount < 0 || r['Review Status'] === 'refund';
     }).length,
-    mcr: csvData.filter(r => r['Business Type'] === 'Music City Rodeo').length,
-    downhome: csvData.filter(r => r['Business Type'] === 'Down Home').length,
+    sec: csvData.filter(r => r['Business Type'] === 'Secondary').length,
+    business: csvData.filter(r => r['Business Type'] === 'Business').length,
     personal: csvData.filter(r => r['Business Type'] === 'Personal').length,
     unassigned: csvData.filter(r => !r['Business Type'] || r['Business Type'] === 'Unassigned').length,
     alreadySubmitted: csvData.filter(r => {
@@ -2197,8 +2197,8 @@ function updateDashboard() {
   updateBadge('with-receipts-count', counts.withReceipts);
   updateBadge('not-needed-count', counts.notNeeded);
   updateBadge('refunds-count', counts.refunds);
-  updateBadge('mcr-count', counts.mcr);
-  updateBadge('downhome-count', counts.downhome);
+  updateBadge('sec-count', counts.sec);
+  updateBadge('business-count', counts.business);
   updateBadge('personal-count', counts.personal);
   updateBadge('unassigned-count', counts.unassigned);
   updateBadge('already-submitted-count', counts.alreadySubmitted);
@@ -2654,11 +2654,11 @@ document.addEventListener('keydown', (e) => {
     // Business type hotkeys
     case 'm':
       e.preventDefault();
-      quickUpdateField('Business Type', 'Music City Rodeo');
+      quickUpdateField('Business Type', 'Secondary');
       break;
     case 'd':
       e.preventDefault();
-      quickUpdateField('Business Type', 'Down Home');
+      quickUpdateField('Business Type', 'Business');
       break;
     case 'p':
       e.preventDefault();
@@ -2762,14 +2762,14 @@ document.addEventListener('keydown', (e) => {
 
     case 'm':
       e.preventDefault();
-      updateField('Business Type', 'Music City Rodeo');
-      showToast('Business Type: Music City Rodeo', '🎵');
+      updateField('Business Type', 'Secondary');
+      showToast('Business Type: Secondary', '🎵');
       break;
 
     case 'd':
       e.preventDefault();
-      updateField('Business Type', 'Down Home');
-      showToast('Business Type: Down Home', '🏠');
+      updateField('Business Type', 'Business');
+      showToast('Business Type: Business', '🏠');
       break;
 
     case 'p':
@@ -3351,10 +3351,10 @@ function openMissingReceiptModal() {
   // Pre-select company based on Business Type
   const bizType = (selectedRow['Business Type'] || selectedRow['business_type'] || '').toLowerCase();
   const companySelect = document.getElementById('mrf-company');
-  if (bizType.includes('music') || bizType.includes('mcr') || bizType.includes('rodeo')) {
-    companySelect.value = 'mcr';
+  if (bizType.includes('music') || bizType.includes('sec') || bizType.includes('rodeo')) {
+    companySelect.value = 'sec';
   } else {
-    companySelect.value = 'downhome';
+    companySelect.value = 'business';
   }
 
   // Reset form fields
@@ -3599,7 +3599,7 @@ function updateCategoryOptions() {
 
   // Define categories by business type (placeholder - user will provide actual categories)
   const categories = {
-    'Music City Rodeo': [
+    'Secondary': [
       'Artist Management',
       'Event Production',
       'Marketing & Advertising',
@@ -3610,7 +3610,7 @@ function updateCategoryOptions() {
       'Professional Services',
       'Other'
     ],
-    'Down Home': [
+    'Business': [
       'Artist Development',
       'Recording & Production',
       'Marketing & PR',
@@ -3996,10 +3996,10 @@ function setupEventListeners() {
       updateField('Review Status', '');
     } else if (key === 'm') {
       e.preventDefault();
-      updateField('Business Type', 'Music City Rodeo');
+      updateField('Business Type', 'Secondary');
     } else if (key === 'd') {
       e.preventDefault();
-      updateField('Business Type', 'Down Home');
+      updateField('Business Type', 'Business');
     } else if (key === 'p') {
       e.preventDefault();
       updateField('Business Type', 'Personal');
@@ -4632,7 +4632,7 @@ function renderStats(stats) {
       businessContainer.innerHTML = businessEntries.map(([name, data]) => {
         const pct = Math.round((data.total / maxBusiness) * 100);
         const submittedPct = data.submitted > 0 ? Math.round((data.submitted / data.total) * 100) : 0;
-        const color = name === 'Down Home' ? '#00ff88' : name === 'Music City Rodeo' ? '#ffd85e' : name === 'Personal' ? '#6eb5ff' : '#888';
+        const color = name === 'Business' ? '#00ff88' : name === 'Secondary' ? '#ffd85e' : name === 'Personal' ? '#6eb5ff' : '#888';
         const unreported = data.total - (data.submitted || 0);
         const hasSubmitted = data.submitted > 0;
         return `
@@ -4962,7 +4962,7 @@ function downloadReportCSV() {
     showToast('No report selected', '⚠️');
     return;
   }
-  window.location.href = `/reports/${currentReportId}/export/downhome`;
+  window.location.href = `/reports/${currentReportId}/export/business`;
   showToast('Downloading CSV...', '📥');
 }
 
@@ -5066,8 +5066,8 @@ async function loadArchivedReports() {
         container.innerHTML = data.reports.map(report => {
           // Get business type color/gradient
           const businessColors = {
-            'Music City Rodeo': 'linear-gradient(135deg, #f59e0b, #d97706)',
-            'Down Home': 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+            'Secondary': 'linear-gradient(135deg, #f59e0b, #d97706)',
+            'Business': 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
             'Personal': 'linear-gradient(135deg, #10b981, #059669)'
           };
           const businessGradient = businessColors[report.business_type] || 'linear-gradient(135deg, #6b7280, #4b5563)';
@@ -5118,7 +5118,7 @@ async function loadArchivedReports() {
                   onmouseenter="this.style.transform='scale(1.02)'" onmouseleave="this.style.transform=''">
                   📊 View
                 </button>
-                <button onclick="event.stopPropagation();window.location.href='/reports/${report.report_id}/export/downhome'"
+                <button onclick="event.stopPropagation();window.location.href='/reports/${report.report_id}/export/business'"
                   style="padding:10px 12px;background:rgba(59,130,246,.15);color:var(--brand);border:1px solid rgba(59,130,246,.3);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px"
                   onmouseenter="this.style.background='rgba(59,130,246,.25)'" onmouseleave="this.style.background='rgba(59,130,246,.15)'">
                   📄 CSV

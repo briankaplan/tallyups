@@ -138,7 +138,7 @@ extension Color {
 ### Default Business Types
 Edit `ReceiptEditorView` in `ScannerView.swift`:
 ```swift
-let businesses = ["personal", "downhome", "mcr"]
+let businesses = ["personal", "business", "sec"]
 ```
 
 ### Categories

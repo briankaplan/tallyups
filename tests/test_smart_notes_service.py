@@ -68,13 +68,13 @@ class TestContact:
             name="Patrick Humes",
             first_name="Patrick",
             last_name="Humes",
-            email="patrick@mcr.com",
-            company="Music City Rodeo",
+            email="patrick@sec.com",
+            company="Secondary",
             job_title="Co-founder",
             relationship="partner",
         )
         assert contact.name == "Patrick Humes"
-        assert contact.company == "Music City Rodeo"
+        assert contact.company == "Secondary"
         assert contact.relationship == "partner"
 
     def test_contact_display_name_with_title_and_company(self):
@@ -82,22 +82,22 @@ class TestContact:
         contact = Contact(
             name="Patrick Humes",
             job_title="Co-founder",
-            company="Music City Rodeo",
+            company="Secondary",
         )
         display = contact.get_display_name()
         assert "Patrick Humes" in display
         assert "Co-founder" in display
-        assert "Music City Rodeo" in display
+        assert "Secondary" in display
 
     def test_contact_display_name_with_company_only(self):
         """Test display name with company only."""
         contact = Contact(
             name="Tim McGraw",
-            company="Down Home",
+            company="Business",
         )
         display = contact.get_display_name()
         assert "Tim McGraw" in display
-        assert "Down Home" in display
+        assert "Business" in display
 
     def test_contact_display_name_with_relationship(self):
         """Test display name with relationship only."""
@@ -237,7 +237,7 @@ class TestContextCache:
         """Test setting and getting contacts."""
         cache = ContextCache(cache_dir=tmp_path)
 
-        contact = Contact(name="Patrick Humes", email="patrick@mcr.com")
+        contact = Contact(name="Patrick Humes", email="patrick@sec.com")
         cache.set_contact("Patrick Humes", contact)
 
         retrieved = cache.get_contact("patrick humes")  # Case insensitive
@@ -248,8 +248,8 @@ class TestContextCache:
         cache = ContextCache(cache_dir=tmp_path)
 
         contacts = [
-            Contact(name="Patrick Humes", first_name="Patrick", email="patrick@mcr.com"),
-            Contact(name="Tim McGraw", first_name="Tim", email="tim@downhome.com"),
+            Contact(name="Patrick Humes", first_name="Patrick", email="patrick@sec.com"),
+            Contact(name="Tim McGraw", first_name="Tim", email="tim@business.com"),
             Contact(name="Jane Smith", first_name="Jane"),
         ]
 
@@ -263,7 +263,7 @@ class TestContextCache:
         assert found is not None
 
         # Should be able to find by email
-        found = cache.get_contact("tim@downhome.com")
+        found = cache.get_contact("tim@business.com")
         assert found is not None
 
     def test_search_contacts(self, tmp_path):
@@ -525,7 +525,7 @@ class TestSmartNotesService:
             amount=Decimal("100.00"),
             date=datetime(2024, 1, 15, 12, 30),
             category="Meals",
-            business_type="Down Home",
+            business_type="Business",
         )
 
         assert context.merchant == "Test Restaurant"
@@ -629,7 +629,7 @@ class TestIntegration:
                 merchant="SH Nashville",
                 amount=200.00,
                 date=datetime(2024, 1, 15, 19, 0),
-                business_type="Down Home",
+                business_type="Business",
                 category="Meals & Entertainment",
             )
 

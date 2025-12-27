@@ -2834,11 +2834,11 @@
         <div class="field-group">
           <label class="field-label">Business</label>
           <div class="business-chips">
-            <div class="biz-chip" data-biz="Down Home">
+            <div class="biz-chip" data-biz="Business">
               <div class="biz-chip-icon">🏠</div>
-              <div class="biz-chip-label">Down Home</div>
+              <div class="biz-chip-label">Business</div>
             </div>
-            <div class="biz-chip" data-biz="Music City Rodeo">
+            <div class="biz-chip" data-biz="Secondary">
               <div class="biz-chip-icon">🎸</div>
               <div class="biz-chip-label">MCR</div>
             </div>
@@ -2880,8 +2880,8 @@
         <div class="purpose-prompt" id="purpose-prompt" style="display: none;">
           <div class="purpose-header">What is <span id="purpose-merchant">this</span> for?</div>
           <div class="purpose-buttons">
-            <button class="purpose-btn" onclick="setPurpose('Meals', 'Music City Rodeo')">🍽️ MCR Meal</button>
-            <button class="purpose-btn" onclick="setPurpose('Meals', 'Down Home')">🏠 DH Meal</button>
+            <button class="purpose-btn" onclick="setPurpose('Meals', 'Secondary')">🍽️ MCR Meal</button>
+            <button class="purpose-btn" onclick="setPurpose('Meals', 'Business')">🏠 DH Meal</button>
             <button class="purpose-btn" onclick="setPurpose('Travel')">✈️ Travel</button>
             <button class="purpose-btn" onclick="setPurpose('Supplies')">📦 Supplies</button>
             <button class="purpose-btn" onclick="setPurpose('', 'Personal')">👤 Personal</button>
@@ -2895,11 +2895,11 @@
             <div class="split-toggle" id="split-toggle" onclick="toggleSplit()"></div>
           </div>
           <div class="split-options" id="split-options">
-            <div class="split-chip active" data-biz="Down Home" onclick="selectSplit(this)">
-              🏠 DH <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent('Down Home', this.value)">
+            <div class="split-chip active" data-biz="Business" onclick="selectSplit(this)">
+              🏠 DH <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent('Business', this.value)">
             </div>
-            <div class="split-chip active" data-biz="Music City Rodeo" onclick="selectSplit(this)">
-              🎸 MCR <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent('Music City Rodeo', this.value)">
+            <div class="split-chip active" data-biz="Secondary" onclick="selectSplit(this)">
+              🎸 MCR <input type="text" value="50%" onclick="event.stopPropagation()" onchange="updateSplitPercent('Secondary', this.value)">
             </div>
           </div>
         </div>
@@ -4381,7 +4381,7 @@
     // SPLIT RECEIPT
     // ========================================
     let splitEnabled = false;
-    let splitPercentages = { 'Down Home': 50, 'Music City Rodeo': 50 };
+    let splitPercentages = { 'Business': 50, 'Secondary': 50 };
 
     function toggleSplit() {
       splitEnabled = !splitEnabled;

@@ -1055,9 +1055,9 @@ extension Text {
 }
 
 #Preview("Terms with Accept") {
-    TermsOfServiceView(showAcceptButton: true) {
+    TermsOfServiceView(showAcceptButton: true, onAccept: {
         print("Accepted!")
-    }
+    })
 }
 
 #Preview("Privacy Policy") {

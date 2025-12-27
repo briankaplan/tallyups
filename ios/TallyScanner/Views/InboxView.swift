@@ -156,17 +156,17 @@ struct InboxView: View {
                         }
                         .tint(.green)
 
-                        // Down Home
+                        // Business
                         Button {
-                            quickAccept(receipt, business: "Down Home")
+                            quickAccept(receipt, business: "Business")
                         } label: {
-                            Label("Down Home", systemImage: "house.fill")
+                            Label("Business", systemImage: "house.fill")
                         }
                         .tint(.blue)
 
-                        // Music City Rodeo
+                        // Secondary
                         Button {
-                            quickAccept(receipt, business: "Music City Rodeo")
+                            quickAccept(receipt, business: "Secondary")
                         } label: {
                             Label("MCR", systemImage: "music.note")
                         }
@@ -401,7 +401,7 @@ struct IncomingReceiptDetailView: View {
     @State private var notes = ""
     @State private var isProcessing = false
 
-    let businesses = ["Personal", "Down Home", "Music City Rodeo", "Em.co"]
+    let businesses = ["Personal", "Business", "Secondary", "Em.co"]
     let categories = ["Food & Dining", "Transportation", "Shopping", "Entertainment", "Travel", "Business", "Subscription", "Utilities", "Other"]
 
     var body: some View {

@@ -95,12 +95,12 @@ GMAIL_ACCOUNTS = [
         "token": GMAIL_TOKEN_DIR / "tokens_kaplan_brian_gmail_com.json",
     },
     {
-        "name": "brian_mcr",
-        "token": GMAIL_TOKEN_DIR / "tokens_brian_musiccityrodeo_com.json",
+        "name": "brian_sec",
+        "token": GMAIL_TOKEN_DIR / "tokens_brian_secondary_com.json",
     },
     {
-        "name": "brian_downhome",
-        "token": GMAIL_TOKEN_DIR / "tokens_brian_downhome_com.json",
+        "name": "brian_business",
+        "token": GMAIL_TOKEN_DIR / "tokens_brian_business_com.json",
     },
 ]
 

@@ -591,39 +591,6 @@ struct PrivacyInfoView: View {
     }
 }
 
-// MARK: - Terms of Service View
-
-struct TermsOfServiceView: View {
-    @EnvironmentObject var authService: AuthService
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Terms of Service")
-                    .font(.title.bold())
-
-                Text("Last updated: December 2024")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-
-                Text("By using TallyUps, you agree to these terms of service. Please read them carefully.")
-                    .foregroundColor(.gray)
-
-                if !authService.serverURL.isEmpty {
-                    Link(destination: URL(string: "\(authService.serverURL)/terms")!) {
-                        Text("View Full Terms of Service")
-                            .foregroundColor(.tallyAccent)
-                    }
-                    .padding(.top)
-                }
-            }
-            .padding()
-        }
-        .navigationTitle("Terms")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
 // MARK: - Previews
 
 #Preview {
