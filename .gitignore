@@ -294,6 +294,13 @@ full_verification_results.json
 gmail_receipts_to_download.json
 spotify_date_mapping.json
 
+# Personal Report Markdown Files
+# ========================================
+FINAL_*_RECEIPTS*.md
+FINAL_*_BROKEN*.md
+FINAL_*_VERIFICATION*.md
+REMAINING_*.md
+
 # ========================================
 # Keep These Files (Whitelist)
 # ========================================
