@@ -216,9 +216,17 @@ def api_report_update(report_id):
         conn = db.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute(f'''
-            UPDATE reports SET {', '.join(updates)} WHERE report_id = %s
-        ''', params)
+        # SECURITY: User scoping - only update user's own reports
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            params.append(user_id)
+            cursor.execute(f'''
+                UPDATE reports SET {', '.join(updates)} WHERE report_id = %s AND user_id = %s
+            ''', params)
+        else:
+            cursor.execute(f'''
+                UPDATE reports SET {', '.join(updates)} WHERE report_id = %s
+            ''', params)
 
         conn.commit()
 
@@ -250,22 +258,41 @@ def api_report_delete(report_id):
         conn = db.get_connection()
         cursor = conn.cursor()
 
+        # SECURITY: Get user_id for scoping
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
         # First, count how many transactions will be returned to main table
-        cursor.execute('''
-            SELECT COUNT(*) as count FROM transactions WHERE report_id = %s
-        ''', (report_id,))
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                SELECT COUNT(*) as count FROM transactions WHERE report_id = %s AND user_id = %s
+            ''', (report_id, user_id))
+        else:
+            cursor.execute('''
+                SELECT COUNT(*) as count FROM transactions WHERE report_id = %s
+            ''', (report_id,))
+
         result = cursor.fetchone()
         transaction_count = result['count'] if result else 0
 
         # Return all transactions to main reconciliation table (clear report_id)
-        cursor.execute('''
-            UPDATE transactions SET report_id = NULL WHERE report_id = %s
-        ''', (report_id,))
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                UPDATE transactions SET report_id = NULL WHERE report_id = %s AND user_id = %s
+            ''', (report_id, user_id))
+        else:
+            cursor.execute('''
+                UPDATE transactions SET report_id = NULL WHERE report_id = %s
+            ''', (report_id,))
 
-        # Delete the report record
-        cursor.execute('''
-            DELETE FROM reports WHERE report_id = %s
-        ''', (report_id,))
+        # Delete the report record (with user scoping)
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                DELETE FROM reports WHERE report_id = %s AND user_id = %s
+            ''', (report_id, user_id))
+        else:
+            cursor.execute('''
+                DELETE FROM reports WHERE report_id = %s
+            ''', (report_id,))
 
         if cursor.rowcount == 0:
             db.return_connection(conn)
@@ -312,10 +339,18 @@ def api_report_add_item(report_id):
         conn = db.get_connection()
         cursor = conn.cursor()
 
-        # Update transaction to link to report
-        cursor.execute('''
-            UPDATE transactions SET report_id = %s WHERE _index = %s
-        ''', (report_id, transaction_index))
+        # SECURITY: Get user_id for scoping
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
+        # Update transaction to link to report (with user scoping)
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                UPDATE transactions SET report_id = %s WHERE _index = %s AND user_id = %s
+            ''', (report_id, transaction_index, user_id))
+        else:
+            cursor.execute('''
+                UPDATE transactions SET report_id = %s WHERE _index = %s
+            ''', (report_id, transaction_index))
 
         if cursor.rowcount == 0:
             db.return_connection(conn)
@@ -323,12 +358,20 @@ def api_report_add_item(report_id):
 
         # CRITICAL: Update report metadata (expense_count and total_amount)
         # Exclude deleted transactions from counts
-        cursor.execute('''
-            UPDATE reports
-            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)),
-                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0))
-            WHERE report_id = %s
-        ''', (report_id, report_id, report_id))
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                UPDATE reports
+                SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND user_id = %s AND (deleted IS NULL OR deleted = 0)),
+                    total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND user_id = %s AND (deleted IS NULL OR deleted = 0))
+                WHERE report_id = %s AND user_id = %s
+            ''', (report_id, user_id, report_id, user_id, report_id, user_id))
+        else:
+            cursor.execute('''
+                UPDATE reports
+                SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)),
+                    total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0))
+                WHERE report_id = %s
+            ''', (report_id, report_id, report_id))
 
         conn.commit()
 
@@ -378,25 +421,47 @@ def api_report_remove_item(report_id):
         conn = db.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
-            UPDATE transactions SET report_id = NULL WHERE _index = %s AND report_id = %s
-        ''', (transaction_index, report_id))
+        # SECURITY: Get user_id for scoping
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
+        # Remove transaction from report (with user scoping)
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                UPDATE transactions SET report_id = NULL WHERE _index = %s AND report_id = %s AND user_id = %s
+            ''', (transaction_index, report_id, user_id))
+        else:
+            cursor.execute('''
+                UPDATE transactions SET report_id = NULL WHERE _index = %s AND report_id = %s
+            ''', (transaction_index, report_id))
 
         # CRITICAL: Update report metadata (expense_count and total_amount)
         # Exclude deleted transactions from counts
-        cursor.execute('''
-            UPDATE reports
-            SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)),
-                total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0))
-            WHERE report_id = %s
-        ''', (report_id, report_id, report_id))
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                UPDATE reports
+                SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND user_id = %s AND (deleted IS NULL OR deleted = 0)),
+                    total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND user_id = %s AND (deleted IS NULL OR deleted = 0))
+                WHERE report_id = %s AND user_id = %s
+            ''', (report_id, user_id, report_id, user_id, report_id, user_id))
+        else:
+            cursor.execute('''
+                UPDATE reports
+                SET expense_count = (SELECT COUNT(*) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)),
+                    total_amount = (SELECT COALESCE(SUM(ABS(chase_amount)), 0) FROM transactions WHERE report_id = %s AND (deleted IS NULL OR deleted = 0))
+                WHERE report_id = %s
+            ''', (report_id, report_id, report_id))
 
         conn.commit()
 
         # Get updated counts for response
-        cursor.execute('''
-            SELECT expense_count, total_amount FROM reports WHERE report_id = %s
-        ''', (report_id,))
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                SELECT expense_count, total_amount FROM reports WHERE report_id = %s AND user_id = %s
+            ''', (report_id, user_id))
+        else:
+            cursor.execute('''
+                SELECT expense_count, total_amount FROM reports WHERE report_id = %s
+            ''', (report_id,))
         updated = cursor.fetchone()
 
         logger.info(f"Removed transaction {transaction_index} from report {report_id}")

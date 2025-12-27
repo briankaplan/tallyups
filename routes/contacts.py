@@ -307,6 +307,10 @@ def get_contact(contact_id):
 @contacts_bp.route('/<int:contact_id>', methods=['PUT'])
 def update_contact(contact_id):
     """Update a contact."""
+    # SECURITY: Authentication required
+    if not check_auth():
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
     try:
         data = request.get_json() or {}
 
@@ -330,9 +334,17 @@ def update_contact(contact_id):
             updates.append("updated_at = NOW()")
             params.append(contact_id)
 
-            cursor.execute(f"""
-                UPDATE contacts SET {', '.join(updates)} WHERE id = %s
-            """, params)
+            # SECURITY: User scoping - only update user's own contacts
+            if USER_SCOPING_ENABLED:
+                user_id = get_current_user_id()
+                params.append(user_id)
+                cursor.execute(f"""
+                    UPDATE contacts SET {', '.join(updates)} WHERE id = %s AND user_id = %s
+                """, params)
+            else:
+                cursor.execute(f"""
+                    UPDATE contacts SET {', '.join(updates)} WHERE id = %s
+                """, params)
 
         return jsonify({
             'success': True,
@@ -347,13 +359,23 @@ def update_contact(contact_id):
 @contacts_bp.route('/<int:contact_id>', methods=['DELETE'])
 def delete_contact(contact_id):
     """Delete a contact."""
+    # SECURITY: Authentication required
+    if not check_auth():
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
     try:
         from db_mysql import get_mysql_db
         db = get_mysql_db()
 
         with db._pool.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM contacts WHERE id = %s", (contact_id,))
+
+            # SECURITY: User scoping - only delete user's own contacts
+            if USER_SCOPING_ENABLED:
+                user_id = get_current_user_id()
+                cursor.execute("DELETE FROM contacts WHERE id = %s AND user_id = %s", (contact_id, user_id))
+            else:
+                cursor.execute("DELETE FROM contacts WHERE id = %s", (contact_id,))
 
         return jsonify({
             'success': True,
