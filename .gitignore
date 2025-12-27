@@ -257,17 +257,8 @@ credentials_desktop.json
 # ========================================
 # Keep These Files (Whitelist)
 # ========================================
-# Documentation should be committed
-!*.md
-!README*.md
-
-# Core application Python files (not utility scripts)
-# Note: Utility scripts with hardcoded credentials are excluded above
-
-# HTML/CSS/JS should be committed (except sample receipts above)
-!*.html
-!*.css
-!*.js
+# Core templates and static files are committed by default
+# (Only specific files/patterns above are excluded)
 
 # Sample/example data (if you create it)
 !sample_data/

@@ -104,10 +104,10 @@ class TestBusinessTypeEnum:
     @pytest.mark.unit
     def test_enum_values(self):
         """BusinessType should have correct values."""
+        assert BusinessType.PERSONAL.value == "personal"
         assert BusinessType.BUSINESS.value == "business"
         assert BusinessType.SECONDARY.value == "secondary"
-        assert BusinessType.EM_CO.value == "em_co"
-        assert BusinessType.PERSONAL.value == "personal"
+        assert BusinessType.OTHER.value == "other"
 
     @pytest.mark.unit
     def test_from_string_business(self):
@@ -127,11 +127,11 @@ class TestBusinessTypeEnum:
         assert BusinessType.from_string("rodeo") == BusinessType.SECONDARY
 
     @pytest.mark.unit
-    def test_from_string_em_co(self):
-        """Various EM.co strings should parse correctly."""
-        assert BusinessType.from_string("em_co") == BusinessType.EM_CO
-        assert BusinessType.from_string("emco") == BusinessType.EM_CO
-        assert BusinessType.from_string("em.co") == BusinessType.EM_CO
+    def test_from_string_other(self):
+        """Various OTHER strings should parse correctly."""
+        assert BusinessType.from_string("other") == BusinessType.OTHER
+        assert BusinessType.from_string("OTHER") == BusinessType.OTHER
+        assert BusinessType.from_string("misc") == BusinessType.OTHER
 
     @pytest.mark.unit
     def test_from_string_personal(self):
@@ -141,9 +141,9 @@ class TestBusinessTypeEnum:
 
     @pytest.mark.unit
     def test_from_string_unknown_defaults_to_business(self):
-        """Unknown string should default to BUSINESS."""
+        """Unknown string should default to BUSINESS, empty to PERSONAL."""
         assert BusinessType.from_string("unknown") == BusinessType.BUSINESS
-        assert BusinessType.from_string("") == BusinessType.BUSINESS
+        assert BusinessType.from_string("") == BusinessType.PERSONAL  # Empty defaults to Personal
 
     @pytest.mark.unit
     def test_from_string_case_insensitive(self):
@@ -657,7 +657,7 @@ class TestLearningSystem:
             transaction_id=1,
             merchant="Persistent Test Merchant",
             amount=Decimal("50.00"),
-            correct_type=BusinessType.EM_CO,
+            correct_type=BusinessType.OTHER,
             user_notes="Test",
         )
         classifier1._save_learned_corrections()
@@ -666,7 +666,7 @@ class TestLearningSystem:
         classifier2 = BusinessTypeClassifier(data_dir=tmp_path)
         tx = make_transaction("Persistent Test Merchant", 50.00)
         result = classifier2.classify(tx)
-        assert result.business_type == BusinessType.EM_CO
+        assert result.business_type == BusinessType.OTHER
 
     @pytest.mark.unit
     def test_stats_tracking(self, classifier):

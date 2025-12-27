@@ -527,7 +527,7 @@ class TestConvenienceFunctions(unittest.TestCase):
         self.assertEqual(BusinessType.from_string('secondary'), BusinessType.SECONDARY)
         self.assertEqual(BusinessType.from_string('MCR'), BusinessType.SECONDARY)
         self.assertEqual(BusinessType.from_string('personal'), BusinessType.PERSONAL)
-        self.assertEqual(BusinessType.from_string('em_co'), BusinessType.EM_CO)
+        self.assertEqual(BusinessType.from_string('other'), BusinessType.OTHER)
 
 
 # =============================================================================

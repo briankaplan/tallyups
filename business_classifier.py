@@ -51,17 +51,42 @@ class BusinessType(Enum):
 
         s_lower = s.lower().strip().replace('_', ' ').replace('-', ' ')
 
-        # Personal variations
-        if 'personal' in s_lower or 'family' in s_lower or 'home' in s_lower:
+        # Exact enum value matches first
+        if s_lower in ['personal']:
+            return cls.PERSONAL
+        if s_lower in ['business']:
+            return cls.BUSINESS
+        if s_lower in ['secondary']:
+            return cls.SECONDARY
+        if s_lower in ['other']:
+            return cls.OTHER
+
+        # Legacy type mappings (from old data)
+        # "down home" was the primary business category
+        if 'down home' in s_lower or s_lower == 'down home':
+            return cls.BUSINESS
+        # "music city rodeo" was the secondary business category
+        if 'music city' in s_lower or 'rodeo' in s_lower or s_lower == 'mcr':
+            return cls.SECONDARY
+        # "em co" / "em.co" was another business category
+        if 'em co' in s_lower or s_lower == 'emco' or s_lower == 'em.co':
+            return cls.BUSINESS
+
+        # Personal variations (but not "down home" which was handled above)
+        if s_lower == 'personal' or 'family' in s_lower:
             return cls.PERSONAL
 
-        # Business/work variations
-        if any(kw in s_lower for kw in ['business', 'work', 'company', 'corp', 'llc', 'inc']):
+        # Business/work variations (primary business)
+        if any(kw in s_lower for kw in ['business', 'work', 'company', 'corp', 'llc', 'inc', 'biz']):
             return cls.BUSINESS
 
         # Secondary business (freelance, side projects, etc.)
-        if any(kw in s_lower for kw in ['freelance', 'contract', 'consulting', 'side']):
+        if any(kw in s_lower for kw in ['secondary', 'sec', 'freelance', 'contract', 'consulting', 'side']):
             return cls.SECONDARY
+
+        # Other/misc category
+        if any(kw in s_lower for kw in ['other', 'misc', 'miscellaneous', 'uncategorized']):
+            return cls.OTHER
 
         # Default to BUSINESS for any custom business type name
         return cls.BUSINESS
