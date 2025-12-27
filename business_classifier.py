@@ -3,13 +3,14 @@
 Business Type Classifier
 ========================
 
-Intelligent auto-classification of expenses into business types:
-- Down Home (Production company - Tim McGraw partnership)
-- Music City Rodeo (Event - PRCA rodeo in Nashville)
-- Personal (Personal/family expenses)
-- EM.co (Entertainment/Media company expenses)
+Dynamic auto-classification of expenses into user-defined business types.
+Business types are loaded from the database per-user, not hardcoded.
 
-Multi-signal classification with 98%+ accuracy for known merchants.
+Features:
+- Multi-signal classification with configurable accuracy
+- Learns from user corrections
+- Database-driven merchant rules
+- Per-user business type customization
 """
 
 import json
@@ -32,31 +33,38 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 class BusinessType(Enum):
-    """The four business classification types."""
-    DOWN_HOME = "down_home"
-    MUSIC_CITY_RODEO = "music_city_rodeo"
-    EM_CO = "em_co"
+    """
+    Generic business classification types.
+    Note: Actual business type names are stored in the database per-user.
+    This enum provides default categories for classification logic.
+    """
     PERSONAL = "personal"
+    BUSINESS = "business"  # Primary business category
+    SECONDARY = "secondary"  # Secondary business category
+    OTHER = "other"  # Catch-all for other categories
 
     @classmethod
     def from_string(cls, s: str) -> 'BusinessType':
-        """Convert string to BusinessType."""
-        mapping = {
-            'down_home': cls.DOWN_HOME,
-            'downhome': cls.DOWN_HOME,
-            'down home': cls.DOWN_HOME,
-            'dh': cls.DOWN_HOME,
-            'music_city_rodeo': cls.MUSIC_CITY_RODEO,
-            'musiccityrodeo': cls.MUSIC_CITY_RODEO,
-            'music city rodeo': cls.MUSIC_CITY_RODEO,
-            'mcr': cls.MUSIC_CITY_RODEO,
-            'rodeo': cls.MUSIC_CITY_RODEO,
-            'em_co': cls.EM_CO,
-            'emco': cls.EM_CO,
-            'em.co': cls.EM_CO,
-            'personal': cls.PERSONAL,
-        }
-        return mapping.get(s.lower().strip(), cls.DOWN_HOME)  # Default to DOWN_HOME
+        """Convert string to BusinessType - maps any string to closest match."""
+        if not s:
+            return cls.PERSONAL
+
+        s_lower = s.lower().strip().replace('_', ' ').replace('-', ' ')
+
+        # Personal variations
+        if 'personal' in s_lower or 'family' in s_lower or 'home' in s_lower:
+            return cls.PERSONAL
+
+        # Business/work variations
+        if any(kw in s_lower for kw in ['business', 'work', 'company', 'corp', 'llc', 'inc']):
+            return cls.BUSINESS
+
+        # Secondary business (freelance, side projects, etc.)
+        if any(kw in s_lower for kw in ['freelance', 'contract', 'consulting', 'side']):
+            return cls.SECONDARY
+
+        # Default to BUSINESS for any custom business type name
+        return cls.BUSINESS
 
 
 @dataclass
@@ -158,212 +166,212 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     # =========================================================================
     # DOWN HOME - AI & SOFTWARE
     # =========================================================================
-    "anthropic": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "ai_tools"},
-    "claude": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "ai_tools"},
-    "claude.ai": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "ai_tools"},
-    "openai": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "ai_tools"},
-    "chatgpt": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "ai_tools"},
-    "midjourney": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "ai_tools"},
-    "runway": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "ai_tools"},
-    "runwayml": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "ai_tools"},
-    "suno": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "ai_tools"},
-    "suno.ai": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "ai_tools"},
-    "eleven labs": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "ai_tools"},
-    "elevenlabs": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "ai_tools"},
-    "stability ai": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "ai_tools"},
-    "hugging face": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "ai_tools"},
-    "huggingface": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "ai_tools"},
-    "replicate": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "ai_tools"},
-    "cohere": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "ai_tools"},
-    "perplexity": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "ai_tools"},
-    "cursor": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "dev_tools"},
-    "github": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "dev_tools"},
-    "github copilot": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "dev_tools"},
-    "replit": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "dev_tools"},
+    "anthropic": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "ai_tools"},
+    "claude": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "ai_tools"},
+    "claude.ai": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "ai_tools"},
+    "openai": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "ai_tools"},
+    "chatgpt": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "ai_tools"},
+    "midjourney": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "ai_tools"},
+    "runway": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "ai_tools"},
+    "runwayml": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "ai_tools"},
+    "suno": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "ai_tools"},
+    "suno.ai": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "ai_tools"},
+    "eleven labs": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "ai_tools"},
+    "elevenlabs": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "ai_tools"},
+    "stability ai": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "ai_tools"},
+    "hugging face": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "ai_tools"},
+    "huggingface": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "ai_tools"},
+    "replicate": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "ai_tools"},
+    "cohere": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "ai_tools"},
+    "perplexity": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "ai_tools"},
+    "cursor": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "dev_tools"},
+    "github": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "dev_tools"},
+    "github copilot": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "dev_tools"},
+    "replit": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "dev_tools"},
 
     # DOWN HOME - Cloud & Infrastructure
-    "aws": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "cloud"},
-    "amazon web services": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "cloud"},
-    "google cloud": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "cloud"},
-    "gcp": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "cloud"},
-    "cloudflare": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "cloud"},
-    "railway": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "cloud"},
-    "vercel": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "cloud"},
-    "netlify": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "cloud"},
-    "heroku": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "cloud"},
-    "digitalocean": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "cloud"},
-    "linode": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "cloud"},
-    "vultr": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "cloud"},
-    "azure": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "cloud"},
-    "microsoft azure": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "cloud"},
-    "supabase": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "cloud"},
-    "planetscale": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "cloud"},
-    "neon": {"type": BusinessType.DOWN_HOME, "confidence": 0.96, "category": "cloud"},
-    "upstash": {"type": BusinessType.DOWN_HOME, "confidence": 0.96, "category": "cloud"},
+    "aws": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
+    "amazon web services": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
+    "google cloud": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
+    "gcp": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
+    "cloudflare": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
+    "railway": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
+    "vercel": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "cloud"},
+    "netlify": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "cloud"},
+    "heroku": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "cloud"},
+    "digitalocean": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "cloud"},
+    "linode": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "cloud"},
+    "vultr": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "cloud"},
+    "azure": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "cloud"},
+    "microsoft azure": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "cloud"},
+    "supabase": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "cloud"},
+    "planetscale": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "cloud"},
+    "neon": {"type": BusinessType.BUSINESS, "confidence": 0.96, "category": "cloud"},
+    "upstash": {"type": BusinessType.BUSINESS, "confidence": 0.96, "category": "cloud"},
 
     # DOWN HOME - Design & Creative Software
-    "figma": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "design"},
-    "adobe": {"type": BusinessType.DOWN_HOME, "confidence": 0.95, "category": "design"},
-    "adobe creative cloud": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "design"},
-    "adobe cc": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "design"},
-    "canva": {"type": BusinessType.DOWN_HOME, "confidence": 0.90, "category": "design"},
-    "sketch": {"type": BusinessType.DOWN_HOME, "confidence": 0.95, "category": "design"},
-    "invision": {"type": BusinessType.DOWN_HOME, "confidence": 0.95, "category": "design"},
-    "framer": {"type": BusinessType.DOWN_HOME, "confidence": 0.95, "category": "design"},
+    "figma": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "design"},
+    "adobe": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "design"},
+    "adobe creative cloud": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "design"},
+    "adobe cc": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "design"},
+    "canva": {"type": BusinessType.BUSINESS, "confidence": 0.90, "category": "design"},
+    "sketch": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "design"},
+    "invision": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "design"},
+    "framer": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "design"},
 
     # DOWN HOME - Audio/Video Production
-    "final cut": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "production"},
-    "final cut pro": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "production"},
-    "logic pro": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "production"},
-    "pro tools": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "production"},
-    "avid": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "production"},
-    "davinci resolve": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "production"},
-    "blackmagic": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "production"},
-    "premiere pro": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "production"},
-    "after effects": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "production"},
-    "waves": {"type": BusinessType.DOWN_HOME, "confidence": 0.95, "category": "production"},
-    "universal audio": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "production"},
-    "splice": {"type": BusinessType.DOWN_HOME, "confidence": 0.96, "category": "production"},
-    "soundcloud": {"type": BusinessType.DOWN_HOME, "confidence": 0.85, "category": "production"},
-    "bandcamp": {"type": BusinessType.DOWN_HOME, "confidence": 0.90, "category": "production"},
-    "distrokid": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "production"},
-    "tunecore": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "production"},
-    "cd baby": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "production"},
+    "final cut": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "production"},
+    "final cut pro": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "production"},
+    "logic pro": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "production"},
+    "pro tools": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "production"},
+    "avid": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
+    "davinci resolve": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
+    "blackmagic": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
+    "premiere pro": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
+    "after effects": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
+    "waves": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "production"},
+    "universal audio": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
+    "splice": {"type": BusinessType.BUSINESS, "confidence": 0.96, "category": "production"},
+    "soundcloud": {"type": BusinessType.BUSINESS, "confidence": 0.85, "category": "production"},
+    "bandcamp": {"type": BusinessType.BUSINESS, "confidence": 0.90, "category": "production"},
+    "distrokid": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
+    "tunecore": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
+    "cd baby": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "production"},
 
     # DOWN HOME - Music Industry
-    "spotify for artists": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "music_industry"},
-    "ascap": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "music_industry"},
-    "bmi": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "music_industry"},
-    "sesac": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "music_industry"},
-    "soundexchange": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "music_industry"},
-    "harry fox agency": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "music_industry"},
-    "songtrust": {"type": BusinessType.DOWN_HOME, "confidence": 0.98, "category": "music_industry"},
-    "royalty exchange": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "music_industry"},
-    "music reports": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "music_industry"},
+    "spotify for artists": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "music_industry"},
+    "ascap": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "music_industry"},
+    "bmi": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "music_industry"},
+    "sesac": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "music_industry"},
+    "soundexchange": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "music_industry"},
+    "harry fox agency": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "music_industry"},
+    "songtrust": {"type": BusinessType.BUSINESS, "confidence": 0.98, "category": "music_industry"},
+    "royalty exchange": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "music_industry"},
+    "music reports": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "music_industry"},
 
     # DOWN HOME - Productivity & Collaboration
-    "notion": {"type": BusinessType.DOWN_HOME, "confidence": 0.95, "category": "productivity"},
-    "slack": {"type": BusinessType.DOWN_HOME, "confidence": 0.93, "category": "productivity"},
-    "asana": {"type": BusinessType.DOWN_HOME, "confidence": 0.93, "category": "productivity"},
-    "monday.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.93, "category": "productivity"},
-    "linear": {"type": BusinessType.DOWN_HOME, "confidence": 0.95, "category": "productivity"},
-    "clickup": {"type": BusinessType.DOWN_HOME, "confidence": 0.92, "category": "productivity"},
-    "basecamp": {"type": BusinessType.DOWN_HOME, "confidence": 0.92, "category": "productivity"},
-    "trello": {"type": BusinessType.DOWN_HOME, "confidence": 0.90, "category": "productivity"},
-    "miro": {"type": BusinessType.DOWN_HOME, "confidence": 0.93, "category": "productivity"},
-    "loom": {"type": BusinessType.DOWN_HOME, "confidence": 0.93, "category": "productivity"},
-    "calendly": {"type": BusinessType.DOWN_HOME, "confidence": 0.92, "category": "productivity"},
-    "zoom": {"type": BusinessType.DOWN_HOME, "confidence": 0.88, "category": "productivity"},
-    "webex": {"type": BusinessType.DOWN_HOME, "confidence": 0.88, "category": "productivity"},
+    "notion": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "productivity"},
+    "slack": {"type": BusinessType.BUSINESS, "confidence": 0.93, "category": "productivity"},
+    "asana": {"type": BusinessType.BUSINESS, "confidence": 0.93, "category": "productivity"},
+    "monday.com": {"type": BusinessType.BUSINESS, "confidence": 0.93, "category": "productivity"},
+    "linear": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "productivity"},
+    "clickup": {"type": BusinessType.BUSINESS, "confidence": 0.92, "category": "productivity"},
+    "basecamp": {"type": BusinessType.BUSINESS, "confidence": 0.92, "category": "productivity"},
+    "trello": {"type": BusinessType.BUSINESS, "confidence": 0.90, "category": "productivity"},
+    "miro": {"type": BusinessType.BUSINESS, "confidence": 0.93, "category": "productivity"},
+    "loom": {"type": BusinessType.BUSINESS, "confidence": 0.93, "category": "productivity"},
+    "calendly": {"type": BusinessType.BUSINESS, "confidence": 0.92, "category": "productivity"},
+    "zoom": {"type": BusinessType.BUSINESS, "confidence": 0.88, "category": "productivity"},
+    "webex": {"type": BusinessType.BUSINESS, "confidence": 0.88, "category": "productivity"},
 
     # DOWN HOME - Equipment & Rentals
-    "b&h photo": {"type": BusinessType.DOWN_HOME, "confidence": 0.92, "category": "equipment"},
-    "bhphoto": {"type": BusinessType.DOWN_HOME, "confidence": 0.92, "category": "equipment"},
-    "adorama": {"type": BusinessType.DOWN_HOME, "confidence": 0.92, "category": "equipment"},
-    "sweetwater": {"type": BusinessType.DOWN_HOME, "confidence": 0.95, "category": "equipment"},
-    "guitar center": {"type": BusinessType.DOWN_HOME, "confidence": 0.90, "category": "equipment"},
-    "sam ash": {"type": BusinessType.DOWN_HOME, "confidence": 0.90, "category": "equipment"},
-    "vintage king": {"type": BusinessType.DOWN_HOME, "confidence": 0.97, "category": "equipment"},
-    "reverb.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.88, "category": "equipment"},
-    "thomann": {"type": BusinessType.DOWN_HOME, "confidence": 0.90, "category": "equipment"},
+    "b&h photo": {"type": BusinessType.BUSINESS, "confidence": 0.92, "category": "equipment"},
+    "bhphoto": {"type": BusinessType.BUSINESS, "confidence": 0.92, "category": "equipment"},
+    "adorama": {"type": BusinessType.BUSINESS, "confidence": 0.92, "category": "equipment"},
+    "sweetwater": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "equipment"},
+    "guitar center": {"type": BusinessType.BUSINESS, "confidence": 0.90, "category": "equipment"},
+    "sam ash": {"type": BusinessType.BUSINESS, "confidence": 0.90, "category": "equipment"},
+    "vintage king": {"type": BusinessType.BUSINESS, "confidence": 0.97, "category": "equipment"},
+    "reverb.com": {"type": BusinessType.BUSINESS, "confidence": 0.88, "category": "equipment"},
+    "thomann": {"type": BusinessType.BUSINESS, "confidence": 0.90, "category": "equipment"},
 
     # DOWN HOME - Studios & Production Services
-    "ocean way": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "studio"},
-    "blackbird studio": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "studio"},
-    "blackbird studios": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "studio"},
-    "rca studio": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "studio"},
-    "sound emporium": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "studio"},
-    "sound stage": {"type": BusinessType.DOWN_HOME, "confidence": 0.95, "category": "studio"},
-    "the tracking room": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "studio"},
-    "abbey road": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "studio"},
-    "electric lady": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "studio"},
+    "ocean way": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
+    "blackbird studio": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
+    "blackbird studios": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
+    "rca studio": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
+    "sound emporium": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
+    "sound stage": {"type": BusinessType.BUSINESS, "confidence": 0.95, "category": "studio"},
+    "the tracking room": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
+    "abbey road": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
+    "electric lady": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "studio"},
 
     # DOWN HOME - Entertainment Industry Travel (major hubs)
-    "american airlines": {"type": BusinessType.DOWN_HOME, "confidence": 0.70, "category": "travel"},
-    "delta": {"type": BusinessType.DOWN_HOME, "confidence": 0.70, "category": "travel"},
-    "united": {"type": BusinessType.DOWN_HOME, "confidence": 0.70, "category": "travel"},
+    "american airlines": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "travel"},
+    "delta": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "travel"},
+    "united": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "travel"},
 
     # =========================================================================
     # MUSIC CITY RODEO - Venue & Event
     # =========================================================================
-    "bridgestone arena": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99, "category": "venue"},
-    "nissan stadium": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.95, "category": "venue"},
-    "nashville convention center": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.97, "category": "venue"},
-    "music city center": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.97, "category": "venue"},
-    "ascend amphitheater": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "venue"},
-    "grand ole opry": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.85, "category": "venue"},
-    "ryman auditorium": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.85, "category": "venue"},
+    "bridgestone arena": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "venue"},
+    "nissan stadium": {"type": BusinessType.SECONDARY, "confidence": 0.95, "category": "venue"},
+    "nashville convention center": {"type": BusinessType.SECONDARY, "confidence": 0.97, "category": "venue"},
+    "music city center": {"type": BusinessType.SECONDARY, "confidence": 0.97, "category": "venue"},
+    "ascend amphitheater": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "venue"},
+    "grand ole opry": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "venue"},
+    "ryman auditorium": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "venue"},
 
     # MUSIC CITY RODEO - Rodeo Industry
-    "prca": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99, "category": "rodeo"},
-    "professional rodeo cowboys association": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99, "category": "rodeo"},
-    "nfr": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99, "category": "rodeo"},
-    "national finals rodeo": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99, "category": "rodeo"},
-    "pbr": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.98, "category": "rodeo"},
-    "professional bull riders": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.98, "category": "rodeo"},
-    "wrangler": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "rodeo"},
-    "justin boots": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.92, "category": "rodeo"},
-    "ariat": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "rodeo"},
-    "resistol": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.93, "category": "rodeo"},
-    "stetson": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "rodeo"},
-    "cavenders": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.92, "category": "rodeo"},
-    "boot barn": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "rodeo"},
-    "sheplers": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "rodeo"},
+    "prca": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "rodeo"},
+    "professional rodeo cowboys association": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "rodeo"},
+    "nfr": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "rodeo"},
+    "national finals rodeo": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "rodeo"},
+    "pbr": {"type": BusinessType.SECONDARY, "confidence": 0.98, "category": "rodeo"},
+    "professional bull riders": {"type": BusinessType.SECONDARY, "confidence": 0.98, "category": "rodeo"},
+    "wrangler": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "rodeo"},
+    "justin boots": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "rodeo"},
+    "ariat": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "rodeo"},
+    "resistol": {"type": BusinessType.SECONDARY, "confidence": 0.93, "category": "rodeo"},
+    "stetson": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "rodeo"},
+    "cavenders": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "rodeo"},
+    "boot barn": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "rodeo"},
+    "sheplers": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "rodeo"},
 
     # MUSIC CITY RODEO - Stock Contractors
-    "flying u rodeo": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99, "category": "stock_contractor"},
-    "cervi championship rodeo": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99, "category": "stock_contractor"},
-    "harry vold rodeo": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99, "category": "stock_contractor"},
-    "sankey rodeo": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99, "category": "stock_contractor"},
-    "j bar j": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.98, "category": "stock_contractor"},
+    "flying u rodeo": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "stock_contractor"},
+    "cervi championship rodeo": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "stock_contractor"},
+    "harry vold rodeo": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "stock_contractor"},
+    "sankey rodeo": {"type": BusinessType.SECONDARY, "confidence": 0.99, "category": "stock_contractor"},
+    "j bar j": {"type": BusinessType.SECONDARY, "confidence": 0.98, "category": "stock_contractor"},
 
     # MUSIC CITY RODEO - Talent & Booking
-    "caa": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "talent"},
-    "creative artists agency": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "talent"},
-    "wme": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "talent"},
-    "william morris": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "talent"},
-    "uta": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "talent"},
-    "united talent agency": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "talent"},
-    "paradigm": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "talent"},
-    "red light management": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.92, "category": "talent"},
-    "vector management": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.92, "category": "talent"},
-    "big machine": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.85, "category": "talent"},
+    "caa": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "talent"},
+    "creative artists agency": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "talent"},
+    "wme": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "talent"},
+    "william morris": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "talent"},
+    "uta": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "talent"},
+    "united talent agency": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "talent"},
+    "paradigm": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "talent"},
+    "red light management": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "talent"},
+    "vector management": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "talent"},
+    "big machine": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "talent"},
 
     # MUSIC CITY RODEO - Event Production
-    "live nation": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "event_production"},
-    "aeg": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "event_production"},
-    "messina touring": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.95, "category": "event_production"},
-    "premiere global": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.92, "category": "event_production"},
-    "bandit lites": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.95, "category": "event_production"},
-    "upstaging": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.93, "category": "event_production"},
-    "clair global": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.93, "category": "event_production"},
-    "sound image": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.92, "category": "event_production"},
+    "live nation": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "event_production"},
+    "aeg": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "event_production"},
+    "messina touring": {"type": BusinessType.SECONDARY, "confidence": 0.95, "category": "event_production"},
+    "premiere global": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "event_production"},
+    "bandit lites": {"type": BusinessType.SECONDARY, "confidence": 0.95, "category": "event_production"},
+    "upstaging": {"type": BusinessType.SECONDARY, "confidence": 0.93, "category": "event_production"},
+    "clair global": {"type": BusinessType.SECONDARY, "confidence": 0.93, "category": "event_production"},
+    "sound image": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "event_production"},
 
     # MUSIC CITY RODEO - Nashville Hotels (high-end business)
-    "thompson nashville": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "nashville_hotel"},
-    "jw marriott nashville": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "nashville_hotel"},
-    "omni nashville": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "nashville_hotel"},
-    "hutton hotel": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "nashville_hotel"},
-    "hermitage hotel": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "nashville_hotel"},
-    "gaylord opryland": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.85, "category": "nashville_hotel"},
-    "loews vanderbilt": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "nashville_hotel"},
+    "thompson nashville": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "nashville_hotel"},
+    "jw marriott nashville": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "nashville_hotel"},
+    "omni nashville": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "nashville_hotel"},
+    "hutton hotel": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "nashville_hotel"},
+    "hermitage hotel": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "nashville_hotel"},
+    "gaylord opryland": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "nashville_hotel"},
+    "loews vanderbilt": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "nashville_hotel"},
 
     # MUSIC CITY RODEO - Nashville Restaurants (business dining)
-    "the catbird seat": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.85, "category": "nashville_dining"},
-    "husk nashville": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.85, "category": "nashville_dining"},
-    "kayne prime": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "nashville_dining"},
-    "merchants": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.80, "category": "nashville_dining"},
-    "etch": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.82, "category": "nashville_dining"},
-    "rolf and daughters": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.82, "category": "nashville_dining"},
-    "bastion": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.82, "category": "nashville_dining"},
+    "the catbird seat": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "nashville_dining"},
+    "husk nashville": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "nashville_dining"},
+    "kayne prime": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "nashville_dining"},
+    "merchants": {"type": BusinessType.SECONDARY, "confidence": 0.80, "category": "nashville_dining"},
+    "etch": {"type": BusinessType.SECONDARY, "confidence": 0.82, "category": "nashville_dining"},
+    "rolf and daughters": {"type": BusinessType.SECONDARY, "confidence": 0.82, "category": "nashville_dining"},
+    "bastion": {"type": BusinessType.SECONDARY, "confidence": 0.82, "category": "nashville_dining"},
 
     # MUSIC CITY RODEO - Marketing & Advertising
-    "billboard": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.92, "category": "marketing"},
-    "lamar advertising": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90, "category": "marketing"},
-    "clear channel": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "marketing"},
-    "iheartmedia": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "marketing"},
-    "cumulus media": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.88, "category": "marketing"},
-    "tennessean": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.85, "category": "marketing"},
+    "billboard": {"type": BusinessType.SECONDARY, "confidence": 0.92, "category": "marketing"},
+    "lamar advertising": {"type": BusinessType.SECONDARY, "confidence": 0.90, "category": "marketing"},
+    "clear channel": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "marketing"},
+    "iheartmedia": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "marketing"},
+    "cumulus media": {"type": BusinessType.SECONDARY, "confidence": 0.88, "category": "marketing"},
+    "tennessean": {"type": BusinessType.SECONDARY, "confidence": 0.85, "category": "marketing"},
 
     # =========================================================================
     # PERSONAL - Streaming & Entertainment
@@ -563,15 +571,15 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     # =========================================================================
     # DOWN HOME - Rideshare & Delivery (per actual data)
     # =========================================================================
-    "uber": {"type": BusinessType.DOWN_HOME, "confidence": 0.85, "category": "rideshare"},
-    "uber *trip": {"type": BusinessType.DOWN_HOME, "confidence": 0.85, "category": "rideshare"},
-    "lyft": {"type": BusinessType.DOWN_HOME, "confidence": 0.85, "category": "rideshare"},
-    "doordash": {"type": BusinessType.DOWN_HOME, "confidence": 0.90, "category": "delivery"},
-    "dd *doordash": {"type": BusinessType.DOWN_HOME, "confidence": 0.90, "category": "delivery"},
-    "grubhub": {"type": BusinessType.DOWN_HOME, "confidence": 0.85, "category": "delivery"},
-    "uber eats": {"type": BusinessType.DOWN_HOME, "confidence": 0.85, "category": "delivery"},
-    "soho house": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "dining"},
-    "soho house nashville": {"type": BusinessType.DOWN_HOME, "confidence": 0.99, "category": "dining"},
+    "uber": {"type": BusinessType.BUSINESS, "confidence": 0.85, "category": "rideshare"},
+    "uber *trip": {"type": BusinessType.BUSINESS, "confidence": 0.85, "category": "rideshare"},
+    "lyft": {"type": BusinessType.BUSINESS, "confidence": 0.85, "category": "rideshare"},
+    "doordash": {"type": BusinessType.BUSINESS, "confidence": 0.90, "category": "delivery"},
+    "dd *doordash": {"type": BusinessType.BUSINESS, "confidence": 0.90, "category": "delivery"},
+    "grubhub": {"type": BusinessType.BUSINESS, "confidence": 0.85, "category": "delivery"},
+    "uber eats": {"type": BusinessType.BUSINESS, "confidence": 0.85, "category": "delivery"},
+    "soho house": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "dining"},
+    "soho house nashville": {"type": BusinessType.BUSINESS, "confidence": 0.99, "category": "dining"},
 
     # =========================================================================
     # PERSONAL - Tech & Retail (per actual data)
@@ -582,17 +590,17 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
     "apple": {"type": BusinessType.PERSONAL, "confidence": 0.85, "category": "tech"},
     "apple store": {"type": BusinessType.PERSONAL, "confidence": 0.91, "category": "tech"},
     "apple.com/bill": {"type": BusinessType.PERSONAL, "confidence": 0.85, "category": "tech"},
-    "best buy": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.50, "category": "retail"},
+    "best buy": {"type": BusinessType.SECONDARY, "confidence": 0.50, "category": "retail"},
     "southwest airlines": {"type": BusinessType.PERSONAL, "confidence": 0.85, "category": "travel"},
     "southwest": {"type": BusinessType.PERSONAL, "confidence": 0.85, "category": "travel"},
 
     # =========================================================================
     # DOWN HOME - Hotels & Travel (per actual data)
     # =========================================================================
-    "airbnb": {"type": BusinessType.DOWN_HOME, "confidence": 0.70, "category": "hotel"},
-    "marriott": {"type": BusinessType.DOWN_HOME, "confidence": 0.70, "category": "hotel"},
-    "hilton": {"type": BusinessType.DOWN_HOME, "confidence": 0.70, "category": "hotel"},
-    "hyatt": {"type": BusinessType.DOWN_HOME, "confidence": 0.70, "category": "hotel"},
+    "airbnb": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "hotel"},
+    "marriott": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "hotel"},
+    "hilton": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "hotel"},
+    "hyatt": {"type": BusinessType.BUSINESS, "confidence": 0.70, "category": "hotel"},
 }
 
 
@@ -601,7 +609,7 @@ MERCHANT_BUSINESS_RULES: Dict[str, Dict] = {
 # =============================================================================
 
 KEYWORD_PATTERNS: Dict[BusinessType, List[Dict]] = {
-    BusinessType.DOWN_HOME: [
+    BusinessType.BUSINESS: [
         # AI & Software keywords
         {"pattern": r"\bai\b", "weight": 0.7, "category": "ai"},
         {"pattern": r"artificial intelligence", "weight": 0.8, "category": "ai"},
@@ -633,7 +641,7 @@ KEYWORD_PATTERNS: Dict[BusinessType, List[Dict]] = {
         {"pattern": r"new york|nyc|manhattan", "weight": 0.5, "category": "travel"},
     ],
 
-    BusinessType.MUSIC_CITY_RODEO: [
+    BusinessType.SECONDARY: [
         # Rodeo keywords
         {"pattern": r"rodeo|cowboy|cowgirl", "weight": 0.9, "category": "rodeo"},
         {"pattern": r"bull rid(e|ing|er)", "weight": 0.95, "category": "rodeo"},
@@ -686,7 +694,7 @@ KEYWORD_PATTERNS: Dict[BusinessType, List[Dict]] = {
         {"pattern": r"gaming|playstation|xbox|nintendo", "weight": 0.9, "category": "gaming"},
     ],
 
-    BusinessType.EM_CO: [
+    BusinessType.OTHER: [
         # Em.co specific patterns (to be defined based on business needs)
         {"pattern": r"em\.co|emco", "weight": 0.95, "category": "em_co"},
     ],
@@ -699,38 +707,38 @@ KEYWORD_PATTERNS: Dict[BusinessType, List[Dict]] = {
 
 EMAIL_DOMAIN_RULES: Dict[str, Dict] = {
     # DOWN HOME domains
-    "anthropic.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.99},
-    "openai.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.99},
-    "midjourney.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.99},
-    "runwayml.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.98},
-    "notion.so": {"type": BusinessType.DOWN_HOME, "confidence": 0.95},
-    "figma.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.98},
-    "adobe.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.95},
-    "github.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.98},
-    "aws.amazon.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.98},
-    "cloud.google.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.98},
-    "cloudflare.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.98},
-    "railway.app": {"type": BusinessType.DOWN_HOME, "confidence": 0.98},
-    "vercel.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.98},
-    "ascap.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.99},
-    "bmi.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.99},
-    "soundexchange.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.99},
-    "splice.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.96},
-    "distrokid.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.97},
-    "sweetwater.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.95},
-    "bhphoto.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.92},
+    "anthropic.com": {"type": BusinessType.BUSINESS, "confidence": 0.99},
+    "openai.com": {"type": BusinessType.BUSINESS, "confidence": 0.99},
+    "midjourney.com": {"type": BusinessType.BUSINESS, "confidence": 0.99},
+    "runwayml.com": {"type": BusinessType.BUSINESS, "confidence": 0.98},
+    "notion.so": {"type": BusinessType.BUSINESS, "confidence": 0.95},
+    "figma.com": {"type": BusinessType.BUSINESS, "confidence": 0.98},
+    "adobe.com": {"type": BusinessType.BUSINESS, "confidence": 0.95},
+    "github.com": {"type": BusinessType.BUSINESS, "confidence": 0.98},
+    "aws.amazon.com": {"type": BusinessType.BUSINESS, "confidence": 0.98},
+    "cloud.google.com": {"type": BusinessType.BUSINESS, "confidence": 0.98},
+    "cloudflare.com": {"type": BusinessType.BUSINESS, "confidence": 0.98},
+    "railway.app": {"type": BusinessType.BUSINESS, "confidence": 0.98},
+    "vercel.com": {"type": BusinessType.BUSINESS, "confidence": 0.98},
+    "ascap.com": {"type": BusinessType.BUSINESS, "confidence": 0.99},
+    "bmi.com": {"type": BusinessType.BUSINESS, "confidence": 0.99},
+    "soundexchange.com": {"type": BusinessType.BUSINESS, "confidence": 0.99},
+    "splice.com": {"type": BusinessType.BUSINESS, "confidence": 0.96},
+    "distrokid.com": {"type": BusinessType.BUSINESS, "confidence": 0.97},
+    "sweetwater.com": {"type": BusinessType.BUSINESS, "confidence": 0.95},
+    "bhphoto.com": {"type": BusinessType.BUSINESS, "confidence": 0.92},
 
     # MUSIC CITY RODEO domains
-    "prorodeo.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99},
-    "prca.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99},
-    "pbr.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.98},
-    "nfrexperience.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99},
-    "wrangler.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90},
-    "ariat.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90},
-    "bridgestonearena.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.99},
-    "nashvilleconventionctr.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.97},
-    "livenation.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90},
-    "aegpresents.com": {"type": BusinessType.MUSIC_CITY_RODEO, "confidence": 0.90},
+    "prorodeo.com": {"type": BusinessType.SECONDARY, "confidence": 0.99},
+    "prca.com": {"type": BusinessType.SECONDARY, "confidence": 0.99},
+    "pbr.com": {"type": BusinessType.SECONDARY, "confidence": 0.98},
+    "nfrexperience.com": {"type": BusinessType.SECONDARY, "confidence": 0.99},
+    "wrangler.com": {"type": BusinessType.SECONDARY, "confidence": 0.90},
+    "ariat.com": {"type": BusinessType.SECONDARY, "confidence": 0.90},
+    "bridgestonearena.com": {"type": BusinessType.SECONDARY, "confidence": 0.99},
+    "nashvilleconventionctr.com": {"type": BusinessType.SECONDARY, "confidence": 0.97},
+    "livenation.com": {"type": BusinessType.SECONDARY, "confidence": 0.90},
+    "aegpresents.com": {"type": BusinessType.SECONDARY, "confidence": 0.90},
 
     # PERSONAL domains
     "netflix.com": {"type": BusinessType.PERSONAL, "confidence": 0.98},
@@ -753,10 +761,10 @@ EMAIL_DOMAIN_RULES: Dict[str, Dict] = {
     # Tech/Retail domains (per actual data)
     "amazon.com": {"type": BusinessType.PERSONAL, "confidence": 0.85},
     "apple.com": {"type": BusinessType.PERSONAL, "confidence": 0.85},
-    "uber.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.85},
-    "airbnb.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.70},
-    "marriott.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.70},
-    "hilton.com": {"type": BusinessType.DOWN_HOME, "confidence": 0.70},
+    "uber.com": {"type": BusinessType.BUSINESS, "confidence": 0.85},
+    "airbnb.com": {"type": BusinessType.BUSINESS, "confidence": 0.70},
+    "marriott.com": {"type": BusinessType.BUSINESS, "confidence": 0.70},
+    "hilton.com": {"type": BusinessType.BUSINESS, "confidence": 0.70},
 }
 
 
@@ -774,26 +782,26 @@ AMOUNT_HEURISTICS: Dict[str, Dict] = {
     "meal_business": {
         "min_amount": Decimal("100"),
         "max_amount": Decimal("500"),
-        "type": BusinessType.DOWN_HOME,
+        "type": BusinessType.BUSINESS,
         "confidence_boost": 0.10,
         "description": "Business meal $100-500 range",
     },
     "meal_large_business": {
         "min_amount": Decimal("500"),
-        "type": BusinessType.MUSIC_CITY_RODEO,
+        "type": BusinessType.SECONDARY,
         "confidence_boost": 0.10,
         "description": "Large event meal over $500",
     },
     "subscription_typical": {
         "min_amount": Decimal("5"),
         "max_amount": Decimal("50"),
-        "type": BusinessType.DOWN_HOME,
+        "type": BusinessType.BUSINESS,
         "confidence_boost": 0.05,
         "description": "Typical subscription price range",
     },
     "event_expense": {
         "min_amount": Decimal("1000"),
-        "type": BusinessType.MUSIC_CITY_RODEO,
+        "type": BusinessType.SECONDARY,
         "confidence_boost": 0.15,
         "description": "Large event expense over $1000",
     },
@@ -1209,7 +1217,7 @@ class BusinessTypeClassifier:
                 if any(kw in event_text for kw in dh_keywords):
                     return ClassificationSignal(
                         signal_type='calendar',
-                        business_type=BusinessType.DOWN_HOME,
+                        business_type=BusinessType.BUSINESS,
                         confidence=0.90,
                         reasoning=f"Calendar event match: {event.title}",
                         weight=1.2,  # High weight for calendar context
@@ -1220,7 +1228,7 @@ class BusinessTypeClassifier:
                 if any(kw in event_text for kw in mcr_keywords):
                     return ClassificationSignal(
                         signal_type='calendar',
-                        business_type=BusinessType.MUSIC_CITY_RODEO,
+                        business_type=BusinessType.SECONDARY,
                         confidence=0.90,
                         reasoning=f"Calendar event match: {event.title}",
                         weight=1.2,
@@ -1231,7 +1239,7 @@ class BusinessTypeClassifier:
                 if any(kw in event_text for kw in business_keywords):
                     return ClassificationSignal(
                         signal_type='calendar',
-                        business_type=BusinessType.DOWN_HOME,
+                        business_type=BusinessType.BUSINESS,
                         confidence=0.80,
                         reasoning=f"Business calendar event: {event.title}",
                         weight=1.0,
@@ -1266,7 +1274,7 @@ class BusinessTypeClassifier:
                         if 'down home' in tag_lower or 'dh' in tag_lower:
                             return ClassificationSignal(
                                 signal_type='contact',
-                                business_type=BusinessType.DOWN_HOME,
+                                business_type=BusinessType.BUSINESS,
                                 confidence=0.85,
                                 reasoning=f"Contact tag match: {contact.name} tagged '{tag}'",
                                 weight=1.0,
@@ -1274,7 +1282,7 @@ class BusinessTypeClassifier:
                         elif 'rodeo' in tag_lower or 'mcr' in tag_lower:
                             return ClassificationSignal(
                                 signal_type='contact',
-                                business_type=BusinessType.MUSIC_CITY_RODEO,
+                                business_type=BusinessType.SECONDARY,
                                 confidence=0.85,
                                 reasoning=f"Contact tag match: {contact.name} tagged '{tag}'",
                                 weight=1.0,
@@ -1291,7 +1299,7 @@ class BusinessTypeClassifier:
         if not signals:
             # No signals - default to Down Home (most common business type)
             return ClassificationResult(
-                business_type=BusinessType.DOWN_HOME,
+                business_type=BusinessType.BUSINESS,
                 confidence=0.50,
                 reasoning="No classification signals found - defaulting to Down Home for review",
                 signals=[],

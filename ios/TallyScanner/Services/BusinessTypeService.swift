@@ -81,7 +81,7 @@ class BusinessTypeService: ObservableObject {
             $0.displayName.lowercased() == name.lowercased()
         }) {
             if type.displayName.count > 12 {
-                // Abbreviate: "Music City Rodeo" -> "MCR"
+                // Abbreviate long names: "My Long Business" -> "MLB"
                 return String(type.displayName.split(separator: " ").map { $0.prefix(1) }.joined())
             }
             return type.displayName
@@ -119,15 +119,18 @@ class BusinessTypeService: ObservableObject {
         ]
     }
 
-    /// Legacy color mapping for existing data
+    /// Legacy color mapping for existing data (fallback when API types not loaded)
     private func legacyColor(for name: String) -> Color {
         switch name.lowercased() {
         case "personal": return Color(hex: "#00FF88") ?? .green
-        case "down home", "downhome", "down_home": return .orange
-        case "music city rodeo", "mcr", "music_city_rodeo": return .purple
-        case "em.co", "emco": return .teal
         case "business": return Color(hex: "#4A90D9") ?? .blue
-        default: return .gray
+        case "freelance": return Color(hex: "#FF6B6B") ?? .orange
+        case "travel": return Color(hex: "#F5A623") ?? .yellow
+        default:
+            // Generate consistent color from name hash for custom types
+            let hash = abs(name.hashValue)
+            let hue = Double(hash % 360) / 360.0
+            return Color(hue: hue, saturation: 0.6, brightness: 0.8)
         }
     }
 }

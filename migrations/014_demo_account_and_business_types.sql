@@ -24,13 +24,13 @@ CREATE TABLE IF NOT EXISTS user_business_types (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- ADMIN USER BUSINESS TYPES (Your specific categories)
+-- ADMIN USER BUSINESS TYPES (Default categories - customize in app settings)
 -- ============================================================================
 INSERT INTO user_business_types (user_id, name, display_name, color, icon, is_default, sort_order)
 VALUES
     ('admin-00000000-0000-0000-0000-000000000000', 'Personal', 'Personal', '#00FF88', 'person.fill', TRUE, 1),
-    ('admin-00000000-0000-0000-0000-000000000000', 'Down_Home', 'Down Home', '#FF6B6B', 'house.fill', FALSE, 2),
-    ('admin-00000000-0000-0000-0000-000000000000', 'Music_City_Rodeo', 'Music City Rodeo', '#4ECDC4', 'music.note', FALSE, 3)
+    ('admin-00000000-0000-0000-0000-000000000000', 'Business', 'Business', '#4A90D9', 'briefcase.fill', FALSE, 2),
+    ('admin-00000000-0000-0000-0000-000000000000', 'Freelance', 'Freelance', '#FF6B6B', 'laptop', FALSE, 3)
 ON DUPLICATE KEY UPDATE
     display_name = VALUES(display_name),
     color = VALUES(color),
