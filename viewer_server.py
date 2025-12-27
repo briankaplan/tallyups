@@ -2888,6 +2888,182 @@ def auth_success():
     ''', name=name, email=email)
 
 
+@app.route("/auth/apple")
+def auth_apple_start():
+    """Start Apple Sign In OAuth flow."""
+    import secrets
+    from urllib.parse import urlencode
+
+    # Apple OAuth configuration
+    client_id = os.environ.get('APPLE_BUNDLE_ID', 'com.tallyups.scanner')
+
+    # Determine redirect URI based on environment
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        redirect_uri = 'https://tallyups.com/auth/apple/callback'
+    else:
+        redirect_uri = 'http://localhost:5050/auth/apple/callback'
+
+    # Generate state for CSRF protection
+    state = secrets.token_urlsafe(32)
+    session['apple_oauth_state'] = state
+
+    # Generate nonce for token verification
+    nonce = secrets.token_hex(32)
+    session['apple_nonce'] = nonce
+
+    # Hash nonce for Apple
+    import hashlib
+    nonce_hash = hashlib.sha256(nonce.encode()).hexdigest()
+
+    auth_params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code id_token',
+        'response_mode': 'form_post',
+        'scope': 'name email',
+        'state': state,
+        'nonce': nonce_hash,
+    }
+
+    auth_url = f"https://appleid.apple.com/auth/authorize?{urlencode(auth_params)}"
+    return redirect(auth_url)
+
+
+@app.route("/auth/apple/callback", methods=["GET", "POST"])
+def auth_apple_callback():
+    """Handle Apple Sign In callback."""
+    try:
+        from services.apple_auth_service import apple_auth_service, InvalidIdentityTokenError
+        from services.jwt_auth_service import jwt_service
+    except ImportError as e:
+        logger.error(f"Failed to import auth services: {e}")
+        return redirect('/login?error=auth_service_unavailable')
+
+    # Get state from form (Apple uses POST with form_post response_mode)
+    if request.method == 'POST':
+        state = request.form.get('state')
+        code = request.form.get('code')
+        id_token = request.form.get('id_token')
+        user_data = request.form.get('user')  # First sign-in only
+        error = request.form.get('error')
+    else:
+        state = request.args.get('state')
+        code = request.args.get('code')
+        id_token = request.args.get('id_token')
+        user_data = request.args.get('user')
+        error = request.args.get('error')
+
+    # Verify state
+    if state != session.get('apple_oauth_state'):
+        return redirect('/login?error=invalid_state')
+
+    # Check for errors
+    if error:
+        logger.warning(f"Apple auth error: {error}")
+        return redirect('/login?error=apple_auth_failed')
+
+    if not id_token:
+        return redirect('/login?error=no_token')
+
+    try:
+        # Verify the identity token
+        nonce = session.get('apple_nonce')
+        user_info = apple_auth_service.verify_identity_token(id_token, nonce)
+
+        apple_user_id = user_info['apple_user_id']
+        email = user_info.get('email')
+
+        # Parse user name if provided (only on first sign-in)
+        name = None
+        if user_data:
+            try:
+                import json
+                user_obj = json.loads(user_data)
+                name_obj = user_obj.get('name', {})
+                first_name = name_obj.get('firstName', '')
+                last_name = name_obj.get('lastName', '')
+                name = f"{first_name} {last_name}".strip() or None
+            except:
+                pass
+
+        # Find or create user in database
+        from db_mysql import get_mysql_db
+        db = get_mysql_db()
+        conn = db.get_connection()
+        try:
+            cursor = conn.cursor()
+
+            # Check if user exists with this Apple ID
+            cursor.execute("""
+                SELECT user_id, email, display_name, role
+                FROM users
+                WHERE apple_user_id = %s
+            """, (apple_user_id,))
+            existing = cursor.fetchone()
+
+            if existing:
+                # Existing user - update last login
+                user_id = existing['user_id']
+                cursor.execute("""
+                    UPDATE users SET last_login = NOW()
+                    WHERE user_id = %s
+                """, (user_id,))
+                conn.commit()
+
+                display_name = existing['display_name']
+                role = existing['role']
+            else:
+                # New user - create account
+                import uuid
+                user_id = str(uuid.uuid4())
+                display_name = name or (email.split('@')[0] if email else 'User')
+                role = 'user'
+
+                cursor.execute("""
+                    INSERT INTO users (user_id, email, display_name, apple_user_id, role, created_at, last_login)
+                    VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+                """, (user_id, email, display_name, apple_user_id, role))
+                conn.commit()
+
+                logger.info(f"Created new user via Apple Sign In: {email}")
+
+        finally:
+            db.return_connection(conn)
+
+        # Create session and JWT tokens
+        device_id = request.headers.get('X-Device-ID', secrets.token_hex(16))
+        device_name = request.headers.get('User-Agent', 'Web Browser')[:100]
+
+        access_token = jwt_service.create_access_token(user_id, role=role)
+        refresh_token, refresh_hash, expires = jwt_service.create_refresh_token(
+            user_id, device_id, device_name
+        )
+
+        # Store session
+        session['user_id'] = user_id
+        session['user_email'] = email
+        session['user_name'] = display_name
+        session['authenticated'] = True
+        session['role'] = role
+        session['auth_method'] = 'apple'
+
+        # Clear OAuth state
+        session.pop('apple_oauth_state', None)
+        session.pop('apple_nonce', None)
+
+        logger.info(f"Apple Sign In successful for {email}")
+
+        # Redirect to dashboard or incoming page
+        return redirect('/incoming')
+
+    except InvalidIdentityTokenError as e:
+        logger.error(f"Apple token verification failed: {e}")
+        return redirect('/login?error=invalid_token')
+    except Exception as e:
+        logger.error(f"Apple auth callback error: {e}")
+        return redirect('/login?error=auth_failed')
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():

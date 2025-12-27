@@ -7,114 +7,226 @@
     <meta name="description" content="Tallyups Privacy Policy - How we collect, use, and protect your data when using our receipt management service.">
     <link rel="canonical" href="https://tallyups.com/privacy">
     <style>
+        :root {
+            --brand-primary: #00FFA3;
+            --brand-primary-hover: #00CC82;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-300: #D1D5DB;
+            --gray-400: #9CA3AF;
+            --gray-500: #6B7280;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-800: #1F2937;
+            --gray-850: #1a1a1a;
+            --gray-900: #111827;
+            --gray-950: #0A0A0A;
+        }
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
             line-height: 1.7;
-            color: #333;
-            max-width: 800px;
+            color: var(--gray-200);
+            max-width: 900px;
             margin: 0 auto;
             padding: 40px 20px;
-            background: #f9fafb;
+            background: var(--gray-950);
+            min-height: 100vh;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--gray-800);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--gray-50);
+        }
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--brand-primary), #00CC82);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--brand-primary), #00CC82);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .back-link {
+            color: var(--gray-400);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .back-link:hover {
+            color: var(--brand-primary);
         }
         h1 {
-            color: #111;
+            color: var(--gray-50);
             margin-bottom: 10px;
-            font-size: 2rem;
+            font-size: 2.5rem;
+            font-weight: 700;
         }
         .updated {
-            color: #666;
+            color: var(--gray-500);
             font-size: 0.9rem;
             margin-bottom: 30px;
         }
         h2 {
-            color: #222;
-            margin-top: 35px;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 8px;
+            color: var(--gray-100);
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--gray-800);
+            padding-bottom: 10px;
         }
         h3 {
-            color: #333;
-            margin-top: 20px;
-            margin-bottom: 10px;
+            color: var(--gray-200);
+            margin-top: 25px;
+            margin-bottom: 12px;
             font-size: 1.1rem;
+            font-weight: 600;
         }
         p, li {
             margin-bottom: 15px;
-            color: #444;
+            color: var(--gray-300);
         }
         ul, ol {
             margin-left: 25px;
             margin-bottom: 20px;
         }
+        li {
+            margin-bottom: 10px;
+        }
         a {
-            color: #2563eb;
+            color: var(--brand-primary);
+            text-decoration: none;
+            transition: opacity 0.2s;
         }
         a:hover {
+            opacity: 0.8;
             text-decoration: underline;
         }
+        strong {
+            color: var(--gray-100);
+        }
         .container {
-            background: white;
+            background: var(--gray-900);
             padding: 50px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            border: 1px solid var(--gray-800);
         }
         .highlight-box {
-            background: #f0f9ff;
-            border: 1px solid #bae6fd;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
+            background: rgba(0, 255, 163, 0.05);
+            border: 1px solid rgba(0, 255, 163, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
         }
         .highlight-box.warning {
-            background: #fefce8;
-            border-color: #fde047;
+            background: rgba(251, 191, 36, 0.05);
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+        .highlight-box strong {
+            color: var(--brand-primary);
+        }
+        .highlight-box.warning strong {
+            color: #FBBF24;
         }
         .scope-table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
+            font-size: 0.95rem;
         }
         .scope-table th, .scope-table td {
-            border: 1px solid #e5e7eb;
-            padding: 12px;
+            border: 1px solid var(--gray-700);
+            padding: 14px;
             text-align: left;
         }
         .scope-table th {
-            background: #f9fafb;
+            background: var(--gray-850);
             font-weight: 600;
+            color: var(--gray-100);
+        }
+        .scope-table td {
+            background: var(--gray-900);
+            color: var(--gray-300);
+        }
+        .scope-table tr:hover td {
+            background: var(--gray-850);
         }
         .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid var(--gray-800);
             text-align: center;
-            color: #666;
+            color: var(--gray-500);
             font-size: 0.9rem;
         }
+        .footer a {
+            color: var(--gray-400);
+            margin: 0 8px;
+        }
+        .footer a:hover {
+            color: var(--brand-primary);
+        }
         code {
-            background: #f3f4f6;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.9em;
+            background: var(--gray-800);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            color: var(--brand-primary);
+            font-family: 'SF Mono', Monaco, monospace;
         }
         @media (max-width: 600px) {
+            body {
+                padding: 20px 15px;
+            }
             .container {
-                padding: 25px;
+                padding: 25px 20px;
             }
             h1 {
-                font-size: 1.5rem;
+                font-size: 1.75rem;
+            }
+            .scope-table {
+                font-size: 0.85rem;
+            }
+            .scope-table th, .scope-table td {
+                padding: 10px 8px;
             }
         }
     </style>
 </head>
 <body>
+    <div class="header">
+        <a href="/" class="logo">
+            <div class="logo-icon">T</div>
+            <span class="logo-text">Tallyups</span>
+        </a>
+        <a href="/" class="back-link">Back to Home</a>
+    </div>
+
     <div class="container">
         <h1>Privacy Policy</h1>
         <p class="updated">Last updated: December 11, 2025</p>
@@ -128,7 +240,7 @@
 
         <h3>2.1 Information You Provide</h3>
         <ul>
-            <li><strong>Account Information:</strong> Your email address used for authentication via Google OAuth 2.0</li>
+            <li><strong>Account Information:</strong> Your email address used for authentication via Google OAuth 2.0 or Apple Sign In</li>
             <li><strong>Transaction Data:</strong> Financial transaction records you voluntarily import for receipt matching</li>
             <li><strong>User Preferences:</strong> Settings and preferences you configure within the application</li>
         </ul>
@@ -147,27 +259,27 @@
                 <tr>
                     <td><code>gmail.readonly</code></td>
                     <td>Scan for receipt emails</td>
-                    <td>Email messages matching receipt patterns (e.g., from merchants, containing order confirmations)</td>
+                    <td>Email messages matching receipt patterns</td>
                 </tr>
                 <tr>
                     <td><code>gmail.modify</code></td>
                     <td>Organize processed receipts</td>
-                    <td>Apply labels to processed emails for organization</td>
+                    <td>Apply labels to processed emails</td>
                 </tr>
                 <tr>
                     <td><code>gmail.labels</code></td>
                     <td>Create receipt labels</td>
-                    <td>Create and manage labels for receipt organization</td>
+                    <td>Create and manage labels</td>
                 </tr>
                 <tr>
                     <td><code>contacts.readonly</code></td>
                     <td>Identify known merchants</td>
-                    <td>Contact names to identify merchant relationships</td>
+                    <td>Contact names for merchant identification</td>
                 </tr>
                 <tr>
                     <td><code>calendar.readonly</code></td>
                     <td>Match receipts to events</td>
-                    <td>Calendar events to correlate with receipt dates</td>
+                    <td>Calendar events for date correlation</td>
                 </tr>
             </table>
         </div>
@@ -199,7 +311,7 @@
                 <li>Use your data for advertising purposes</li>
                 <li>Share your email content with anyone</li>
                 <li>Access emails unrelated to receipts</li>
-                <li>Store your Google password (we use OAuth 2.0)</li>
+                <li>Store your Google or Apple password (we use OAuth)</li>
             </ul>
         </div>
 
@@ -226,7 +338,7 @@
         <h3>5.2 Security Measures</h3>
         <ul>
             <li>All data transmitted over HTTPS (TLS 1.2+)</li>
-            <li>OAuth 2.0 for Google authentication (we never see your password)</li>
+            <li>OAuth 2.0 for Google and Apple authentication (we never see your password)</li>
             <li>Database connections encrypted with SSL</li>
             <li>Regular security updates and monitoring</li>
             <li>Access controls limiting data access to essential personnel only</li>
@@ -252,6 +364,11 @@
                 <td>Google Gmail API</td>
                 <td>Email access for receipts</td>
                 <td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a></td>
+            </tr>
+            <tr>
+                <td>Apple Sign In</td>
+                <td>User authentication</td>
+                <td><a href="https://www.apple.com/legal/privacy/" target="_blank" rel="noopener noreferrer">Apple Privacy Policy</a></td>
             </tr>
             <tr>
                 <td>Cloudflare R2</td>
@@ -345,8 +462,8 @@
         <div class="footer">
             <p>&copy; 2025 Tallyups. All rights reserved.</p>
             <p>
-                <a href="/">Home</a> &middot;
-                <a href="/terms">Terms of Service</a> &middot;
+                <a href="/">Home</a>
+                <a href="/terms">Terms of Service</a>
                 <a href="mailto:brian@tallyups.com">Contact</a>
             </p>
         </div>

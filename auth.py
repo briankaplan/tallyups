@@ -243,132 +243,248 @@ def is_admin() -> bool:
     return get_current_user_role() == 'admin'
 
 
-# Login page HTML
+# Login page HTML - Production Ready with Apple Sign In
 LOGIN_PAGE_HTML = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tallyups - Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sign In - Tallyups</title>
+    <meta name="description" content="Sign in to Tallyups - Smart receipt management for your business">
+    <meta name="theme-color" content="#0A0A0A">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="/receipt-icon-192.png">
+    <link rel="apple-touch-icon" href="/receipt-icon-192.png">
     <style>
+        :root {
+            --brand-primary: #00FFA3;
+            --brand-primary-hover: #00CC82;
+            --brand-primary-glow: rgba(0, 255, 163, 0.3);
+            --gray-50: #FAFAFA;
+            --gray-100: #F5F5F5;
+            --gray-400: #A3A3A3;
+            --gray-500: #737373;
+            --gray-600: #525252;
+            --gray-700: #404040;
+            --gray-800: #262626;
+            --gray-900: #171717;
+            --gray-950: #0A0A0A;
+            --error: #EF4444;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
-            background: #000;
-            color: #fff;
+            background: linear-gradient(180deg, var(--gray-950) 0%, #0D1117 100%);
+            color: var(--gray-50);
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
         }
         .login-container {
             width: 100%;
             max-width: 400px;
-            padding: 40px 20px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .logo {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 48px;
         }
         .logo-icon {
-            width: 80px;
-            height: 80px;
-            background: #00ff88;
-            border-radius: 20px;
+            width: 88px;
+            height: 88px;
+            background: linear-gradient(135deg, var(--brand-primary) 0%, #00CC82 100%);
+            border-radius: var(--radius-xl);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 40px var(--brand-primary-glow);
         }
         .logo-icon svg {
-            width: 40px;
-            height: 40px;
-            color: #000;
+            width: 44px;
+            height: 44px;
+            color: var(--gray-950);
         }
         .logo h1 {
-            font-size: 28px;
-            font-weight: 600;
+            font-size: 32px;
+            font-weight: 700;
             letter-spacing: -0.5px;
+            margin-bottom: 8px;
         }
         .logo p {
-            color: #666;
-            margin-top: 8px;
+            color: var(--gray-500);
+            font-size: 15px;
+        }
+        .auth-methods {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .btn {
+            width: 100%;
+            padding: 16px 24px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .btn-apple {
+            background: var(--gray-50);
+            color: var(--gray-950);
+        }
+        .btn-apple:hover {
+            background: var(--gray-100);
+            transform: translateY(-1px);
+        }
+        .btn-apple svg {
+            width: 20px;
+            height: 20px;
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+            color: var(--gray-600);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gray-800);
         }
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
         label {
             display: block;
             margin-bottom: 8px;
-            color: #999;
+            color: var(--gray-400);
             font-size: 14px;
+            font-weight: 500;
         }
         input {
             width: 100%;
             padding: 16px;
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 12px;
-            color: #fff;
+            background: var(--gray-900);
+            border: 1px solid var(--gray-800);
+            border-radius: var(--radius-md);
+            color: var(--gray-50);
             font-size: 16px;
-            transition: border-color 0.2s;
+            transition: all 0.2s ease;
         }
         input:focus {
             outline: none;
-            border-color: #00ff88;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px var(--brand-primary-glow);
         }
         input::placeholder {
-            color: #444;
+            color: var(--gray-600);
         }
-        button {
-            width: 100%;
-            padding: 16px;
-            background: #00ff88;
-            border: none;
-            border-radius: 12px;
-            color: #000;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
+        .btn-primary {
+            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-hover) 100%);
+            color: var(--gray-950);
+            margin-top: 8px;
         }
-        button:hover {
-            background: #00cc6a;
+        .btn-primary:hover {
             transform: translateY(-1px);
+            box-shadow: 0 4px 20px var(--brand-primary-glow);
         }
-        button:active {
+        .btn-primary:active {
             transform: translateY(0);
         }
         .error {
-            background: rgba(255, 68, 68, 0.1);
-            border: 1px solid #ff4444;
-            color: #ff4444;
-            padding: 12px 16px;
-            border-radius: 8px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--error);
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
             margin-bottom: 20px;
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .pin-toggle {
+        .error svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+        .alt-actions {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 24px;
         }
-        .pin-toggle a {
-            color: #00ff88;
+        .alt-actions a {
+            color: var(--brand-primary);
             text-decoration: none;
             font-size: 14px;
+            font-weight: 500;
+            transition: opacity 0.2s;
         }
-        .pin-input {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
+        .alt-actions a:hover {
+            opacity: 0.8;
         }
-        .pin-input input {
-            width: 50px;
-            height: 60px;
+        .footer {
+            margin-top: 48px;
             text-align: center;
-            font-size: 24px;
-            font-weight: 600;
+            padding-top: 24px;
+            border-top: 1px solid var(--gray-800);
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 16px;
+        }
+        .footer-links a {
+            color: var(--gray-500);
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover {
+            color: var(--gray-400);
+        }
+        .footer p {
+            color: var(--gray-600);
+            font-size: 12px;
+        }
+        @media (max-width: 480px) {
+            .logo-icon {
+                width: 72px;
+                height: 72px;
+            }
+            .logo-icon svg {
+                width: 36px;
+                height: 36px;
+            }
+            .logo h1 {
+                font-size: 28px;
+            }
         }
     </style>
 </head>
@@ -376,7 +492,7 @@ LOGIN_PAGE_HTML = '''
     <div class="login-container">
         <div class="logo">
             <div class="logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="4" width="18" height="16" rx="2"/>
                     <line x1="7" y1="9" x2="17" y2="9"/>
                     <line x1="7" y1="13" x2="13" y2="13"/>
@@ -384,27 +500,60 @@ LOGIN_PAGE_HTML = '''
                 </svg>
             </div>
             <h1>Tallyups</h1>
-            <p>Enter your password to continue</p>
+            <p>Smart receipt management</p>
         </div>
 
         {% if error %}
-        <div class="error">{{ error }}</div>
+        <div class="error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {{ error }}
+        </div>
         {% endif %}
+
+        <div class="auth-methods">
+            <button type="button" class="btn btn-apple" onclick="signInWithApple()">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                </svg>
+                Continue with Apple
+            </button>
+        </div>
+
+        <div class="divider">or sign in with password</div>
 
         <form method="POST" id="login-form">
             <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" placeholder="Enter password" autofocus required>
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" autofocus required autocomplete="current-password">
             </div>
-            <button type="submit">Unlock</button>
+            <button type="submit" class="btn btn-primary">Sign In</button>
         </form>
 
         {% if has_pin %}
-        <div class="pin-toggle">
+        <div class="alt-actions">
             <a href="/login/pin">Use PIN instead</a>
         </div>
         {% endif %}
+
+        <div class="footer">
+            <div class="footer-links">
+                <a href="/terms">Terms of Service</a>
+                <a href="/privacy">Privacy Policy</a>
+            </div>
+            <p>&copy; 2025 Tallyups. All rights reserved.</p>
+        </div>
     </div>
+
+    <script>
+        function signInWithApple() {
+            // Apple Sign In will be handled via the native flow or web redirect
+            window.location.href = '/auth/apple';
+        }
+    </script>
 </body>
 </html>
 '''
