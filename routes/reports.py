@@ -484,8 +484,11 @@ def api_report_remove_item(report_id):
 
 @reports_bp.route("/<report_id>/items", methods=["GET"])
 def api_report_items(report_id):
-    """Get all transactions in a report. Auth not required (page guards access)."""
-    # Auth check removed - the page itself requires login
+    """Get all transactions in a report."""
+    # SECURITY: Require authentication
+    if not check_auth():
+        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
     USE_DATABASE, db, _, _ = get_dependencies()
 
     if not USE_DATABASE or not db:
@@ -496,20 +499,40 @@ def api_report_items(report_id):
         conn = db.get_connection()
         cursor = conn.cursor()
 
-        # First get report info
-        cursor.execute('''
-            SELECT report_name, business_type, status FROM reports WHERE report_id = %s
-        ''', (report_id,))
+        # SECURITY: User scoping - verify report belongs to user
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor.execute('''
+                SELECT report_name, business_type, status FROM reports
+                WHERE report_id = %s AND user_id = %s
+            ''', (report_id, user_id))
+        else:
+            cursor.execute('''
+                SELECT report_name, business_type, status FROM reports WHERE report_id = %s
+            ''', (report_id,))
         report_info = cursor.fetchone()
-        report_name = report_info['report_name'] if report_info else report_id
 
-        cursor.execute('''
-            SELECT _index, chase_date, chase_description, chase_amount, chase_category,
-                   business_type, r2_url, receipt_file, ai_note, review_status
-            FROM transactions
-            WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)
-            ORDER BY chase_date DESC
-        ''', (report_id,))
+        if not report_info:
+            return jsonify({'ok': False, 'error': 'Report not found'}), 404
+        report_name = report_info['report_name']
+
+        # SECURITY: User scoping on transactions
+        if USER_SCOPING_ENABLED:
+            cursor.execute('''
+                SELECT _index, chase_date, chase_description, chase_amount, chase_category,
+                       business_type, r2_url, receipt_file, ai_note, review_status
+                FROM transactions
+                WHERE report_id = %s AND user_id = %s AND (deleted IS NULL OR deleted = 0)
+                ORDER BY chase_date DESC
+            ''', (report_id, user_id))
+        else:
+            cursor.execute('''
+                SELECT _index, chase_date, chase_description, chase_amount, chase_category,
+                       business_type, r2_url, receipt_file, ai_note, review_status
+                FROM transactions
+                WHERE report_id = %s AND (deleted IS NULL OR deleted = 0)
+                ORDER BY chase_date DESC
+            ''', (report_id,))
 
         items = []
         total = 0
@@ -543,7 +566,11 @@ def api_report_items(report_id):
 
 @reports_bp.route("/stats", methods=["GET"])
 def api_reports_stats():
-    """Get report statistics for dashboard - no auth required (aggregate data only)."""
+    """Get report statistics for dashboard."""
+    # SECURITY: Require authentication
+    if not check_auth():
+        return jsonify({'error': 'Authentication required'}), 401
+
     USE_DATABASE, db, _, _ = get_dependencies()
 
     if not USE_DATABASE or not db:
@@ -561,16 +588,31 @@ def api_reports_stats():
 
         # Get YTD totals for dashboard
         year = datetime.now().year
-        cursor.execute('''
-            SELECT
-                COUNT(*) as total,
-                SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts,
-                SUM(CASE WHEN review_status IS NULL OR review_status = '' THEN 1 ELSE 0 END) as pending
-            FROM transactions
-            WHERE YEAR(chase_date) = %s
-            AND (deleted IS NULL OR deleted = 0)
-        ''', (year,))
+
+        # SECURITY: User scoping - only show user's own stats
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor.execute('''
+                SELECT
+                    COUNT(*) as total,
+                    SUM(ABS(chase_amount)) as total_amount,
+                    SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts,
+                    SUM(CASE WHEN review_status IS NULL OR review_status = '' THEN 1 ELSE 0 END) as pending
+                FROM transactions
+                WHERE user_id = %s AND YEAR(chase_date) = %s
+                AND (deleted IS NULL OR deleted = 0)
+            ''', (user_id, year))
+        else:
+            cursor.execute('''
+                SELECT
+                    COUNT(*) as total,
+                    SUM(ABS(chase_amount)) as total_amount,
+                    SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts,
+                    SUM(CASE WHEN review_status IS NULL OR review_status = '' THEN 1 ELSE 0 END) as pending
+                FROM transactions
+                WHERE YEAR(chase_date) = %s
+                AND (deleted IS NULL OR deleted = 0)
+            ''', (year,))
 
         row = cursor.fetchone()
 
@@ -616,34 +658,65 @@ def api_reports_dashboard():
         conn = db.get_connection()
         cursor = conn.cursor()
 
+        # SECURITY: User scoping
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
         # YTD totals
-        cursor.execute('''
-            SELECT
-                COUNT(*) as total_transactions,
-                SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts
-            FROM transactions
-            WHERE YEAR(chase_date) = YEAR(NOW())
-        ''')
+        if USER_SCOPING_ENABLED:
+            cursor.execute('''
+                SELECT
+                    COUNT(*) as total_transactions,
+                    SUM(ABS(chase_amount)) as total_amount,
+                    SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts
+                FROM transactions
+                WHERE user_id = %s AND YEAR(chase_date) = YEAR(NOW())
+            ''', (user_id,))
+        else:
+            cursor.execute('''
+                SELECT
+                    COUNT(*) as total_transactions,
+                    SUM(ABS(chase_amount)) as total_amount,
+                    SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts
+                FROM transactions
+                WHERE YEAR(chase_date) = YEAR(NOW())
+            ''')
         ytd = cursor.fetchone()
 
         # By business type - normalize different formats
-        cursor.execute('''
-            SELECT
-                CASE
-                    WHEN business_type IN ('Business', 'Business') THEN 'Business'
-                    WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
-                    WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
-                    WHEN business_type = 'Personal' THEN 'Personal'
-                    ELSE 'Personal'
-                END AS normalized_business_type,
-                COUNT(*) as count,
-                SUM(ABS(chase_amount)) as total
-            FROM transactions
-            WHERE YEAR(chase_date) = YEAR(NOW())
-            AND business_type IS NOT NULL AND business_type != ''
-            GROUP BY normalized_business_type
-        ''')
+        if USER_SCOPING_ENABLED:
+            cursor.execute('''
+                SELECT
+                    CASE
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        WHEN business_type = 'Personal' THEN 'Personal'
+                        ELSE 'Personal'
+                    END AS normalized_business_type,
+                    COUNT(*) as count,
+                    SUM(ABS(chase_amount)) as total
+                FROM transactions
+                WHERE user_id = %s AND YEAR(chase_date) = YEAR(NOW())
+                AND business_type IS NOT NULL AND business_type != ''
+                GROUP BY normalized_business_type
+            ''', (user_id,))
+        else:
+            cursor.execute('''
+                SELECT
+                    CASE
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        WHEN business_type = 'Personal' THEN 'Personal'
+                        ELSE 'Personal'
+                    END AS normalized_business_type,
+                    COUNT(*) as count,
+                    SUM(ABS(chase_amount)) as total
+                FROM transactions
+                WHERE YEAR(chase_date) = YEAR(NOW())
+                AND business_type IS NOT NULL AND business_type != ''
+                GROUP BY normalized_business_type
+            ''')
         by_business = {}
         for row in cursor.fetchall():
             by_business[row['normalized_business_type']] = {
@@ -652,15 +725,26 @@ def api_reports_dashboard():
             }
 
         # Monthly trend
-        cursor.execute('''
-            SELECT
-                DATE_FORMAT(chase_date, '%Y-%m') as month,
-                SUM(ABS(chase_amount)) as total
-            FROM transactions
-            WHERE chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-            GROUP BY DATE_FORMAT(chase_date, '%Y-%m')
-            ORDER BY month
-        ''')
+        if USER_SCOPING_ENABLED:
+            cursor.execute('''
+                SELECT
+                    DATE_FORMAT(chase_date, '%%Y-%%m') as month,
+                    SUM(ABS(chase_amount)) as total
+                FROM transactions
+                WHERE user_id = %s AND chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                GROUP BY DATE_FORMAT(chase_date, '%%Y-%%m')
+                ORDER BY month
+            ''', (user_id,))
+        else:
+            cursor.execute('''
+                SELECT
+                    DATE_FORMAT(chase_date, '%Y-%m') as month,
+                    SUM(ABS(chase_amount)) as total
+                FROM transactions
+                WHERE chase_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                GROUP BY DATE_FORMAT(chase_date, '%Y-%m')
+                ORDER BY month
+            ''')
         monthly = []
         for row in cursor.fetchall():
             monthly.append({
@@ -669,18 +753,32 @@ def api_reports_dashboard():
             })
 
         # By category
-        cursor.execute('''
-            SELECT
-                chase_category as category,
-                COUNT(*) as count,
-                SUM(ABS(chase_amount)) as total
-            FROM transactions
-            WHERE YEAR(chase_date) = YEAR(NOW())
-            AND chase_category IS NOT NULL AND chase_category != ''
-            GROUP BY chase_category
-            ORDER BY total DESC
-            LIMIT 10
-        ''')
+        if USER_SCOPING_ENABLED:
+            cursor.execute('''
+                SELECT
+                    chase_category as category,
+                    COUNT(*) as count,
+                    SUM(ABS(chase_amount)) as total
+                FROM transactions
+                WHERE user_id = %s AND YEAR(chase_date) = YEAR(NOW())
+                AND chase_category IS NOT NULL AND chase_category != ''
+                GROUP BY chase_category
+                ORDER BY total DESC
+                LIMIT 10
+            ''', (user_id,))
+        else:
+            cursor.execute('''
+                SELECT
+                    chase_category as category,
+                    COUNT(*) as count,
+                    SUM(ABS(chase_amount)) as total
+                FROM transactions
+                WHERE YEAR(chase_date) = YEAR(NOW())
+                AND chase_category IS NOT NULL AND chase_category != ''
+                GROUP BY chase_category
+                ORDER BY total DESC
+                LIMIT 10
+            ''')
         by_category = []
         for row in cursor.fetchall():
             by_category.append({
@@ -690,13 +788,23 @@ def api_reports_dashboard():
             })
 
         # Recent reports - CRITICAL for reports list display
-        cursor.execute('''
-            SELECT report_id, report_name, business_type, status,
-                   total_amount, expense_count, created_at, submitted_at
-            FROM reports
-            ORDER BY created_at DESC
-            LIMIT 20
-        ''')
+        if USER_SCOPING_ENABLED:
+            cursor.execute('''
+                SELECT report_id, report_name, business_type, status,
+                       total_amount, expense_count, created_at, submitted_at
+                FROM reports
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+                LIMIT 20
+            ''', (user_id,))
+        else:
+            cursor.execute('''
+                SELECT report_id, report_name, business_type, status,
+                       total_amount, expense_count, created_at, submitted_at
+                FROM reports
+                ORDER BY created_at DESC
+                LIMIT 20
+            ''')
         recent_reports = []
         for row in cursor.fetchall():
             created_at = row['created_at']
@@ -760,23 +868,44 @@ def api_business_summary():
         conn = db.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
-            SELECT
-                CASE
-                    WHEN business_type IN ('Business', 'Business') THEN 'Business'
-                    WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
-                    WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
-                    WHEN business_type = 'Personal' THEN 'Personal'
-                    ELSE 'Personal'
-                END AS normalized_business_type,
-                COUNT(*) as transaction_count,
-                SUM(ABS(chase_amount)) as total_amount,
-                SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts,
-                SUM(CASE WHEN review_status = 'good' THEN 1 ELSE 0 END) as reviewed
-            FROM transactions
-            WHERE YEAR(chase_date) = %s
-            GROUP BY normalized_business_type
-        ''', (year,))
+        # SECURITY: User scoping - only show user's own data
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor.execute('''
+                SELECT
+                    CASE
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        WHEN business_type = 'Personal' THEN 'Personal'
+                        ELSE 'Personal'
+                    END AS normalized_business_type,
+                    COUNT(*) as transaction_count,
+                    SUM(ABS(chase_amount)) as total_amount,
+                    SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts,
+                    SUM(CASE WHEN review_status = 'good' THEN 1 ELSE 0 END) as reviewed
+                FROM transactions
+                WHERE user_id = %s AND YEAR(chase_date) = %s
+                GROUP BY normalized_business_type
+            ''', (user_id, year))
+        else:
+            cursor.execute('''
+                SELECT
+                    CASE
+                        WHEN business_type IN ('Business', 'Business') THEN 'Business'
+                        WHEN business_type IN ('Secondary', 'Secondary', 'MCR') THEN 'Secondary'
+                        WHEN business_type IN ('EM.co', 'EM Co', 'EM_co') THEN 'EM.co'
+                        WHEN business_type = 'Personal' THEN 'Personal'
+                        ELSE 'Personal'
+                    END AS normalized_business_type,
+                    COUNT(*) as transaction_count,
+                    SUM(ABS(chase_amount)) as total_amount,
+                    SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as with_receipts,
+                    SUM(CASE WHEN review_status = 'good' THEN 1 ELSE 0 END) as reviewed
+                FROM transactions
+                WHERE YEAR(chase_date) = %s
+                GROUP BY normalized_business_type
+            ''', (year,))
 
         summary = []
         for row in cursor.fetchall():
