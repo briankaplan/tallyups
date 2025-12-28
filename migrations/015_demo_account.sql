@@ -6,8 +6,23 @@
 -- ============================================================================
 -- ADD PASSWORD HASH COLUMN TO USERS TABLE
 -- ============================================================================
-ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NULL AFTER email;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS is_demo_account BOOLEAN DEFAULT FALSE AFTER role;
+-- Note: Run these separately if column already exists (will error but that's OK)
+
+-- Add password_hash column if it doesn't exist
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'password_hash');
+SET @sql := IF(@exist = 0, 'ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NULL AFTER email', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Add is_demo_account column if it doesn't exist
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'is_demo_account');
+SET @sql := IF(@exist = 0, 'ALTER TABLE users ADD COLUMN is_demo_account BOOLEAN DEFAULT FALSE AFTER role', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- ============================================================================
 -- CREATE DEMO USER
@@ -141,24 +156,24 @@ AND review_status = 'good';
 DELETE FROM incoming_receipts WHERE user_id = 'demo-0000-0000-0000-000000000001';
 
 INSERT INTO incoming_receipts (
-    user_id, source, sender_email, subject,
-    extracted_merchant, extracted_amount, extracted_date,
-    status, receipt_image_url, created_at
+    user_id, email_id, gmail_account, subject, from_email,
+    merchant, amount, transaction_date,
+    status, created_at
 ) VALUES
-('demo-0000-0000-0000-000000000001', 'email', 'receipts@amazon.com',
- 'Your Amazon.com order has shipped',
+('demo-0000-0000-0000-000000000001', 'demo_amazon_001', 'demo@tallyups.com',
+ 'Your Amazon.com order has shipped', 'receipts@amazon.com',
  'Amazon', 45.99, DATE_SUB(CURDATE(), INTERVAL 1 DAY),
- 'pending', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/demo/inbox_amazon.jpg', NOW()),
+ 'pending', NOW()),
 
-('demo-0000-0000-0000-000000000001', 'email', 'no-reply@uber.com',
- 'Your trip receipt from Uber',
+('demo-0000-0000-0000-000000000001', 'demo_uber_001', 'demo@tallyups.com',
+ 'Your trip receipt from Uber', 'no-reply@uber.com',
  'Uber', 18.50, DATE_SUB(CURDATE(), INTERVAL 2 DAY),
- 'pending', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/demo/inbox_uber.jpg', NOW()),
+ 'pending', NOW()),
 
-('demo-0000-0000-0000-000000000001', 'scan', NULL,
- 'Scanned receipt',
+('demo-0000-0000-0000-000000000001', 'demo_bestbuy_001', 'demo@tallyups.com',
+ 'Your Best Buy receipt', 'receipts@bestbuy.com',
  'Best Buy', 299.99, DATE_SUB(CURDATE(), INTERVAL 3 DAY),
- 'pending', 'https://pub-35015e19c4b442b9af31f1dfd941f47f.r2.dev/demo/inbox_bestbuy.jpg', NOW());
+ 'pending', NOW());
 
 -- ============================================================================
 -- SUMMARY
