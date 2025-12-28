@@ -911,7 +911,8 @@ except Exception as e:
 from auth import (
     login_required, api_key_required, is_authenticated,
     verify_password, verify_pin, SECRET_KEY, SESSION_TIMEOUT,
-    LOGIN_PAGE_HTML, PIN_PAGE_HTML, AUTH_PIN
+    LOGIN_PAGE_HTML, PIN_PAGE_HTML, AUTH_PIN,
+    ai_access_required, is_admin
 )
 from flask import session, redirect, url_for, render_template_string, render_template
 
@@ -4588,6 +4589,7 @@ def debug_transaction(idx):
 
 @app.route("/ocr", methods=["POST"])
 @login_required
+@ai_access_required
 def ocr_endpoint():
     """
     OCR endpoint for mobile scanner using Gemini (free tier).
@@ -4748,6 +4750,18 @@ def ocr_extract_full():
     if not secure_compare_api_key(admin_key, expected_key):
         if not is_authenticated():
             return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
+
+    # SECURITY: Only admin users or users with their own API keys can use AI/OCR features
+    if not is_admin():
+        try:
+            from auth import get_current_user_id
+            from services.user_credentials_service import user_credentials_service, SERVICE_OPENAI, SERVICE_GEMINI
+            user_id = get_current_user_id()
+            has_key = user_credentials_service.has_credential(user_id, SERVICE_OPENAI) or user_credentials_service.has_credential(user_id, SERVICE_GEMINI)
+            if not has_key:
+                return jsonify({'ok': False, 'error': 'AI features require your own API key'}), 403
+        except Exception:
+            pass
 
     if not OCR_SERVICE_AVAILABLE:
         return jsonify({"error": "OCR service not available"}), 503
@@ -6905,6 +6919,7 @@ def validate_existing_receipt(row, receipt_file):
 
 @app.route("/ai_match", methods=["POST"])
 @login_required
+@ai_access_required
 def ai_match():
     """
     AI Receipt Matching endpoint
@@ -7143,6 +7158,7 @@ def ai_match():
 
 @app.route("/ai_note", methods=["POST"])
 @login_required
+@ai_access_required
 def ai_note():
     """
     AI Note Generation endpoint

@@ -243,6 +243,48 @@ def is_admin() -> bool:
     return get_current_user_role() == 'admin'
 
 
+def ai_access_required(f):
+    """
+    Decorator to protect AI endpoints that consume API quota.
+
+    Only allows access if:
+    1. User is admin (can use server's API keys)
+    2. User has their own API key configured for the service
+
+    This prevents non-admin users from consuming the server owner's API quota.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Admin users always have access
+        if is_admin():
+            return f(*args, **kwargs)
+
+        # Non-admin users need their own API keys
+        # Check if user has configured their own OpenAI or Gemini key
+        user_id = get_current_user_id()
+
+        try:
+            from services.user_credentials_service import user_credentials_service, SERVICE_OPENAI, SERVICE_GEMINI
+            has_openai = user_credentials_service.has_credential(user_id, SERVICE_OPENAI)
+            has_gemini = user_credentials_service.has_credential(user_id, SERVICE_GEMINI)
+
+            if has_openai or has_gemini:
+                return f(*args, **kwargs)
+        except ImportError:
+            pass
+        except Exception as e:
+            logging.warning(f"Error checking user credentials: {e}")
+
+        # No access - user needs to configure their own API keys
+        return jsonify({
+            'ok': False,
+            'error': 'AI features require your own API key',
+            'message': 'Please add your OpenAI or Gemini API key in Settings → API Keys to use AI features.'
+        }), 403
+
+    return decorated_function
+
+
 # Login page HTML - Production Ready with Apple Sign In
 LOGIN_PAGE_HTML = '''
 <!DOCTYPE html>
