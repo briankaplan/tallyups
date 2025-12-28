@@ -493,7 +493,7 @@ button:focus .kbd-hint {
 html,body{
   height:100%;margin:0;background:var(--bg);color:var(--ink);
   font:13px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial;
-  padding-top: calc(var(--header-height, 64px) + var(--safe-top));
+  /* Header is sticky (not fixed), so no padding-top needed - content flows naturally */
   padding-bottom: calc(60px + var(--safe-bottom));
 }
 
