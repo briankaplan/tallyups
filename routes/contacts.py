@@ -742,6 +742,10 @@ def get_relationship_health(contact_id):
             }
         }
     """
+    # SECURITY: Require authentication
+    if not check_auth():
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
     try:
         from db_mysql import get_mysql_db
         db = get_mysql_db()
@@ -811,6 +815,10 @@ def get_relationship_graph():
             "clusters": [...]
         }
     """
+    # SECURITY: Require authentication
+    if not check_auth():
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
     try:
         from db_mysql import get_mysql_db
         db = get_mysql_db()
@@ -886,6 +894,10 @@ def get_nudges():
             ]
         }
     """
+    # SECURITY: Require authentication
+    if not check_auth():
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
     try:
         from db_mysql import get_mysql_db
         db = get_mysql_db()

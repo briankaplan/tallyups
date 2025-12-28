@@ -1111,13 +1111,21 @@ def api_pool_status():
     Critical for monitoring database stability.
     """
     # Allow admin key or authenticated users
+    # SECURITY: Use constant-time comparison to prevent timing attacks
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
     auth_password = os.getenv('AUTH_PASSWORD')
 
-    if admin_key not in (expected_key, auth_password):
-        if not session.get('authenticated'):
-            return jsonify({'error': 'Authentication required'}), 401
+    is_authenticated = False
+    if admin_key and expected_key and _secrets_module.compare_digest(str(admin_key), str(expected_key)):
+        is_authenticated = True
+    elif admin_key and auth_password and _secrets_module.compare_digest(str(admin_key), str(auth_password)):
+        is_authenticated = True
+    elif session.get('authenticated'):
+        is_authenticated = True
+
+    if not is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
 
     try:
         from db_mysql import get_pool_status, get_connection_pool
@@ -1182,11 +1190,18 @@ def api_pool_keepalive():
     """
     Manually trigger keep-alive ping on all pool connections.
     """
+    # SECURITY: Use constant-time comparison to prevent timing attacks
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
     auth_password = os.getenv('AUTH_PASSWORD')
 
-    if admin_key not in (expected_key, auth_password):
+    is_authenticated = False
+    if admin_key and expected_key and _secrets_module.compare_digest(str(admin_key), str(expected_key)):
+        is_authenticated = True
+    elif admin_key and auth_password and _secrets_module.compare_digest(str(admin_key), str(auth_password)):
+        is_authenticated = True
+
+    if not is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
 
     try:
@@ -4351,8 +4366,10 @@ def admin_run_migration_008():
 @app.route("/api/admin/plaid-import-debug", methods=["GET"])
 def admin_plaid_import_debug():
     """Debug endpoint to check import status."""
+    # SECURITY: Use constant-time comparison to prevent timing attacks
     admin_key = request.args.get('admin_key')
-    if admin_key != os.getenv('ADMIN_API_KEY'):
+    expected_key = os.getenv('ADMIN_API_KEY')
+    if not admin_key or not expected_key or not _secrets_module.compare_digest(str(admin_key), str(expected_key)):
         return jsonify({'error': 'Admin auth required'}), 401
 
     if not db:
@@ -7297,12 +7314,21 @@ def api_ai_regenerate_notes():
     Returns: {"ok": true, "processed": int, "updated": int, "results": [...]}
     """
     # Auth check - allow admin key, auth password, or session
+    # SECURITY: Use constant-time comparison to prevent timing attacks
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
     auth_password = os.getenv('AUTH_PASSWORD')
-    if admin_key not in (expected_key, auth_password):
-        if not session.get('authenticated'):
-            return jsonify({'error': 'Authentication required'}), 401
+
+    is_authenticated = False
+    if admin_key and expected_key and _secrets_module.compare_digest(str(admin_key), str(expected_key)):
+        is_authenticated = True
+    elif admin_key and auth_password and _secrets_module.compare_digest(str(admin_key), str(auth_password)):
+        is_authenticated = True
+    elif session.get('authenticated'):
+        is_authenticated = True
+
+    if not is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
 
     data = request.get_json(force=True) or {}
     filter_type = data.get("filter", "birthday")
@@ -7437,12 +7463,21 @@ def api_ai_find_problematic_notes():
     Returns: {"ok": true, "count": int, "transactions": [...]}
     """
     # Auth check - allow admin key, auth password, or session
+    # SECURITY: Use constant-time comparison to prevent timing attacks
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
     auth_password = os.getenv('AUTH_PASSWORD')
-    if admin_key not in (expected_key, auth_password):
-        if not session.get('authenticated'):
-            return jsonify({'error': 'Authentication required'}), 401
+
+    is_authenticated = False
+    if admin_key and expected_key and _secrets_module.compare_digest(str(admin_key), str(expected_key)):
+        is_authenticated = True
+    elif admin_key and auth_password and _secrets_module.compare_digest(str(admin_key), str(auth_password)):
+        is_authenticated = True
+    elif session.get('authenticated'):
+        is_authenticated = True
+
+    if not is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
 
     filter_type = request.args.get("filter", "birthday")
     limit = min(int(request.args.get("limit", 100)), 500)
@@ -7515,12 +7550,21 @@ def api_ai_regenerate_birthday_notes():
     Returns: {"ok": true, "found": int, "updated": int, "results": [...]}
     """
     # Auth check - allow admin key
+    # SECURITY: Use constant-time comparison to prevent timing attacks
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
     auth_password = os.getenv('AUTH_PASSWORD')
-    if admin_key not in (expected_key, auth_password):
-        if not session.get('authenticated'):
-            return jsonify({'error': 'Authentication required'}), 401
+
+    is_authenticated = False
+    if admin_key and expected_key and _secrets_module.compare_digest(str(admin_key), str(expected_key)):
+        is_authenticated = True
+    elif admin_key and auth_password and _secrets_module.compare_digest(str(admin_key), str(auth_password)):
+        is_authenticated = True
+    elif session.get('authenticated'):
+        is_authenticated = True
+
+    if not is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
 
     if not USE_DATABASE or not db:
         return jsonify({'error': 'Database not available'}), 503
