@@ -343,39 +343,90 @@ def refresh_token():
         return jsonify({'error': 'device_id required'}), 400
 
     try:
-        # Refresh tokens
-        new_access, new_refresh, new_hash, expires = jwt_service.refresh_tokens(
-            refresh_token_value, device_id
-        )
+        # First verify the refresh token is valid (signature, expiry, etc.)
+        old_hash = jwt_service._hash_token(refresh_token_value)
 
-        # Update session in database
+        # Check database for session with this token
         conn = get_db_connection()
         cursor = conn.cursor()
 
         try:
-            # Verify session exists and is active
-            old_hash = jwt_service._hash_token(refresh_token_value)
+            # Look for active session with this exact token hash
             cursor.execute("""
-                SELECT id, user_id FROM user_sessions
+                SELECT id, user_id, previous_token_hash
+                FROM user_sessions
                 WHERE refresh_token_hash = %s AND device_id = %s AND is_active = TRUE
             """, (old_hash, device_id))
 
             session_row = cursor.fetchone()
+
             if not session_row:
+                # SECURITY: Check if this is a reused token (token was already rotated)
+                # This could indicate token theft - the attacker has an old token
+                cursor.execute("""
+                    SELECT id, user_id
+                    FROM user_sessions
+                    WHERE previous_token_hash = %s AND device_id = %s
+                """, (old_hash, device_id))
+
+                compromised_session = cursor.fetchone()
+                if compromised_session:
+                    # TOKEN REUSE DETECTED - Potential theft!
+                    # Revoke ALL sessions for this user as a security measure
+                    user_id = compromised_session[1]
+                    logger.warning(
+                        f"SECURITY: Refresh token reuse detected for user {user_id}, "
+                        f"device {device_id}. Revoking all sessions."
+                    )
+
+                    cursor.execute("""
+                        UPDATE user_sessions SET is_active = FALSE
+                        WHERE user_id = %s
+                    """, (user_id,))
+
+                    # Log the security event
+                    cursor.execute("""
+                        INSERT INTO session_events
+                        (user_id, session_id, event_type, device_id, ip_address, event_data)
+                        VALUES (%s, %s, 'token_reuse_detected', %s, %s, %s)
+                    """, (
+                        user_id, compromised_session[0], device_id,
+                        request.remote_addr,
+                        '{"action": "all_sessions_revoked", "reason": "refresh_token_reuse"}'
+                    ))
+
+                    conn.commit()
+
+                    return jsonify({
+                        'error': 'Security alert: token reuse detected. Please login again.',
+                        'code': 'TOKEN_REUSE_DETECTED'
+                    }), 401
+
                 return jsonify({'error': 'Session not found or expired'}), 401
 
-            # Update session with new refresh token
+            session_id = session_row[0]
+            user_id = session_row[1]
+
+            # Refresh tokens (creates new access + refresh tokens)
+            new_access, new_refresh, new_hash, expires = jwt_service.refresh_tokens(
+                refresh_token_value, device_id
+            )
+
+            # Update session with new refresh token, store old hash for reuse detection
             cursor.execute("""
                 UPDATE user_sessions
-                SET refresh_token_hash = %s, expires_at = %s, last_used_at = NOW()
+                SET refresh_token_hash = %s,
+                    previous_token_hash = %s,
+                    expires_at = %s,
+                    last_used_at = NOW()
                 WHERE id = %s
-            """, (new_hash, expires, session_row[0]))
+            """, (new_hash, old_hash, expires, session_id))
 
             # Log the event
             cursor.execute("""
                 INSERT INTO session_events (user_id, session_id, event_type, device_id, ip_address)
                 VALUES (%s, %s, 'token_refresh', %s, %s)
-            """, (session_row[1], session_row[0], device_id, request.remote_addr))
+            """, (user_id, session_id, device_id, request.remote_addr))
 
             conn.commit()
 

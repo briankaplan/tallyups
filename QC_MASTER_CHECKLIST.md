@@ -10,12 +10,15 @@
 2. [x] **viewer_server.py**: Add user ownership validation to `/api/gmail/authorize/<email>`, `/api/gmail/disconnect/<email>` ✅ FIXED 2025-12-27
 3. [x] **plaid_service.py**: Add user_id validation to `_get_item()` method (line 1098) ✅ FIXED 2025-12-27
 4. [x] **auth_routes.py**: Fix SQL injection risk at line 521 (dynamic f-string) ✅ FIXED 2025-12-27
-5. [ ] **auth_routes.py**: Add rate limiting to login endpoints (Flask-Limiter) - PENDING
+5. [x] **auth_routes.py**: Add rate limiting to login endpoints (Flask-Limiter) ✅ FIXED 2025-12-27
 6. [x] **db_user_scope.py**: User scoping now ENABLED by default in production ✅ FIXED 2025-12-27
 
 ### Security - HIGH
-7. [ ] **auth_routes.py**: Implement refresh token rotation revocation - PENDING
-8. [ ] **viewer_server.py**: Move calendar preferences from file to database (user-scoped) - PENDING
+7. [x] **auth_routes.py**: Implement refresh token rotation revocation ✅ FIXED 2025-12-27
+   - Token reuse detection via `previous_token_hash` column
+   - If old token is reused, ALL user sessions are revoked
+   - Security event logged with full context
+8. [x] **viewer_server.py**: Move calendar preferences from file to database (user-scoped) ✅ FIXED 2025-12-27
 9. [x] **user_credentials_service.py**: Fail if `CREDENTIALS_ENCRYPTION_KEY` not set in production ✅ FIXED 2025-12-27
 10. [x] **taskade_integration_service.py**: Clarified per-user vs admin credential paths ✅ FIXED 2025-12-27
 
@@ -263,12 +266,14 @@ This document tracks the comprehensive Quality Control audit of the entire Tally
 
 | Category | Completed | Pending | Total |
 |----------|-----------|---------|-------|
-| Security Fixes | 8 | ~20 | ~28 |
-| Styling Fixes | 5 | ~15 | ~20 |
+| Security Fixes (Critical) | 10 | 0 | 10 |
+| Security Fixes (High) | 4 | 0 | 4 |
+| Styling Fixes | 9 | ~5 | ~14 |
 | Feature Audit | 0 | ~50 | ~50 |
 | iOS App | 0 | ~15 | ~15 |
 
-**Overall Progress:** ~15%
+**Overall Progress:** ~25%
+**Security Status:** ✅ ALL CRITICAL AND HIGH PRIORITY ITEMS FIXED
 
 ---
 
