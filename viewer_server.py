@@ -2711,6 +2711,13 @@ def logout():
     return redirect('/login')
 
 
+@app.route("/reset-password")
+@app.route("/forgot-password")
+def reset_password_page():
+    """Password reset page - handles both forgot and reset flows."""
+    return render_template("reset_password.html")
+
+
 # =============================================================================
 # ROUTES – CORE VIEWER
 # =============================================================================

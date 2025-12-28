@@ -947,3 +947,318 @@ def revoke_session(device_id):
     finally:
         cursor.close()
         conn.close()
+
+
+# ============================================================================
+# PASSWORD RESET
+# ============================================================================
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+@auth_rate_limit('forgot_password')  # 3 per hour per IP
+def forgot_password():
+    """
+    Request a password reset email.
+
+    Request body:
+    {
+        "email": "user@example.com"
+    }
+
+    Always returns success (to prevent email enumeration attacks).
+    """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'success': False, 'error': 'Multi-user mode not enabled'}), 503
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Request body required'}), 400
+
+    email = data.get('email', '').strip().lower()
+    if not email:
+        return jsonify({'success': False, 'error': 'Email required'}), 400
+
+    try:
+        import secrets
+        import hashlib
+        from datetime import datetime, timedelta
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if user exists
+        cursor.execute("""
+            SELECT id, email, name, reset_attempts, last_reset_request
+            FROM users
+            WHERE email = %s AND is_active = TRUE
+        """, (email,))
+        user = cursor.fetchone()
+
+        # Always return success to prevent email enumeration
+        if not user:
+            logger.info(f"Password reset requested for non-existent email: {email}")
+            return jsonify({
+                'success': True,
+                'message': 'If an account exists with this email, a reset link will be sent.'
+            })
+
+        # Rate limit: max 3 reset requests per hour
+        if user.get('last_reset_request'):
+            time_since_last = datetime.now() - user['last_reset_request']
+            if time_since_last < timedelta(minutes=5):
+                logger.warning(f"Rate limited password reset for {email}")
+                return jsonify({
+                    'success': True,
+                    'message': 'If an account exists with this email, a reset link will be sent.'
+                })
+
+        # Generate reset token (32 bytes = 64 hex chars)
+        reset_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(reset_token.encode()).hexdigest()
+        expires_at = datetime.now() + timedelta(hours=1)  # Token valid for 1 hour
+
+        # Store token hash (never store the actual token)
+        cursor.execute("""
+            UPDATE users
+            SET reset_token = %s,
+                reset_token_expires = %s,
+                reset_attempts = COALESCE(reset_attempts, 0) + 1,
+                last_reset_request = NOW()
+            WHERE id = %s
+        """, (token_hash, expires_at, user['id']))
+
+        # Log the request
+        cursor.execute("""
+            INSERT INTO password_reset_log (user_id, email, token_hash, ip_address, user_agent, status)
+            VALUES (%s, %s, %s, %s, %s, 'requested')
+        """, (user['id'], email, token_hash[:16], request.remote_addr, request.user_agent.string[:255] if request.user_agent.string else None))
+
+        conn.commit()
+
+        # Send reset email
+        reset_url = f"https://tallyups.com/reset-password?token={reset_token}"
+        _send_password_reset_email(email, user.get('name', 'User'), reset_url)
+
+        logger.info(f"Password reset email sent to {email}")
+
+        return jsonify({
+            'success': True,
+            'message': 'If an account exists with this email, a reset link will be sent.'
+        })
+
+    except Exception as e:
+        logger.error(f"Password reset error: {e}")
+        return jsonify({
+            'success': True,  # Don't reveal errors
+            'message': 'If an account exists with this email, a reset link will be sent.'
+        })
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+@auth_rate_limit('reset_password')  # 5 per hour
+def reset_password():
+    """
+    Reset password using a reset token.
+
+    Request body:
+    {
+        "token": "...",
+        "password": "new_password"
+    }
+    """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'success': False, 'error': 'Multi-user mode not enabled'}), 503
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Request body required'}), 400
+
+    token = data.get('token', '')
+    new_password = data.get('password', '')
+
+    if not token:
+        return jsonify({'success': False, 'error': 'Reset token required'}), 400
+    if not new_password:
+        return jsonify({'success': False, 'error': 'New password required'}), 400
+    if len(new_password) < 8:
+        return jsonify({'success': False, 'error': 'Password must be at least 8 characters'}), 400
+
+    try:
+        import bcrypt
+        import hashlib
+        from datetime import datetime
+
+        # Hash the provided token to compare with stored hash
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Find user with matching token that hasn't expired
+        cursor.execute("""
+            SELECT id, email, reset_token_expires
+            FROM users
+            WHERE reset_token = %s
+              AND reset_token_expires > NOW()
+              AND is_active = TRUE
+        """, (token_hash,))
+        user = cursor.fetchone()
+
+        if not user:
+            # Log failed attempt
+            cursor.execute("""
+                UPDATE password_reset_log
+                SET status = 'invalid', completed_at = NOW()
+                WHERE token_hash = %s AND status = 'requested'
+            """, (token_hash[:16],))
+            conn.commit()
+
+            return jsonify({'success': False, 'error': 'Invalid or expired reset token'}), 400
+
+        # Hash new password
+        password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        # Update password and clear reset token
+        cursor.execute("""
+            UPDATE users
+            SET password_hash = %s,
+                reset_token = NULL,
+                reset_token_expires = NULL,
+                updated_at = NOW()
+            WHERE id = %s
+        """, (password_hash, user['id']))
+
+        # Revoke all existing sessions for security
+        cursor.execute("""
+            UPDATE user_sessions
+            SET is_active = FALSE, revoked_at = NOW()
+            WHERE user_id = %s AND is_active = TRUE
+        """, (user['id'],))
+
+        # Update reset log
+        cursor.execute("""
+            UPDATE password_reset_log
+            SET status = 'completed', completed_at = NOW()
+            WHERE token_hash = %s AND status = 'requested'
+        """, (token_hash[:16],))
+
+        # Log the event
+        cursor.execute("""
+            INSERT INTO session_events (user_id, event_type, ip_address, user_agent)
+            VALUES (%s, 'password_reset', %s, %s)
+        """, (user['id'], request.remote_addr, request.user_agent.string[:255] if request.user_agent.string else None))
+
+        conn.commit()
+
+        logger.info(f"Password reset successful for user {user['id']}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Password has been reset successfully. Please log in with your new password.'
+        })
+
+    except Exception as e:
+        logger.error(f"Password reset error: {e}")
+        return jsonify({'success': False, 'error': 'Password reset failed'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def _send_password_reset_email(email: str, name: str, reset_url: str):
+    """Send password reset email using SMTP."""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+    smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+    smtp_user = os.environ.get('SMTP_USER', '')
+    smtp_password = os.environ.get('SMTP_PASSWORD', '')
+    from_email = os.environ.get('SMTP_FROM', 'noreply@tallyups.com')
+    from_name = os.environ.get('SMTP_FROM_NAME', 'TallyUps')
+
+    if not smtp_user or not smtp_password:
+        logger.warning("SMTP not configured, skipping password reset email")
+        return
+
+    subject = "Reset Your TallyUps Password"
+
+    html_body = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: linear-gradient(135deg, #00FF88 0%, #00CC6A 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }}
+            .header h1 {{ color: white; margin: 0; font-size: 24px; }}
+            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }}
+            .button {{ display: inline-block; background: #00FF88; color: #000; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 600; margin: 20px 0; }}
+            .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 30px; }}
+            .warning {{ background: #fff3cd; border: 1px solid #ffc107; padding: 12px; border-radius: 6px; margin-top: 20px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>TallyUps</h1>
+            </div>
+            <div class="content">
+                <p>Hi {name},</p>
+                <p>We received a request to reset your password for your TallyUps account.</p>
+                <p>Click the button below to create a new password:</p>
+                <p style="text-align: center;">
+                    <a href="{reset_url}" class="button">Reset Password</a>
+                </p>
+                <p>Or copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; color: #666; font-size: 14px;">{reset_url}</p>
+                <div class="warning">
+                    <strong>This link expires in 1 hour.</strong><br>
+                    If you didn't request a password reset, you can safely ignore this email.
+                </div>
+            </div>
+            <div class="footer">
+                <p>&copy; 2024 TallyUps. All rights reserved.</p>
+                <p>This is an automated message, please do not reply.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    text_body = f"""
+Hi {name},
+
+We received a request to reset your password for your TallyUps account.
+
+Click this link to create a new password:
+{reset_url}
+
+This link expires in 1 hour.
+
+If you didn't request a password reset, you can safely ignore this email.
+
+- The TallyUps Team
+    """
+
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{from_name} <{from_email}>"
+        msg['To'] = email
+
+        msg.attach(MIMEText(text_body, 'plain'))
+        msg.attach(MIMEText(html_body, 'html'))
+
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+
+        logger.info(f"Password reset email sent to {email}")
+
+    except Exception as e:
+        logger.error(f"Failed to send password reset email: {e}")
