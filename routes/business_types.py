@@ -3,20 +3,48 @@ Business Types API Routes
 
 Per-user custom business type management for multi-tenant support.
 Each user can have their own business categories (e.g., Personal, Business, Business, etc.)
+
+NOTE: Requires user_business_types table (migration 014). Falls back to default types if not available.
 """
 
 import logging
 from flask import Blueprint, request, jsonify, g
 
-from db_mysql import get_mysql_db, db_execute
+from db_mysql import get_mysql_db
 from db_user_scope import get_current_user_id
+from auth import login_required
 
 logger = logging.getLogger(__name__)
 
 business_types_bp = Blueprint('business_types', __name__, url_prefix='/api/business-types')
 
+# Check if user_business_types table exists
+USER_BUSINESS_TYPES_TABLE_EXISTS = False
+try:
+    db = get_mysql_db()
+    conn = db.get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SHOW TABLES LIKE 'user_business_types'")
+    if cursor.fetchone():
+        USER_BUSINESS_TYPES_TABLE_EXISTS = True
+        logger.info("user_business_types table found")
+    else:
+        logger.info("user_business_types table not found - using fallback defaults")
+    cursor.close()
+    db.return_connection(conn)
+except Exception as e:
+    logger.warning(f"Could not check for user_business_types table: {e}")
+
+# Fallback default business types
+DEFAULT_BUSINESS_TYPES = [
+    {'id': 1, 'name': 'Personal', 'display_name': 'Personal', 'color': '#00FF88', 'icon': 'person.fill', 'is_default': True, 'sort_order': 1},
+    {'id': 2, 'name': 'Business', 'display_name': 'Business', 'color': '#4A90D9', 'icon': 'briefcase.fill', 'is_default': False, 'sort_order': 2},
+    {'id': 3, 'name': 'Down_Home', 'display_name': 'Down Home', 'color': '#FF6B6B', 'icon': 'house.fill', 'is_default': False, 'sort_order': 3},
+]
+
 
 @business_types_bp.route('', methods=['GET'])
+@login_required
 def get_business_types():
     """
     Get all business types for the current user.
@@ -38,6 +66,13 @@ def get_business_types():
             ]
         }
     """
+    # Return fallback defaults if table doesn't exist
+    if not USER_BUSINESS_TYPES_TABLE_EXISTS:
+        return jsonify({
+            'success': True,
+            'business_types': DEFAULT_BUSINESS_TYPES
+        })
+
     try:
         user_id = get_current_user_id()
         db = get_mysql_db()
@@ -85,6 +120,7 @@ def get_business_types():
 
 
 @business_types_bp.route('', methods=['POST'])
+@login_required
 def create_business_type():
     """
     Create a new business type for the current user.
@@ -104,6 +140,12 @@ def create_business_type():
             "business_type": {...}
         }
     """
+    if not USER_BUSINESS_TYPES_TABLE_EXISTS:
+        return jsonify({
+            'success': False,
+            'error': 'Custom business types not available. Run migration 014 first.'
+        }), 503
+
     try:
         user_id = get_current_user_id()
         data = request.get_json() or {}
@@ -179,6 +221,7 @@ def create_business_type():
 
 
 @business_types_bp.route('/<int:type_id>', methods=['PUT'])
+@login_required
 def update_business_type(type_id):
     """
     Update a business type.
@@ -191,6 +234,12 @@ def update_business_type(type_id):
             "is_default": true
         }
     """
+    if not USER_BUSINESS_TYPES_TABLE_EXISTS:
+        return jsonify({
+            'success': False,
+            'error': 'Custom business types not available'
+        }), 503
+
     try:
         user_id = get_current_user_id()
         data = request.get_json() or {}
@@ -265,10 +314,17 @@ def update_business_type(type_id):
 
 
 @business_types_bp.route('/<int:type_id>', methods=['DELETE'])
+@login_required
 def delete_business_type(type_id):
     """
     Delete a business type (soft delete - marks as inactive).
     """
+    if not USER_BUSINESS_TYPES_TABLE_EXISTS:
+        return jsonify({
+            'success': False,
+            'error': 'Custom business types not available'
+        }), 503
+
     try:
         user_id = get_current_user_id()
 
@@ -319,6 +375,7 @@ def delete_business_type(type_id):
 
 
 @business_types_bp.route('/reorder', methods=['POST'])
+@login_required
 def reorder_business_types():
     """
     Reorder business types.
@@ -328,6 +385,12 @@ def reorder_business_types():
             "order": [3, 1, 2, 5, 4]  // Array of type IDs in new order
         }
     """
+    if not USER_BUSINESS_TYPES_TABLE_EXISTS:
+        return jsonify({
+            'success': False,
+            'error': 'Custom business types not available'
+        }), 503
+
     try:
         user_id = get_current_user_id()
         data = request.get_json() or {}

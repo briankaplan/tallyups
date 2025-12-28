@@ -18,6 +18,18 @@ from auth import (
 )
 from db_mysql import get_db_connection
 
+# Rate limiting for auth endpoints
+try:
+    from services.rate_limiter import auth_rate_limit
+    RATE_LIMITING_AVAILABLE = True
+except ImportError:
+    RATE_LIMITING_AVAILABLE = False
+    def auth_rate_limit(operation):
+        """No-op decorator when rate limiting unavailable."""
+        def decorator(f):
+            return f
+        return decorator
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -203,6 +215,7 @@ def create_session(
 # ============================================================================
 
 @auth_bp.route('/apple', methods=['POST'])
+@auth_rate_limit('login')  # 5 per minute - prevent brute force
 def apple_sign_in():
     """
     Sign in with Apple.
@@ -292,6 +305,7 @@ def apple_sign_in():
 
 
 @auth_bp.route('/refresh', methods=['POST'])
+@auth_rate_limit('refresh')  # 30 per minute
 def refresh_token():
     """
     Refresh access token using refresh token.
@@ -384,6 +398,7 @@ def refresh_token():
 
 
 @auth_bp.route('/logout', methods=['POST'])
+@auth_rate_limit('logout')  # 10 per minute
 @user_required
 def logout():
     """

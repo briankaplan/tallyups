@@ -16041,8 +16041,70 @@ def calendar_status():
         })
 
 
-# Calendar preferences file
+# Calendar preferences - now stored in database per-user (see migration 016)
+# Legacy file path kept for migration purposes only
 CALENDAR_PREFS_FILE = Path(__file__).parent / "calendar_preferences.json"
+
+
+def _get_calendar_prefs_from_db(user_id: str) -> dict:
+    """Get calendar preferences from database for a user."""
+    try:
+        conn, db_type = get_db_connection()
+        cursor = db_execute(conn, db_type, '''
+            SELECT enabled_calendars, default_calendar, sync_frequency_minutes
+            FROM calendar_preferences
+            WHERE user_id = %s
+        ''', (user_id,))
+        row = cursor.fetchone()
+        return_db_connection(conn)
+
+        if row:
+            enabled = row['enabled_calendars'] if row['enabled_calendars'] else []
+            if isinstance(enabled, str):
+                enabled = json.loads(enabled)
+            return {
+                'enabled_calendars': enabled,
+                'default_calendar': row['default_calendar'],
+                'sync_frequency_minutes': row['sync_frequency_minutes'] or 30
+            }
+        return None
+    except Exception as e:
+        logger.warning(f"Could not get calendar prefs from DB: {e}")
+        return None
+
+
+def _save_calendar_prefs_to_db(user_id: str, enabled_calendars: list, default_calendar: str = None) -> bool:
+    """Save calendar preferences to database for a user."""
+    try:
+        conn, db_type = get_db_connection()
+        enabled_json = json.dumps(enabled_calendars) if enabled_calendars else None
+
+        # Upsert: insert or update
+        if db_type == 'mysql':
+            db_execute(conn, db_type, '''
+                INSERT INTO calendar_preferences (user_id, enabled_calendars, default_calendar)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    enabled_calendars = VALUES(enabled_calendars),
+                    default_calendar = VALUES(default_calendar),
+                    updated_at = CURRENT_TIMESTAMP
+            ''', (user_id, enabled_json, default_calendar))
+        else:
+            db_execute(conn, db_type, '''
+                INSERT INTO calendar_preferences (user_id, enabled_calendars, default_calendar)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    enabled_calendars = excluded.enabled_calendars,
+                    default_calendar = excluded.default_calendar,
+                    updated_at = CURRENT_TIMESTAMP
+            ''', (user_id, enabled_json, default_calendar))
+
+        conn.commit()
+        return_db_connection(conn)
+        return True
+    except Exception as e:
+        logger.error(f"Could not save calendar prefs to DB: {e}")
+        return False
 
 
 @app.route("/settings/calendar/preferences", methods=["GET"])
@@ -16050,19 +16112,33 @@ CALENDAR_PREFS_FILE = Path(__file__).parent / "calendar_preferences.json"
 def get_calendar_preferences():
     """Get saved calendar preferences (which calendars are enabled)."""
     try:
-        if CALENDAR_PREFS_FILE.exists():
+        user_id = get_current_user_id()
+
+        # Try database first (user-scoped)
+        prefs = _get_calendar_prefs_from_db(user_id)
+        if prefs:
+            return jsonify({
+                'ok': True,
+                'enabled_calendars': prefs.get('enabled_calendars', []),
+                'default_calendar': prefs.get('default_calendar'),
+                'sync_frequency_minutes': prefs.get('sync_frequency_minutes', 30)
+            })
+
+        # Fallback to legacy file (for migration) - only for admin
+        user_role = getattr(g, 'user_role', 'user')
+        if user_role == 'admin' and CALENDAR_PREFS_FILE.exists():
             with open(CALENDAR_PREFS_FILE, 'r') as f:
-                prefs = json.load(f)
+                file_prefs = json.load(f)
             return jsonify({
                 'ok': True,
-                'enabled_calendars': prefs.get('enabled_calendars', [])
+                'enabled_calendars': file_prefs.get('enabled_calendars', [])
             })
-        else:
-            # Default: all calendars enabled (empty list means all)
-            return jsonify({
-                'ok': True,
-                'enabled_calendars': []
-            })
+
+        # Default: all calendars enabled (empty list means all)
+        return jsonify({
+            'ok': True,
+            'enabled_calendars': []
+        })
     except Exception as e:
         return jsonify({
             'ok': False,
@@ -16075,22 +16151,37 @@ def get_calendar_preferences():
 def save_calendar_preferences():
     """Save calendar preferences (which calendars are enabled)."""
     try:
+        user_id = get_current_user_id()
         data = request.get_json()
         enabled_calendars = data.get('enabled_calendars', [])
+        default_calendar = data.get('default_calendar')
 
-        prefs = {
-            'enabled_calendars': enabled_calendars,
-            'updated_at': datetime.now().isoformat()
-        }
-
-        with open(CALENDAR_PREFS_FILE, 'w') as f:
-            json.dump(prefs, f, indent=2)
-
-        return jsonify({
-            'ok': True,
-            'message': f'Saved {len(enabled_calendars)} calendar(s)',
-            'enabled_calendars': enabled_calendars
-        })
+        # Save to database (user-scoped)
+        if _save_calendar_prefs_to_db(user_id, enabled_calendars, default_calendar):
+            return jsonify({
+                'ok': True,
+                'message': f'Saved {len(enabled_calendars)} calendar(s)',
+                'enabled_calendars': enabled_calendars
+            })
+        else:
+            # Fallback to file (legacy, only for admin)
+            user_role = getattr(g, 'user_role', 'user')
+            if user_role == 'admin':
+                prefs = {
+                    'enabled_calendars': enabled_calendars,
+                    'updated_at': datetime.now().isoformat()
+                }
+                with open(CALENDAR_PREFS_FILE, 'w') as f:
+                    json.dump(prefs, f, indent=2)
+                return jsonify({
+                    'ok': True,
+                    'message': f'Saved {len(enabled_calendars)} calendar(s) (file fallback)',
+                    'enabled_calendars': enabled_calendars
+                })
+            return jsonify({
+                'ok': False,
+                'error': 'Could not save preferences'
+            }), 500
     except Exception as e:
         return jsonify({
             'ok': False,

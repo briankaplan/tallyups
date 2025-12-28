@@ -14,27 +14,13 @@
     <script src="/static/js/unified-header.js"></script>
     <script src="/static/js/app-shell.js" defer></script>
     <style>
-        :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
-            --bg-card: #1a1a24;
-            --accent-green: #00d4aa;
-            --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
-            --accent-orange: #f59e0b;
-            --text-primary: #ffffff;
-            --text-secondary: #9ca3af;
-            --border-color: #2a2a3a;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
+        /* Page-specific styles - using Legendary Design System variables */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            font-family: var(--font-display);
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
-            padding-top: calc(60px + env(safe-area-inset-top, 0px));
+            padding-top: calc(var(--header-height, 60px) + env(safe-area-inset-top, 0px));
             padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
         }
 
@@ -54,7 +40,7 @@
         .header h1 {
             font-size: 28px;
             font-weight: 600;
-            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -63,14 +49,14 @@
             display: flex;
             gap: 8px;
             margin-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-primary);
             padding-bottom: 16px;
         }
 
         .tab {
             padding: 12px 24px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
             border-radius: 8px;
             color: var(--text-secondary);
             cursor: pointer;
@@ -78,9 +64,9 @@
             font-weight: 500;
         }
 
-        .tab:hover { border-color: var(--accent-green); }
+        .tab:hover { border-color: var(--brand-primary); }
         .tab.active {
-            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
             color: white;
             border-color: transparent;
         }
@@ -93,8 +79,8 @@
         }
 
         .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
             border-radius: 12px;
             padding: 20px;
         }
@@ -110,14 +96,14 @@
             font-weight: 700;
         }
 
-        .stat-card .value.green { color: var(--accent-green); }
-        .stat-card .value.blue { color: var(--accent-blue); }
-        .stat-card .value.purple { color: var(--accent-purple); }
-        .stat-card .value.orange { color: var(--accent-orange); }
+        .stat-card .value.green { color: var(--brand-primary); }
+        .stat-card .value.blue { color: var(--brand-secondary); }
+        .stat-card .value.purple { color: var(--brand-secondary); }
+        .stat-card .value.orange { color: var(--warning); }
 
         .section {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
             border-radius: 12px;
             padding: 24px;
             margin-bottom: 24px;
@@ -145,14 +131,14 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
             color: white;
         }
 
         .btn-secondary {
             background: var(--bg-secondary);
             color: var(--text-primary);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-primary);
         }
 
         .btn:hover { transform: translateY(-1px); opacity: 0.9; }
@@ -187,7 +173,7 @@
         .payment-icon.parking { background: linear-gradient(135deg, #3b82f6, #2563eb); }
         .payment-icon.uber { background: #000; }
         .payment-icon.venmo { background: linear-gradient(135deg, #008cff, #0070cc); }
-        .payment-icon.default { background: var(--bg-card); }
+        .payment-icon.default { background: var(--bg-secondary); }
 
         .payment-details {
             flex: 1;
@@ -206,7 +192,7 @@
         .payment-amount {
             font-size: 18px;
             font-weight: 600;
-            color: var(--accent-green);
+            color: var(--brand-primary);
         }
 
         .payment-actions {
@@ -218,8 +204,8 @@
             width: 36px;
             height: 36px;
             border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-card);
+            border: 1px solid var(--border-primary);
+            background: var(--bg-secondary);
             color: var(--text-secondary);
             cursor: pointer;
             display: flex;
@@ -229,8 +215,8 @@
         }
 
         .action-btn:hover {
-            border-color: var(--accent-green);
-            color: var(--accent-green);
+            border-color: var(--brand-primary);
+            color: var(--brand-primary);
         }
 
         .account-list {
@@ -252,7 +238,7 @@
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -271,7 +257,7 @@
         .account-stats .count {
             font-size: 24px;
             font-weight: 700;
-            color: var(--accent-green);
+            color: var(--brand-primary);
         }
 
         .account-stats .label {
@@ -291,7 +277,7 @@
 
         .status-badge.connected {
             background: rgba(0, 212, 170, 0.15);
-            color: var(--accent-green);
+            color: var(--brand-primary);
         }
 
         .status-badge .dot {
@@ -321,7 +307,7 @@
         .filter-select {
             padding: 10px 16px;
             background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-primary);
             border-radius: 8px;
             color: var(--text-primary);
             font-size: 14px;
@@ -331,7 +317,7 @@
             flex: 1;
             padding: 10px 16px;
             background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-primary);
             border-radius: 8px;
             color: var(--text-primary);
             font-size: 14px;
@@ -349,8 +335,8 @@
         .spinner {
             width: 32px;
             height: 32px;
-            border: 3px solid var(--border-color);
-            border-top-color: var(--accent-green);
+            border: 3px solid var(--border-primary);
+            border-top-color: var(--brand-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -385,8 +371,8 @@
             align-items: center;
             gap: 16px;
             padding: 20px;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s;
@@ -395,7 +381,7 @@
         }
 
         .action-card:hover {
-            border-color: var(--accent-green);
+            border-color: var(--brand-primary);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 212, 170, 0.15);
         }
@@ -441,7 +427,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            background: linear-gradient(135deg, var(--brand-secondary), var(--brand-secondary));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -473,7 +459,7 @@
         .sender-count {
             font-size: 24px;
             font-weight: 700;
-            color: var(--accent-orange);
+            color: var(--warning);
             margin-right: 16px;
         }
 
@@ -548,7 +534,7 @@
             width: 32px;
             height: 32px;
             border-radius: 6px;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-primary);
             background: transparent;
             color: var(--text-secondary);
             cursor: pointer;
@@ -576,12 +562,12 @@
         }
 
         .modal {
-            background: var(--bg-card);
+            background: var(--bg-secondary);
             border-radius: 16px;
             padding: 24px;
             width: 90%;
             max-width: 400px;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-primary);
         }
 
         .modal h3 {
@@ -592,7 +578,7 @@
             width: 100%;
             padding: 12px;
             background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-primary);
             border-radius: 8px;
             color: var(--text-primary);
             margin-bottom: 16px;
@@ -609,10 +595,10 @@
             bottom: 100px;
             right: 24px;
             padding: 16px 24px;
-            background: var(--bg-card);
-            border: 1px solid var(--accent-green);
+            background: var(--bg-secondary);
+            border: 1px solid var(--brand-primary);
             border-radius: 12px;
-            color: var(--accent-green);
+            color: var(--brand-primary);
             font-weight: 500;
             z-index: 1001;
             animation: slideIn 0.3s ease;

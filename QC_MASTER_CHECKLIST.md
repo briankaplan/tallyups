@@ -173,14 +173,18 @@ This document tracks the comprehensive Quality Control audit of the entire Tally
 | `receipt_reconciler_viewer.html` | Hardcoded colors | ✅ FIXED | 3443521 |
 | `report_builder.html` | Hardcoded colors | ✅ FIXED | 3443521 |
 | `contacts.html` | Hardcoded colors | ✅ FIXED | 3443521 |
+| `gmail_dashboard.html` | Custom CSS variables | ✅ FIXED | 2025-12-27 |
+| `settings.html` | Already using Legendary | ✅ VERIFIED | 2025-12-27 |
+| `reports_dashboard.html` | Already using Legendary | ✅ VERIFIED | 2025-12-27 |
+| `report_detail.html` | Already using Legendary | ✅ VERIFIED | 2025-12-27 |
 
 ### Pending Audit
 | File | Status | Notes |
 |------|--------|-------|
-| `templates/settings.html` | ⏳ PENDING | |
 | `templates/login.html` | ⏳ PENDING | |
-| `templates/transactions.html` | ⏳ PENDING | |
-| All other HTML files | ⏳ PENDING | |
+| `templates/privacy.html` | ⚠️ INTENTIONAL | Legal page with standalone styling |
+| `templates/terms.html` | ⚠️ INTENTIONAL | Legal page with standalone styling |
+| `templates/demo.html` | ⚠️ INTENTIONAL | Marketing page with unique styling |
 
 ---
 
