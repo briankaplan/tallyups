@@ -337,13 +337,14 @@ def trigger_gmail_scan():
         # Also check database for any user
         if user_id:
             conn = db.get_connection()
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             cursor.execute('''
                 SELECT service_account FROM user_credentials
                 WHERE user_id = %s AND service_type = 'gmail'
                 AND is_active = TRUE AND service_account IS NOT NULL
             ''', (user_id,))
             db_accounts = [row['service_account'] for row in cursor.fetchall()]
+            cursor.close()
             conn.close()
             # Add any database accounts not already in list
             for acc in db_accounts:

@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TallyUps - Sign In</title>
+    <meta name="description" content="Sign in to TallyUps - Smart receipt management for your business">
+    <meta name="theme-color" content="#0A0A0A">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="/receipt-icon-192.png">
+    <link rel="apple-touch-icon" href="/receipt-icon-192.png">
+    <style>
+        :root {
+            --brand-primary: #00FF88;
+            --brand-primary-hover: #00E077;
+            --brand-primary-glow: rgba(0, 255, 136, 0.2);
+            --gray-50: #FAFAFA;
+            --gray-100: #F5F5F5;
+            --gray-200: #E5E5E5;
+            --gray-300: #D4D4D4;
+            --gray-400: #A3A3A3;
+            --gray-500: #737373;
+            --gray-600: #525252;
+            --gray-700: #404040;
+            --gray-800: #262626;
+            --gray-850: #1C1C1C;
+            --gray-900: #171717;
+            --gray-950: #0A0A0A;
+            --error: #EF4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --success: #22C55E;
+            --success-bg: rgba(34, 197, 94, 0.1);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(180deg, var(--gray-950) 0%, #0D1117 100%);
+            color: var(--gray-50);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Logo */
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--brand-primary) 0%, #00CC6A 100%);
+            border-radius: var(--radius-xl);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            box-shadow: 0 0 48px var(--brand-primary-glow);
+        }
+
+        .logo-icon svg {
+            width: 40px;
+            height: 40px;
+            color: var(--gray-950);
+        }
+
+        .logo h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+        }
+
+        .logo p {
+            color: var(--gray-500);
+            font-size: 15px;
+        }
+
+        /* Auth Card */
+        .auth-card {
+            background: var(--gray-900);
+            border: 1px solid var(--gray-800);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+        }
+
+        /* Tabs */
+        .auth-tabs {
+            display: flex;
+            background: var(--gray-850);
+            border-radius: var(--radius-md);
+            padding: 4px;
+            margin-bottom: 28px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 12px 16px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--gray-400);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .auth-tab.active {
+            background: var(--gray-700);
+            color: var(--gray-50);
+        }
+
+        .auth-tab:hover:not(.active) {
+            color: var(--gray-300);
+        }
+
+        /* Social Auth */
+        .social-auth {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .btn-apple {
+            background: var(--gray-50);
+            color: var(--gray-950);
+        }
+
+        .btn-apple:hover {
+            background: #fff;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-apple svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-google {
+            background: var(--gray-800);
+            color: var(--gray-50);
+            border: 1px solid var(--gray-700);
+        }
+
+        .btn-google:hover {
+            background: var(--gray-700);
+            transform: translateY(-1px);
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+            color: var(--gray-500);
+            font-size: 13px;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gray-800);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--gray-300);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--gray-850);
+            border: 1px solid var(--gray-700);
+            border-radius: var(--radius-md);
+            color: var(--gray-50);
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px var(--brand-primary-glow);
+        }
+
+        .form-group input::placeholder {
+            color: var(--gray-600);
+        }
+
+        .form-group input.error {
+            border-color: var(--error);
+        }
+
+        .form-hint {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--gray-500);
+        }
+
+        .form-error {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--error);
+        }
+
+        /* Password strength */
+        .password-strength {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .strength-bar {
+            flex: 1;
+            height: 3px;
+            background: var(--gray-700);
+            border-radius: 2px;
+            transition: background 0.3s;
+        }
+
+        .strength-bar.weak { background: var(--error); }
+        .strength-bar.fair { background: #F59E0B; }
+        .strength-bar.good { background: #3B82F6; }
+        .strength-bar.strong { background: var(--success); }
+
+        /* Submit button */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-hover) 100%);
+            color: var(--gray-950);
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px var(--brand-primary-glow);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--gray-950);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Messages */
+        .message {
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .message svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .message.error {
+            background: var(--error-bg);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #FCA5A5;
+        }
+
+        .message.success {
+            background: var(--success-bg);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #86EFAC;
+        }
+
+        /* Links */
+        .form-footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .form-footer a {
+            color: var(--brand-primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        .form-footer a:hover {
+            opacity: 0.8;
+        }
+
+        /* Terms */
+        .terms {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--gray-500);
+            line-height: 1.6;
+        }
+
+        .terms a {
+            color: var(--gray-400);
+            text-decoration: underline;
+        }
+
+        .terms a:hover {
+            color: var(--gray-300);
+        }
+
+        /* Page Footer */
+        .page-footer {
+            margin-top: 40px;
+            text-align: center;
+            padding-top: 24px;
+            border-top: 1px solid var(--gray-800);
+        }
+
+        .page-footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 12px;
+        }
+
+        .page-footer-links a {
+            color: var(--gray-500);
+            text-decoration: none;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+
+        .page-footer-links a:hover {
+            color: var(--gray-400);
+        }
+
+        .page-footer p {
+            color: var(--gray-600);
+            font-size: 12px;
+        }
+
+        /* View panels */
+        .auth-panel {
+            display: none;
+        }
+
+        .auth-panel.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            body {
+                padding: 16px;
+            }
+
+            .auth-card {
+                padding: 24px;
+            }
+
+            .logo-icon {
+                width: 64px;
+                height: 64px;
+            }
+
+            .logo-icon svg {
+                width: 32px;
+                height: 32px;
+            }
+
+            .logo h1 {
+                font-size: 24px;
+            }
+        }
+
+        /* Account linking modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--gray-900);
+            border: 1px solid var(--gray-800);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            max-width: 400px;
+            width: 100%;
+            animation: modalIn 0.3s ease-out;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+
+        .modal p {
+            color: var(--gray-400);
+            font-size: 14px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+
+        .btn-secondary {
+            background: var(--gray-800);
+            color: var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-700);
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="16" rx="2"/>
+                    <line x1="7" y1="9" x2="17" y2="9"/>
+                    <line x1="7" y1="13" x2="13" y2="13"/>
+                    <line x1="7" y1="17" x2="10" y2="17"/>
+                </svg>
+            </div>
+            <h1>TallyUps</h1>
+            <p>Smart receipt management</p>
+        </div>
+
+        <div class="auth-card">
+            <!-- Tabs -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="showPanel('signin')" id="tab-signin">Sign In</button>
+                <button class="auth-tab" onclick="showPanel('signup')" id="tab-signup">Sign Up</button>
+            </div>
+
+            <!-- Error/Success Messages -->
+            <div id="message-container"></div>
+
+            <!-- Sign In Panel -->
+            <div class="auth-panel active" id="panel-signin">
+                <div class="social-auth">
+                    <button type="button" class="btn btn-apple" onclick="signInWithApple()">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                        </svg>
+                        Continue with Apple
+                    </button>
+                </div>
+
+                <div class="divider">or</div>
+
+                <form id="signin-form" onsubmit="handleSignIn(event)">
+                    <div class="form-group">
+                        <label for="signin-email">Email</label>
+                        <input type="email" id="signin-email" name="email" placeholder="you@example.com" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="signin-password">Password</label>
+                        <input type="password" id="signin-password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="signin-btn">
+                        <span>Sign In</span>
+                    </button>
+                </form>
+
+                <div class="form-footer">
+                    <a href="/forgot-password">Forgot your password?</a>
+                </div>
+            </div>
+
+            <!-- Sign Up Panel -->
+            <div class="auth-panel" id="panel-signup">
+                <div class="social-auth">
+                    <button type="button" class="btn btn-apple" onclick="signInWithApple()">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                        </svg>
+                        Sign up with Apple
+                    </button>
+                </div>
+
+                <div class="divider">or</div>
+
+                <form id="signup-form" onsubmit="handleSignUp(event)">
+                    <div class="form-group">
+                        <label for="signup-name">Full Name</label>
+                        <input type="text" id="signup-name" name="name" placeholder="John Doe" required autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-email">Email</label>
+                        <input type="email" id="signup-email" name="email" placeholder="you@example.com" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">Password</label>
+                        <input type="password" id="signup-password" name="password" placeholder="Create a password" required autocomplete="new-password" minlength="8" oninput="checkPasswordStrength(this.value)">
+                        <div class="password-strength" id="password-strength">
+                            <div class="strength-bar" id="str-1"></div>
+                            <div class="strength-bar" id="str-2"></div>
+                            <div class="strength-bar" id="str-3"></div>
+                            <div class="strength-bar" id="str-4"></div>
+                        </div>
+                        <div class="form-hint">At least 8 characters with a number</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="signup-btn">
+                        <span>Create Account</span>
+                    </button>
+                </form>
+
+                <div class="terms">
+                    By signing up, you agree to our<br>
+                    <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-footer">
+            <div class="page-footer-links">
+                <a href="/terms">Terms</a>
+                <a href="/privacy">Privacy</a>
+                <a href="mailto:support@tallyups.com">Help</a>
+            </div>
+            <p>&copy; 2025 TallyUps. All rights reserved.</p>
+        </div>
+    </div>
+
+    <!-- Account Linking Modal -->
+    <div class="modal-overlay" id="link-modal">
+        <div class="modal">
+            <h3>Link Your Account?</h3>
+            <p id="link-modal-message">
+                An account with this email already exists. Would you like to link your Apple ID to this account?
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeLinkModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmLinkAccount()">Link Account</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentPanel = 'signin';
+        let pendingLinkData = null;
+
+        // Show panel
+        function showPanel(panel) {
+            currentPanel = panel;
+
+            // Update tabs
+            document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`tab-${panel}`).classList.add('active');
+
+            // Update panels
+            document.querySelectorAll('.auth-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(`panel-${panel}`).classList.add('active');
+
+            // Clear messages
+            clearMessage();
+
+            // Update URL without refresh
+            const url = panel === 'signup' ? '/register' : '/login';
+            history.replaceState(null, '', url);
+        }
+
+        // Show message
+        function showMessage(text, type = 'error') {
+            const container = document.getElementById('message-container');
+            const icon = type === 'error'
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+
+            container.innerHTML = `<div class="message ${type}">${icon}<span>${text}</span></div>`;
+        }
+
+        function clearMessage() {
+            document.getElementById('message-container').innerHTML = '';
+        }
+
+        // Password strength checker
+        function checkPasswordStrength(password) {
+            const bars = ['str-1', 'str-2', 'str-3', 'str-4'];
+            let strength = 0;
+
+            if (password.length >= 8) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+            const classes = ['', 'weak', 'fair', 'good', 'strong'];
+
+            bars.forEach((bar, i) => {
+                const el = document.getElementById(bar);
+                el.className = 'strength-bar';
+                if (i < strength) {
+                    el.classList.add(classes[strength]);
+                }
+            });
+        }
+
+        // Set loading state
+        function setLoading(formId, loading) {
+            const btn = document.getElementById(`${formId}-btn`);
+            const form = document.getElementById(`${formId}-form`);
+
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="spinner"></div>';
+                form.querySelectorAll('input').forEach(i => i.disabled = true);
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = `<span>${formId === 'signin' ? 'Sign In' : 'Create Account'}</span>`;
+                form.querySelectorAll('input').forEach(i => i.disabled = false);
+            }
+        }
+
+        // Sign In
+        async function handleSignIn(e) {
+            e.preventDefault();
+            clearMessage();
+            setLoading('signin', true);
+
+            const email = document.getElementById('signin-email').value;
+            const password = document.getElementById('signin-password').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        device_id: getDeviceId(),
+                        device_name: 'Web Browser'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Store tokens if provided
+                    if (data.access_token) {
+                        localStorage.setItem('access_token', data.access_token);
+                    }
+                    if (data.refresh_token) {
+                        localStorage.setItem('refresh_token', data.refresh_token);
+                    }
+
+                    // Redirect to dashboard
+                    window.location.href = '/';
+                } else {
+                    showMessage(data.error || 'Invalid email or password');
+                }
+            } catch (error) {
+                showMessage('Connection error. Please try again.');
+            } finally {
+                setLoading('signin', false);
+            }
+        }
+
+        // Sign Up
+        async function handleSignUp(e) {
+            e.preventDefault();
+            clearMessage();
+
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+
+            // Validate password
+            if (password.length < 8) {
+                showMessage('Password must be at least 8 characters');
+                return;
+            }
+
+            if (!/[0-9]/.test(password)) {
+                showMessage('Password must contain at least one number');
+                return;
+            }
+
+            setLoading('signup', true);
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password,
+                        device_id: getDeviceId(),
+                        device_name: 'Web Browser'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Store tokens
+                    if (data.access_token) {
+                        localStorage.setItem('access_token', data.access_token);
+                    }
+                    if (data.refresh_token) {
+                        localStorage.setItem('refresh_token', data.refresh_token);
+                    }
+
+                    showMessage('Account created successfully! Redirecting...', 'success');
+                    setTimeout(() => window.location.href = '/', 1500);
+                } else {
+                    if (data.error === 'Email already registered') {
+                        showMessage('An account with this email already exists. <a href="#" onclick="showPanel(\'signin\'); return false;">Sign in instead</a>');
+                    } else {
+                        showMessage(data.error || 'Registration failed');
+                    }
+                }
+            } catch (error) {
+                showMessage('Connection error. Please try again.');
+            } finally {
+                setLoading('signup', false);
+            }
+        }
+
+        // Apple Sign In
+        function signInWithApple() {
+            // Redirect to Apple auth endpoint
+            const returnUrl = encodeURIComponent(window.location.origin + '/auth/apple/callback');
+            window.location.href = '/auth/apple?return_url=' + returnUrl;
+        }
+
+        // Account linking modal
+        function showLinkModal(email) {
+            document.getElementById('link-modal-message').innerHTML =
+                `An account with <strong>${email}</strong> already exists. Would you like to link your Apple ID to this account for easier sign-in?`;
+            document.getElementById('link-modal').classList.add('active');
+        }
+
+        function closeLinkModal() {
+            document.getElementById('link-modal').classList.remove('active');
+            pendingLinkData = null;
+        }
+
+        function confirmLinkAccount() {
+            if (pendingLinkData) {
+                // Complete the linking
+                fetch('/api/auth/link-apple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pendingLinkData)
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        window.location.href = '/';
+                    } else {
+                        closeLinkModal();
+                        showMessage(data.error || 'Failed to link account');
+                    }
+                });
+            }
+        }
+
+        // Generate device ID
+        function getDeviceId() {
+            let deviceId = localStorage.getItem('device_id');
+            if (!deviceId) {
+                deviceId = 'web-' + crypto.randomUUID();
+                localStorage.setItem('device_id', deviceId);
+            }
+            return deviceId;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check URL for panel
+            if (window.location.pathname === '/register') {
+                showPanel('signup');
+            }
+
+            // Check for error message in URL
+            const params = new URLSearchParams(window.location.search);
+            const error = params.get('error');
+            if (error) {
+                showMessage(decodeURIComponent(error));
+            }
+
+            const message = params.get('message');
+            if (message) {
+                showMessage(decodeURIComponent(message), 'success');
+            }
+        });
+    </script>
+</body>
+</html>

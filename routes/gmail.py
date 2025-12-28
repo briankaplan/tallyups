@@ -62,7 +62,7 @@ def get_user_gmail_accounts(user_id=None):
         if user_id:
             from db_mysql import db
             conn = db.get_connection()
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             cursor.execute('''
                 SELECT service_account, is_active, last_used_at
                 FROM user_credentials
@@ -70,6 +70,7 @@ def get_user_gmail_accounts(user_id=None):
                 AND service_account IS NOT NULL
             ''', (user_id,))
             db_accounts = cursor.fetchall()
+            cursor.close()
             conn.close()
 
             # Add database accounts not already in list

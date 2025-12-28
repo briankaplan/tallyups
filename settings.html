@@ -396,6 +396,13 @@
         <div id="gmail-accounts-list" style="display: flex; flex-direction: column; gap: 12px;">
           <div style="text-align: center; padding: 20px; color: var(--text-dim);">Loading accounts...</div>
         </div>
+        <!-- Add Gmail Account Button -->
+        <button onclick="connectGmailAccount()" style="width: 100%; margin-top: 16px; padding: 14px 20px; border-radius: 12px; border: 2px dashed var(--border); background: transparent; color: var(--text); cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px;">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Connect Gmail Account
+        </button>
       </div>
 
       <div class="settings-item" onclick="window.location.href='/gmail'">
@@ -1011,6 +1018,32 @@
         }
       } catch (error) {
         alert(`❌ Error: ${error.message}`);
+      }
+    }
+
+    // Connect new Gmail account via Google OAuth
+    async function connectGmailAccount() {
+      try {
+        const response = await fetch('/api/credentials/google/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ service: 'gmail' })
+        });
+
+        const data = await response.json();
+
+        if (data.auth_url) {
+          // Redirect to Google OAuth
+          window.location.href = data.auth_url;
+        } else if (data.error) {
+          alert(`❌ ${data.error}`);
+        } else {
+          alert('❌ Failed to start Gmail authorization');
+        }
+      } catch (error) {
+        console.error('Connect Gmail error:', error);
+        alert('❌ Failed to connect Gmail. Please try again.');
       }
     }
 
