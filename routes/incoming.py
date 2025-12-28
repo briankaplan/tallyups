@@ -318,22 +318,37 @@ def trigger_gmail_scan():
 
     data = request.get_json(force=True) or {}
 
-    # Get user's connected Gmail accounts from database
+    # Get user's connected Gmail accounts from database or environment
     user_accounts = []
     try:
-        from auth import get_current_user_id
+        from auth import get_current_user_id, is_admin
         from db_mysql import db
         user_id = get_current_user_id()
+
+        # For admin, use environment-based Gmail tokens
+        if is_admin():
+            import os
+            # Check for Gmail tokens in environment variables
+            for email in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']:
+                env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
+                if os.environ.get(env_key):
+                    user_accounts.append(email)
+
+        # Also check database for any user
         if user_id:
             conn = db.get_connection()
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT account_email FROM user_credentials
+                SELECT service_account FROM user_credentials
                 WHERE user_id = %s AND service_type = 'gmail'
-                AND is_active = TRUE AND account_email IS NOT NULL
+                AND is_active = TRUE AND service_account IS NOT NULL
             ''', (user_id,))
-            user_accounts = [row['account_email'] for row in cursor.fetchall()]
+            db_accounts = [row['service_account'] for row in cursor.fetchall()]
             conn.close()
+            # Add any database accounts not already in list
+            for acc in db_accounts:
+                if acc not in user_accounts:
+                    user_accounts.append(acc)
     except Exception as e:
         logger.warning(f"Could not fetch user Gmail accounts: {e}")
 

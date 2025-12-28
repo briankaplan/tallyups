@@ -842,22 +842,36 @@ try:
     import atexit
 
     def get_all_connected_gmail_accounts():
-        """Get all active Gmail accounts from all users in the database."""
+        """Get all active Gmail accounts from all users in the database and environment."""
+        accounts = []
+
+        # First, check admin's environment-based Gmail tokens
+        admin_user_id = 'admin-00000000-0000-0000-0000-000000000000'
+        for email in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']:
+            env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
+            if os.environ.get(env_key):
+                accounts.append((email, admin_user_id))
+
+        # Then check database for all users
         try:
             conn, db_type = get_db_connection()
             cursor = db_execute(conn, db_type, '''
-                SELECT DISTINCT account_email, user_id
+                SELECT DISTINCT service_account, user_id
                 FROM user_credentials
                 WHERE service_type = 'gmail'
                 AND is_active = TRUE
-                AND account_email IS NOT NULL
+                AND service_account IS NOT NULL
             ''')
-            accounts = cursor.fetchall()
+            db_accounts = cursor.fetchall()
             return_db_connection(conn)
-            return [(row['account_email'], row['user_id']) for row in accounts]
+            for row in db_accounts:
+                email = row['service_account']
+                if email and (email, row['user_id']) not in accounts:
+                    accounts.append((email, row['user_id']))
         except Exception as e:
             print(f"   ⚠️ Could not fetch Gmail accounts from DB: {e}")
-            return []
+
+        return accounts
 
     def scheduled_inbox_scan():
         """Background job to scan Gmail for new receipts every 4 hours."""
@@ -3422,26 +3436,40 @@ def health_check():
         "key_prefix": gemini_key[:8] + "..." if gemini_configured else None
     }
 
-    # Check Gmail accounts from database (multi-user support)
+    # Check Gmail accounts from environment and database (multi-user support)
     gmail_accounts = []
+
+    # Check admin's environment-based Gmail tokens first
+    for email in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']:
+        env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
+        if os.environ.get(env_key):
+            gmail_accounts.append({
+                "email": email,
+                "connected": True,
+                "source": "environment"
+            })
+
+    # Then check database for all users
     try:
         conn, db_type = get_db_connection()
         cursor = db_execute(conn, db_type, '''
-            SELECT DISTINCT account_email, is_active,
-                   (SELECT display_name FROM users WHERE user_id = uc.user_id LIMIT 1) as user_name
-            FROM user_credentials uc
+            SELECT DISTINCT service_account, is_active
+            FROM user_credentials
             WHERE service_type = 'gmail'
-            AND account_email IS NOT NULL
-            ORDER BY account_email
+            AND service_account IS NOT NULL
+            ORDER BY service_account
         ''')
         db_accounts = cursor.fetchall()
         return_db_connection(conn)
+        existing_emails = [a['email'] for a in gmail_accounts]
         for acc in db_accounts:
-            gmail_accounts.append({
-                "email": acc['account_email'],
-                "connected": acc['is_active'],
-                "source": "database"
-            })
+            email = acc['service_account']
+            if email and email not in existing_emails:
+                gmail_accounts.append({
+                    "email": email,
+                    "connected": acc['is_active'],
+                    "source": "database"
+                })
     except Exception as gmail_err:
         print(f"   ⚠️ Error fetching Gmail accounts: {gmail_err}")
     health_data["services"]["gmail"] = {

@@ -36,28 +36,58 @@ except ImportError:
 
 
 def get_user_gmail_accounts(user_id=None):
-    """Get Gmail accounts for the current user from database."""
+    """Get Gmail accounts for the current user from database and environment."""
+    import os
+    accounts = []
+
     try:
-        from db_mysql import db
+        from auth import get_current_user_id, is_admin
+
         if not user_id:
-            from auth import get_current_user_id
             user_id = get_current_user_id()
-        if not user_id:
-            return []
-        conn = db.get_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT account_email, account_name, is_active, last_used_at
-            FROM user_credentials
-            WHERE user_id = %s AND service_type = 'gmail'
-            AND account_email IS NOT NULL
-        ''', (user_id,))
-        accounts = cursor.fetchall()
-        conn.close()
+
+        # For admin, check environment-based Gmail tokens
+        if is_admin():
+            for email in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']:
+                env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
+                if os.environ.get(env_key):
+                    accounts.append({
+                        'account_email': email,
+                        'service_account': email,
+                        'is_active': True,
+                        'last_used_at': None
+                    })
+
+        # Also check database
+        if user_id:
+            from db_mysql import db
+            conn = db.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT service_account, is_active, last_used_at
+                FROM user_credentials
+                WHERE user_id = %s AND service_type = 'gmail'
+                AND service_account IS NOT NULL
+            ''', (user_id,))
+            db_accounts = cursor.fetchall()
+            conn.close()
+
+            # Add database accounts not already in list
+            existing_emails = [a.get('account_email') for a in accounts]
+            for acc in db_accounts:
+                email = acc.get('service_account')
+                if email and email not in existing_emails:
+                    accounts.append({
+                        'account_email': email,
+                        'service_account': email,
+                        'is_active': acc.get('is_active', True),
+                        'last_used_at': acc.get('last_used_at')
+                    })
+
         return accounts
     except Exception as e:
         logger.warning(f"Could not fetch user Gmail accounts: {e}")
-        return []
+        return accounts
 
 
 # =============================================================================
