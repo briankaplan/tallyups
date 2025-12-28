@@ -181,12 +181,20 @@ class AppleAuthService:
             key_data = keys[kid]
             public_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(key_data))
 
+            # Accept multiple audiences - bundle ID for iOS and service ID for web
+            # This handles both iOS app and web sign-in flows
+            valid_audiences = [self.bundle_id]
+            if self.service_id and self.service_id != self.bundle_id:
+                valid_audiences.append(self.service_id)
+
+            logger.debug(f"Verifying token with audiences: {valid_audiences}")
+
             # Verify and decode the token
             payload = jwt.decode(
                 identity_token,
                 public_key,
                 algorithms=['RS256'],
-                audience=self.bundle_id,
+                audience=valid_audiences,
                 issuer=APPLE_ISSUER
             )
 

@@ -289,7 +289,7 @@ def email_login():
         import bcrypt
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Find user by email
         cursor.execute("""
@@ -411,8 +411,25 @@ def apple_sign_in():
         return jsonify({'error': 'device_id required'}), 400
 
     try:
+        # Log the token info for debugging (first 50 chars only for security)
+        logger.info(f"Apple Sign In attempt - token length: {len(identity_token)}, token start: {identity_token[:50]}...")
+
         # Verify Apple identity token
-        apple_user_info = apple_auth_service.verify_identity_token(identity_token)
+        try:
+            apple_user_info = apple_auth_service.verify_identity_token(identity_token)
+            logger.info(f"Apple token verified - user_id: {apple_user_info['apple_user_id']}, email: {apple_user_info.get('email')}")
+        except Exception as verify_error:
+            logger.error(f"Apple token verification failed: {verify_error}")
+            # Provide more detail about verification failure
+            import jwt
+            try:
+                # Decode without verification to see the token contents
+                unverified = jwt.decode(identity_token, options={"verify_signature": False})
+                logger.error(f"Token audience: {unverified.get('aud')}, issuer: {unverified.get('iss')}, sub: {unverified.get('sub')}")
+                logger.error(f"Expected audience: {apple_auth_service.bundle_id}")
+            except:
+                pass
+            raise verify_error
 
         # Get or create user
         user = get_or_create_user(
@@ -420,6 +437,7 @@ def apple_sign_in():
             email=apple_user_info.get('email'),
             name=data.get('user_name')
         )
+        logger.info(f"User retrieved/created: {user['id']}, email: {user.get('email')}")
 
         if not user.get('is_active', True):
             return jsonify({'error': 'Account is disabled'}), 403
@@ -433,6 +451,8 @@ def apple_sign_in():
             ip_address=request.remote_addr,
             user_agent=request.user_agent.string
         )
+
+        logger.info(f"Apple Sign In successful for user {user['id']}")
 
         return jsonify({
             **tokens,
@@ -449,8 +469,8 @@ def apple_sign_in():
         logger.warning(f"Apple auth failed: {e}")
         return jsonify({'error': str(e)}), 401
     except Exception as e:
-        logger.error(f"Apple sign-in error: {e}")
-        return jsonify({'error': 'Authentication failed'}), 500
+        logger.error(f"Apple sign-in error: {e}", exc_info=True)
+        return jsonify({'error': f'Authentication failed: {str(e)}'}), 500
 
 
 @auth_bp.route('/refresh', methods=['POST'])
