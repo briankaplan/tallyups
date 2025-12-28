@@ -886,3 +886,45 @@ def get_match_candidates():
     except Exception as e:
         logger.error(f"Error finding match candidates: {e}")
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@incoming_bp.route("/auto-match", methods=["POST"])
+def trigger_auto_match():
+    """
+    Trigger auto-matching of pending receipts to transactions.
+
+    Body (optional):
+    {
+        "limit": 50  # Max receipts to process (default 50)
+    }
+
+    Returns matching results and stats.
+    """
+    if not check_auth():
+        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    try:
+        from smart_auto_matcher import auto_match_pending_receipts, SmartAutoMatcher
+
+        data = request.get_json(force=True) or {}
+        limit = data.get('limit', 50)
+
+        # Run auto-matching
+        results = auto_match_pending_receipts(limit=limit)
+
+        return jsonify({
+            'ok': True,
+            'message': 'Auto-matching complete',
+            'results': results
+        })
+
+    except ImportError as e:
+        logger.error(f"Auto-matcher not available: {e}")
+        return jsonify({
+            'ok': False,
+            'error': 'Auto-matching service not available'
+        }), 503
+
+    except Exception as e:
+        logger.error(f"Error running auto-match: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
