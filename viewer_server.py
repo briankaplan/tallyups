@@ -4826,6 +4826,20 @@ def ocr_verify_receipt():
         if not is_authenticated():
             return jsonify({'error': 'Authentication required. Include admin_key.'}), 401
 
+    # SECURITY: Only admin users or users with their own API keys can use AI/OCR features
+    if not is_admin():
+        try:
+            from auth import get_current_user_id
+            from services.user_credentials_service import user_credentials_service, SERVICE_OPENAI, SERVICE_GEMINI, SERVICE_ANTHROPIC
+            user_id = get_current_user_id()
+            has_key = (user_credentials_service.has_credential(user_id, SERVICE_OPENAI) or
+                      user_credentials_service.has_credential(user_id, SERVICE_GEMINI) or
+                      user_credentials_service.has_credential(user_id, SERVICE_ANTHROPIC))
+            if not has_key:
+                return jsonify({'ok': False, 'error': 'Receipt verification requires your own API key (OpenAI, Gemini, or Claude)'}), 403
+        except Exception:
+            pass
+
     if not OCR_SERVICE_AVAILABLE:
         return jsonify({"error": "OCR service not available"}), 503
 
@@ -14320,6 +14334,8 @@ def export_reconciliation_csv():
 
 
 @app.route("/api/vision-verify", methods=["POST"])
+@login_required
+@ai_access_required
 def api_vision_verify_batch():
     """
     Vision verify a batch of transactions and return results.
