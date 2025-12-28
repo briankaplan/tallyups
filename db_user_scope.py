@@ -16,17 +16,34 @@ ADMIN_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 # ============================================================================
 # USER SCOPING TOGGLE
-# Set ENABLE_USER_SCOPING=true in environment AFTER running migrations:
+# SECURITY: User scoping is ENABLED by default in production for data isolation.
+# Set ENABLE_USER_SCOPING=false ONLY for development/migration scenarios.
+#
+# Required migrations:
 #   - 009_users_table.sql
 #   - 010_user_sessions.sql
 #   - 011_user_credentials.sql
 #   - 012_add_user_id_columns.sql
 #   - 013_migrate_to_admin.sql (migrate existing data)
 # ============================================================================
-USER_SCOPING_ENABLED = os.getenv('ENABLE_USER_SCOPING', 'false').lower() == 'true'
+IS_PRODUCTION = os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('PRODUCTION', 'false').lower() == 'true'
 
-if not USER_SCOPING_ENABLED:
-    logger.info("User scoping DISABLED - all data accessible (single-tenant mode)")
+# SECURITY: Default to ENABLED in production, DISABLED in development
+# Can be explicitly overridden via environment variable
+if os.getenv('ENABLE_USER_SCOPING'):
+    # Explicit setting takes precedence
+    USER_SCOPING_ENABLED = os.getenv('ENABLE_USER_SCOPING', '').lower() == 'true'
+else:
+    # Default based on environment
+    USER_SCOPING_ENABLED = IS_PRODUCTION
+
+if USER_SCOPING_ENABLED:
+    logger.info("User scoping ENABLED - multi-tenant data isolation active")
+else:
+    if IS_PRODUCTION:
+        logger.warning("⚠️ User scoping DISABLED in production - this is a security risk!")
+    else:
+        logger.info("User scoping DISABLED - all data accessible (development mode)")
 
 
 def get_current_user_id() -> str:

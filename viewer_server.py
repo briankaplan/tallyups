@@ -16002,6 +16002,7 @@ def api_find_missing_receipts():
 # =============================================================================
 
 @app.route("/settings/calendar/status", methods=["GET"])
+@login_required
 def calendar_status():
     """Get Google Calendar connection status (supports multiple accounts)."""
     try:
@@ -16045,6 +16046,7 @@ CALENDAR_PREFS_FILE = Path(__file__).parent / "calendar_preferences.json"
 
 
 @app.route("/settings/calendar/preferences", methods=["GET"])
+@login_required
 def get_calendar_preferences():
     """Get saved calendar preferences (which calendars are enabled)."""
     try:
@@ -16101,6 +16103,7 @@ def save_calendar_preferences():
 # =============================================================================
 
 @app.route("/settings/gmail/status", methods=["GET"])
+@login_required
 def gmail_status():
     """Get status of all Gmail accounts"""
     from pathlib import Path
@@ -16595,21 +16598,48 @@ def get_oauth_redirect_uri():
 
 
 @app.route("/api/gmail/authorize/<account_email>", methods=["GET"])
+@login_required
 def gmail_authorize(account_email):
     """
     Start Gmail OAuth authorization flow.
     Redirects user to Google's consent screen.
-    Supports both login-based auth and admin_key authentication.
+
+    SECURITY: Validates user owns the email or is admin before authorizing.
     """
     import secrets
     from urllib.parse import urlencode
 
-    # Auth check: admin_key OR login
-    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY')
-    if not secure_compare_api_key(admin_key, expected_key):
-        if not is_authenticated():
-            return redirect(url_for('login', next=request.url))
+    # SECURITY: Validate user owns this email or is admin
+    user_id = get_current_user_id()
+    user_email = getattr(g, 'user_email', None) or session.get('user_email')
+    user_role = getattr(g, 'user_role', 'user')
+
+    # Allow if: user is admin, OR user's email matches, OR user has this email registered
+    is_authorized = False
+    if user_role == 'admin':
+        is_authorized = True
+    elif user_email and user_email.lower() == account_email.lower():
+        is_authorized = True
+    else:
+        # Check if user has this email in their credentials
+        try:
+            from db_user_scope import USER_SCOPING_ENABLED
+            if USER_SCOPING_ENABLED:
+                conn, db_type = get_db_connection()
+                cursor = db_execute(conn, db_type, '''
+                    SELECT id FROM user_credentials
+                    WHERE user_id = %s AND service_type = 'gmail'
+                    AND account_email = %s AND is_active = TRUE
+                ''', (user_id, account_email))
+                if cursor.fetchone():
+                    is_authorized = True
+                return_db_connection(conn)
+        except Exception as e:
+            logger.warning(f"Could not verify email ownership: {e}")
+
+    if not is_authorized:
+        logger.warning(f"Unauthorized Gmail auth attempt: user_id={user_id}, email={account_email}")
+        return jsonify({'ok': False, 'error': 'You can only authorize your own email accounts'}), 403
 
     try:
         from datetime import datetime, timedelta
@@ -16945,8 +16975,43 @@ def gmail_oauth_callback():
 @app.route("/api/gmail/disconnect/<account_email>", methods=["POST"])
 @login_required
 def gmail_disconnect(account_email):
-    """Remove Gmail authorization for an account"""
+    """Remove Gmail authorization for an account
+
+    SECURITY: Validates user owns the email or is admin before disconnecting.
+    """
     from pathlib import Path
+
+    # SECURITY: Validate user owns this email or is admin
+    user_id = get_current_user_id()
+    user_email = getattr(g, 'user_email', None) or session.get('user_email')
+    user_role = getattr(g, 'user_role', 'user')
+
+    # Allow if: user is admin, OR user's email matches, OR user has this email registered
+    is_authorized = False
+    if user_role == 'admin':
+        is_authorized = True
+    elif user_email and user_email.lower() == account_email.lower():
+        is_authorized = True
+    else:
+        # Check if user has this email in their credentials
+        try:
+            from db_user_scope import USER_SCOPING_ENABLED
+            if USER_SCOPING_ENABLED:
+                conn, db_type = get_db_connection()
+                cursor = db_execute(conn, db_type, '''
+                    SELECT id FROM user_credentials
+                    WHERE user_id = %s AND service_type = 'gmail'
+                    AND account_email = %s AND is_active = TRUE
+                ''', (user_id, account_email))
+                if cursor.fetchone():
+                    is_authorized = True
+                return_db_connection(conn)
+        except Exception as e:
+            logger.warning(f"Could not verify email ownership: {e}")
+
+    if not is_authorized:
+        logger.warning(f"Unauthorized Gmail disconnect attempt: user_id={user_id}, email={account_email}")
+        return jsonify({'ok': False, 'error': 'You can only disconnect your own email accounts'}), 403
 
     if account_email not in GMAIL_ACCOUNTS:
         return jsonify({'ok': False, 'error': f'Unknown account: {account_email}'}), 404

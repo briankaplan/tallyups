@@ -1095,18 +1095,39 @@ class PlaidService:
     # ITEM MANAGEMENT
     # =========================================================================
 
-    def _get_item(self, item_id: str) -> Optional[PlaidItem]:
-        """Get a Plaid Item from the database."""
+    def _get_item(self, item_id: str, user_id: str = None) -> Optional[PlaidItem]:
+        """Get a Plaid Item from the database.
+
+        SECURITY: When user_id is provided, validates the item belongs to that user.
+        This prevents cross-user access to bank connections.
+
+        Args:
+            item_id: The Plaid item ID
+            user_id: Optional user ID for ownership validation. When provided,
+                     returns None if the item doesn't belong to this user.
+        """
         db = self._get_db()
         conn = db.get_connection()
         try:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT item_id, access_token, institution_id, institution_name,
-                       status, transactions_cursor, last_successful_sync, user_id, created_at
-                FROM plaid_items
-                WHERE item_id = %s
-            """, (item_id,))
+
+            if user_id:
+                # SECURITY: Validate user owns this item
+                cursor.execute("""
+                    SELECT item_id, access_token, institution_id, institution_name,
+                           status, transactions_cursor, last_successful_sync, user_id, created_at
+                    FROM plaid_items
+                    WHERE item_id = %s AND user_id = %s
+                """, (item_id, user_id))
+            else:
+                # Legacy mode: no user validation (for system/admin operations)
+                cursor.execute("""
+                    SELECT item_id, access_token, institution_id, institution_name,
+                           status, transactions_cursor, last_successful_sync, user_id, created_at
+                    FROM plaid_items
+                    WHERE item_id = %s
+                """, (item_id,))
+
             row = cursor.fetchone()
 
             if row:

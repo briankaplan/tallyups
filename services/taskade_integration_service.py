@@ -63,21 +63,30 @@ class TaskadeIntegration:
         self.user_id = user_id
         self._user_credentials_service = None
 
-        # If user_id provided, try to get per-user credentials
-        # SECURITY: Do NOT fall back to admin credentials for user requests
+        # SECURITY: Separate paths for user vs admin/system requests
+        # - User requests MUST use per-user credentials only
+        # - Admin/system requests can use global credentials
         if user_id:
+            # User request - ONLY use their credentials, never fall back to global
             user_creds = self._get_user_taskade_credentials(user_id)
             if user_creds and user_creds.get('api_key'):
                 self.api_key = user_creds.get('api_key')
                 self.workspace_id = user_creds.get('workspace_id') or workspace_id
+                logger.debug(f"Using per-user Taskade credentials for user {user_id[:8]}...")
             else:
                 # User doesn't have credentials - they must add their own
+                # DO NOT fall back to global credentials for security!
                 self.api_key = None
                 self.workspace_id = None
+                logger.debug(f"No Taskade credentials found for user {user_id[:8]}...")
         else:
-            # No user_id = admin/system request, use global key
+            # Admin/system request - use global key
+            # SECURITY: This path should only be used for admin operations,
+            # not for user-facing features in multi-user mode
             self.api_key = api_key or TASKADE_API_KEY
             self.workspace_id = workspace_id or WORKSPACE_ID
+            if TASKADE_API_KEY:
+                logger.warning("Using global Taskade credentials (admin/system mode)")
 
         self.base_url = TASKADE_BASE_URL
         self.headers = {

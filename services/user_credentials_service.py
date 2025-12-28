@@ -21,6 +21,16 @@ logger = logging.getLogger(__name__)
 CREDENTIALS_ENCRYPTION_KEY = os.environ.get('CREDENTIALS_ENCRYPTION_KEY', '')
 CREDENTIALS_SALT = os.environ.get('CREDENTIALS_SALT', 'tallyups-credentials-salt')
 
+# SECURITY: Check if we're in production (Railway or similar)
+IS_PRODUCTION = os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('PRODUCTION', 'false').lower() == 'true'
+
+# SECURITY: In production, encryption key is REQUIRED
+if IS_PRODUCTION and not CREDENTIALS_ENCRYPTION_KEY:
+    raise RuntimeError(
+        "SECURITY ERROR: CREDENTIALS_ENCRYPTION_KEY must be set in production! "
+        "Credentials cannot be stored without encryption."
+    )
+
 # Service Types
 SERVICE_GMAIL = 'gmail'
 SERVICE_GOOGLE_CALENDAR = 'google_calendar'
@@ -85,23 +95,43 @@ class UserCredentialsService:
             return None
 
     def _encrypt(self, value: str) -> str:
-        """Encrypt a value."""
-        if not self.cipher or not value:
+        """Encrypt a value.
+
+        SECURITY: In production, fails if encryption is not available.
+        """
+        if not value:
+            return value
+        if not self.cipher:
+            if IS_PRODUCTION:
+                raise CredentialsError("Cannot store credentials: encryption not configured")
+            logger.warning("Storing credential WITHOUT encryption (development mode)")
             return value
         try:
             return self.cipher.encrypt(value.encode()).decode()
         except Exception as e:
             logger.error(f"Encryption failed: {e}")
+            if IS_PRODUCTION:
+                raise CredentialsError(f"Encryption failed: {e}")
             return value
 
     def _decrypt(self, value: str) -> str:
-        """Decrypt a value."""
-        if not self.cipher or not value:
+        """Decrypt a value.
+
+        SECURITY: In production, fails if decryption is not available.
+        """
+        if not value:
+            return value
+        if not self.cipher:
+            if IS_PRODUCTION:
+                raise CredentialsError("Cannot retrieve credentials: encryption not configured")
+            logger.warning("Returning credential WITHOUT decryption (development mode)")
             return value
         try:
             return self.cipher.decrypt(value.encode()).decode()
         except Exception as e:
             logger.error(f"Decryption failed: {e}")
+            if IS_PRODUCTION:
+                raise CredentialsError(f"Decryption failed: {e}")
             return value
 
     def store_credential(

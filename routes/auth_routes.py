@@ -1,6 +1,9 @@
 """
 Authentication Routes for TallyUps
 Handles Apple Sign In, JWT token management, and user management
+
+NOTE: These routes require the multi-user tables to be created (migrations 009-014).
+If tables don't exist, routes will return 503 "Multi-user mode not enabled".
 """
 
 import os
@@ -20,6 +23,22 @@ logger = logging.getLogger(__name__)
 
 # Create Blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+# Check if multi-user tables exist
+MULTI_USER_TABLES_EXIST = False
+try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SHOW TABLES LIKE 'users'")
+    if cursor.fetchone():
+        MULTI_USER_TABLES_EXIST = True
+        logger.info("Multi-user tables found - auth routes enabled")
+    else:
+        logger.info("Multi-user tables not found - auth routes will return 503")
+    cursor.close()
+    conn.close()
+except Exception as e:
+    logger.warning(f"Could not check for multi-user tables: {e}")
 
 # Try to import auth services
 try:
@@ -210,6 +229,8 @@ def apple_sign_in():
         }
     }
     """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled. Run migrations 009-014 first.'}), 503
     if not JWT_AVAILABLE:
         return jsonify({'error': 'Authentication service not available'}), 503
 
@@ -288,6 +309,8 @@ def refresh_token():
         "expires_in": 900
     }
     """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
     if not JWT_AVAILABLE:
         return jsonify({'error': 'Authentication service not available'}), 503
 
@@ -371,6 +394,8 @@ def logout():
         "device_id": "..."  // Optional, if not provided revokes all sessions
     }
     """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
     user_id = get_current_user_id()
     data = request.get_json() or {}
     device_id = data.get('device_id')
@@ -420,6 +445,8 @@ def logout():
 @user_required
 def get_current_user():
     """Get current user's profile."""
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
     user_id = get_current_user_id()
 
     conn = get_db_connection()
@@ -469,13 +496,16 @@ def get_current_user():
 @user_required
 def update_current_user():
     """Update current user's profile."""
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
     user_id = get_current_user_id()
     data = request.get_json()
 
     if not data:
         return jsonify({'error': 'Request body required'}), 400
 
-    # Allowed fields to update
+    # SECURITY: Whitelist of allowed fields - these are safe column names
+    # This prevents SQL injection by only allowing known-safe identifiers
     allowed_fields = {'name', 'default_business_type', 'timezone'}
     updates = {k: v for k, v in data.items() if k in allowed_fields}
 
@@ -486,8 +516,23 @@ def update_current_user():
     cursor = conn.cursor()
 
     try:
-        set_clause = ', '.join([f'{k} = %s' for k in updates.keys()])
-        values = list(updates.values()) + [user_id]
+        # SECURITY: Build parameterized query using only whitelisted column names
+        # Even though allowed_fields protects us, we use explicit validation
+        # to prevent future refactoring bugs
+        import re
+        safe_columns = []
+        for k in updates.keys():
+            # Double-check column name is safe (alphanumeric + underscore only)
+            if not re.match(r'^[a-z_]+$', k):
+                logger.warning(f"Blocked unsafe column name in update: {k}")
+                continue
+            safe_columns.append(k)
+
+        if not safe_columns:
+            return jsonify({'error': 'No valid fields to update'}), 400
+
+        set_clause = ', '.join([f'{col} = %s' for col in safe_columns])
+        values = [updates[col] for col in safe_columns] + [user_id]
 
         cursor.execute(f"""
             UPDATE users
@@ -515,6 +560,8 @@ def delete_account():
     Delete user account (GDPR compliance).
     This performs a soft delete and schedules data cleanup.
     """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
     user_id = get_current_user_id()
 
     # Prevent admin from deleting their own account
@@ -571,6 +618,8 @@ def delete_account():
 @user_required
 def complete_onboarding():
     """Mark onboarding as complete for the current user."""
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
     user_id = get_current_user_id()
 
     conn = get_db_connection()
@@ -600,6 +649,8 @@ def complete_onboarding():
 @user_required
 def list_sessions():
     """List all active sessions for the current user."""
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
     user_id = get_current_user_id()
 
     conn = get_db_connection()
@@ -633,6 +684,8 @@ def list_sessions():
 @user_required
 def revoke_session(device_id):
     """Revoke a specific session."""
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
     user_id = get_current_user_id()
 
     conn = get_db_connection()
