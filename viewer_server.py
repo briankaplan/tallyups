@@ -845,12 +845,20 @@ try:
         """Get all active Gmail accounts from all users in the database and environment."""
         accounts = []
 
-        # First, check admin's environment-based Gmail tokens
-        admin_user_id = 'admin-00000000-0000-0000-0000-000000000000'
-        for email in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']:
-            env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
-            if os.environ.get(env_key):
-                accounts.append((email, admin_user_id))
+        # First, check admin's environment-based Gmail tokens (dynamically find all GMAIL_TOKEN_*)
+        admin_user_id = '00000000-0000-0000-0000-000000000001'  # Admin user ID
+        for key, value in os.environ.items():
+            if key.startswith('GMAIL_TOKEN_') and value:
+                # Convert env var name back to email: GMAIL_TOKEN_USER_DOMAIN_COM -> user@domain.com
+                email_parts = key.replace('GMAIL_TOKEN_', '').lower().replace('_', '.')
+                parts = email_parts.split('.')
+                if len(parts) >= 3:
+                    tld = parts[-1]
+                    domain = parts[-2]
+                    username = '.'.join(parts[:-2])
+                    email = f"{username}@{domain}.{tld}"
+                    if (email, admin_user_id) not in accounts:
+                        accounts.append((email, admin_user_id))
 
         # Then check database for all users
         try:
@@ -3452,15 +3460,22 @@ def health_check():
     # Check Gmail accounts from environment and database (multi-user support)
     gmail_accounts = []
 
-    # Check admin's environment-based Gmail tokens first
-    for email in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']:
-        env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
-        if os.environ.get(env_key):
-            gmail_accounts.append({
-                "email": email,
-                "connected": True,
-                "source": "environment"
-            })
+    # Check admin's environment-based Gmail tokens (dynamically find all GMAIL_TOKEN_*)
+    for key, value in os.environ.items():
+        if key.startswith('GMAIL_TOKEN_') and value:
+            # Convert env var name back to email
+            email_parts = key.replace('GMAIL_TOKEN_', '').lower().replace('_', '.')
+            parts = email_parts.split('.')
+            if len(parts) >= 3:
+                tld = parts[-1]
+                domain = parts[-2]
+                username = '.'.join(parts[:-2])
+                email = f"{username}@{domain}.{tld}"
+                gmail_accounts.append({
+                    "email": email,
+                    "connected": True,
+                    "source": "environment"
+                })
 
     # Then check database for all users
     try:

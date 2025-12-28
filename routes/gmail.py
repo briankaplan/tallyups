@@ -46,17 +46,25 @@ def get_user_gmail_accounts(user_id=None):
         if not user_id:
             user_id = get_current_user_id()
 
-        # For admin, check environment-based Gmail tokens
+        # For admin, find all Gmail tokens in environment variables (GMAIL_TOKEN_*)
         if is_admin():
-            for email in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']:
-                env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
-                if os.environ.get(env_key):
-                    accounts.append({
-                        'account_email': email,
-                        'service_account': email,
-                        'is_active': True,
-                        'last_used_at': None
-                    })
+            for key, value in os.environ.items():
+                if key.startswith('GMAIL_TOKEN_') and value:
+                    # Convert env var name back to email: GMAIL_TOKEN_USER_DOMAIN_COM -> user@domain.com
+                    email_parts = key.replace('GMAIL_TOKEN_', '').lower().replace('_', '.')
+                    parts = email_parts.split('.')
+                    if len(parts) >= 3:
+                        tld = parts[-1]
+                        domain = parts[-2]
+                        username = '.'.join(parts[:-2])
+                        email = f"{username}@{domain}.{tld}"
+                        accounts.append({
+                            'account_email': email,
+                            'service_account': email,
+                            'is_active': True,
+                            'last_used_at': None,
+                            'source': 'environment'
+                        })
 
         # Also check database
         if user_id:

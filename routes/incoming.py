@@ -325,14 +325,25 @@ def trigger_gmail_scan():
         from db_mysql import db
         user_id = get_current_user_id()
 
-        # For admin, use environment-based Gmail tokens
+        # For admin, use environment-based Gmail tokens (dynamically find all GMAIL_TOKEN_* vars)
         if is_admin():
             import os
-            # Check for Gmail tokens in environment variables
-            for email in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']:
-                env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
-                if os.environ.get(env_key):
-                    user_accounts.append(email)
+            # Find all Gmail tokens in environment variables (GMAIL_TOKEN_*)
+            for key, value in os.environ.items():
+                if key.startswith('GMAIL_TOKEN_') and value:
+                    # Convert env var name back to email: GMAIL_TOKEN_USER_DOMAIN_COM -> user@domain.com
+                    email_parts = key.replace('GMAIL_TOKEN_', '').lower().replace('_', '.')
+                    # Fix the @ symbol - find the last domain part and insert @
+                    parts = email_parts.split('.')
+                    if len(parts) >= 3:
+                        # Assume format: user.domain.tld -> user@domain.tld
+                        # or: user.name.domain.tld -> user.name@domain.tld
+                        tld = parts[-1]  # com, net, etc
+                        domain = parts[-2]  # gmail, business, etc
+                        username = '.'.join(parts[:-2])  # everything else
+                        email = f"{username}@{domain}.{tld}"
+                        if email not in user_accounts:
+                            user_accounts.append(email)
 
         # Also check database for any user
         if user_id:
