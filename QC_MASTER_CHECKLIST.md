@@ -103,7 +103,8 @@ This document tracks the comprehensive Quality Control audit of the entire Tally
 ### Calendar Integration
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Google Calendar OAuth | ⏳ PENDING | |
+| Google Calendar OAuth | ⚠️ NEEDS WORK | Uses file-based tokens, needs migration to user_credentials |
+| Calendar preferences | ✅ FIXED | Migrated to database (per-user) |
 | Event sync | ⏳ PENDING | |
 | Receipt-to-event matching | ⏳ PENDING | |
 
@@ -215,16 +216,25 @@ This document tracks the comprehensive Quality Control audit of the entire Tally
 
 | Table | user_id Column | Index | Notes |
 |-------|---------------|-------|-------|
-| `transactions` | ⏳ CHECK | ⏳ CHECK | |
-| `receipts` | ⏳ CHECK | ⏳ CHECK | |
-| `reports` | ⏳ CHECK | ⏳ CHECK | |
-| `contacts` | ⏳ CHECK | ⏳ CHECK | |
-| `receipt_tags` | ⏳ CHECK | ⏳ CHECK | |
-| `collections` | ⏳ CHECK | ⏳ CHECK | |
-| `incoming_receipts` | ⏳ CHECK | ⏳ CHECK | |
+| `transactions` | ✅ | ✅ | Migration 012 |
+| `incoming_receipts` | ✅ | ✅ | Migration 012 |
+| `contacts` | ✅ | ✅ | Migration 012 |
+| `expense_reports` | ✅ | ✅ | Migrations 012, 015 |
+| `merchants` | ✅ | ✅ | Migration 012 (shared or user-specific) |
+| `receipt_tags` | ✅ | ✅ | Migration 018 |
+| `receipt_collections` | ✅ | ✅ | Migration 018 |
+| `receipt_favorites` | ✅ | ✅ | Migration 018 |
+| `receipt_annotations` | ✅ | ✅ | Migration 018 |
+| `receipt_attendees` | ✅ | ✅ | Migration 018 |
+| `gmail_receipts` | ✅ | ✅ | Migration 016 |
+| `contact_interactions` | ✅ | ✅ | Migration 016 |
+| `calendar_preferences` | ✅ | ✅ | Migration 016 (user_id is PK) |
 | `users` | N/A | N/A | User table itself |
-| `user_sessions` | ⏳ CHECK | ⏳ CHECK | |
-| `user_credentials` | ⏳ CHECK | ⏳ CHECK | |
+| `user_sessions` | ✅ | ✅ | Migration 010, 017 |
+| `user_credentials` | ✅ | ✅ | Migration 011 |
+| `user_business_types` | ✅ | ✅ | Migration 014 |
+| `plaid_items` | ✅ | ✅ | Has user_id |
+| `ocr_cache` | N/A | N/A | Shared (file hash based) |
 
 ---
 
