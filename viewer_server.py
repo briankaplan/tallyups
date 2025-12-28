@@ -26054,6 +26054,7 @@ def full_migration():
 # =============================================================================
 
 @app.route("/generate_missing_receipt_form", methods=["POST"])
+@login_required
 def generate_missing_receipt_form():
     """
     Generate a filled-out Missing Receipt Form PDF for a transaction.
@@ -26061,11 +26062,13 @@ def generate_missing_receipt_form():
     Required fields in request JSON:
     - _index: transaction index
     - reason: reason receipt was lost
-    - company: 'business' or 'sec' (Secondary)
 
     Optional fields:
+    - company_name: custom company name (defaults to blank)
     - meal_attendees: list of attendee names (for meal receipts)
     - meal_purpose: business purpose for the meal
+
+    NOTE: Forms are generated WITHOUT signatures - users must sign themselves.
     """
     global df  # Need to update the cached dataframe
     from reportlab.lib.pagesizes import letter
@@ -26079,7 +26082,7 @@ def generate_missing_receipt_form():
         data = request.get_json()
         row_index = data.get('_index')
         reason = data.get('reason', 'Receipt not provided by vendor')
-        company = data.get('company', 'business')  # 'business' or 'sec'
+        company_name = data.get('company_name', '')  # User provides their own company name
         meal_attendees = data.get('meal_attendees', '')
         meal_purpose = data.get('meal_purpose', '')
 
@@ -26118,27 +26121,23 @@ def generate_missing_receipt_form():
         except (ValueError, TypeError):
             formatted_amount = str(trans_amount)
 
-        # Company details
-        if company == 'sec':
-            company_name = "Secondary"
-            company_header = "Secondary"
-        else:
-            company_name = "Business Media LLC"
-            company_header = "Business Media LLC"
+        # Company header - use user-provided name or leave blank
+        company_header = company_name.strip() if company_name else ""
 
         # Generate unique filename
         form_id = str(uuid.uuid4())[:8]
-        filename = f"missing_receipt_{company}_{formatted_date.replace('/', '-')}_{form_id}.pdf"
+        filename = f"missing_receipt_{formatted_date.replace('/', '-')}_{form_id}.pdf"
         output_path = RECEIPT_DIR / filename
 
         # Create PDF
         c = canvas.Canvas(str(output_path), pagesize=letter)
         width, height = letter
 
-        # Company Header
-        c.setFont("Helvetica-Bold", 16)
-        c.setFillColor(gray)
-        c.drawString(1*inch, height - 1*inch, company_header)
+        # Company Header (only if provided)
+        if company_header:
+            c.setFont("Helvetica-Bold", 16)
+            c.setFillColor(gray)
+            c.drawString(1*inch, height - 1*inch, company_header)
 
         # Title
         c.setFillColor(black)
@@ -26235,20 +26234,11 @@ def generate_missing_receipt_form():
         # Signature section
         y_pos -= 0.8*inch
 
-        # Draw signature line
+        # Draw signature line (unsigned - user must sign themselves)
         c.line(1.2*inch, y_pos, 3.5*inch, y_pos)
         c.setFont("Helvetica-Oblique", 9)
         c.drawString(1.2*inch, y_pos - 0.15*inch, "Contractor/Employee Signature")
-
-        # Load and draw signature image
-        sig_path = BASE_DIR / "assets" / "brian_kaplan_signature.png"
-        if sig_path.exists():
-            try:
-                # Position signature to sit nicely on the line
-                # Width 2.2 inches, auto-height to preserve aspect ratio
-                c.drawImage(str(sig_path), 1.2*inch, y_pos + 0.02*inch, width=2.2*inch, height=0.6*inch, preserveAspectRatio=True, mask='auto')
-            except Exception as sig_error:
-                print(f"Could not add signature image: {sig_error}")
+        # NOTE: Signature left blank - user must sign the form themselves
 
         # Expense Approver line
         c.line(5*inch, y_pos, 7.5*inch, y_pos)
