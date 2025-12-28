@@ -247,6 +247,7 @@ async function aiMatch() {
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({_index: selectedRow._index})
         });
+        if (!miRes.ok) throw new Error(`HTTP ${miRes.status}`);
         const miData = await miRes.json();
         if (miData.ok) {
           // Update with MI results
@@ -279,6 +280,7 @@ async function aiMatch() {
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({_index: selectedRow._index})
         });
+        if (!miRes.ok) throw new Error(`HTTP ${miRes.status}`);
         const miData = await miRes.json();
         if (miData.ok && miData.result) {
           // Save undo state for MI-only change
