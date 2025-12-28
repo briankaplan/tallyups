@@ -5819,6 +5819,10 @@ def update_transaction(tx_id):
 @app.route("/api/transactions/<int:tx_id>/notes", methods=["PUT"])
 def update_transaction_notes(tx_id):
     """Update a transaction's notes field (for inline editing in reports)"""
+    # SECURITY: Require authentication
+    if not session.get('authenticated'):
+        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
     try:
         data = request.get_json()
         if data is None:
@@ -5828,7 +5832,14 @@ def update_transaction_notes(tx_id):
 
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE transactions SET notes = %s WHERE id = %s", (notes, tx_id))
+
+        # USER SCOPING: Only update if transaction belongs to current user
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor.execute("UPDATE transactions SET notes = %s WHERE id = %s AND user_id = %s", (notes, tx_id, user_id))
+        else:
+            cursor.execute("UPDATE transactions SET notes = %s WHERE id = %s", (notes, tx_id))
+
         conn.commit()
         cursor.close()
         return_db_connection(conn)
@@ -5842,6 +5853,10 @@ def update_transaction_notes(tx_id):
 @app.route("/api/transactions/<int:tx_id>/description", methods=["PUT"])
 def update_transaction_description(tx_id):
     """Update a transaction's ai_note field (description for reports)"""
+    # SECURITY: Require authentication
+    if not session.get('authenticated'):
+        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
     try:
         data = request.get_json()
         if data is None:
@@ -5851,7 +5866,14 @@ def update_transaction_description(tx_id):
 
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE transactions SET ai_note = %s WHERE id = %s", (ai_note, tx_id))
+
+        # USER SCOPING: Only update if transaction belongs to current user
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor.execute("UPDATE transactions SET ai_note = %s WHERE id = %s AND user_id = %s", (ai_note, tx_id, user_id))
+        else:
+            cursor.execute("UPDATE transactions SET ai_note = %s WHERE id = %s", (ai_note, tx_id))
+
         conn.commit()
         cursor.close()
         return_db_connection(conn)
@@ -5865,6 +5887,10 @@ def update_transaction_description(tx_id):
 @app.route("/api/transactions/move-to-report", methods=["POST"])
 def move_transactions_to_report():
     """Move transactions to a different report"""
+    # SECURITY: Require authentication
+    if not session.get('authenticated'):
+        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
     try:
         data = request.get_json()
         if not data:
@@ -5879,8 +5905,13 @@ def move_transactions_to_report():
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Get target report's business_type
-        cursor.execute("SELECT business_type FROM reports WHERE report_id = %s", (target_report_id,))
+        # Get target report's business_type (with user scoping)
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor.execute("SELECT business_type FROM reports WHERE report_id = %s AND user_id = %s", (target_report_id, user_id))
+        else:
+            cursor.execute("SELECT business_type FROM reports WHERE report_id = %s", (target_report_id,))
+
         target_report = cursor.fetchone()
         if not target_report:
             cursor.close()
@@ -5889,13 +5920,20 @@ def move_transactions_to_report():
 
         target_business_type = target_report['business_type']
 
-        # Update transactions
+        # Update transactions (with user scoping)
         placeholders = ','.join(['%s'] * len(transaction_ids))
-        cursor.execute(f"""
-            UPDATE transactions
-            SET report_id = %s, business_type = %s
-            WHERE id IN ({placeholders})
-        """, [target_report_id, target_business_type] + list(transaction_ids))
+        if USER_SCOPING_ENABLED:
+            cursor.execute(f"""
+                UPDATE transactions
+                SET report_id = %s, business_type = %s
+                WHERE id IN ({placeholders}) AND user_id = %s
+            """, [target_report_id, target_business_type] + list(transaction_ids) + [user_id])
+        else:
+            cursor.execute(f"""
+                UPDATE transactions
+                SET report_id = %s, business_type = %s
+                WHERE id IN ({placeholders})
+            """, [target_report_id, target_business_type] + list(transaction_ids))
 
         affected = cursor.rowcount
         conn.commit()
@@ -5911,16 +5949,28 @@ def move_transactions_to_report():
 @app.route("/api/transactions/<int:tx_id>/remove-from-report", methods=["POST"])
 def remove_transaction_from_report(tx_id):
     """Remove a transaction from its report (returns to reconciliation queue)"""
+    # SECURITY: Require authentication
+    if not session.get('authenticated'):
+        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
     try:
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Clear the report_id to remove from report
-        cursor.execute("""
-            UPDATE transactions
-            SET report_id = NULL
-            WHERE id = %s
-        """, (tx_id,))
+        # Clear the report_id to remove from report (with user scoping)
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor.execute("""
+                UPDATE transactions
+                SET report_id = NULL
+                WHERE id = %s AND user_id = %s
+            """, (tx_id, user_id))
+        else:
+            cursor.execute("""
+                UPDATE transactions
+                SET report_id = NULL
+                WHERE id = %s
+            """, (tx_id,))
 
         affected = cursor.rowcount
         conn.commit()
@@ -5939,6 +5989,10 @@ def remove_transaction_from_report(tx_id):
 @app.route("/api/transactions/bulk-remove-from-report", methods=["POST"])
 def bulk_remove_transactions_from_report():
     """Remove multiple transactions from their report (returns to reconciliation queue)"""
+    # SECURITY: Require authentication
+    if not session.get('authenticated'):
+        return jsonify({'ok': False, 'error': 'Authentication required'}), 401
+
     try:
         data = request.get_json()
         if not data:
@@ -5951,13 +6005,21 @@ def bulk_remove_transactions_from_report():
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Clear the report_id for all specified transactions
+        # Clear the report_id for all specified transactions (with user scoping)
         placeholders = ','.join(['%s'] * len(transaction_ids))
-        cursor.execute(f"""
-            UPDATE transactions
-            SET report_id = NULL
-            WHERE id IN ({placeholders})
-        """, list(transaction_ids))
+        if USER_SCOPING_ENABLED:
+            user_id = get_current_user_id()
+            cursor.execute(f"""
+                UPDATE transactions
+                SET report_id = NULL
+                WHERE id IN ({placeholders}) AND user_id = %s
+            """, list(transaction_ids) + [user_id])
+        else:
+            cursor.execute(f"""
+                UPDATE transactions
+                SET report_id = NULL
+                WHERE id IN ({placeholders})
+            """, list(transaction_ids))
 
         affected = cursor.rowcount
         conn.commit()
