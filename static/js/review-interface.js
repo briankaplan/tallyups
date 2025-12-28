@@ -623,6 +623,7 @@ class TransactionReviewInterface {
                 body: JSON.stringify({ _index: this.selectedTransaction._index })
             });
 
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (data.ok && data.result) {
                 Object.assign(this.selectedTransaction, data.result);
@@ -660,6 +661,7 @@ class TransactionReviewInterface {
                 body: JSON.stringify({ _index: this.selectedTransaction._index })
             });
 
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (data.ok && data.note) {
                 this.selectedTransaction['AI Note'] = data.note;
@@ -696,6 +698,7 @@ class TransactionReviewInterface {
                 body: JSON.stringify({ _index: this.selectedTransaction._index })
             });
 
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (data.ok) {
                 if (data.category) this.selectedTransaction['mi_category'] = data.category;

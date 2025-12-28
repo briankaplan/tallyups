@@ -379,6 +379,7 @@ class BulkActions {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ _index: tx._index })
                     });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     if (data.ok && data.note) {
                         tx['AI Note'] = data.note;
@@ -402,6 +403,7 @@ class BulkActions {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ _index: tx._index })
                     });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     if (data.ok) {
                         if (data.category) tx['mi_category'] = data.category;
@@ -426,6 +428,7 @@ class BulkActions {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ _index: tx._index })
                     });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     if (data.ok && data.result) {
                         Object.assign(tx, data.result);

@@ -85,13 +85,20 @@
         }
 
         const response = await fetch(endpoint, { ...defaults, ...options });
-        const data = await response.json();
 
+        // Check response.ok BEFORE parsing JSON to handle non-JSON error responses
         if (!response.ok) {
-            throw new Error(data.error || `HTTP ${response.status}`);
+            let errorMessage = `HTTP ${response.status}`;
+            try {
+                const data = await response.json();
+                errorMessage = data.error || errorMessage;
+            } catch (e) {
+                // Response wasn't JSON, use status message
+            }
+            throw new Error(errorMessage);
         }
 
-        return data;
+        return await response.json();
     }
 
     /**

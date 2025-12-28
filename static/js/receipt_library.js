@@ -187,6 +187,11 @@
           return null;
         }
 
+        if (!response.ok) {
+          console.error(`Failed to load receipts: ${response.status}`);
+          return null;
+        }
+
         return await response.json();
       } catch (error) {
         console.error('API Error:', error);
@@ -269,6 +274,10 @@
           body: formData,
           credentials: 'include'
         });
+        if (!response.ok) {
+          console.error(`Upload failed: ${response.status}`);
+          return null;
+        }
         return await response.json();
       } catch (error) {
         console.error('API Error:', error);
@@ -281,6 +290,7 @@
         const response = await fetch(`${this.baseUrl}/stats`, {
           credentials: 'include'
         });
+        if (!response.ok) return null;
         return await response.json();
       } catch (error) {
         console.error('API Error:', error);
@@ -293,6 +303,7 @@
         const response = await fetch(`${this.baseUrl}/search?q=${encodeURIComponent(query)}`, {
           credentials: 'include'
         });
+        if (!response.ok) return null;
         return await response.json();
       } catch (error) {
         console.error('API Error:', error);
