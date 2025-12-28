@@ -11,74 +11,17 @@
   <!-- Legendary Design System -->
   <link rel="stylesheet" href="/static/css/legendary/index.css">
   <link rel="stylesheet" href="/static/css/mobile-responsive.css">
-  <script src="/static/js/unified-header.js"></script>
-  <script src="/static/js/design-system.js"></script>
+  <script src="/static/js/unified-header.js" defer></script>
+  <script src="/static/js/design-system.js" defer></script>
   <script src="/static/js/app-shell.js" defer></script>
   <title>ATLAS - Contact Intelligence</title>
   <style>
     /* Page-specific styles - use design system variables */
     body {
-      padding-top: calc(var(--header-height, 64px) + var(--safe-top));
       padding-bottom: calc(100px + var(--safe-bottom));
     }
 
-    /* Header */
-    .header {
-      padding: 20px 20px 16px;
-      background: linear-gradient(180deg, rgba(170,102,255,0.08) 0%, transparent 100%);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-    }
-
-    .header-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .logo-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .logo-icon svg {
-      width: 20px;
-      height: 20px;
-      color: #fff;
-    }
-
-    .logo-text {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-
-    .logo-text span {
-      background: linear-gradient(135deg, var(--purple) 0%, var(--pink) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-    }
+    /* Header is provided by unified-header.js */
 
     .icon-btn {
       width: 40px;

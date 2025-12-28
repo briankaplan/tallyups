@@ -523,21 +523,23 @@ LOGIN_PAGE_HTML = '''
             </button>
         </div>
 
-        <div class="divider">or sign in with password</div>
+        <div class="divider">or sign in with email</div>
 
         <form method="POST" id="login-form">
             <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="admin@tallyups.com" autofocus required autocomplete="email">
+            </div>
+            <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password" autofocus required autocomplete="current-password">
+                <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
             </div>
             <button type="submit" class="btn btn-primary">Sign In</button>
         </form>
 
-        {% if has_pin %}
         <div class="alt-actions">
-            <a href="/login/pin">Use PIN instead</a>
+            <a href="/register">Create an account</a>
         </div>
-        {% endif %}
 
         <div class="footer">
             <div class="footer-links">

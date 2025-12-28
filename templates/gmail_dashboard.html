@@ -838,8 +838,34 @@
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
                 tab.classList.add('active');
                 document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+
+                // Load cleanup stats when switching to cleanup tab
+                if (tab.dataset.tab === 'cleanup') {
+                    populateCleanupAccountDropdown();
+                    loadCleanupStats();
+                    loadTopSenders();
+                    loadFilters();
+                    loadLabels();
+                }
             });
         });
+
+        function populateCleanupAccountDropdown() {
+            const select = document.getElementById('cleanup-account');
+            if (!select || select.options.length > 1) return; // Already populated
+
+            connectedAccounts.forEach(acc => {
+                const option = document.createElement('option');
+                option.value = acc.email;
+                option.textContent = acc.email;
+                select.appendChild(option);
+            });
+
+            // Select first account by default if available
+            if (connectedAccounts.length > 0 && !select.value) {
+                select.value = connectedAccounts[0].email;
+            }
+        }
 
         // Load data on page load
         document.addEventListener('DOMContentLoaded', () => {

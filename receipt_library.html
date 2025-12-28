@@ -426,7 +426,12 @@
 
     <div class="detail-body">
       <div class="detail-image" id="detail-image">
-        <img id="detail-img" src="" alt="Receipt">
+        <img id="detail-img" src="" alt="Receipt" onclick="toggleReceiptZoom(this)">
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+          <button class="zoom-btn" onclick="resetZoom()" title="Reset">⟲</button>
+          <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
+        </div>
       </div>
 
       <div class="detail-content">
@@ -650,6 +655,68 @@
 
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
+
+  <!-- Zoom functionality for receipt viewer -->
+  <script>
+    let currentZoomLevel = 1;
+    const zoomLevels = [1, 1.5, 2, 2.5, 3];
+    let currentZoomIndex = 0;
+
+    function toggleReceiptZoom(img) {
+      currentZoomIndex = (currentZoomIndex + 1) % zoomLevels.length;
+      applyZoom(img);
+    }
+
+    function zoomIn() {
+      const img = document.getElementById('detail-img');
+      if (currentZoomIndex < zoomLevels.length - 1) {
+        currentZoomIndex++;
+        applyZoom(img);
+      }
+    }
+
+    function zoomOut() {
+      const img = document.getElementById('detail-img');
+      if (currentZoomIndex > 0) {
+        currentZoomIndex--;
+        applyZoom(img);
+      }
+    }
+
+    function resetZoom() {
+      const img = document.getElementById('detail-img');
+      currentZoomIndex = 0;
+      applyZoom(img);
+    }
+
+    function applyZoom(img) {
+      currentZoomLevel = zoomLevels[currentZoomIndex];
+      img.style.transform = `scale(${currentZoomLevel})`;
+      img.style.cursor = currentZoomLevel > 1 ? 'zoom-out' : 'zoom-in';
+
+      // Scroll to center when zoomed in
+      const container = document.getElementById('detail-image');
+      if (currentZoomLevel > 1) {
+        container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+        container.scrollTop = (container.scrollHeight - container.clientHeight) / 2;
+      }
+    }
+
+    // Reset zoom when closing modal
+    document.addEventListener('DOMContentLoaded', function() {
+      const closeBtn = document.getElementById('detail-close');
+      const closeBtnX = document.getElementById('detail-close-x');
+      const closeFloat = document.getElementById('detail-close-float');
+
+      [closeBtn, closeBtnX, closeFloat].forEach(btn => {
+        if (btn) {
+          btn.addEventListener('click', function() {
+            resetZoom();
+          });
+        }
+      });
+    });
+  </script>
 
   <script src="/static/js/image-utils.js"></script>
   <script src="/static/js/receipt_library.js"></script>

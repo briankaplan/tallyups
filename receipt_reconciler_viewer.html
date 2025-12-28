@@ -7161,23 +7161,22 @@ function showMobileReceiptViewer(idx) {
   document.getElementById('mobile-status').textContent =
     row['Review Status'] || 'Pending';
 
-  // Update receipt image
+  // Update receipt image with fallback handling
   const img = document.getElementById('mobile-receipt-img');
   const noReceipt = document.getElementById('mobile-no-receipt');
   // Use ImageUtils for consistent receipt URL handling
-  const receiptUrl = (typeof ImageUtils !== 'undefined' ? ImageUtils.getReceiptUrl(row) : null)
-    || row.r2_url || row['R2 URL'] || row.receipt_url || row['Receipt File'] || '';
+  const hasReceipt = typeof ImageUtils !== 'undefined' ? ImageUtils.hasReceipt(row) :
+    !!(row.r2_url || row['R2 URL'] || row.receipt_url || row['Receipt File']);
 
-  if (receiptUrl) {
-    img.src = ImageUtils?.normalizeUrl ? ImageUtils.normalizeUrl(receiptUrl) : receiptUrl;
+  if (hasReceipt) {
     img.style.display = 'block';
     noReceipt.style.display = 'none';
 
-    // Initialize panzoom for pinch-to-zoom
-    if (mobileReceiptPanzoom) {
-      mobileReceiptPanzoom.destroy();
-    }
-    img.onload = () => {
+    // Initialize panzoom for pinch-to-zoom after load
+    const initPanzoom = () => {
+      if (mobileReceiptPanzoom) {
+        mobileReceiptPanzoom.destroy();
+      }
       if (typeof Panzoom !== 'undefined') {
         mobileReceiptPanzoom = Panzoom(img, {
           maxScale: 5,
@@ -7187,6 +7186,26 @@ function showMobileReceiptViewer(idx) {
         img.parentElement.addEventListener('wheel', mobileReceiptPanzoom.zoomWithWheel);
       }
     };
+
+    // Use ImageUtils with fallback chain if available
+    if (typeof ImageUtils !== 'undefined' && ImageUtils.loadWithFallback) {
+      ImageUtils.loadWithFallback(img, row, {
+        onLoad: initPanzoom,
+        onError: () => {
+          img.style.display = 'none';
+          noReceipt.style.display = 'block';
+          console.warn('Failed to load receipt for mobile:', row['Chase Description']);
+        }
+      });
+    } else {
+      const receiptUrl = row.r2_url || row['R2 URL'] || row.receipt_url || row['Receipt File'] || '';
+      img.src = receiptUrl;
+      img.onload = initPanzoom;
+      img.onerror = () => {
+        img.style.display = 'none';
+        noReceipt.style.display = 'block';
+      };
+    }
   } else {
     img.style.display = 'none';
     noReceipt.style.display = 'block';
@@ -8851,11 +8870,25 @@ function showSpeedModeTransaction() {
   businessEl.value = row['Business Type'] || '';
   notesEl.value = row['Notes'] || row['MI Description'] || '';
 
-  // Show/hide receipt image
+  // Show/hide receipt image with fallback handling
   const imgEl = document.getElementById('preview-receipt-img');
   if (receiptUrl) {
-    imgEl.src = receiptUrl;
     imgEl.style.display = 'block';
+    // Use ImageUtils for fallback chain if available
+    if (typeof ImageUtils !== 'undefined' && ImageUtils.loadWithFallback) {
+      ImageUtils.loadWithFallback(imgEl, row, {
+        onError: () => {
+          imgEl.src = ImageUtils.getPlaceholder ? ImageUtils.getPlaceholder() : '';
+          console.warn('Failed to load receipt image for:', row['Chase Description']);
+        }
+      });
+    } else {
+      imgEl.src = receiptUrl;
+      imgEl.onerror = () => {
+        console.warn('Failed to load receipt:', receiptUrl);
+        imgEl.style.display = 'none';
+      };
+    }
   } else {
     imgEl.style.display = 'none';
   }
