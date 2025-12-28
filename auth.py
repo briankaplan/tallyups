@@ -260,15 +260,16 @@ def ai_access_required(f):
             return f(*args, **kwargs)
 
         # Non-admin users need their own API keys
-        # Check if user has configured their own OpenAI or Gemini key
+        # Check if user has configured their own OpenAI, Gemini, or Anthropic key
         user_id = get_current_user_id()
 
         try:
-            from services.user_credentials_service import user_credentials_service, SERVICE_OPENAI, SERVICE_GEMINI
+            from services.user_credentials_service import user_credentials_service, SERVICE_OPENAI, SERVICE_GEMINI, SERVICE_ANTHROPIC
             has_openai = user_credentials_service.has_credential(user_id, SERVICE_OPENAI)
             has_gemini = user_credentials_service.has_credential(user_id, SERVICE_GEMINI)
+            has_anthropic = user_credentials_service.has_credential(user_id, SERVICE_ANTHROPIC)
 
-            if has_openai or has_gemini:
+            if has_openai or has_gemini or has_anthropic:
                 return f(*args, **kwargs)
         except ImportError:
             pass
@@ -279,7 +280,7 @@ def ai_access_required(f):
         return jsonify({
             'ok': False,
             'error': 'AI features require your own API key',
-            'message': 'Please add your OpenAI or Gemini API key in Settings → API Keys to use AI features.'
+            'message': 'Please add your OpenAI, Gemini, or Claude API key in Settings → API Keys to use AI features.'
         }), 403
 
     return decorated_function

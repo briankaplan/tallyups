@@ -4755,11 +4755,13 @@ def ocr_extract_full():
     if not is_admin():
         try:
             from auth import get_current_user_id
-            from services.user_credentials_service import user_credentials_service, SERVICE_OPENAI, SERVICE_GEMINI
+            from services.user_credentials_service import user_credentials_service, SERVICE_OPENAI, SERVICE_GEMINI, SERVICE_ANTHROPIC
             user_id = get_current_user_id()
-            has_key = user_credentials_service.has_credential(user_id, SERVICE_OPENAI) or user_credentials_service.has_credential(user_id, SERVICE_GEMINI)
+            has_key = (user_credentials_service.has_credential(user_id, SERVICE_OPENAI) or
+                      user_credentials_service.has_credential(user_id, SERVICE_GEMINI) or
+                      user_credentials_service.has_credential(user_id, SERVICE_ANTHROPIC))
             if not has_key:
-                return jsonify({'ok': False, 'error': 'AI features require your own API key'}), 403
+                return jsonify({'ok': False, 'error': 'AI features require your own API key (OpenAI, Gemini, or Claude)'}), 403
         except Exception:
             pass
 

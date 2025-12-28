@@ -18,15 +18,28 @@ struct APIKeysView: View {
             Section {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Image(systemName: "info.circle.fill")
+                        Image(systemName: "cpu.fill")
                             .foregroundColor(.tallyAccent)
-                        Text("API Keys for AI Features")
+                        Text("Choose Your AI Platform")
                             .font(.headline)
                     }
 
-                    Text("Add your API keys to enable AI-powered receipt processing, smart categorization, and expense insights.")
+                    Text("Add at least one API key to enable AI-powered receipt processing. You only need ONE - choose your preferred platform:")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("OpenAI - GPT-4 Vision (best accuracy)", systemImage: "star.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        Label("Gemini - Google AI (free tier available)", systemImage: "sparkles")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        Label("Claude - Anthropic (great for analysis)", systemImage: "brain.head.profile")
+                            .font(.caption)
+                            .foregroundColor(.purple)
+                    }
+                    .padding(.top, 4)
                 }
                 .padding(.vertical, 8)
             }
