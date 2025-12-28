@@ -192,10 +192,14 @@ extension AppleSignInService: ASAuthorizationControllerPresentationContextProvid
 
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         // Get the key window for presentation
-        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = scene.windows.first else {
-            fatalError("No window available for presentation")
+        // Try to find an active window, falling back to creating one if needed
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first {
+            return window
         }
+
+        // Fallback: create a temporary window (should rarely happen)
+        let window = UIWindow(frame: UIScreen.main.bounds)
         return window
     }
 }

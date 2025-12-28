@@ -73,14 +73,22 @@ struct TallyScannerApp: App {
             forTaskWithIdentifier: "com.tallyups.scanner.upload",
             using: nil
         ) { task in
-            self.handleBackgroundUpload(task: task as! BGProcessingTask)
+            guard let processingTask = task as? BGProcessingTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
+            self.handleBackgroundUpload(task: processingTask)
         }
 
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: "com.tallyups.scanner.sync",
             using: nil
         ) { task in
-            self.handleBackgroundSync(task: task as! BGAppRefreshTask)
+            guard let refreshTask = task as? BGAppRefreshTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
+            self.handleBackgroundSync(task: refreshTask)
         }
     }
 

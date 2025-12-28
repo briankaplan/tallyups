@@ -552,7 +552,10 @@ struct StorageSettingsView: View {
     }
 
     private func calculateCacheSize() {
-        let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        guard let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            cacheSize = "Unknown"
+            return
+        }
         var size: Int64 = 0
 
         if let enumerator = FileManager.default.enumerator(at: cacheURL, includingPropertiesForKeys: [.fileSizeKey]) {
@@ -573,7 +576,10 @@ struct StorageSettingsView: View {
         isClearing = true
 
         Task {
-            let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+            guard let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+                await MainActor.run { isClearing = false }
+                return
+            }
             try? FileManager.default.removeItem(at: cacheURL)
             try? FileManager.default.createDirectory(at: cacheURL, withIntermediateDirectories: true)
 
@@ -585,7 +591,9 @@ struct StorageSettingsView: View {
     }
 
     private func clearAllData() {
-        UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
+        if let bundleId = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleId)
+        }
         KeychainService.shared.clearAll()
         clearCache()
     }
