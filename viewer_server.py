@@ -2549,16 +2549,22 @@ def login():
             if is_api_request and not request.accept_mimetypes.accept_html:
                 return jsonify({"error": "Invalid password"}), 401
 
-    return render_template_string(LOGIN_PAGE_HTML, error=error, has_pin=bool(AUTH_PIN))
+    # Use new unified auth template if available, fallback to inline
+    try:
+        return render_template('auth.html')
+    except:
+        return render_template_string(LOGIN_PAGE_HTML, error=error, has_pin=bool(AUTH_PIN))
 
 
 @app.route("/register", methods=["GET"])
 def register():
     """
-    Registration page - redirects to Apple Sign In.
-    TallyUps uses Sign in with Apple for secure account creation.
+    Registration page - shows signup tab on unified auth page.
     """
-    return redirect('/auth/apple')
+    try:
+        return render_template('auth.html')
+    except:
+        return redirect('/auth/apple')
 
 
 @csrf_exempt_route
@@ -3574,6 +3580,7 @@ def dashboard_stats():
     Get dashboard statistics for the home page.
     Returns total receipts, pending count, month total, and match rate.
     Requires authentication via session or admin_key.
+    User-scoped: returns only current user's data.
     """
     # Check authentication - session OR admin_key
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
@@ -3581,6 +3588,14 @@ def dashboard_stats():
 
     if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
+
+    # Get current user for scoping
+    try:
+        from db_user_scope import get_current_user_id, USER_SCOPING_ENABLED
+        user_id = get_current_user_id()
+    except ImportError:
+        user_id = None
+        USER_SCOPING_ENABLED = False
 
     try:
         conn, db_type = get_db_connection()
@@ -3595,18 +3610,25 @@ def dashboard_stats():
         })
 
     try:
+        # Build user scoping condition
+        user_condition = ""
+        user_params = ()
+        if USER_SCOPING_ENABLED and user_id:
+            user_condition = " AND user_id = %s"
+            user_params = (user_id,)
+
         # Total receipts with r2_url or receipt_file (canonical receipt image source)
-        cursor = db_execute(conn, db_type, """
+        cursor = db_execute(conn, db_type, f"""
             SELECT COUNT(*) AS cnt FROM transactions
             WHERE ((r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != ''))
-            AND (deleted IS NULL OR deleted = 0)
-        """)
+            AND (deleted IS NULL OR deleted = 0){user_condition}
+        """, user_params)
         row = cursor.fetchone()
         total_matched = row['cnt'] if row else 0
         cursor.close()
 
         # Total transactions (excluding deleted)
-        cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM transactions WHERE (deleted IS NULL OR deleted = 0)")
+        cursor = db_execute(conn, db_type, f"SELECT COUNT(*) AS cnt FROM transactions WHERE (deleted IS NULL OR deleted = 0){user_condition}", user_params)
         row = cursor.fetchone()
         total_transactions = row['cnt'] if row else 0
         cursor.close()
@@ -3614,7 +3636,10 @@ def dashboard_stats():
         # Pending incoming receipts (handle if table doesn't exist)
         pending = 0
         try:
-            cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM incoming_receipts WHERE status = 'pending'")
+            if USER_SCOPING_ENABLED and user_id:
+                cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM incoming_receipts WHERE status = 'pending' AND user_id = %s", (user_id,))
+            else:
+                cursor = db_execute(conn, db_type, "SELECT COUNT(*) AS cnt FROM incoming_receipts WHERE status = 'pending'")
             row = cursor.fetchone()
             pending = row['cnt'] if row else 0
             cursor.close()
@@ -3625,7 +3650,7 @@ def dashboard_stats():
         # This month's spending - sum all expenses this month (exclude payments and deleted)
         month_total = 0.0
         try:
-            cursor = db_execute(conn, db_type, """
+            cursor = db_execute(conn, db_type, f"""
                 SELECT COALESCE(SUM(ABS(CAST(chase_amount AS DECIMAL(10,2)))), 0) AS total
                 FROM transactions
                 WHERE chase_date >= DATE_FORMAT(CURRENT_DATE(), '%Y-%m-01')
@@ -3633,8 +3658,8 @@ def dashboard_stats():
                   AND chase_description NOT LIKE '%Payment%'
                   AND chase_description NOT LIKE '%AUTOMATIC PAYMENT%'
                   AND chase_description NOT LIKE '%Thank You%'
-                  AND (deleted IS NULL OR deleted = 0)
-            """)
+                  AND (deleted IS NULL OR deleted = 0){user_condition}
+            """, user_params)
             row = cursor.fetchone()
             month_total = float(row['total']) if row and row['total'] else 0.0
             cursor.close()

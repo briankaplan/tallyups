@@ -363,6 +363,117 @@ def email_login():
         return jsonify({'success': False, 'error': 'Login failed'}), 500
 
 
+# ============================================================================
+# REGISTRATION
+# ============================================================================
+
+@auth_bp.route('/register', methods=['POST'])
+@auth_rate_limit('register')  # 3 per minute - prevent spam registrations
+def register():
+    """
+    Register a new user with email and password.
+
+    Request body:
+    {
+        "name": "John Doe",
+        "email": "user@example.com",
+        "password": "password123",
+        "device_id": "...",       // Optional
+        "device_name": "..."      // Optional
+    }
+    """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'success': False, 'error': 'Multi-user mode not enabled'}), 503
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Request body required'}), 400
+
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    device_id = data.get('device_id', 'unknown')
+
+    # Validation
+    if not name:
+        return jsonify({'success': False, 'error': 'Name required'}), 400
+    if not email:
+        return jsonify({'success': False, 'error': 'Email required'}), 400
+    if not password:
+        return jsonify({'success': False, 'error': 'Password required'}), 400
+    if len(password) < 8:
+        return jsonify({'success': False, 'error': 'Password must be at least 8 characters'}), 400
+    if not any(c.isdigit() for c in password):
+        return jsonify({'success': False, 'error': 'Password must contain at least one number'}), 400
+
+    # Validate email format
+    import re
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+        return jsonify({'success': False, 'error': 'Invalid email format'}), 400
+
+    try:
+        import bcrypt
+        import uuid
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if email already exists
+        cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+        existing = cursor.fetchone()
+
+        if existing:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'error': 'Email already registered'}), 400
+
+        # Generate user ID and hash password
+        user_id = str(uuid.uuid4())
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        # Create user
+        cursor.execute("""
+            INSERT INTO users (id, email, name, password_hash, role, is_active, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, 'user', TRUE, NOW(), NOW())
+        """, (user_id, email, name, password_hash))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        # Create session/tokens
+        if JWT_AVAILABLE:
+            tokens = create_session(
+                user_id=user_id,
+                device_id=device_id,
+                device_name=data.get('device_name'),
+                device_type=data.get('device_type', 'web'),
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string
+            )
+        else:
+            tokens = {'access_token': None, 'refresh_token': None}
+
+        logger.info(f"New user registered: {email}")
+
+        return jsonify({
+            'success': True,
+            'access_token': tokens.get('access_token'),
+            'refresh_token': tokens.get('refresh_token'),
+            'user': {
+                'id': user_id,
+                'email': email,
+                'name': name,
+                'role': 'user',
+                'onboarding_completed': False
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Registration error: {e}")
+        return jsonify({'success': False, 'error': 'Registration failed'}), 500
+
+
 @auth_bp.route('/apple', methods=['POST'])
 @auth_rate_limit('login')  # 5 per minute - prevent brute force
 def apple_sign_in():
