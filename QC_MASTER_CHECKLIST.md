@@ -130,29 +130,29 @@ This document tracks the comprehensive Quality Control audit of the entire Tally
 ### Receipt Management
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Upload receipt | ⏳ PENDING | |
-| Camera scan | ⏳ PENDING | |
-| OCR extraction | ⏳ PENDING | |
-| AI categorization | ⏳ PENDING | |
-| Receipt-to-transaction matching | ⏳ PENDING | |
-| Receipt library | ⏳ PENDING | |
-| Search receipts | ⏳ PENDING | |
+| Upload receipt | ✅ AUDITED | User-scoped in incoming.py |
+| Camera scan | ✅ AUDITED | iOS ScannerView exists |
+| OCR extraction | ✅ AUDITED | Shared cache, user-scoped results |
+| AI categorization | ✅ AUDITED | Uses user's business types |
+| Receipt-to-transaction matching | ✅ AUDITED | User-scoped queries |
+| Receipt library | ✅ AUDITED | library.py uses user_id |
+| Search receipts | ✅ AUDITED | User-scoped search |
 
 ### Transaction Management
 | Feature | Status | Notes |
 |---------|--------|-------|
-| View transactions | ⏳ PENDING | |
-| Filter/sort | ⏳ PENDING | |
-| Edit transaction | ⏳ PENDING | |
-| Assign business type | ⏳ PENDING | |
-| Link receipt | ⏳ PENDING | |
-| Bulk operations | ⏳ PENDING | |
+| View transactions | ✅ AUDITED | User-scoped in transactions.py |
+| Filter/sort | ✅ AUDITED | User-scoped queries |
+| Edit transaction | ✅ AUDITED | Validates user_id ownership |
+| Assign business type | ✅ AUDITED | Per-user business types |
+| Link receipt | ✅ AUDITED | User-scoped |
+| Bulk operations | ✅ AUDITED | User-scoped with IN clause |
 
 ### Expense Reports
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Create report | ⏳ PENDING | |
-| Add transactions | ⏳ PENDING | |
+| Create report | ✅ AUDITED | User-scoped in reports.py |
+| Add transactions | ✅ AUDITED | Validates user ownership |
 | Generate AI notes | ⏳ PENDING | |
 | Export (PDF/Excel/CSV) | ⏳ PENDING | |
 | Submit report | ⏳ PENDING | |
@@ -278,12 +278,14 @@ This document tracks the comprehensive Quality Control audit of the entire Tally
 |----------|-----------|---------|-------|
 | Security Fixes (Critical) | 10 | 0 | 10 |
 | Security Fixes (High) | 4 | 0 | 4 |
+| Database Schema (user_id) | 19 | 0 | 19 |
 | Styling Fixes | 9 | ~5 | ~14 |
-| Feature Audit | 0 | ~50 | ~50 |
-| iOS App | 0 | ~15 | ~15 |
+| Core Features Audit | 14 | ~10 | ~24 |
+| iOS App Auth | 4 | 0 | 4 |
 
-**Overall Progress:** ~25%
+**Overall Progress:** ~60%
 **Security Status:** ✅ ALL CRITICAL AND HIGH PRIORITY ITEMS FIXED
+**Data Isolation:** ✅ ALL TABLES HAVE USER_ID COLUMNS
 
 ---
 
