@@ -239,6 +239,130 @@ def create_session(
 # AUTH ROUTES
 # ============================================================================
 
+@auth_bp.route('/login', methods=['POST'])
+@auth_rate_limit('login')  # 5 per minute - prevent brute force
+def email_login():
+    """
+    Login with email and password.
+    Used for demo account and email-based users.
+
+    Request body:
+    {
+        "email": "demo@tallyups.com",
+        "password": "...",
+        "device_id": "...",       // Unique device identifier
+        "device_name": "iPhone"   // Optional
+    }
+
+    Returns:
+    {
+        "success": true,
+        "access_token": "...",
+        "refresh_token": "...",
+        "user": {
+            "id": "...",
+            "email": "...",
+            "name": "...",
+            "role": "user",
+            "onboarding_completed": true
+        }
+    }
+    """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'success': False, 'error': 'Multi-user mode not enabled'}), 503
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'success': False, 'error': 'Request body required'}), 400
+
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    device_id = data.get('device_id', 'unknown')
+
+    if not email:
+        return jsonify({'success': False, 'error': 'Email required'}), 400
+    if not password:
+        return jsonify({'success': False, 'error': 'Password required'}), 400
+
+    try:
+        import bcrypt
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Find user by email
+        cursor.execute("""
+            SELECT id, email, name, password_hash, role, is_active,
+                   is_demo_account, onboarding_completed
+            FROM users
+            WHERE email = %s
+        """, (email,))
+        user = cursor.fetchone()
+
+        if not user:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+
+        if not user.get('password_hash'):
+            conn.close()
+            return jsonify({'success': False, 'error': 'Password login not enabled for this account'}), 401
+
+        if not user.get('is_active', True):
+            conn.close()
+            return jsonify({'success': False, 'error': 'Account is disabled'}), 403
+
+        # Verify password
+        try:
+            password_valid = bcrypt.checkpw(
+                password.encode('utf-8'),
+                user['password_hash'].encode('utf-8')
+            )
+        except Exception:
+            password_valid = False
+
+        if not password_valid:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Invalid email or password'}), 401
+
+        # Update last login
+        cursor.execute("""
+            UPDATE users SET last_login_at = NOW() WHERE id = %s
+        """, (user['id'],))
+        conn.commit()
+        conn.close()
+
+        # Create session/tokens
+        if JWT_AVAILABLE:
+            tokens = create_session(
+                user_id=user['id'],
+                device_id=device_id,
+                device_name=data.get('device_name'),
+                device_type=data.get('device_type', 'ios'),
+                ip_address=request.remote_addr,
+                user_agent=request.user_agent.string
+            )
+        else:
+            tokens = {'access_token': None, 'refresh_token': None}
+
+        return jsonify({
+            'success': True,
+            'access_token': tokens.get('access_token'),
+            'refresh_token': tokens.get('refresh_token'),
+            'user': {
+                'id': user['id'],
+                'email': user['email'],
+                'name': user['name'],
+                'role': user['role'],
+                'onboarding_completed': user.get('onboarding_completed', False)
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Email login error: {e}")
+        return jsonify({'success': False, 'error': 'Login failed'}), 500
+
+
 @auth_bp.route('/apple', methods=['POST'])
 @auth_rate_limit('login')  # 5 per minute - prevent brute force
 def apple_sign_in():

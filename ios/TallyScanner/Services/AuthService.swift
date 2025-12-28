@@ -118,6 +118,38 @@ class AuthService: ObservableObject {
 
     // MARK: - Login Methods
 
+    /// Login with email and password (for demo account and email-based users)
+    func loginWithEmail(_ email: String, password: String) async -> Bool {
+        isLoading = true
+        error = nil
+
+        defer { isLoading = false }
+
+        do {
+            let result = try await APIClient.shared.loginWithEmail(email: email, password: password)
+            if result.success {
+                // Store tokens
+                if let accessToken = result.accessToken {
+                    KeychainService.shared.saveSensitive(key: "access_token", value: accessToken)
+                }
+                if let refreshToken = result.refreshToken {
+                    KeychainService.shared.saveSensitive(key: "refresh_token", value: refreshToken)
+                }
+
+                currentUser = result.user
+                needsOnboarding = !(result.user?.onboardingCompleted ?? true)
+                isAuthenticated = true
+                return true
+            } else {
+                error = result.error ?? "Invalid email or password"
+                return false
+            }
+        } catch {
+            self.error = error.localizedDescription
+            return false
+        }
+    }
+
     func loginWithPassword(_ password: String) async -> Bool {
         isLoading = true
         error = nil

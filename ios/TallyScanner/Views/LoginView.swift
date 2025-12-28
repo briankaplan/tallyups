@@ -8,9 +8,12 @@ struct LoginView: View {
     @State private var password = ""
     @State private var pin = ""
     @State private var apiKey = ""
+    @State private var email = ""
+    @State private var emailPassword = ""
     @State private var loginMethod = LoginMethod.password
     @State private var showingSetup = false
     @State private var showingLegacyLogin = false
+    @State private var showingDemoLogin = false
     @State private var isAnimating = false
 
     enum LoginMethod: String, CaseIterable {
@@ -18,6 +21,10 @@ struct LoginView: View {
         case pin = "PIN"
         case apiKey = "API Key"
     }
+
+    // Demo account credentials (for App Store review)
+    private let demoEmail = "demo@tallyups.com"
+    private let demoPassword = "TallyDemo2025!"
 
     var body: some View {
         ZStack {
@@ -51,6 +58,9 @@ struct LoginView: View {
                     // Sign in with Apple (Primary)
                     appleSignInButton
 
+                    // Demo Account Button (for App Store review)
+                    demoLoginButton
+
                     // Biometric Login (if available and has stored credentials)
                     if authService.canUseBiometrics {
                         biometricButton
@@ -69,6 +79,23 @@ struct LoginView: View {
                             .frame(height: 1)
                     }
                     .padding(.vertical, 8)
+
+                    // Email/Password Login Toggle
+                    Button(action: { withAnimation { showingDemoLogin.toggle() } }) {
+                        HStack {
+                            Text("Sign in with Email")
+                                .font(.subheadline)
+                            Image(systemName: showingDemoLogin ? "chevron.up" : "chevron.down")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.gray)
+                    }
+
+                    // Email/Password Login Form (collapsible)
+                    if showingDemoLogin {
+                        emailLoginForm
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
 
                     // Legacy Login Toggle
                     Button(action: { withAnimation { showingLegacyLogin.toggle() } }) {
@@ -168,6 +195,65 @@ struct LoginView: View {
         }
     }
 
+    // MARK: - Demo Login Button
+
+    private var demoLoginButton: some View {
+        Button(action: loginWithDemo) {
+            HStack {
+                Image(systemName: "person.crop.circle.badge.checkmark")
+                    .font(.title2)
+                Text("Try Demo Account")
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.blue.opacity(0.2))
+            .foregroundColor(.blue)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Color.blue.opacity(0.5), lineWidth: 1)
+            )
+        }
+        .disabled(authService.isLoading)
+    }
+
+    // MARK: - Email Login Form
+
+    private var emailLoginForm: some View {
+        VStack(spacing: 16) {
+            TextField("Email", text: $email)
+                .keyboardType(.emailAddress)
+                .textContentType(.emailAddress)
+                .autocapitalization(.none)
+                .autocorrectionDisabled()
+                .padding()
+                .background(Color.tallyBackground)
+                .cornerRadius(8)
+
+            SecureField("Password", text: $emailPassword)
+                .textContentType(.password)
+                .padding()
+                .background(Color.tallyBackground)
+                .cornerRadius(8)
+
+            Button(action: loginWithEmail) {
+                if authService.isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                } else {
+                    Text("Sign In")
+                        .font(.headline)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.tallyAccent)
+            .foregroundColor(.black)
+            .cornerRadius(12)
+            .disabled(authService.isLoading || email.isEmpty || emailPassword.isEmpty)
+        }
+    }
+
     // MARK: - Legacy Login Form
 
     private var legacyLoginForm: some View {
@@ -241,6 +327,18 @@ struct LoginView: View {
     private func signInWithApple() {
         Task {
             _ = await authService.signInWithApple()
+        }
+    }
+
+    private func loginWithDemo() {
+        Task {
+            _ = await authService.loginWithEmail(demoEmail, password: demoPassword)
+        }
+    }
+
+    private func loginWithEmail() {
+        Task {
+            _ = await authService.loginWithEmail(email, password: emailPassword)
         }
     }
 

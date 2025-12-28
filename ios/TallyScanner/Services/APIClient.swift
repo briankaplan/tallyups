@@ -90,6 +90,69 @@ actor APIClient {
 
     // MARK: - Authentication
 
+    /// Response from email/password login
+    struct EmailLoginResponse: Codable {
+        let success: Bool
+        let error: String?
+        let accessToken: String?
+        let refreshToken: String?
+        let user: AuthService.UserInfo?
+
+        enum CodingKeys: String, CodingKey {
+            case success, error, user
+            case accessToken = "access_token"
+            case refreshToken = "refresh_token"
+        }
+    }
+
+    /// Login with email and password (for demo account)
+    func loginWithEmail(email: String, password: String) async throws -> EmailLoginResponse {
+        var request = try makeRequest(path: "/api/auth/login", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "email": email,
+            "password": password,
+            "device_id": UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString,
+            "device_name": UIDevice.current.name
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("🔐 APIClient: Attempting email login to \(baseURL)/api/auth/login")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        print("🔐 APIClient: Email login response status: \(httpResponse.statusCode)")
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+
+        if httpResponse.statusCode == 200 {
+            var loginResponse = try decoder.decode(EmailLoginResponse.self, from: data)
+
+            // Store session cookie if present
+            if let url = URL(string: baseURL),
+               let cookies = HTTPCookieStorage.shared.cookies(for: url) {
+                for cookie in cookies where cookie.name == "session" {
+                    setSessionToken(cookie.value)
+                }
+            }
+
+            return loginResponse
+        } else {
+            // Try to decode error response
+            if let errorResponse = try? decoder.decode(EmailLoginResponse.self, from: data) {
+                return errorResponse
+            }
+            return EmailLoginResponse(success: false, error: "Login failed", accessToken: nil, refreshToken: nil, user: nil)
+        }
+    }
+
     func login(password: String) async throws -> Bool {
         var request = try makeRequest(path: "/login", method: "POST")
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
