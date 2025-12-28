@@ -304,7 +304,7 @@ def trigger_gmail_scan():
 
     Body:
     {
-        "accounts": ["email@example.com", ...],  # Optional, defaults to all
+        "accounts": ["email@example.com", ...],  # Optional, defaults to user's connected accounts
         "days_back": 7  # Optional, how many days to look back
     }
     """
@@ -318,12 +318,34 @@ def trigger_gmail_scan():
 
     data = request.get_json(force=True) or {}
 
-    accounts = data.get('accounts', [
-        'kaplan.brian@gmail.com',
-        'brian@business.com',
-        'brian@secondary.com'
-    ])
+    # Get user's connected Gmail accounts from database
+    user_accounts = []
+    try:
+        from auth import get_current_user_id
+        from db_mysql import db
+        user_id = get_current_user_id()
+        if user_id:
+            conn = db.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT account_email FROM user_credentials
+                WHERE user_id = %s AND service_type = 'gmail'
+                AND is_active = TRUE AND account_email IS NOT NULL
+            ''', (user_id,))
+            user_accounts = [row['account_email'] for row in cursor.fetchall()]
+            conn.close()
+    except Exception as e:
+        logger.warning(f"Could not fetch user Gmail accounts: {e}")
+
+    accounts = data.get('accounts', user_accounts if user_accounts else [])
     days_back = int(data.get('days_back', 7))
+
+    if not accounts:
+        return jsonify({
+            'ok': False,
+            'error': 'No Gmail accounts connected. Please connect a Gmail account in Settings → Connected Services.',
+            'message': 'Go to Settings to connect your Gmail account for receipt scanning.'
+        }), 400
 
     since_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
 

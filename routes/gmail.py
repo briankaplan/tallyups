@@ -35,12 +35,29 @@ except ImportError:
     logger = logging.getLogger(__name__)
 
 
-# Gmail accounts configuration
-GMAIL_ACCOUNTS = [
-    'brian@business.com',
-    'kaplan.brian@gmail.com',
-    'brian@secondary.com'
-]
+def get_user_gmail_accounts(user_id=None):
+    """Get Gmail accounts for the current user from database."""
+    try:
+        from db_mysql import db
+        if not user_id:
+            from auth import get_current_user_id
+            user_id = get_current_user_id()
+        if not user_id:
+            return []
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT account_email, account_name, is_active, last_used_at
+            FROM user_credentials
+            WHERE user_id = %s AND service_type = 'gmail'
+            AND account_email IS NOT NULL
+        ''', (user_id,))
+        accounts = cursor.fetchall()
+        conn.close()
+        return accounts
+    except Exception as e:
+        logger.warning(f"Could not fetch user Gmail accounts: {e}")
+        return []
 
 
 # =============================================================================
@@ -50,16 +67,16 @@ GMAIL_ACCOUNTS = [
 @gmail_bp.route('/accounts', methods=['GET'])
 def list_accounts():
     """
-    List connected Gmail accounts and their status.
+    List connected Gmail accounts for the current user.
 
     Response:
         {
             "success": true,
             "accounts": [
                 {
-                    "email": "brian@business.com",
+                    "email": "user@gmail.com",
                     "connected": true,
-                    "business_type": "Business",
+                    "account_name": "Personal",
                     "last_sync": "2024-12-20T10:30:00Z"
                 },
                 ...
@@ -67,21 +84,20 @@ def list_accounts():
         }
     """
     try:
-        from pathlib import Path
-        credentials_dir = Path('credentials')
+        # Get accounts from database for current user
+        db_accounts = get_user_gmail_accounts()
 
         accounts = []
-        for email in GMAIL_ACCOUNTS:
-            token_file = credentials_dir / f'tokens_{email.replace("@", "_").replace(".", "_")}.json'
-            pickle_file = credentials_dir / f'token_{email}.pickle'
+        for acc in db_accounts:
+            email = acc.get('account_email', '')
+            connected = acc.get('is_active', False)
+            account_name = acc.get('account_name', '')
 
-            connected = token_file.exists() or pickle_file.exists()
-
-            # Determine business type from email
-            if 'business' in email:
+            # Determine business type from account_name or email
+            if account_name:
+                business_type = account_name
+            elif 'business' in email.lower():
                 business_type = 'Business'
-            elif 'secondary' in email:
-                business_type = 'Secondary'
             else:
                 business_type = 'Personal'
 
@@ -116,11 +132,12 @@ def authenticate_account(account):
         }
     """
     try:
-        if account not in GMAIL_ACCOUNTS:
-            return jsonify({
-                'success': False,
-                'error': f'Unknown account: {account}'
-            }), 400
+        # Validate account belongs to current user
+        user_accounts = get_user_gmail_accounts()
+        user_emails = [acc.get('account_email', '') for acc in user_accounts]
+        if account not in user_emails and '@' in account:
+            # Allow new account connections
+            pass
 
         # For now, return instructions
         return jsonify({
@@ -491,7 +508,12 @@ def search_gmail():
         }
     """
     try:
-        account = request.args.get('account', GMAIL_ACCOUNTS[0])
+        # Get first connected account as default
+        user_accounts = get_user_gmail_accounts()
+        default_account = user_accounts[0].get('account_email') if user_accounts else None
+        account = request.args.get('account', default_account)
+        if not account:
+            return jsonify({'success': False, 'error': 'No Gmail account connected'}), 400
         query = request.args.get('query', 'label:receipts OR subject:receipt OR subject:order')
         max_results = int(request.args.get('max_results', 20))
 
@@ -576,12 +598,18 @@ def get_sync_status():
         from db_mysql import get_mysql_db
         db = get_mysql_db()
 
+        # Get user's connected Gmail accounts
+        user_accounts = get_user_gmail_accounts()
+        if not user_accounts:
+            return jsonify({'success': True, 'accounts': []})
+
         accounts = []
 
         with db._pool.connection() as conn:
             cursor = conn.cursor()
 
-            for email in GMAIL_ACCOUNTS:
+            for acc in user_accounts:
+                email = acc.get('account_email', '')
                 cursor.execute("""
                     SELECT COUNT(*), MAX(created_at)
                     FROM gmail_receipts
@@ -629,7 +657,17 @@ def trigger_sync():
         account = data.get('account')
         days_back = data.get('days_back', 30)
 
-        accounts_to_sync = [account] if account else GMAIL_ACCOUNTS
+        # Get user's connected accounts
+        user_accounts = get_user_gmail_accounts()
+        user_emails = [acc.get('account_email', '') for acc in user_accounts]
+
+        accounts_to_sync = [account] if account else user_emails
+
+        if not accounts_to_sync:
+            return jsonify({
+                'success': False,
+                'error': 'No Gmail accounts connected. Connect an account in Settings.'
+            }), 400
 
         # For now, return success - actual sync would be async
         return jsonify({
@@ -693,7 +731,12 @@ def extract_contacts_from_emails():
     """
     try:
         data = request.get_json() or {}
-        account = data.get('account', GMAIL_ACCOUNTS[0])
+        # Get first connected account as default
+        user_accounts = get_user_gmail_accounts()
+        default_account = user_accounts[0].get('account_email') if user_accounts else None
+        account = data.get('account', default_account)
+        if not account:
+            return jsonify({'success': False, 'error': 'No Gmail account connected'}), 400
         days_back = data.get('days_back', 90)
         max_messages = data.get('max_messages', 500)
 

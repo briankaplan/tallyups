@@ -841,31 +841,49 @@ try:
     from apscheduler.triggers.interval import IntervalTrigger
     import atexit
 
+    def get_all_connected_gmail_accounts():
+        """Get all active Gmail accounts from all users in the database."""
+        try:
+            conn, db_type = get_db_connection()
+            cursor = db_execute(conn, db_type, '''
+                SELECT DISTINCT account_email, user_id
+                FROM user_credentials
+                WHERE service_type = 'gmail'
+                AND is_active = TRUE
+                AND account_email IS NOT NULL
+            ''')
+            accounts = cursor.fetchall()
+            return_db_connection(conn)
+            return [(row['account_email'], row['user_id']) for row in accounts]
+        except Exception as e:
+            print(f"   ⚠️ Could not fetch Gmail accounts from DB: {e}")
+            return []
+
     def scheduled_inbox_scan():
         """Background job to scan Gmail for new receipts every 4 hours."""
         print(f"\n⏰ [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled inbox scan...")
         try:
             from incoming_receipts_service import scan_gmail_for_new_receipts, save_incoming_receipt
 
-            accounts = [
-                'kaplan.brian@gmail.com',
-                'brian@business.com',
-                'brian@secondary.com'
-            ]
+            # Get all connected Gmail accounts from all users
+            accounts = get_all_connected_gmail_accounts()
+            if not accounts:
+                print("   ⚠️ No connected Gmail accounts found in database")
+                return
 
             # Only scan last 7 days for new receipts (not all history)
             from datetime import timedelta
             since_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
 
             total_new = 0
-            for account in accounts:
+            for account_email, user_id in accounts:
                 try:
-                    receipts = scan_gmail_for_new_receipts(account, since_date)
+                    receipts = scan_gmail_for_new_receipts(account_email, since_date, user_id=user_id)
                     for receipt in receipts:
                         if save_incoming_receipt(receipt):
                             total_new += 1
                 except Exception as acc_error:
-                    print(f"   ❌ Error scanning {account}: {acc_error}")
+                    print(f"   ❌ Error scanning {account_email}: {acc_error}")
 
             print(f"   ✅ Scheduled scan complete: {total_new} new receipts added")
 
@@ -3404,28 +3422,31 @@ def health_check():
         "key_prefix": gemini_key[:8] + "..." if gemini_configured else None
     }
 
-    # Check Gmail accounts (check both env vars and files)
+    # Check Gmail accounts from database (multi-user support)
     gmail_accounts = []
-    gmail_dir = os.path.join(BASE_DIR, 'gmail_tokens')
-    for email in ['kaplan.brian@gmail.com', 'brian@secondary.com', 'brian@business.com']:
-        # Check environment variable first (Railway persistence)
-        env_key = f"GMAIL_TOKEN_{email.replace('@', '_').replace('.', '_').upper()}"
-        env_token = os.environ.get(env_key)
-
-        # Check file-based token as fallback
-        safe_email = email.replace('@', '_at_').replace('.', '_')
-        token_path = os.path.join(gmail_dir, f'{safe_email}_token.json')
-        file_exists = os.path.exists(token_path) if os.path.isdir(gmail_dir) else False
-
-        connected = bool(env_token) or file_exists
-        gmail_accounts.append({
-            "email": email,
-            "connected": connected,
-            "source": "env" if env_token else ("file" if file_exists else None)
-        })
+    try:
+        conn, db_type = get_db_connection()
+        cursor = db_execute(conn, db_type, '''
+            SELECT DISTINCT account_email, is_active,
+                   (SELECT display_name FROM users WHERE user_id = uc.user_id LIMIT 1) as user_name
+            FROM user_credentials uc
+            WHERE service_type = 'gmail'
+            AND account_email IS NOT NULL
+            ORDER BY account_email
+        ''')
+        db_accounts = cursor.fetchall()
+        return_db_connection(conn)
+        for acc in db_accounts:
+            gmail_accounts.append({
+                "email": acc['account_email'],
+                "connected": acc['is_active'],
+                "source": "database"
+            })
+    except Exception as gmail_err:
+        print(f"   ⚠️ Error fetching Gmail accounts: {gmail_err}")
     health_data["services"]["gmail"] = {
         "accounts": gmail_accounts,
-        "connected_count": sum(1 for a in gmail_accounts if a['connected'])
+        "connected_count": sum(1 for a in gmail_accounts if a.get('connected'))
     }
 
     # Check OCR availability
