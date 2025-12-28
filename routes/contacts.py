@@ -746,6 +746,9 @@ def get_relationship_health(contact_id):
     if not check_auth():
         return jsonify({'success': False, 'error': 'Authentication required'}), 401
 
+    # USER SCOPING: Get user_id for filtering
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
     try:
         from db_mysql import get_mysql_db
         db = get_mysql_db()
@@ -753,11 +756,17 @@ def get_relationship_health(contact_id):
         with db._pool.connection() as conn:
             cursor = conn.cursor()
 
-            # Get contact relationship data
-            cursor.execute("""
-                SELECT relationship_score, last_interaction, interaction_count
-                FROM contacts WHERE id = %s
-            """, (contact_id,))
+            # Get contact relationship data (with user isolation)
+            if user_id:
+                cursor.execute("""
+                    SELECT relationship_score, last_interaction, interaction_count
+                    FROM contacts WHERE id = %s AND user_id = %s
+                """, (contact_id, user_id))
+            else:
+                cursor.execute("""
+                    SELECT relationship_score, last_interaction, interaction_count
+                    FROM contacts WHERE id = %s
+                """, (contact_id,))
 
             row = cursor.fetchone()
             if not row:
@@ -819,6 +828,9 @@ def get_relationship_graph():
     if not check_auth():
         return jsonify({'success': False, 'error': 'Authentication required'}), 401
 
+    # USER SCOPING: Get user_id for filtering
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
     try:
         from db_mysql import get_mysql_db
         db = get_mysql_db()
@@ -826,13 +838,22 @@ def get_relationship_graph():
         with db._pool.connection() as conn:
             cursor = conn.cursor()
 
-            # Get contacts as nodes
-            cursor.execute("""
-                SELECT id, name, company, relationship_score
-                FROM contacts
-                ORDER BY relationship_score DESC
-                LIMIT 100
-            """)
+            # Get contacts as nodes (with user isolation)
+            if user_id:
+                cursor.execute("""
+                    SELECT id, name, company, relationship_score
+                    FROM contacts
+                    WHERE user_id = %s
+                    ORDER BY relationship_score DESC
+                    LIMIT 100
+                """, (user_id,))
+            else:
+                cursor.execute("""
+                    SELECT id, name, company, relationship_score
+                    FROM contacts
+                    ORDER BY relationship_score DESC
+                    LIMIT 100
+                """)
 
             nodes = []
             for row in cursor.fetchall():
@@ -898,6 +919,9 @@ def get_nudges():
     if not check_auth():
         return jsonify({'success': False, 'error': 'Authentication required'}), 401
 
+    # USER SCOPING: Get user_id for filtering
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
     try:
         from db_mysql import get_mysql_db
         db = get_mysql_db()
@@ -905,15 +929,26 @@ def get_nudges():
         with db._pool.connection() as conn:
             cursor = conn.cursor()
 
-            # Find contacts that need attention
-            cursor.execute("""
-                SELECT id, name, email, last_interaction, relationship_score
-                FROM contacts
-                WHERE last_interaction < DATE_SUB(NOW(), INTERVAL 30 DAY)
-                   OR last_interaction IS NULL
-                ORDER BY relationship_score DESC
-                LIMIT 20
-            """)
+            # Find contacts that need attention (with user isolation)
+            if user_id:
+                cursor.execute("""
+                    SELECT id, name, email, last_interaction, relationship_score
+                    FROM contacts
+                    WHERE user_id = %s
+                      AND (last_interaction < DATE_SUB(NOW(), INTERVAL 30 DAY)
+                           OR last_interaction IS NULL)
+                    ORDER BY relationship_score DESC
+                    LIMIT 20
+                """, (user_id,))
+            else:
+                cursor.execute("""
+                    SELECT id, name, email, last_interaction, relationship_score
+                    FROM contacts
+                    WHERE last_interaction < DATE_SUB(NOW(), INTERVAL 30 DAY)
+                       OR last_interaction IS NULL
+                    ORDER BY relationship_score DESC
+                    LIMIT 20
+                """)
 
             nudges = []
             for row in cursor.fetchall():
