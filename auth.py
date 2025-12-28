@@ -528,7 +528,7 @@ LOGIN_PAGE_HTML = '''
         <form method="POST" id="login-form">
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="admin@tallyups.com" autofocus required autocomplete="email">
+                <input type="email" id="email" name="email" placeholder="kaplan.brian@gmail.com" autofocus required autocomplete="email">
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
@@ -538,7 +538,7 @@ LOGIN_PAGE_HTML = '''
         </form>
 
         <div class="alt-actions">
-            <a href="/register">Create an account</a>
+            <a href="#" onclick="signInWithApple(); return false;">Create an account with Apple</a>
         </div>
 
         <div class="footer">

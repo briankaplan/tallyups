@@ -87,7 +87,7 @@ def get_or_create_user(
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # Check if user exists
+        # First, check if user exists by Apple user ID
         cursor.execute("""
             SELECT id, email, name, role, is_active, onboarding_completed
             FROM users
@@ -97,7 +97,7 @@ def get_or_create_user(
         user = cursor.fetchone()
 
         if user:
-            # Update last login
+            # User exists with this Apple ID - update and return
             cursor.execute("""
                 UPDATE users
                 SET last_login_at = NOW(),
@@ -109,7 +109,32 @@ def get_or_create_user(
 
             return user
 
-        # Create new user
+        # No user with this Apple ID - check if email already exists
+        # This handles the case where user signed up with email first
+        if email:
+            cursor.execute("""
+                SELECT id, email, name, role, is_active, onboarding_completed
+                FROM users
+                WHERE email = %s AND apple_user_id IS NULL
+            """, (email,))
+
+            existing_user = cursor.fetchone()
+
+            if existing_user:
+                # Link Apple ID to existing user with same email
+                cursor.execute("""
+                    UPDATE users
+                    SET apple_user_id = %s,
+                        last_login_at = NOW(),
+                        name = COALESCE(%s, name)
+                    WHERE id = %s
+                """, (apple_user_id, name, existing_user['id']))
+                conn.commit()
+
+                logger.info(f"Linked Apple ID to existing user {existing_user['id']} via email {email}")
+                return existing_user
+
+        # No existing user found - create new one
         user_id = generate_user_id()
 
         cursor.execute("""

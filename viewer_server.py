@@ -2519,6 +2519,15 @@ def login():
     return render_template_string(LOGIN_PAGE_HTML, error=error, has_pin=bool(AUTH_PIN))
 
 
+@app.route("/register", methods=["GET"])
+def register():
+    """
+    Registration page - redirects to Apple Sign In.
+    TallyUps uses Sign in with Apple for secure account creation.
+    """
+    return redirect('/auth/apple')
+
+
 @csrf_exempt_route
 @app.route("/login/pin", methods=["GET", "POST"])
 @rate_limit("10 per minute")  # Prevent brute force PIN attacks
@@ -3060,7 +3069,7 @@ def auth_apple_callback():
         try:
             cursor = conn.cursor()
 
-            # Check if user exists with this Apple ID
+            # First check if user exists with this Apple ID
             cursor.execute("""
                 SELECT user_id, email, display_name, role
                 FROM users
@@ -3069,7 +3078,7 @@ def auth_apple_callback():
             existing = cursor.fetchone()
 
             if existing:
-                # Existing user - update last login
+                # Existing user with this Apple ID - update last login
                 user_id = existing['user_id']
                 cursor.execute("""
                     UPDATE users SET last_login = NOW()
@@ -3080,19 +3089,57 @@ def auth_apple_callback():
                 display_name = existing['display_name']
                 role = existing['role']
             else:
-                # New user - create account
-                import uuid
-                user_id = str(uuid.uuid4())
-                display_name = name or (email.split('@')[0] if email else 'User')
-                role = 'user'
+                # No user with this Apple ID - check if email already exists
+                # This links Apple Sign In to existing accounts with same email
+                if email:
+                    cursor.execute("""
+                        SELECT user_id, email, display_name, role
+                        FROM users
+                        WHERE email = %s AND apple_user_id IS NULL
+                    """, (email,))
+                    email_match = cursor.fetchone()
 
-                cursor.execute("""
-                    INSERT INTO users (user_id, email, display_name, apple_user_id, role, created_at, last_login)
-                    VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
-                """, (user_id, email, display_name, apple_user_id, role))
-                conn.commit()
+                    if email_match:
+                        # Link Apple ID to existing user with same email
+                        user_id = email_match['user_id']
+                        cursor.execute("""
+                            UPDATE users
+                            SET apple_user_id = %s, last_login = NOW()
+                            WHERE user_id = %s
+                        """, (apple_user_id, user_id))
+                        conn.commit()
 
-                logger.info(f"Created new user via Apple Sign In: {email}")
+                        display_name = email_match['display_name']
+                        role = email_match['role']
+                        logger.info(f"Linked Apple ID to existing user via email: {email}")
+                    else:
+                        # No existing user - create new account
+                        import uuid
+                        user_id = str(uuid.uuid4())
+                        display_name = name or (email.split('@')[0] if email else 'User')
+                        role = 'user'
+
+                        cursor.execute("""
+                            INSERT INTO users (user_id, email, display_name, apple_user_id, role, created_at, last_login)
+                            VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+                        """, (user_id, email, display_name, apple_user_id, role))
+                        conn.commit()
+
+                        logger.info(f"Created new user via Apple Sign In: {email}")
+                else:
+                    # No email provided - create new account
+                    import uuid
+                    user_id = str(uuid.uuid4())
+                    display_name = name or 'User'
+                    role = 'user'
+
+                    cursor.execute("""
+                        INSERT INTO users (user_id, email, display_name, apple_user_id, role, created_at, last_login)
+                        VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+                    """, (user_id, email, display_name, apple_user_id, role))
+                    conn.commit()
+
+                    logger.info(f"Created new user via Apple Sign In (no email)")
 
         finally:
             db.return_connection(conn)
