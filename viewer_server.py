@@ -26142,8 +26142,18 @@ def generate_missing_receipt_form():
         except (ValueError, TypeError):
             formatted_amount = str(trans_amount)
 
-        # Company header - use user-provided name or leave blank
-        company_header = company_name.strip() if company_name else ""
+        # Company header - admin gets default company names, others provide their own
+        if company_name and company_name.strip():
+            company_header = company_name.strip()
+        elif is_admin():
+            # Admin's default company names based on business_type
+            business_type = row.get('business_type', '').lower()
+            if business_type == 'secondary' or 'secondary' in business_type:
+                company_header = "Secondary"
+            else:
+                company_header = "Business Media LLC"
+        else:
+            company_header = ""  # Non-admin users must provide their own
 
         # Generate unique filename
         form_id = str(uuid.uuid4())[:8]
@@ -26255,11 +26265,20 @@ def generate_missing_receipt_form():
         # Signature section
         y_pos -= 0.8*inch
 
-        # Draw signature line (unsigned - user must sign themselves)
+        # Draw signature line
         c.line(1.2*inch, y_pos, 3.5*inch, y_pos)
         c.setFont("Helvetica-Oblique", 9)
         c.drawString(1.2*inch, y_pos - 0.15*inch, "Contractor/Employee Signature")
-        # NOTE: Signature left blank - user must sign the form themselves
+
+        # For admin users, embed their signature if available
+        if is_admin():
+            sig_path = BASE_DIR / "assets" / "brian_kaplan_signature.png"
+            if sig_path.exists():
+                try:
+                    c.drawImage(str(sig_path), 1.2*inch, y_pos + 0.02*inch, width=2.2*inch, height=0.6*inch, preserveAspectRatio=True, mask='auto')
+                except Exception as sig_error:
+                    print(f"Could not add signature image: {sig_error}")
+        # Non-admin users: signature left blank - they must sign themselves
 
         # Expense Approver line
         c.line(5*inch, y_pos, 7.5*inch, y_pos)
