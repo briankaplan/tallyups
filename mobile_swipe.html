@@ -1240,7 +1240,7 @@
         <!-- Receipt image -->
         <div class="card-receipt" onclick="showZoom('${hasReceipt ? receiptUrl : ''}')">
           ${hasReceipt
-            ? `<img src="${receiptUrl}" alt="Receipt" onerror="this.parentElement.innerHTML='<span class=\\'no-image\\'>&#128247;</span>'">`
+            ? `<img src="${receiptUrl}" alt="Receipt" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="no-image" style="display:none">&#128247;</span>`
             : '<span class="no-image">&#128247;</span>'
           }
           ${hasReceipt ? '<span class="tap-to-zoom">Tap to zoom</span>' : ''}

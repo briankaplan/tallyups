@@ -3361,7 +3361,8 @@ function openMobileDrawer(rowIndex) {
   let receiptHtml = '';
   if (hasReceipt) {
     const imgUrl = r2Url || `/receipts/${encodeURIComponent(receiptFile)}`;
-    receiptHtml = `<img src="${imgUrl}" alt="Receipt" onerror="this.parentElement.innerHTML='<div class=tx-drawer-receipt-placeholder><div class=tx-drawer-receipt-placeholder-icon>⚠️</div><div>Failed to load receipt</div></div>'">`;
+    // SECURITY: Use CSS show/hide instead of innerHTML to prevent XSS
+    receiptHtml = `<img src="${imgUrl}" alt="Receipt" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="tx-drawer-receipt-placeholder" style="display:none"><div class="tx-drawer-receipt-placeholder-icon">⚠️</div><div>Failed to load receipt</div></div>`;
   } else {
     receiptHtml = `
       <div class="tx-drawer-receipt-placeholder">
