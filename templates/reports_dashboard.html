@@ -1185,10 +1185,16 @@
     </div>
     <div class="modal__footer">
       <button class="btn-secondary" onclick="closePreview()">Close</button>
-      <div class="download-options">
-        <button class="download-btn" onclick="downloadReport(currentReportId, 'csv'); closePreview();">CSV</button>
-        <button class="download-btn primary" onclick="downloadReport(currentReportId, 'excel'); closePreview();">Excel</button>
-        <button class="download-btn" onclick="downloadReport(currentReportId, 'pdf'); closePreview();">PDF</button>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn-secondary" id="submit-btn" onclick="toggleSubmitReport()" style="display: none;">Submit</button>
+        <button class="btn-primary" onclick="openReportDetail()" style="background: var(--accent-color); padding: 8px 16px; border-radius: 6px;">
+          Open Full Report
+        </button>
+        <div class="download-options">
+          <button class="download-btn" onclick="downloadReport(currentReportId, 'csv'); closePreview();">CSV</button>
+          <button class="download-btn primary" onclick="downloadReport(currentReportId, 'excel'); closePreview();">Excel</button>
+          <button class="download-btn" onclick="downloadReport(currentReportId, 'pdf'); closePreview();">PDF</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1518,7 +1524,15 @@ async function viewReport(id) {
     if (!res.ok) throw new Error('Failed');
     const data = await res.json();
 
-    document.getElementById('preview-title').textContent = data.report_name || id;
+    // Update report status and submit button
+    currentReportStatus = data.status || 'draft';
+    updateSubmitButton();
+
+    const statusBadge = currentReportStatus === 'submitted'
+      ? '<span style="background: var(--success); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;">Submitted</span>'
+      : '<span style="background: var(--warning); color: black; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;">Draft</span>';
+
+    document.getElementById('preview-title').innerHTML = (data.report_name || id) + statusBadge;
 
     // Calculate date range from expenses
     let minDate = null, maxDate = null;
@@ -1642,6 +1656,61 @@ async function viewReport(id) {
 
 function closePreview() {
   document.getElementById('preview-modal').classList.remove('active');
+}
+
+function openReportDetail() {
+  if (currentReportId) {
+    window.location.href = `/reports/${currentReportId}/detail`;
+  }
+}
+
+let currentReportStatus = 'draft';
+
+async function toggleSubmitReport() {
+  if (!currentReportId) return;
+
+  const action = currentReportStatus === 'submitted' ? 'unsubmit' : 'submit';
+  const confirmMsg = action === 'submit'
+    ? 'Submit this report? It will be marked as finalized.'
+    : 'Unsubmit this report? It will be returned to draft status.';
+
+  if (!confirm(confirmMsg)) return;
+
+  showToast(`${action === 'submit' ? 'Submitting' : 'Unsubmitting'} report...`, 'info');
+
+  try {
+    const endpoint = action === 'submit'
+      ? `/reports/submit`
+      : `/reports/${currentReportId}/unsubmit`;
+
+    const res = await csrfFetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id: currentReportId })
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || `Failed to ${action} report`);
+    }
+
+    showToast(`Report ${action === 'submit' ? 'submitted' : 'unsubmitted'} successfully!`, 'success');
+    currentReportStatus = action === 'submit' ? 'submitted' : 'draft';
+    updateSubmitButton();
+    closePreview();
+    loadReports();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function updateSubmitButton() {
+  const btn = document.getElementById('submit-btn');
+  if (btn) {
+    btn.style.display = 'inline-block';
+    btn.textContent = currentReportStatus === 'submitted' ? 'Unsubmit' : 'Submit';
+    btn.className = currentReportStatus === 'submitted' ? 'btn-secondary' : 'btn-primary';
+  }
 }
 
 function downloadReport(id, format) {
