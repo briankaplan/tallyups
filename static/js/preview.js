@@ -621,6 +621,7 @@ class ReceiptPreview {
                 body: JSON.stringify({ _index: this.currentTransaction._index })
             });
 
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (data.ok && data.note) {
                 this.noteInput.value = data.note;

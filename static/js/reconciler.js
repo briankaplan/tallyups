@@ -222,6 +222,7 @@ async function aiMatch() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({_index: selectedRow._index})
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.ok) {
       // Save undo state
@@ -311,6 +312,7 @@ async function aiNote() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({_index: selectedRow._index})
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.ok) {
       selectedRow.Notes = data.note;
@@ -404,6 +406,7 @@ async function processMerchantIntelligence() {
       body: JSON.stringify({all: true})
     });
 
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const result = await response.json();
 
     if (result.ok) {
@@ -473,6 +476,7 @@ async function smartSearchMissing() {
         body: JSON.stringify({_index: row._index})
       });
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       if (data.ok && data.result.receipt_file) {
@@ -515,6 +519,7 @@ async function smartSearchMissing() {
         })
       });
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       if (data.ok && data.result && data.result.found) {
@@ -558,6 +563,7 @@ async function smartSearchMissing() {
         })
       });
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
       if (data.ok && data.result && data.result.found) {
@@ -797,6 +803,7 @@ async function processSingleMI(rowIndex) {
       body: JSON.stringify({_index: rowIndex})
     });
 
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const result = await response.json();
 
     if (result.ok) {
@@ -1142,6 +1149,7 @@ async function disconnectGmail(email) {
     const res = await fetch(`/api/gmail/disconnect/${encodeURIComponent(email)}`, {
       method: 'POST'
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.ok) {
       showToast(`Disconnected ${email}`, '✓');
@@ -1164,6 +1172,7 @@ async function checkGmailStatus() {
 
   try {
     const res = await fetch('/settings/gmail/status');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
     if (data.ok && data.accounts) {
@@ -2879,6 +2888,7 @@ async function checkCalendarStatus() {
 
   try {
     const res = await fetch('/settings/calendar/status');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
     if (!data.connected) {
@@ -3429,6 +3439,7 @@ async function submitMissingReceiptForm() {
       })
     });
 
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const result = await response.json();
 
     if (result.ok) {
@@ -3533,6 +3544,7 @@ async function processReceiptImage(file) {
       body: formData
     });
 
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const result = await response.json();
 
     if (result.success) {
@@ -3688,6 +3700,7 @@ async function submitManualEntry(event) {
       body: JSON.stringify(requestBody)
     });
 
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
     if (data.ok) {
