@@ -1064,6 +1064,20 @@ if CSRF_AVAILABLE:
     except ImportError:
         pass
 
+    try:
+        from routes.auth_routes import auth_bp
+        csrf.exempt(auth_bp)
+        logger.info("Auth blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
+    try:
+        from routes.credentials_routes import credentials_bp
+        csrf.exempt(credentials_bp)
+        logger.info("Credentials blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
     # Exempt API endpoints that use API key authentication (they don't use sessions)
     # These are already protected by api_key_required decorator
     CSRF_EXEMPT_ENDPOINTS = [
