@@ -200,7 +200,7 @@ def google_oauth_callback():
 
     # Verify state
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
 
     try:
         cursor.execute("""

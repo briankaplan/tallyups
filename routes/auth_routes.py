@@ -84,7 +84,7 @@ def get_or_create_user(
         Dict with user info
     """
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
 
     try:
         # First, check if user exists by Apple user ID
@@ -289,7 +289,7 @@ def email_login():
         import bcrypt
 
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         # Find user by email
         cursor.execute("""
@@ -416,7 +416,7 @@ def register():
         import uuid
 
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         # Check if email already exists
         cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
@@ -904,7 +904,7 @@ def get_current_user():
     user_id = get_current_user_id()
 
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
 
     try:
         cursor.execute("""
@@ -1108,7 +1108,7 @@ def list_sessions():
     user_id = get_current_user_id()
 
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
 
     try:
         cursor.execute("""
@@ -1202,7 +1202,7 @@ def forgot_password():
         from datetime import datetime, timedelta
 
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         # Check if user exists
         cursor.execute("""
@@ -1313,7 +1313,7 @@ def reset_password():
         token_hash = hashlib.sha256(token.encode()).hexdigest()
 
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
 
         # Find user with matching token that hasn't expired
         cursor.execute("""
@@ -1550,7 +1550,7 @@ def get_or_create_user_google(
     Get existing user or create new one based on Google user ID.
     """
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor()
 
     try:
         # First check if user exists by Google user ID
