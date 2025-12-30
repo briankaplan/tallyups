@@ -4039,6 +4039,361 @@ def dashboard_stats():
             pass
 
 
+# ===== iOS Mobile App API Aliases =====
+# These routes provide iOS-compatible endpoints that the mobile app expects
+
+@app.route("/api/business-types", methods=["GET"])
+def get_business_types_ios():
+    """iOS-compatible endpoint for business types"""
+    import pymysql
+    conn = None
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        cursor.execute("""
+            SELECT setting_value FROM app_settings
+            WHERE setting_key = 'business_types'
+        """)
+        result = cursor.fetchone()
+
+        if result and result.get('setting_value'):
+            import json
+            types = json.loads(result['setting_value']) if isinstance(result['setting_value'], str) else result['setting_value']
+        else:
+            # Return defaults with iOS-expected format (including icon field)
+            types = [
+                {"name": "Personal", "color": "#4a9eff", "icon": "person.fill"},
+                {"name": "Business", "color": "#00ff88", "icon": "briefcase.fill"},
+                {"name": "Down Home", "color": "#ff9500", "icon": "house.fill"},
+                {"name": "Music City Rodeo", "color": "#ff2d55", "icon": "music.note"}
+            ]
+
+        # Transform to iOS expected format
+        business_types = []
+        for t in types:
+            business_types.append({
+                "id": t.get("name", "").lower().replace(" ", "_"),
+                "name": t.get("name", ""),
+                "color": t.get("color", "#4a9eff"),
+                "icon": t.get("icon", "folder.fill")
+            })
+
+        return jsonify({
+            "success": True,
+            "business_types": business_types
+        })
+
+    except Exception as e:
+        print(f"Error getting business types for iOS: {e}")
+        # Return defaults on error
+        return jsonify({
+            "success": True,
+            "business_types": [
+                {"id": "personal", "name": "Personal", "color": "#4a9eff", "icon": "person.fill"},
+                {"id": "business", "name": "Business", "color": "#00ff88", "icon": "briefcase.fill"}
+            ]
+        })
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/business-types", methods=["POST"])
+def create_business_type_ios():
+    """iOS-compatible endpoint to create business type"""
+    import pymysql
+    conn = None
+    try:
+        data = request.get_json()
+        name = data.get('name', '').strip()
+        color = data.get('color', '#00d4ff')
+        icon = data.get('icon', 'folder.fill')
+
+        if not name:
+            return jsonify({"success": False, "error": "Name is required"}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        # Get current business types
+        cursor.execute("""
+            SELECT setting_value FROM app_settings
+            WHERE setting_key = 'business_types'
+        """)
+        result = cursor.fetchone()
+
+        import json
+        if result and result.get('setting_value'):
+            types = json.loads(result['setting_value']) if isinstance(result['setting_value'], str) else result['setting_value']
+        else:
+            types = []
+
+        # Check for duplicate
+        if any(t['name'].lower() == name.lower() for t in types):
+            return jsonify({"success": False, "error": f"Business type '{name}' already exists"}), 400
+
+        # Add new type
+        new_type = {"name": name, "color": color, "icon": icon}
+        types.append(new_type)
+
+        # Update or insert
+        if result:
+            cursor.execute("""
+                UPDATE app_settings SET setting_value = %s WHERE setting_key = 'business_types'
+            """, (json.dumps(types),))
+        else:
+            cursor.execute("""
+                INSERT INTO app_settings (setting_key, setting_value) VALUES ('business_types', %s)
+            """, (json.dumps(types),))
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "business_type": {
+                "id": name.lower().replace(" ", "_"),
+                "name": name,
+                "color": color,
+                "icon": icon
+            }
+        })
+
+    except Exception as e:
+        print(f"Error creating business type: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/email-rules", methods=["GET"])
+def get_email_rules_ios():
+    """iOS-compatible endpoint for email mapping rules"""
+    import pymysql
+    conn = None
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        cursor.execute("""
+            SELECT * FROM email_business_rules
+            ORDER BY priority ASC, created_at DESC
+        """)
+        rules = cursor.fetchall()
+
+        formatted_rules = []
+        for rule in rules:
+            formatted_rules.append({
+                "id": rule.get("id"),
+                "pattern": rule.get("pattern", ""),
+                "businessType": rule.get("business_type", "Personal"),
+                "priority": rule.get("priority", 0),
+                "isActive": bool(rule.get("is_active", True)),
+                "matchCount": rule.get("match_count", 0),
+                "createdAt": str(rule.get("created_at", ""))
+            })
+
+        return jsonify({
+            "success": True,
+            "rules": formatted_rules
+        })
+
+    except Exception as e:
+        print(f"Error getting email rules: {e}")
+        # Return empty on error (table might not exist)
+        return jsonify({"success": True, "rules": []})
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/email-rules", methods=["POST"])
+def create_email_rule_ios():
+    """iOS-compatible endpoint to create email rule"""
+    import pymysql
+    conn = None
+    try:
+        data = request.get_json()
+        pattern = data.get('pattern', '').strip()
+        business_type = data.get('businessType', 'Personal')
+        priority = data.get('priority', 0)
+
+        if not pattern:
+            return jsonify({"success": False, "error": "Pattern is required"}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        cursor.execute("""
+            INSERT INTO email_business_rules (pattern, business_type, priority, is_active)
+            VALUES (%s, %s, %s, TRUE)
+        """, (pattern, business_type, priority))
+
+        rule_id = cursor.lastrowid
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "rule": {
+                "id": rule_id,
+                "pattern": pattern,
+                "businessType": business_type,
+                "priority": priority,
+                "isActive": True,
+                "matchCount": 0
+            }
+        })
+
+    except Exception as e:
+        print(f"Error creating email rule: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/email-rules/<int:rule_id>", methods=["PUT"])
+def update_email_rule_ios(rule_id):
+    """iOS-compatible endpoint to update email rule"""
+    import pymysql
+    conn = None
+    try:
+        data = request.get_json()
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        updates = []
+        values = []
+
+        if 'pattern' in data:
+            updates.append("pattern = %s")
+            values.append(data['pattern'])
+        if 'businessType' in data:
+            updates.append("business_type = %s")
+            values.append(data['businessType'])
+        if 'priority' in data:
+            updates.append("priority = %s")
+            values.append(data['priority'])
+        if 'isActive' in data:
+            updates.append("is_active = %s")
+            values.append(data['isActive'])
+
+        if not updates:
+            return jsonify({"success": False, "error": "No updates provided"}), 400
+
+        values.append(rule_id)
+        cursor.execute(f"""
+            UPDATE email_business_rules SET {', '.join(updates)} WHERE id = %s
+        """, tuple(values))
+
+        conn.commit()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print(f"Error updating email rule: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/email-rules/<int:rule_id>", methods=["DELETE"])
+def delete_email_rule_ios(rule_id):
+    """iOS-compatible endpoint to delete email rule"""
+    import pymysql
+    conn = None
+    try:
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        cursor.execute("DELETE FROM email_business_rules WHERE id = %s", (rule_id,))
+        conn.commit()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print(f"Error deleting email rule: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/email-rules/test", methods=["POST"])
+def test_email_rule_ios():
+    """iOS-compatible endpoint to test which rule matches an email"""
+    import pymysql
+    import re
+    conn = None
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+
+        if not email:
+            return jsonify({"success": False, "error": "Email is required"}), 400
+
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        cursor.execute("""
+            SELECT * FROM email_business_rules
+            WHERE is_active = TRUE
+            ORDER BY priority ASC
+        """)
+        rules = cursor.fetchall()
+
+        for rule in rules:
+            pattern = rule.get('pattern', '')
+            # Convert glob pattern to regex
+            regex_pattern = pattern.replace('.', r'\.').replace('*', '.*').replace('?', '.')
+            if re.match(f"^{regex_pattern}$", email, re.IGNORECASE):
+                return jsonify({
+                    "success": True,
+                    "matched": True,
+                    "rule": {
+                        "id": rule.get("id"),
+                        "pattern": pattern,
+                        "businessType": rule.get("business_type", "Personal")
+                    }
+                })
+
+        return jsonify({
+            "success": True,
+            "matched": False,
+            "rule": None
+        })
+
+    except Exception as e:
+        print(f"Error testing email rule: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
 # ===== Business Types Settings API =====
 @app.route("/api/settings/business-types", methods=["GET"])
 def get_business_types():
