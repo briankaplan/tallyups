@@ -5,7 +5,7 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.30.v3"
+APP_VERSION = "2025.12.30.v4"
 APP_BUILD_TIME = "2025-12-14T19:16:00Z"
 import os
 import math
@@ -748,11 +748,11 @@ except Exception as e:
 try:
     from routes.gmail import gmail_bp
     app.register_blueprint(gmail_bp)
-    logger.info("Registered blueprint: gmail (email receipt processing)")
+    logger.info("Registered blueprint: gmail (email receipt processing) at /api/gmail/*")
 except ImportError as e:
-    logger.warning(f"Gmail blueprint not available: {e}")
+    logger.error(f"Gmail blueprint import failed: {e}", exc_info=True)
 except Exception as e:
-    logger.warning(f"Gmail blueprint error: {e}")
+    logger.error(f"Gmail blueprint registration failed: {e}", exc_info=True)
 
 # Calendar Integration
 try:
@@ -1075,6 +1075,20 @@ if CSRF_AVAILABLE:
         from routes.credentials_routes import credentials_bp
         csrf.exempt(credentials_bp)
         logger.info("Credentials blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
+    try:
+        from routes.gmail import gmail_bp
+        csrf.exempt(gmail_bp)
+        logger.info("Gmail blueprint exempted from CSRF")
+    except ImportError:
+        pass
+
+    try:
+        from routes.calendar import calendar_bp
+        csrf.exempt(calendar_bp)
+        logger.info("Calendar blueprint exempted from CSRF")
     except ImportError:
         pass
 
