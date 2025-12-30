@@ -584,6 +584,114 @@ def apple_sign_in():
         return jsonify({'error': f'Authentication failed: {str(e)}'}), 500
 
 
+@auth_bp.route('/apple/web', methods=['POST'])
+@auth_rate_limit('login')
+def apple_sign_in_web():
+    """
+    Sign in with Apple from web browser using Apple JS SDK.
+
+    Request body:
+    {
+        "id_token": "...",   // JWT from Apple JS SDK
+        "code": "...",       // Authorization code (optional)
+        "user": {            // Only on first sign-in
+            "name": {"firstName": "...", "lastName": "..."},
+            "email": "..."
+        }
+    }
+    """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
+    if not JWT_AVAILABLE:
+        return jsonify({'error': 'Authentication service not available'}), 503
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+
+    id_token = data.get('id_token')
+    if not id_token:
+        return jsonify({'error': 'id_token required'}), 400
+
+    try:
+        logger.info(f"Apple Web Sign In attempt - token length: {len(id_token)}")
+
+        # Verify the id_token (same as identity_token for iOS)
+        # For web, the audience is the Service ID (com.tallyups.web)
+        try:
+            apple_user_info = apple_auth_service.verify_identity_token(id_token)
+            logger.info(f"Apple web token verified - user_id: {apple_user_info['apple_user_id']}, email: {apple_user_info.get('email')}")
+        except Exception as verify_error:
+            logger.error(f"Apple web token verification failed: {verify_error}")
+            import jwt
+            try:
+                unverified = jwt.decode(id_token, options={"verify_signature": False})
+                logger.error(f"Token audience: {unverified.get('aud')}, expected: {apple_auth_service.bundle_id} or com.tallyups.web")
+            except:
+                pass
+            raise verify_error
+
+        # Extract user name from first sign-in data
+        user_name = None
+        user_data = data.get('user')
+        if user_data and isinstance(user_data, dict):
+            name_data = user_data.get('name', {})
+            if isinstance(name_data, dict):
+                first = name_data.get('firstName', '')
+                last = name_data.get('lastName', '')
+                user_name = f"{first} {last}".strip() or None
+
+        # Get or create user
+        user = get_or_create_user(
+            apple_user_id=apple_user_info['apple_user_id'],
+            email=apple_user_info.get('email'),
+            name=user_name
+        )
+        logger.info(f"Web user retrieved/created: {user['id']}, email: {user.get('email')}")
+
+        if not user.get('is_active', True):
+            return jsonify({'error': 'Account is disabled'}), 403
+
+        # Create session for web
+        device_id = f"web-{request.remote_addr}-{hash(request.user_agent.string) % 10000}"
+        tokens = create_session(
+            user_id=user['id'],
+            device_id=device_id,
+            device_name='Web Browser',
+            device_type='web',
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string
+        )
+
+        # Also set session cookie for server-side auth
+        # Regenerate session to prevent session fixation attacks
+        from flask import session
+        session.clear()
+        session['authenticated'] = True
+        session['user_id'] = user['id']
+        session.permanent = True
+
+        logger.info(f"Apple Web Sign In successful for user {user['id']}")
+
+        return jsonify({
+            **tokens,
+            'user': {
+                'id': user['id'],
+                'email': user.get('email'),
+                'name': user.get('name'),
+                'role': user.get('role', 'user'),
+                'onboarding_completed': user.get('onboarding_completed', False)
+            }
+        })
+
+    except AppleAuthError as e:
+        logger.warning(f"Apple web auth failed: {e}")
+        return jsonify({'error': str(e)}), 401
+    except Exception as e:
+        logger.error(f"Apple web sign-in error: {e}", exc_info=True)
+        return jsonify({'error': f'Authentication failed: {str(e)}'}), 500
+
+
 @auth_bp.route('/refresh', methods=['POST'])
 @auth_rate_limit('refresh')  # 30 per minute
 def refresh_token():
@@ -1273,6 +1381,250 @@ def reset_password():
     except Exception as e:
         logger.error(f"Password reset error: {e}")
         return jsonify({'success': False, 'error': 'Password reset failed'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# ============================================================================
+# AUTH CONFIG (for frontend)
+# ============================================================================
+
+@auth_bp.route('/config', methods=['GET'])
+def auth_config():
+    """
+    Return auth configuration for frontend.
+    This allows the frontend to get OAuth client IDs without hardcoding.
+    """
+    # Try both variable names for compatibility
+    google_client_id = os.environ.get('GOOGLE_CLIENT_ID', '') or os.environ.get('GOOGLE_AUTH_CLIENT_ID', '')
+
+    return jsonify({
+        'google_client_id': google_client_id,
+        'apple_enabled': bool(os.environ.get('APPLE_TEAM_ID')),
+        'google_enabled': bool(google_client_id)
+    })
+
+
+# ============================================================================
+# GOOGLE SIGN IN
+# ============================================================================
+
+@auth_bp.route('/google/web', methods=['POST'])
+@auth_rate_limit('login')
+def google_sign_in_web():
+    """
+    Sign in with Google from web browser.
+
+    Request body:
+    {
+        "code": "...",      // Authorization code from Google
+        "device_id": "..."  // Optional device ID
+    }
+    """
+    if not MULTI_USER_TABLES_EXIST:
+        return jsonify({'error': 'Multi-user mode not enabled'}), 503
+    if not JWT_AVAILABLE:
+        return jsonify({'error': 'Authentication service not available'}), 503
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+
+    code = data.get('code')
+    if not code:
+        return jsonify({'error': 'Authorization code required'}), 400
+
+    device_id = data.get('device_id', f"web-{request.remote_addr}")
+
+    # Get Google OAuth credentials from environment (try both variable names)
+    client_id = os.environ.get('GOOGLE_CLIENT_ID', '') or os.environ.get('GOOGLE_AUTH_CLIENT_ID', '')
+    client_secret = os.environ.get('GOOGLE_CLIENT_SECRET', '') or os.environ.get('GOOGLE_AUTH_CLIENT_SECRET', '')
+
+    if not client_id or not client_secret:
+        logger.error("Google OAuth not configured")
+        return jsonify({'error': 'Google Sign In not configured'}), 503
+
+    try:
+        import requests as http_requests
+
+        # Exchange authorization code for tokens
+        token_response = http_requests.post(
+            'https://oauth2.googleapis.com/token',
+            data={
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'code': code,
+                'grant_type': 'authorization_code',
+                'redirect_uri': 'postmessage'  # For popup flow
+            },
+            timeout=30
+        )
+
+        if token_response.status_code != 200:
+            logger.error(f"Google token exchange failed: {token_response.text}")
+            return jsonify({'error': 'Failed to verify Google credentials'}), 401
+
+        tokens = token_response.json()
+        access_token = tokens.get('access_token')
+        id_token = tokens.get('id_token')
+
+        if not access_token:
+            return jsonify({'error': 'Failed to get access token'}), 401
+
+        # Get user info from Google
+        userinfo_response = http_requests.get(
+            'https://www.googleapis.com/oauth2/v2/userinfo',
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=10
+        )
+
+        if userinfo_response.status_code != 200:
+            logger.error(f"Google userinfo failed: {userinfo_response.text}")
+            return jsonify({'error': 'Failed to get user info'}), 401
+
+        userinfo = userinfo_response.json()
+        google_user_id = userinfo.get('id')
+        email = userinfo.get('email')
+        name = userinfo.get('name')
+        picture = userinfo.get('picture')
+
+        logger.info(f"Google Sign In - user_id: {google_user_id}, email: {email}")
+
+        if not google_user_id or not email:
+            return jsonify({'error': 'Invalid user info from Google'}), 401
+
+        # Get or create user
+        user = get_or_create_user_google(
+            google_user_id=google_user_id,
+            email=email,
+            name=name,
+            picture=picture
+        )
+
+        if not user.get('is_active', True):
+            return jsonify({'error': 'Account is disabled'}), 403
+
+        # Create session
+        session_tokens = create_session(
+            user_id=user['id'],
+            device_id=device_id,
+            device_name='Web Browser',
+            device_type='web',
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string
+        )
+
+        # Regenerate session to prevent session fixation attacks
+        session.clear()
+        # Set Flask session
+        session['authenticated'] = True
+        session['user_id'] = user['id']
+        session.permanent = True
+
+        logger.info(f"Google Sign In successful for user {user['id']}")
+
+        return jsonify({
+            **session_tokens,
+            'user': {
+                'id': user['id'],
+                'email': user.get('email'),
+                'name': user.get('name'),
+                'role': user.get('role', 'user'),
+                'onboarding_completed': user.get('onboarding_completed', False)
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Google sign-in error: {e}", exc_info=True)
+        return jsonify({'error': f'Authentication failed: {str(e)}'}), 500
+
+
+def get_or_create_user_google(
+    google_user_id: str,
+    email: str,
+    name: str = None,
+    picture: str = None
+) -> dict:
+    """
+    Get existing user or create new one based on Google user ID.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # First check if user exists by Google user ID
+        cursor.execute("""
+            SELECT id, email, name, role, is_active, onboarding_completed
+            FROM users
+            WHERE google_user_id = %s
+        """, (google_user_id,))
+
+        user = cursor.fetchone()
+
+        if user:
+            # Update and return existing user
+            cursor.execute("""
+                UPDATE users
+                SET last_login_at = NOW(),
+                    email = COALESCE(%s, email),
+                    name = COALESCE(%s, name)
+                WHERE id = %s
+            """, (email, name, user['id']))
+            conn.commit()
+            return user
+
+        # Check if email already exists (link Google to existing account)
+        if email:
+            cursor.execute("""
+                SELECT id, email, name, role, is_active, onboarding_completed
+                FROM users
+                WHERE email = %s AND google_user_id IS NULL
+            """, (email,))
+
+            existing_user = cursor.fetchone()
+
+            if existing_user:
+                # Link Google ID to existing user
+                cursor.execute("""
+                    UPDATE users
+                    SET google_user_id = %s,
+                        last_login_at = NOW(),
+                        name = COALESCE(%s, name)
+                    WHERE id = %s
+                """, (google_user_id, name, existing_user['id']))
+                conn.commit()
+
+                logger.info(f"Linked Google ID to existing user {existing_user['id']} via email {email}")
+                return existing_user
+
+        # Create new user
+        user_id = generate_user_id()
+
+        cursor.execute("""
+            INSERT INTO users (
+                id, google_user_id, email, name, role,
+                is_active, onboarding_completed, created_at, last_login_at
+            ) VALUES (%s, %s, %s, %s, 'user', TRUE, FALSE, NOW(), NOW())
+        """, (user_id, google_user_id, email, name))
+
+        conn.commit()
+
+        logger.info(f"Created new user {user_id} for Google user {google_user_id}")
+
+        return {
+            'id': user_id,
+            'email': email,
+            'name': name,
+            'role': 'user',
+            'is_active': True,
+            'onboarding_completed': False
+        }
+
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to get/create Google user: {e}")
+        raise
     finally:
         cursor.close()
         conn.close()

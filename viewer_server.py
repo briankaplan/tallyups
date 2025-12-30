@@ -2544,6 +2544,8 @@ def login():
             password = request.form.get('password', '')
 
         if verify_password(password):
+            # Regenerate session to prevent session fixation attacks
+            session.clear()
             session['authenticated'] = True
             session.permanent = True
             # Return JSON for API clients, redirect for browsers
@@ -2586,6 +2588,8 @@ def login_pin():
         data = request.get_json() or {}
         pin = data.get('pin', '')
         if verify_pin(pin):
+            # Regenerate session to prevent session fixation attacks
+            session.clear()
             session['authenticated'] = True
             session.permanent = True
             return jsonify({"success": True})
@@ -2910,11 +2914,14 @@ def auth_google_callback():
         email = 'Unknown'
         name = 'User'
 
+    # Regenerate session to prevent session fixation attacks
+    session.clear()
     # Store in session
     session['user_email'] = email
     session['user_name'] = name
     session['authenticated'] = True
     session['oauth_tokens'] = tokens
+    session.permanent = True
 
     # Redirect to success page
     return redirect('/auth/success')
@@ -3207,6 +3214,8 @@ def auth_apple_callback():
             user_id, device_id, device_name
         )
 
+        # Regenerate session to prevent session fixation attacks
+        session.clear()
         # Store session
         session['user_id'] = user_id
         session['user_email'] = email
@@ -3214,10 +3223,7 @@ def auth_apple_callback():
         session['authenticated'] = True
         session['role'] = role
         session['auth_method'] = 'apple'
-
-        # Clear OAuth state
-        session.pop('apple_oauth_state', None)
-        session.pop('apple_nonce', None)
+        session.permanent = True
 
         logger.info(f"Apple Sign In successful for {email}")
 
@@ -16479,34 +16485,89 @@ def save_calendar_preferences():
 @app.route("/settings/gmail/status", methods=["GET"])
 @login_required
 def gmail_status():
-    """Get status of all Gmail accounts"""
+    """Get status of all Gmail accounts for the current user (multi-user support)"""
     from pathlib import Path
     import json
     from datetime import datetime
 
-    # Check multiple possible token directories (same as callback saves to)
+    user_id = get_current_user_id()
+    user_role = getattr(g, 'user_role', 'user')
+
+    # Check multiple possible token directories (legacy fallback)
     TOKEN_DIRS = [
         Path('gmail_tokens'),
         Path('receipt-system/gmail_tokens'),
         Path('../Task/receipt-system/gmail_tokens'),
     ]
 
-    ACCOUNTS = [
+    # Legacy hardcoded accounts (for admin/backwards compatibility)
+    LEGACY_ACCOUNTS = [
         {'email': 'brian@business.com', 'token_file': 'tokens_brian_business_com.json'},
         {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json'},
         {'email': 'brian@secondary.com', 'token_file': 'tokens_brian_secondary_com.json'},
     ]
 
+    accounts_to_check = []
+
+    # 1. Try to get user's Gmail accounts from user_credentials table
+    try:
+        from db_user_scope import USER_SCOPING_ENABLED
+        if USER_SCOPING_ENABLED and user_id:
+            conn, db_type = get_db_connection()
+            cursor = db_execute(conn, db_type, '''
+                SELECT account_email, access_token, refresh_token, token_expires_at, updated_at
+                FROM user_credentials
+                WHERE user_id = %s AND service_type = 'gmail' AND is_active = TRUE
+                ORDER BY account_email
+            ''', (user_id,))
+            rows = cursor.fetchall()
+            return_db_connection(conn)
+
+            if rows:
+                for row in rows:
+                    accounts_to_check.append({
+                        'email': row['account_email'],
+                        'token_file': f"tokens_{row['account_email'].replace('@', '_').replace('.', '_')}.json",
+                        'db_data': row  # Include DB data directly
+                    })
+    except Exception as e:
+        logger.warning(f"Could not load user Gmail accounts from DB: {e}")
+
+    # 2. Fall back to legacy accounts for admin users or if no user accounts found
+    if not accounts_to_check:
+        if user_role == 'admin':
+            accounts_to_check = LEGACY_ACCOUNTS
+        else:
+            # For non-admin users with no accounts, return empty list
+            # They can add accounts via the "Connect Gmail Account" button
+            return jsonify(safe_json({
+                'ok': True,
+                'accounts': [],
+                'can_add_accounts': True
+            }))
+
     statuses = []
-    for account in ACCOUNTS:
+    for account in accounts_to_check:
         token_data = None
         token_source = None
 
-        # 1. First check DATABASE (primary storage, survives deployments)
-        db_token = load_token_from_db(account['email'])
-        if db_token and db_token.get('refresh_token'):
-            token_data = db_token
-            token_source = 'database'
+        # Check if we already have DB data from user_credentials query
+        if 'db_data' in account:
+            db_row = account['db_data']
+            if db_row.get('refresh_token'):
+                token_data = {
+                    'access_token': db_row.get('access_token'),
+                    'refresh_token': db_row.get('refresh_token'),
+                    'expiry': db_row.get('token_expires_at').isoformat() if db_row.get('token_expires_at') else None
+                }
+                token_source = 'user_credentials'
+
+        # 1. Check legacy DATABASE storage (for backwards compatibility)
+        if not token_data:
+            db_token = load_token_from_db(account['email'])
+            if db_token and db_token.get('refresh_token'):
+                token_data = db_token
+                token_source = 'database'
 
         # 2. Fall back to environment variable
         if not token_data:
@@ -16547,9 +16608,11 @@ def gmail_status():
 
             if 'expiry' in token_data:
                 try:
-                    expiry = datetime.fromisoformat(token_data['expiry'].replace('Z', '+00:00'))
-                    status['expiry'] = token_data['expiry']
-                    status['expired'] = expiry < datetime.now(expiry.tzinfo)
+                    expiry_str = token_data['expiry']
+                    if expiry_str:
+                        expiry = datetime.fromisoformat(str(expiry_str).replace('Z', '+00:00'))
+                        status['expiry'] = str(expiry_str)
+                        status['expired'] = expiry < datetime.now(expiry.tzinfo)
                 except (ValueError, TypeError):
                     pass
 
@@ -16557,8 +16620,77 @@ def gmail_status():
 
     return jsonify(safe_json({
         'ok': True,
-        'accounts': statuses
+        'accounts': statuses,
+        'can_add_accounts': True
     }))
+
+
+@app.route("/api/credentials/google/connect", methods=["POST"])
+@login_required
+def google_connect_new_account():
+    """
+    Start OAuth flow to connect a new Gmail account for the current user.
+    Returns the auth URL to redirect the user to Google's consent screen.
+    """
+    import secrets
+    from urllib.parse import urlencode
+    import base64
+    from datetime import datetime
+
+    user_id = get_current_user_id()
+    if not user_id:
+        return jsonify({'ok': False, 'error': 'Not authenticated'}), 401
+
+    try:
+        creds = get_oauth_credentials()
+        if not creds:
+            return jsonify({'ok': False, 'error': 'OAuth credentials not configured'}), 500
+
+        client_info = creds.get('web') or creds.get('installed')
+        if not client_info:
+            return jsonify({'ok': False, 'error': 'Invalid credentials format'}), 500
+
+        # Generate state for CSRF protection
+        # Use special marker "NEW_ACCOUNT" to indicate this is a new account connection
+        timestamp = datetime.now().isoformat()
+        random_part = secrets.token_urlsafe(16)
+        state_data = f"NEW_ACCOUNT:{user_id}:{timestamp}:{random_part}"
+        state = base64.urlsafe_b64encode(state_data.encode('utf-8')).decode('utf-8').rstrip('=')
+
+        # Store state for validation
+        _oauth_states[state] = {
+            'email': 'NEW_ACCOUNT',
+            'user_id': user_id,
+            'timestamp': datetime.now(),
+            'is_new_account': True
+        }
+
+        # Build OAuth URL
+        redirect_uri = get_oauth_redirect_uri()
+        params = {
+            'client_id': client_info['client_id'],
+            'redirect_uri': redirect_uri,
+            'response_type': 'code',
+            'scope': ' '.join([
+                'https://www.googleapis.com/auth/gmail.readonly',
+                'https://www.googleapis.com/auth/gmail.modify',
+                'https://www.googleapis.com/auth/userinfo.email'
+            ]),
+            'access_type': 'offline',
+            'prompt': 'consent select_account',  # Force account selection
+            'state': state
+        }
+
+        auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+
+        return jsonify({
+            'ok': True,
+            'auth_url': auth_url
+        })
+
+    except Exception as e:
+        logger.error(f"Failed to start Gmail OAuth: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @app.route("/settings/gmail/refresh/<account_email>", methods=["POST"])
@@ -17146,14 +17278,24 @@ def gmail_oauth_callback():
         '''), 400
 
     # Validate state - decode it to get account email
-    # State format: base64(account_email:timestamp:random)
+    # State format: base64(account_email:timestamp:random) OR base64(NEW_ACCOUNT:user_id:timestamp:random)
     import base64
+    is_new_account = False
+    new_account_user_id = None
+
     try:
         # Try to get from memory first (same worker)
         if state in _oauth_states:
             state_data = _oauth_states.pop(state)
-            account_email = state_data['account_email']
-            print(f"✅ State validated from memory for: {account_email}", flush=True)
+            if state_data.get('is_new_account'):
+                # New account flow - email will be retrieved from Google after token exchange
+                is_new_account = True
+                new_account_user_id = state_data.get('user_id')
+                account_email = None
+                print(f"✅ NEW_ACCOUNT state validated from memory for user: {new_account_user_id}", flush=True)
+            else:
+                account_email = state_data.get('account_email') or state_data.get('email')
+                print(f"✅ State validated from memory for: {account_email}", flush=True)
         else:
             # Decode state to extract account email (for multi-worker support)
             # Add padding if needed for base64 decode
@@ -17163,22 +17305,31 @@ def gmail_oauth_callback():
             else:
                 state_padded = state
             decoded = base64.urlsafe_b64decode(state_padded).decode('utf-8')
-            parts = decoded.split(':', 2)
-            if len(parts) >= 2:
-                account_email = parts[0]
-                timestamp_str = parts[1] if len(parts) > 1 else None
+            parts = decoded.split(':', 3)
 
-                # Validate it's a known account
-                if account_email not in GMAIL_ACCOUNTS:
-                    raise ValueError(f"Unknown account in state: {account_email}")
+            if len(parts) >= 2:
+                # Check if this is a NEW_ACCOUNT flow
+                if parts[0] == 'NEW_ACCOUNT':
+                    is_new_account = True
+                    new_account_user_id = parts[1] if len(parts) > 1 else None
+                    timestamp_str = parts[2] if len(parts) > 2 else None
+                    account_email = None
+                    print(f"✅ NEW_ACCOUNT state decoded for user: {new_account_user_id}", flush=True)
+                else:
+                    account_email = parts[0]
+                    timestamp_str = parts[1] if len(parts) > 1 else None
+
+                    # Validate it's a known account (only for legacy flow)
+                    if account_email not in GMAIL_ACCOUNTS:
+                        raise ValueError(f"Unknown account in state: {account_email}")
+
+                    print(f"✅ State decoded for multi-worker support: {account_email}", flush=True)
 
                 # Validate timestamp isn't too old (10 minutes)
                 if timestamp_str:
                     state_time = datetime.fromisoformat(timestamp_str)
                     if datetime.now() - state_time > timedelta(minutes=10):
                         raise ValueError("State expired")
-
-                print(f"✅ State decoded for multi-worker support: {account_email}", flush=True)
             else:
                 raise ValueError("Invalid state format")
     except Exception as e:
@@ -17249,7 +17400,121 @@ def gmail_oauth_callback():
         token_data['client_secret'] = client_info['client_secret']
         token_data['token_uri'] = 'https://oauth2.googleapis.com/token'
 
-        # SAVE TOKEN TO DATABASE FIRST (primary persistence, survives deployments)
+        # Handle NEW_ACCOUNT flow - get email from Google and store in user_credentials
+        if is_new_account and new_account_user_id:
+            try:
+                # Get user's email from Google userinfo API
+                userinfo_response = requests.get(
+                    'https://www.googleapis.com/oauth2/v2/userinfo',
+                    headers={'Authorization': f"Bearer {token_data['access_token']}"},
+                    timeout=10
+                )
+                if userinfo_response.ok:
+                    userinfo = userinfo_response.json()
+                    account_email = userinfo.get('email')
+                    account_name = userinfo.get('name', account_email)
+                    print(f"✅ Got email from Google userinfo: {account_email}", flush=True)
+
+                    # Store in user_credentials table
+                    conn, db_type = get_db_connection()
+                    try:
+                        # Check if this email already exists for this user
+                        cursor = db_execute(conn, db_type, '''
+                            SELECT id FROM user_credentials
+                            WHERE user_id = %s AND service_type = 'gmail' AND account_email = %s
+                        ''', (new_account_user_id, account_email))
+                        existing = cursor.fetchone()
+
+                        # Calculate expiry datetime
+                        expiry_dt = None
+                        if token_data.get('expiry'):
+                            try:
+                                expiry_dt = datetime.fromisoformat(token_data['expiry'].replace('Z', '+00:00'))
+                            except (ValueError, TypeError):
+                                pass
+
+                        if existing:
+                            # Update existing credentials
+                            db_execute(conn, db_type, '''
+                                UPDATE user_credentials
+                                SET access_token = %s, refresh_token = %s, token_expires_at = %s,
+                                    is_active = TRUE, updated_at = NOW()
+                                WHERE user_id = %s AND service_type = 'gmail' AND account_email = %s
+                            ''', (token_data.get('access_token'), token_data.get('refresh_token'),
+                                  expiry_dt, new_account_user_id, account_email))
+                            print(f"✅ Updated existing Gmail credentials for {account_email}", flush=True)
+                        else:
+                            # Insert new credentials
+                            db_execute(conn, db_type, '''
+                                INSERT INTO user_credentials
+                                (user_id, service_type, account_email, account_name, access_token, refresh_token,
+                                 token_expires_at, is_active, created_at)
+                                VALUES (%s, 'gmail', %s, %s, %s, %s, %s, TRUE, NOW())
+                            ''', (new_account_user_id, account_email, account_name,
+                                  token_data.get('access_token'), token_data.get('refresh_token'), expiry_dt))
+                            print(f"✅ Inserted new Gmail credentials for {account_email}", flush=True)
+
+                        conn.commit()
+
+                        # Return success page for NEW_ACCOUNT flow
+                        return render_template_string('''
+                            <!DOCTYPE html>
+                            <html>
+                            <head><title>Gmail Account Connected!</title>
+                            <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+                            .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+                            h1{color:#00ff88}button{background:#00ff88;color:#000;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;margin-top:20px;font-weight:600}</style>
+                            </head>
+                            <body><div class="card">
+                            <h1>✓ Gmail Account Connected!</h1>
+                            <p><strong>{{ name }}</strong> ({{ email }}) has been linked to your account.</p>
+                            <p style="color:#888;font-size:14px">You can now receive receipts from this Gmail account.</p>
+                            <button onclick="window.opener && window.opener.checkGmailStatus && window.opener.checkGmailStatus(); window.close();">Close Window</button>
+                            </div></body></html>
+                        ''', name=account_name, email=account_email)
+
+                    except Exception as db_error:
+                        print(f"❌ Database error storing Gmail credentials: {db_error}", flush=True)
+                        conn.rollback()
+                        return render_template_string('''
+                            <!DOCTYPE html>
+                            <html>
+                            <head><title>Error</title>
+                            <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+                            .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+                            h1{color:#ef4444}</style>
+                            </head>
+                            <body><div class="card"><h1>Database Error</h1><p>Could not save Gmail credentials. Please try again.</p></div></body></html>
+                        '''), 500
+                    finally:
+                        release_db_connection(conn)
+                else:
+                    print(f"❌ Failed to get userinfo: {userinfo_response.text}", flush=True)
+                    return render_template_string('''
+                        <!DOCTYPE html>
+                        <html>
+                        <head><title>Error</title>
+                        <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+                        .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+                        h1{color:#ef4444}</style>
+                        </head>
+                        <body><div class="card"><h1>Error</h1><p>Could not retrieve email from Google. Please try again.</p></div></body></html>
+                    '''), 400
+
+            except Exception as new_account_error:
+                print(f"❌ NEW_ACCOUNT flow error: {new_account_error}", flush=True)
+                return render_template_string('''
+                    <!DOCTYPE html>
+                    <html>
+                    <head><title>Error</title>
+                    <style>body{font-family:system-ui;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+                    .card{background:#16213e;padding:40px;border-radius:12px;text-align:center;max-width:400px}
+                    h1{color:#ef4444}</style>
+                    </head>
+                    <body><div class="card"><h1>Error</h1><p>{{ error }}</p></div></body></html>
+                ''', error=str(new_account_error)), 500
+
+        # LEGACY FLOW: SAVE TOKEN TO DATABASE FIRST (primary persistence, survives deployments)
         if save_token_to_db(account_email, token_data):
             print(f"✅ Token saved to DATABASE for {account_email} - will auto-refresh forever!", flush=True)
         else:
@@ -17387,8 +17652,35 @@ def gmail_disconnect(account_email):
         logger.warning(f"Unauthorized Gmail disconnect attempt: user_id={user_id}, email={account_email}")
         return jsonify({'ok': False, 'error': 'You can only disconnect your own email accounts'}), 403
 
+    deleted = False
+
+    # 1. Try to deactivate from user_credentials table (user-scoped accounts)
+    try:
+        from db_user_scope import USER_SCOPING_ENABLED
+        if USER_SCOPING_ENABLED and user_id:
+            conn, db_type = get_db_connection()
+            cursor = db_execute(conn, db_type, '''
+                UPDATE user_credentials
+                SET is_active = FALSE, access_token = NULL, refresh_token = NULL
+                WHERE user_id = %s AND service_type = 'gmail' AND account_email = %s
+            ''', (user_id, account_email))
+            rows_affected = cursor.rowcount
+            conn.commit()
+            return_db_connection(conn)
+
+            if rows_affected > 0:
+                print(f"✅ Deactivated Gmail credentials for {account_email} (user_id={user_id})", flush=True)
+                return jsonify({
+                    'ok': True,
+                    'deleted': True,
+                    'message': f'Disconnected {account_email}'
+                })
+    except Exception as e:
+        logger.warning(f"Could not deactivate user credentials: {e}")
+
+    # 2. Fall back to legacy GMAIL_ACCOUNTS handling
     if account_email not in GMAIL_ACCOUNTS:
-        return jsonify({'ok': False, 'error': f'Unknown account: {account_email}'}), 404
+        return jsonify({'ok': False, 'error': f'Account not found: {account_email}'}), 404
 
     account_info = GMAIL_ACCOUNTS[account_email]
     token_file = account_info['token_file']
@@ -17400,7 +17692,6 @@ def gmail_disconnect(account_email):
         Path('gmail_tokens'),
     ]
 
-    deleted = False
     for token_dir in token_dirs:
         token_path = token_dir / token_file
         if token_path.exists():

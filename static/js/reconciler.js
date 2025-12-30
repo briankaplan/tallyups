@@ -1107,10 +1107,11 @@ function updateRowInPlace(row) {
   // Cell 5: AI Confidence
   cells[5].innerHTML = getConfidenceIndicator(row);
 
-  // Cell 6: Notes
+  // Cell 6: Notes (escaped to prevent XSS)
   const notes = row['Notes'] || '';
+  const escapedNotes = escapeHtml(notes);
   const notesHtml = notes
-    ? `<div class="notes-cell" onclick="editNotes(event, ${row._index})" title="${notes}">${notes}</div>`
+    ? `<div class="notes-cell" onclick="editNotes(event, ${row._index})" title="${escapedNotes}">${escapedNotes}</div>`
     : `<div class="notes-cell empty" onclick="editNotes(event, ${row._index})">Click to add note</div>`;
   cells[6].innerHTML = notesHtml;
 }
@@ -4381,7 +4382,7 @@ async function loadStatsPage() {
     // Show error state
     containerIds.forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.innerHTML = `<div style="color:#ff4e6a;text-align:center;padding:20px">Error loading data: ${e.message}</div>`;
+      if (el) el.innerHTML = `<div style="color:#ff4e6a;text-align:center;padding:20px">Error loading data: ${escapeHtml(e.message)}</div>`;
     });
   }
 }
@@ -4690,7 +4691,7 @@ function renderStats(stats) {
           <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--panel2);border-radius:8px">
             <div style="width:24px;height:24px;background:rgba(0,255,136,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#00ff88">${i + 1}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+              <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(name)}</div>
               <div style="background:var(--edge);height:4px;border-radius:2px;margin-top:4px">
                 <div style="background:#00ff88;height:100%;width:${pct}%;border-radius:2px"></div>
               </div>
@@ -4756,7 +4757,7 @@ function renderStats(stats) {
     } else {
       subsContainer.innerHTML = subscriptions.slice(0, 15).map(sub => `
         <div style="background:var(--panel2);padding:14px;border-radius:10px;border:1px solid var(--edge)">
-          <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">${sub.name || 'Unknown'}</div>
+          <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">${escapeHtml(sub.name || 'Unknown')}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
             <span style="font-size:18px;font-weight:700;color:#00ff88">${fmt(sub.total || 0)}</span>
             <span style="font-size:11px;color:var(--muted);background:var(--panel);padding:2px 8px;border-radius:4px">${sub.count || 0}x</span>
@@ -4793,7 +4794,7 @@ function renderStats(stats) {
         return `
           <div style="background:var(--panel2);padding:16px;border-radius:10px;border:1px solid var(--edge);text-align:center">
             <div style="font-size:32px;margin-bottom:8px">${icon}</div>
-            <div style="font-weight:600;margin-bottom:4px">${source}</div>
+            <div style="font-weight:600;margin-bottom:4px">${escapeHtml(source)}</div>
             <div style="font-size:28px;font-weight:800;color:#00ff88">${count}</div>
             <div style="font-size:11px;color:var(--muted)">${pct}% of receipts</div>
           </div>
@@ -5097,8 +5098,8 @@ async function loadArchivedReports() {
             <div style="background:${businessGradient};padding:16px 20px;position:relative;overflow:hidden">
               <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:rgba(255,255,255,.1);border-radius:50%"></div>
               <div style="position:relative;z-index:1">
-                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.9;margin-bottom:6px">${report.business_type}</div>
-                <div style="font-size:16px;font-weight:700;line-height:1.3;color:white">${report.report_name}</div>
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.9;margin-bottom:6px">${escapeHtml(report.business_type)}</div>
+                <div style="font-size:16px;font-weight:700;line-height:1.3;color:white">${escapeHtml(report.report_name)}</div>
               </div>
             </div>
 

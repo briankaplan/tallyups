@@ -965,12 +965,18 @@
                   <button onclick="authorizeGmail('${account.email}')" style="flex: 1; padding: 10px 16px; border-radius: 8px; border: none; background: var(--accent); color: #000; font-weight: 600; cursor: pointer;">
                     Authorize Now
                   </button>
+                  <button onclick="disconnectGmail('${account.email}')" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--error); background: transparent; color: var(--error); cursor: pointer;">
+                    Remove
+                  </button>
                 ` : `
                   <button onclick="refreshGmail('${account.email}')" style="flex: 1; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer;">
                     Refresh Token
                   </button>
                   <button onclick="authorizeGmail('${account.email}')" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer;">
                     Re-authorize
+                  </button>
+                  <button onclick="disconnectGmail('${account.email}')" style="padding: 10px 16px; border-radius: 8px; border: 1px solid var(--error); background: transparent; color: var(--error); cursor: pointer;">
+                    Disconnect
                   </button>
                 `}
               </div>
@@ -1015,6 +1021,31 @@
           loadGmailAccounts();
         } else {
           alert(`❌ Refresh failed: ${data.error || 'Unknown error'}\n\nYou may need to re-authorize.`);
+        }
+      } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+      }
+    }
+
+    // Disconnect Gmail account
+    async function disconnectGmail(email) {
+      if (!confirm(`Disconnect ${email}? You'll need to re-authorize to use Gmail features for this account.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/gmail/disconnect/${encodeURIComponent(email)}`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (data.ok) {
+          alert(`✅ Disconnected ${email}`);
+          gmailAccountsLoaded = false;
+          loadGmailAccounts();
+        } else {
+          alert(`❌ Failed to disconnect: ${data.error || 'Unknown error'}`);
         }
       } catch (error) {
         alert(`❌ Error: ${error.message}`);

@@ -120,10 +120,15 @@ def reset_to_first_key():
     _current_key_index = 0
     _configure_with_key(0)
 
-def generate_with_gemini(prompt, image=None, max_retries=2):
-    """Generate content using Gemini (used as fallback) with proper exponential backoff"""
+def generate_with_gemini(prompt, image=None, max_retries=2, timeout_seconds=30):
+    """Generate content using Gemini (used as fallback) with proper exponential backoff and timeout"""
     import time
     import random
+    import signal
+    import platform
+
+    def timeout_handler(signum, frame):
+        raise TimeoutError(f"Gemini request timed out after {timeout_seconds}s")
 
     model = get_model()
     if not model:
@@ -131,14 +136,30 @@ def generate_with_gemini(prompt, image=None, max_retries=2):
 
     for attempt in range(max_retries):
         try:
-            if image:
-                response = model.generate_content([prompt, image])
-            else:
-                response = model.generate_content(prompt)
-            return response.text
+            # Set timeout (Unix only - SIGALRM not available on Windows)
+            use_timeout = platform.system() != 'Windows'
+            if use_timeout:
+                old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(timeout_seconds)
+
+            try:
+                if image:
+                    response = model.generate_content([prompt, image])
+                else:
+                    response = model.generate_content(prompt)
+                return response.text
+            finally:
+                if use_timeout:
+                    signal.alarm(0)  # Cancel alarm
+                    signal.signal(signal.SIGALRM, old_handler)  # Restore handler
+        except TimeoutError as e:
+            print(f"   ⚠️ Gemini timeout: {e}")
+            if attempt < max_retries - 1:
+                continue
+            return None
         except Exception as e:
             error_str = str(e).lower()
-            is_rate_limit = any(term in error_str for term in ['quota', 'rate', '429', 'resource'])
+            is_rate_limit = any(term in error_str for term in ['quota', 'rate', '429', 'resource', 'timeout'])
 
             if is_rate_limit:
                 # Exponential backoff BEFORE switching keys
