@@ -4042,6 +4042,159 @@ def dashboard_stats():
 # ===== iOS Mobile App API Aliases =====
 # These routes provide iOS-compatible endpoints that the mobile app expects
 
+@app.route("/api/dashboard/stats", methods=["GET"])
+@login_required
+def get_dashboard_stats_ios():
+    """iOS-compatible endpoint for dashboard statistics"""
+    import pymysql
+    from datetime import datetime, timedelta
+    conn = None
+    try:
+        user_id = get_current_user_id()
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        # Get transactions needing receipts
+        cursor.execute("""
+            SELECT COUNT(*) as cnt FROM transactions
+            WHERE user_id = %s AND receipt_count = 0 AND excluded = 0
+        """, (user_id,))
+        needs_receipt = cursor.fetchone()['cnt']
+
+        # Get uncategorized transactions
+        cursor.execute("""
+            SELECT COUNT(*) as cnt FROM transactions
+            WHERE user_id = %s AND (category IS NULL OR category = '') AND excluded = 0
+        """, (user_id,))
+        uncategorized = cursor.fetchone()['cnt']
+
+        # Get weekly spending
+        week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        cursor.execute("""
+            SELECT COALESCE(SUM(ABS(chase_amount)), 0) as total FROM transactions
+            WHERE user_id = %s AND chase_date >= %s AND excluded = 0 AND chase_amount < 0
+        """, (user_id, week_ago))
+        weekly_total = cursor.fetchone()['total'] or 0
+
+        # Get last week's spending for trend
+        two_weeks_ago = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
+        cursor.execute("""
+            SELECT COALESCE(SUM(ABS(chase_amount)), 0) as total FROM transactions
+            WHERE user_id = %s AND chase_date >= %s AND chase_date < %s AND excluded = 0 AND chase_amount < 0
+        """, (user_id, two_weeks_ago, week_ago))
+        last_week_total = cursor.fetchone()['total'] or 0
+
+        # Calculate trend
+        weekly_trend = None
+        if last_week_total > 0:
+            change = ((weekly_total - last_week_total) / last_week_total) * 100
+            if change > 5:
+                weekly_trend = f"+{change:.0f}% vs last week"
+            elif change < -5:
+                weekly_trend = f"{change:.0f}% vs last week"
+
+        # Get match rate
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN receipt_count > 0 THEN 1 ELSE 0 END) as matched
+            FROM transactions
+            WHERE user_id = %s AND excluded = 0
+        """, (user_id,))
+        match_data = cursor.fetchone()
+        total_transactions = match_data['total'] or 1
+        matched_transactions = match_data['matched'] or 0
+        match_rate = int((matched_transactions / total_transactions) * 100) if total_transactions > 0 else 0
+
+        return jsonify({
+            "success": True,
+            "needsReceiptCount": needs_receipt,
+            "uncategorizedCount": uncategorized,
+            "weeklySpending": f"${weekly_total:,.2f}",
+            "weeklyTrend": weekly_trend,
+            "matchRate": match_rate
+        })
+
+    except Exception as e:
+        print(f"Error getting dashboard stats: {e}")
+        return jsonify({
+            "success": True,
+            "needsReceiptCount": 0,
+            "uncategorizedCount": 0,
+            "weeklySpending": "$0.00",
+            "weeklyTrend": None,
+            "matchRate": 100
+        })
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
+@app.route("/api/receipts/auto-match", methods=["POST"])
+@login_required
+def run_auto_match_ios():
+    """iOS-compatible endpoint to trigger auto-matching of receipts"""
+    import pymysql
+    conn = None
+    try:
+        user_id = get_current_user_id()
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        matched_count = 0
+
+        # Get unmatched receipts
+        cursor.execute("""
+            SELECT id, merchant, amount, receipt_date FROM receipts
+            WHERE user_id = %s AND transaction_index IS NULL
+        """, (user_id,))
+        unmatched_receipts = cursor.fetchall()
+
+        for receipt in unmatched_receipts:
+            # Try to find matching transaction by amount and date
+            cursor.execute("""
+                SELECT _index FROM transactions
+                WHERE user_id = %s
+                AND ABS(chase_amount) = %s
+                AND chase_date = %s
+                AND receipt_count = 0
+                LIMIT 1
+            """, (user_id, abs(receipt['amount'] or 0), receipt['receipt_date']))
+
+            match = cursor.fetchone()
+            if match:
+                # Link receipt to transaction
+                cursor.execute("""
+                    UPDATE receipts SET transaction_index = %s WHERE id = %s
+                """, (match['_index'], receipt['id']))
+
+                cursor.execute("""
+                    UPDATE transactions SET receipt_count = receipt_count + 1 WHERE _index = %s
+                """, (match['_index'],))
+
+                matched_count += 1
+
+        conn.commit()
+
+        return jsonify({
+            "success": True,
+            "matchedCount": matched_count
+        })
+
+    except Exception as e:
+        print(f"Error in auto-match: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            try:
+                return_db_connection(conn)
+            except Exception:
+                pass
+
+
 @app.route("/api/business-types", methods=["GET"])
 def get_business_types_ios():
     """iOS-compatible endpoint for business types"""
