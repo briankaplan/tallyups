@@ -5,7 +5,7 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.30.v4"
+APP_VERSION = "2025.12.30.v5"
 APP_BUILD_TIME = "2025-12-14T19:16:00Z"
 import os
 import math
@@ -17751,54 +17751,72 @@ def get_gmail_service_for_account(account_email):
     from pathlib import Path
     import json
 
-    if account_email not in GMAIL_ACCOUNTS:
-        return None
-
-    account_info = GMAIL_ACCOUNTS[account_email]
-    token_file = account_info['token_file']
-
-    # Try multiple token locations
-    token_dirs = [
-        Path('gmail_tokens'),
-        Path('receipt-system/gmail_tokens'),
-        Path('../Task/receipt-system/gmail_tokens'),
-    ]
-
     creds = None
-    for token_dir in token_dirs:
-        token_path = token_dir / token_file
-        if token_path.exists():
+
+    # 1. First try environment variables (GMAIL_TOKEN_*)
+    # Convert email to env var format: brian@downhome.com -> GMAIL_TOKEN_brian_downhome_com
+    env_key = 'GMAIL_TOKEN_' + account_email.replace('@', '_').replace('.', '_')
+    env_token = os.environ.get(env_key)
+    if env_token:
+        try:
+            token_data = json.loads(env_token)
+            creds = Credentials.from_authorized_user_info(token_data)
+            logger.info(f"Gmail cleanup: Loaded token for {account_email} from environment")
+        except Exception as e:
+            logger.warning(f"Could not load token from env {env_key}: {e}")
+
+    # 2. Try database (oauth_tokens table)
+    if not creds:
+        token_data = load_token_from_db(account_email)
+        if token_data:
             try:
-                with open(token_path, 'r') as f:
-                    token_data = json.load(f)
                 creds = Credentials.from_authorized_user_info(token_data)
-                break
+                logger.info(f"Gmail cleanup: Loaded token for {account_email} from database")
             except Exception as e:
-                logger.warning(f"Could not load token from {token_path}: {e}")
-                continue
+                logger.warning(f"Could not create credentials from db token: {e}")
+
+    # 3. Fall back to file system (legacy)
+    if not creds and account_email in GMAIL_ACCOUNTS:
+        account_info = GMAIL_ACCOUNTS[account_email]
+        token_file = account_info['token_file']
+
+        token_dirs = [
+            Path('gmail_tokens'),
+            Path('receipt-system/gmail_tokens'),
+            Path('../Task/receipt-system/gmail_tokens'),
+        ]
+
+        for token_dir in token_dirs:
+            token_path = token_dir / token_file
+            if token_path.exists():
+                try:
+                    with open(token_path, 'r') as f:
+                        token_data = json.load(f)
+                    creds = Credentials.from_authorized_user_info(token_data)
+                    logger.info(f"Gmail cleanup: Loaded token for {account_email} from file")
+                    break
+                except Exception as e:
+                    logger.warning(f"Could not load token from {token_path}: {e}")
+                    continue
 
     if not creds:
+        logger.warning(f"Gmail cleanup: No credentials found for {account_email}")
         return None
 
     # Refresh if expired
     if creds.expired and creds.refresh_token:
         try:
             creds.refresh(Request())
-            # Save refreshed token
-            for token_dir in token_dirs:
-                token_path = token_dir / token_file
-                if token_path.parent.exists():
-                    with open(token_path, 'w') as f:
-                        f.write(creds.to_json())
-                    break
+            # Try to save refreshed token to database
+            save_token_to_db(account_email, json.loads(creds.to_json()))
         except Exception as e:
-            logger.warning(f"Could not refresh token: {e}")
+            logger.warning(f"Could not refresh token for {account_email}: {e}")
             return None
 
     try:
         return build('gmail', 'v1', credentials=creds, cache_discovery=False)
     except Exception as e:
-        logger.error(f"Could not build Gmail service: {e}")
+        logger.error(f"Could not build Gmail service for {account_email}: {e}")
         return None
 
 
