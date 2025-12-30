@@ -8586,6 +8586,7 @@ def api_ai_apple_split_all():
 # =============================================================================
 
 @app.route("/api/contacts", methods=["GET"])
+@login_required
 def api_contacts_list():
     """
     List contacts with optional search (iOS app endpoint).
@@ -8596,15 +8597,9 @@ def api_contacts_list():
 
     Returns: { contacts: [...], total: N }
     """
-    # Auth check
-    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY')
-    if not secure_compare_api_key(admin_key, expected_key):
-        if not session.get('authenticated'):
-            return jsonify({'error': 'Authentication required'}), 401
-
     search = request.args.get('search', '')
     limit = request.args.get('limit', 100, type=int)
+    user_id = get_current_user_id()
 
     try:
         conn, db_type = get_db_connection()
@@ -8615,17 +8610,18 @@ def api_contacts_list():
             cursor.execute('''
                 SELECT id, name, first_name, last_name, email, phone, company, job_title, category
                 FROM contacts
-                WHERE name LIKE %s OR email LIKE %s OR company LIKE %s
+                WHERE user_id = %s AND (name LIKE %s OR email LIKE %s OR company LIKE %s)
                 ORDER BY name
                 LIMIT %s
-            ''', (search_pattern, search_pattern, search_pattern, limit))
+            ''', (user_id, search_pattern, search_pattern, search_pattern, limit))
         else:
             cursor.execute('''
                 SELECT id, name, first_name, last_name, email, phone, company, job_title, category
                 FROM contacts
+                WHERE user_id = %s
                 ORDER BY name
                 LIMIT %s
-            ''', (limit,))
+            ''', (user_id, limit))
 
         rows = cursor.fetchall()
         cursor.close()
@@ -8653,6 +8649,7 @@ def api_contacts_list():
 
 
 @app.route("/api/contacts/search", methods=["GET"])
+@login_required
 def api_contacts_search():
     """
     Search contacts by name, company, or title.
@@ -8660,12 +8657,7 @@ def api_contacts_search():
     Query params: q (search query), limit (default 10)
     Returns: List of matching contacts
     """
-    # Auth check
-    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY')
-    if not secure_compare_api_key(admin_key, expected_key):
-        if not session.get('authenticated'):
-            return jsonify({'error': 'Authentication required'}), 401
+    user_id = get_current_user_id()
 
     if not CONTACT_MANAGER_AVAILABLE:
         return jsonify({'error': 'Contact manager not available'}), 503
