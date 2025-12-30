@@ -5,7 +5,7 @@ MySQL-only database backend - all SQLite/CSV code has been removed.
 """
 
 # Version info for deployment verification - increment on each deploy
-APP_VERSION = "2025.12.14.v7"
+APP_VERSION = "2025.12.30.v1"
 APP_BUILD_TIME = "2025-12-14T19:16:00Z"
 import os
 import math
@@ -671,9 +671,11 @@ except ImportError as e:
 try:
     from routes.auth_routes import auth_bp
     app.register_blueprint(auth_bp)
-    logger.info("Registered blueprint: auth")
+    logger.info("Registered blueprint: auth (routes: /api/auth/*)")
 except ImportError as e:
-    logger.warning(f"Could not load auth blueprint: {e}")
+    logger.error(f"Could not import auth blueprint: {e}")
+except Exception as e:
+    logger.error(f"Could not load auth blueprint: {e}", exc_info=True)
 
 # User credentials routes (OAuth, API keys)
 try:
