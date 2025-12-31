@@ -3661,27 +3661,21 @@ def health_check():
 
 
 @app.route("/api/dashboard/stats")
+@login_required
 def dashboard_stats():
     """
     Get dashboard statistics for the home page.
     Returns total receipts, pending count, month total, and match rate.
-    Requires authentication via session or admin_key.
+    Requires authentication via session, admin_key, or JWT token.
     User-scoped: returns only current user's data.
     """
-    # Check authentication - session OR admin_key
-    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY')
 
-    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
-        return jsonify({'error': 'Authentication required', 'ok': False}), 401
-
-    # Get current user for scoping
+    # Get current user for scoping - @login_required already set g.user_id
+    user_id = getattr(g, 'user_id', None)
     try:
-        from db_user_scope import get_current_user_id, USER_SCOPING_ENABLED
-        user_id = get_current_user_id()
+        from db_user_scope import USER_SCOPING_ENABLED
     except ImportError:
-        user_id = None
-        USER_SCOPING_ENABLED = False
+        USER_SCOPING_ENABLED = True  # Default to scoping enabled
 
     try:
         conn, db_type = get_db_connection()
@@ -4077,10 +4071,11 @@ def dashboard_stats():
 # ===== iOS Mobile App API Aliases =====
 # These routes provide iOS-compatible endpoints that the mobile app expects
 
-@app.route("/api/dashboard/stats", methods=["GET"])
-@login_required
-def get_dashboard_stats_ios():
-    """iOS-compatible endpoint for dashboard statistics"""
+# Removed duplicate route - using main dashboard_stats() with @login_required instead
+# @app.route("/api/dashboard/stats", methods=["GET"])
+# @login_required
+def _get_dashboard_stats_ios_DEPRECATED():
+    """DEPRECATED: iOS-compatible endpoint for dashboard statistics - merged into main route"""
     import pymysql
     from datetime import datetime, timedelta
     conn = None
