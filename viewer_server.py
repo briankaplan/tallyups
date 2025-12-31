@@ -4051,50 +4051,63 @@ def get_dashboard_stats_ios():
     conn = None
     try:
         user_id = get_current_user_id()
+        print(f"📊 Dashboard stats for user_id: {user_id}", flush=True)
+
         conn, db_type = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
 
+        # Build user filter - if no user_id, show all data (admin)
+        user_filter = "user_id = %s" if user_id else "1=1"
+        user_params = (user_id,) if user_id else ()
+
         # Get transactions needing receipts (no r2_url AND no receipt_file)
-        cursor.execute("""
+        query = f"""
             SELECT COUNT(*) as cnt FROM transactions
-            WHERE user_id = %s
+            WHERE {user_filter}
             AND (r2_url IS NULL OR r2_url = '')
             AND (receipt_file IS NULL OR receipt_file = '')
             AND (review_status IS NULL OR review_status != 'excluded')
             AND (deleted IS NULL OR deleted = 0)
-        """, (user_id,))
+        """
+        cursor.execute(query, user_params)
         needs_receipt = cursor.fetchone()['cnt']
+        print(f"📊 Needs receipt: {needs_receipt}", flush=True)
 
         # Get uncategorized transactions
-        cursor.execute("""
+        query = f"""
             SELECT COUNT(*) as cnt FROM transactions
-            WHERE user_id = %s
+            WHERE {user_filter}
             AND (category IS NULL OR category = '')
             AND (review_status IS NULL OR review_status != 'excluded')
             AND (deleted IS NULL OR deleted = 0)
-        """, (user_id,))
+        """
+        cursor.execute(query, user_params)
         uncategorized = cursor.fetchone()['cnt']
+        print(f"📊 Uncategorized: {uncategorized}", flush=True)
 
         # Get weekly spending
         week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-        cursor.execute("""
+        query = f"""
             SELECT COALESCE(SUM(ABS(chase_amount)), 0) as total FROM transactions
-            WHERE user_id = %s AND chase_date >= %s
+            WHERE {user_filter} AND chase_date >= %s
             AND (review_status IS NULL OR review_status != 'excluded')
             AND (deleted IS NULL OR deleted = 0)
             AND chase_amount < 0
-        """, (user_id, week_ago))
+        """
+        cursor.execute(query, user_params + (week_ago,))
         weekly_total = cursor.fetchone()['total'] or 0
+        print(f"📊 Weekly total: {weekly_total}", flush=True)
 
         # Get last week's spending for trend
         two_weeks_ago = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
-        cursor.execute("""
+        query = f"""
             SELECT COALESCE(SUM(ABS(chase_amount)), 0) as total FROM transactions
-            WHERE user_id = %s AND chase_date >= %s AND chase_date < %s
+            WHERE {user_filter} AND chase_date >= %s AND chase_date < %s
             AND (review_status IS NULL OR review_status != 'excluded')
             AND (deleted IS NULL OR deleted = 0)
             AND chase_amount < 0
-        """, (user_id, two_weeks_ago, week_ago))
+        """
+        cursor.execute(query, user_params + (two_weeks_ago, week_ago))
         last_week_total = cursor.fetchone()['total'] or 0
 
         # Calculate trend
@@ -4107,20 +4120,31 @@ def get_dashboard_stats_ios():
                 weekly_trend = f"{change:.0f}% vs last week"
 
         # Get match rate (has receipt = has r2_url or receipt_file)
-        cursor.execute("""
+        query = f"""
             SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as matched
             FROM transactions
-            WHERE user_id = %s
+            WHERE {user_filter}
             AND (review_status IS NULL OR review_status != 'excluded')
             AND (deleted IS NULL OR deleted = 0)
-        """, (user_id,))
+        """
+        cursor.execute(query, user_params)
         match_data = cursor.fetchone()
         total_transactions = match_data['total'] or 1
         matched_transactions = match_data['matched'] or 0
         match_rate = int((matched_transactions / total_transactions) * 100) if total_transactions > 0 else 0
+        print(f"📊 Match rate: {match_rate}% ({matched_transactions}/{total_transactions})", flush=True)
 
+        response_data = {
+            "success": True,
+            "needsReceiptCount": needs_receipt,
+            "uncategorizedCount": uncategorized,
+            "weeklySpending": f"${weekly_total:,.2f}",
+            "weeklyTrend": weekly_trend,
+            "matchRate": match_rate
+        }
+        print(f"📊 Dashboard response: {response_data}", flush=True)
         return jsonify({
             "success": True,
             "needsReceiptCount": needs_receipt,
