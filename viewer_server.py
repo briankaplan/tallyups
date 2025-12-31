@@ -6532,14 +6532,14 @@ def get_transaction(tx_id):
             cursor.execute("""
                 SELECT _index, chase_date, chase_description, chase_amount, business_type,
                        category, notes, receipt_file, r2_url, review_status,
-                       ocr_verified, ocr_verification_status, ocr_data
+                       ocr_verified, ocr_verification_status, ocr_merchant, ocr_amount
                 FROM transactions WHERE _index = %s AND user_id = %s
             """, (tx_id, user_id))
         else:
             cursor.execute("""
                 SELECT _index, chase_date, chase_description, chase_amount, business_type,
                        category, notes, receipt_file, r2_url, review_status,
-                       ocr_verified, ocr_verification_status, ocr_data
+                       ocr_verified, ocr_verification_status, ocr_merchant, ocr_amount
                 FROM transactions WHERE _index = %s
             """, (tx_id,))
 
@@ -6552,7 +6552,7 @@ def get_transaction(tx_id):
 
         columns = ['_index', 'chase_date', 'chase_description', 'chase_amount', 'business_type',
                    'category', 'notes', 'receipt_file', 'r2_url', 'review_status',
-                   'ocr_verified', 'ocr_verification_status', 'ocr_data']
+                   'ocr_verified', 'ocr_verification_status', 'ocr_merchant', 'ocr_amount']
         tx = dict(zip(columns, row))
 
         # Handle date serialization
