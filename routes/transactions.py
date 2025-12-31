@@ -64,6 +64,33 @@ def get_auth_helpers():
     from viewer_server import secure_compare_api_key
     return login_required, is_authenticated, secure_compare_api_key
 
+
+def check_auth():
+    """
+    Check authentication using JWT (preferred) or legacy session/admin_key.
+    Returns True if authenticated, False otherwise.
+    Also sets g.user_id, g.user_role if authenticated via JWT.
+    """
+    from flask import g
+
+    # Try JWT auth first
+    try:
+        from auth import JWT_AVAILABLE
+        if JWT_AVAILABLE:
+            from services.jwt_auth_service import get_current_user_from_request
+            user = get_current_user_from_request()
+            if user:
+                g.user_id = user['user_id']
+                g.user_role = user['role']
+                g.auth_method = user['auth_method']
+                return True
+    except ImportError:
+        pass
+
+    # Fall back to legacy auth
+    _, is_authenticated, _ = get_auth_helpers()
+    return is_authenticated()
+
 def get_user_scope():
     """Lazy import user scoping - returns (get_current_user_id, is_enabled)"""
     try:
@@ -81,9 +108,10 @@ def get_user_scope():
 
 @transactions_bp.route("/transactions/<int:tx_id>", methods=["GET"])
 def get_transaction(tx_id):
-    """Get a single transaction by ID"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    """Get a single transaction by ID.
+    Requires authentication via session, admin_key, or JWT token.
+    """
+    if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -181,8 +209,7 @@ def update_transaction(tx_id):
 @transactions_bp.route("/transactions/<int:tx_id>/notes", methods=["PUT"])
 def update_transaction_notes(tx_id):
     """Update a transaction's notes field"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -217,8 +244,7 @@ def update_transaction_notes(tx_id):
 @transactions_bp.route("/transactions/<int:tx_id>/description", methods=["PUT"])
 def update_transaction_description(tx_id):
     """Update a transaction's ai_note field (description for reports)"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -256,8 +282,7 @@ def update_transaction_field():
     Update a single field on a transaction by index.
     Used by the reconciler viewer for quick edits.
     """
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -323,8 +348,7 @@ def update_transaction_field():
 @transactions_bp.route("/transactions/move-to-report", methods=["POST"])
 def move_transactions_to_report():
     """Move transactions to a different report"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -387,8 +411,7 @@ def move_transactions_to_report():
 @transactions_bp.route("/transactions/<int:tx_id>/remove-from-report", methods=["POST"])
 def remove_transaction_from_report(tx_id):
     """Remove a transaction from its report (returns to reconciliation queue)"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -429,8 +452,7 @@ def remove_transaction_from_report(tx_id):
 @transactions_bp.route("/transactions/bulk-remove-from-report", methods=["POST"])
 def bulk_remove_transactions_from_report():
     """Remove multiple transactions from their report"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -482,8 +504,7 @@ def bulk_remove_transactions_from_report():
 @transactions_bp.route("/transactions/attach-receipt", methods=["POST"])
 def attach_receipt_to_transaction():
     """Attach a receipt from incoming_receipts to a transaction"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -553,8 +574,7 @@ def attach_receipt_to_transaction():
 @transactions_bp.route("/transactions/<int:tx_id>/link", methods=["POST"])
 def link_receipt_to_transaction(tx_id):
     """Link a receipt to a transaction (iOS app endpoint)"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -631,8 +651,7 @@ def link_receipt_to_transaction(tx_id):
 @transactions_bp.route("/transactions/<int:tx_id>/unlink", methods=["POST"])
 def unlink_receipt_from_transaction(tx_id):
     """Unlink a receipt from a transaction (iOS app endpoint)"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -681,8 +700,7 @@ def unlink_receipt_from_transaction(tx_id):
 @transactions_bp.route("/transactions/<int:tx_id>/exclude", methods=["POST"])
 def exclude_transaction(tx_id):
     """Exclude or unexclude a transaction from receipt matching"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
@@ -727,8 +745,7 @@ def exclude_transaction(tx_id):
 @transactions_bp.route("/transactions/<int:tx_id>/reject", methods=["POST"])
 def reject_transaction(tx_id):
     """Mark a transaction as rejected/hidden"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
     _, _, db, USE_DATABASE = get_db_helpers()
@@ -758,8 +775,7 @@ def reject_transaction(tx_id):
 @transactions_bp.route("/transactions/fix-business-type", methods=["POST"])
 def fix_business_type():
     """Fix business type for specific transactions"""
-    _, is_authenticated, _ = get_auth_helpers()
-    if not is_authenticated():
+    if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
     _, _, db, USE_DATABASE = get_db_helpers()
