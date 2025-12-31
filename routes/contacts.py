@@ -124,7 +124,7 @@ def list_contacts():
             cursor = conn.cursor()
 
             query = """
-                SELECT id, name, email, phone, company, title,
+                SELECT id, name, email, phone, company, job_title,
                        source, last_interaction, relationship_score,
                        created_at, updated_at
                 FROM contacts
@@ -226,7 +226,7 @@ def create_contact():
 
             if USER_SCOPING_ENABLED and user_id:
                 cursor.execute("""
-                    INSERT INTO contacts (name, email, phone, company, title, notes, source, user_id, created_at, updated_at)
+                    INSERT INTO contacts (name, email, phone, company, job_title, notes, source, user_id, created_at, updated_at)
                     VALUES (%s, %s, %s, %s, %s, %s, 'manual', %s, NOW(), NOW())
                 """, (
                     data.get('name'),
@@ -239,7 +239,7 @@ def create_contact():
                 ))
             else:
                 cursor.execute("""
-                    INSERT INTO contacts (name, email, phone, company, title, notes, source, created_at, updated_at)
+                    INSERT INTO contacts (name, email, phone, company, job_title, notes, source, created_at, updated_at)
                     VALUES (%s, %s, %s, %s, %s, %s, 'manual', NOW(), NOW())
                 """, (
                     data.get('name'),
@@ -282,7 +282,7 @@ def get_contact(contact_id):
             # USER SCOPING: Add user_id filter to query
             if USER_SCOPING_ENABLED and user_id:
                 cursor.execute("""
-                    SELECT id, name, email, phone, company, title, notes,
+                    SELECT id, name, email, phone, company, job_title, notes,
                            source, last_interaction, relationship_score,
                            tags, birthday, linkedin_url, twitter_url,
                            created_at, updated_at
@@ -290,7 +290,7 @@ def get_contact(contact_id):
                 """, (contact_id, user_id))
             else:
                 cursor.execute("""
-                    SELECT id, name, email, phone, company, title, notes,
+                    SELECT id, name, email, phone, company, job_title, notes,
                            source, last_interaction, relationship_score,
                        interaction_count, created_at, updated_at
                 FROM contacts
@@ -695,7 +695,7 @@ def merge_contacts():
             if strategy == 'combine':
                 # Combine data from merge contacts
                 for merge_id in merge_ids:
-                    cursor.execute("SELECT phone, company, title, notes FROM contacts WHERE id = %s", (merge_id,))
+                    cursor.execute("SELECT phone, company, job_title, notes FROM contacts WHERE id = %s", (merge_id,))
                     merge_data = cursor.fetchone()
 
                     if merge_data:
@@ -712,7 +712,7 @@ def merge_contacts():
                             params.append(merge_data[1])
 
                         if merge_data[2] and not primary[5]:  # title
-                            updates.append("title = %s")
+                            updates.append("job_title = %s")
                             params.append(merge_data[2])
 
                         if updates:
@@ -1038,7 +1038,7 @@ def get_contact_interactions(contact_id):
 
             # Get contact
             cursor.execute("""
-                SELECT id, name, email, phone, company, title,
+                SELECT id, name, email, phone, company, job_title,
                        relationship_score, last_interaction, interaction_count
                 FROM contacts WHERE id = %s
             """, (contact_id,))
