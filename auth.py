@@ -140,25 +140,34 @@ def login_required(f):
     """Decorator to require authentication for routes (backward compatible)"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        print(f"🔒 login_required: Checking auth for {request.path}", flush=True)
+        print(f"🔒 login_required: JWT_AVAILABLE={JWT_AVAILABLE}", flush=True)
+
         # Try JWT auth first if available
         if JWT_AVAILABLE:
             user = get_current_user_from_request()
+            print(f"🔒 login_required: JWT user={user}", flush=True)
             if user:
                 g.user_id = user['user_id']
                 g.user_role = user['role']
                 g.auth_method = user['auth_method']
+                print(f"🔒 login_required: JWT auth SUCCESS - proceeding", flush=True)
                 return f(*args, **kwargs)
 
         # Fall back to legacy auth
-        if not is_authenticated():
+        legacy_auth = is_authenticated()
+        print(f"🔒 login_required: Legacy auth={legacy_auth}", flush=True)
+        if not legacy_auth:
+            print(f"🔒 login_required: All auth failed - returning 401", flush=True)
             if request.is_json or request.path.startswith('/api/'):
-                return jsonify({'error': 'Authentication required'}), 401
+                return jsonify({'error': 'Authentication required', 'ok': False}), 401
             return redirect(url_for('login', next=request.url))
 
         # Set user context for legacy auth (admin user)
         g.user_id = ADMIN_USER_ID
         g.user_role = 'admin'
         g.auth_method = 'legacy'
+        print(f"🔒 login_required: Legacy auth SUCCESS - proceeding", flush=True)
 
         return f(*args, **kwargs)
     return decorated_function
