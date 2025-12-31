@@ -3418,6 +3418,41 @@ def get_app_config():
     })
 
 
+@app.route("/api/debug/jwt-test")
+def jwt_debug_test():
+    """Debug endpoint to test JWT verification"""
+    import os
+    from flask import request
+
+    result = {
+        "jwt_secret_prefix": os.environ.get('JWT_SECRET_KEY', 'NOT_SET')[:8] + "...",
+        "jwt_secret_loaded_from_env": bool(os.environ.get('JWT_SECRET_KEY')),
+        "auth_header_present": bool(request.headers.get('Authorization')),
+    }
+
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+        result["token_length"] = len(token)
+        result["token_prefix"] = token[:20] + "..."
+
+        # Try to verify
+        try:
+            from services.jwt_auth_service import jwt_service, JWT_SECRET_KEY
+            result["service_secret_prefix"] = JWT_SECRET_KEY[:8] + "..."
+            result["secrets_match"] = os.environ.get('JWT_SECRET_KEY', '')[:8] == JWT_SECRET_KEY[:8]
+
+            payload = jwt_service.verify_access_token(token)
+            result["verification"] = "SUCCESS"
+            result["user_id"] = payload.get('sub')
+            result["role"] = payload.get('role')
+        except Exception as e:
+            result["verification"] = "FAILED"
+            result["error"] = str(e)
+
+    return jsonify(result)
+
+
 @app.route("/health")
 @app.route("/api/health")
 def health_check():
