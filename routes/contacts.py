@@ -158,26 +158,43 @@ def list_contacts():
 
             contacts = []
             for row in cursor.fetchall():
-                contacts.append({
-                    'id': row[0],
-                    'name': row[1],
-                    'email': row[2],
-                    'phone': row[3],
-                    'company': row[4],
-                    'title': row[5],
-                    'source': row[6],
-                    'last_touch_date': str(row[7]) if row[7] else None,
-                    'relationship_score': float(row[8]) if row[8] else None,
-                    'created_at': str(row[9]),
-                    'updated_at': str(row[10])
-                })
+                # Handle both DictCursor (dict) and regular cursor (tuple) results
+                if isinstance(row, dict):
+                    contacts.append({
+                        'id': row.get('id'),
+                        'name': row.get('name'),
+                        'email': row.get('email'),
+                        'phone': row.get('phone'),
+                        'company': row.get('company'),
+                        'title': row.get('job_title'),
+                        'source': row.get('source'),
+                        'last_touch_date': str(row.get('last_touch_date')) if row.get('last_touch_date') else None,
+                        'relationship_score': float(row.get('relationship_score')) if row.get('relationship_score') else None,
+                        'created_at': str(row.get('created_at')),
+                        'updated_at': str(row.get('updated_at'))
+                    })
+                else:
+                    contacts.append({
+                        'id': row[0],
+                        'name': row[1],
+                        'email': row[2],
+                        'phone': row[3],
+                        'company': row[4],
+                        'title': row[5],
+                        'source': row[6],
+                        'last_touch_date': str(row[7]) if row[7] else None,
+                        'relationship_score': float(row[8]) if row[8] else None,
+                        'created_at': str(row[9]),
+                        'updated_at': str(row[10])
+                    })
 
             # Get total (scoped by user)
             if USER_SCOPING_ENABLED and user_id:
-                cursor.execute("SELECT COUNT(*) FROM contacts WHERE user_id = %s", (user_id,))
+                cursor.execute("SELECT COUNT(*) as total FROM contacts WHERE user_id = %s", (user_id,))
             else:
-                cursor.execute("SELECT COUNT(*) FROM contacts")
-            total = cursor.fetchone()[0]
+                cursor.execute("SELECT COUNT(*) as total FROM contacts")
+            count_row = cursor.fetchone()
+            total = count_row.get('total', 0) if isinstance(count_row, dict) else count_row[0]
         finally:
             cursor.close()
             return_db_connection(conn)
