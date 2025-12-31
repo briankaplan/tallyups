@@ -172,10 +172,20 @@ def create_session(
     device_name: str = None,
     device_type: str = 'ios',
     ip_address: str = None,
-    user_agent: str = None
+    user_agent: str = None,
+    role: str = 'user'
 ) -> dict:
     """
     Create a new session for a user.
+
+    Args:
+        user_id: The user's UUID
+        device_id: Unique device identifier
+        device_name: Human-readable device name
+        device_type: Type of device (ios, web, etc.)
+        ip_address: Client IP address
+        user_agent: Client user agent string
+        role: User's role ('user' or 'admin')
 
     Returns:
         Dict with access_token, refresh_token
@@ -183,8 +193,8 @@ def create_session(
     if not JWT_AVAILABLE:
         raise Exception("JWT service not available")
 
-    # Create tokens
-    access_token = jwt_service.create_access_token(user_id)
+    # Create tokens with correct role
+    access_token = jwt_service.create_access_token(user_id, role=role)
     refresh_token, token_hash, expires_at = jwt_service.create_refresh_token(
         user_id, device_id, device_name
     )
@@ -332,7 +342,7 @@ def email_login():
         conn.commit()
         conn.close()
 
-        # Create session/tokens
+        # Create session/tokens with correct role
         if JWT_AVAILABLE:
             tokens = create_session(
                 user_id=user['id'],
@@ -340,7 +350,8 @@ def email_login():
                 device_name=data.get('device_name'),
                 device_type=data.get('device_type', 'ios'),
                 ip_address=request.remote_addr,
-                user_agent=request.user_agent.string
+                user_agent=request.user_agent.string,
+                role=user.get('role', 'user')  # Pass user's role from database
             )
         else:
             tokens = {'access_token': None, 'refresh_token': None}
@@ -441,7 +452,7 @@ def register():
         cursor.close()
         conn.close()
 
-        # Create session/tokens
+        # Create session/tokens (new users are always 'user' role)
         if JWT_AVAILABLE:
             tokens = create_session(
                 user_id=user_id,
@@ -449,7 +460,8 @@ def register():
                 device_name=data.get('device_name'),
                 device_type=data.get('device_type', 'web'),
                 ip_address=request.remote_addr,
-                user_agent=request.user_agent.string
+                user_agent=request.user_agent.string,
+                role='user'  # New registrations are always regular users
             )
         else:
             tokens = {'access_token': None, 'refresh_token': None}
@@ -553,14 +565,15 @@ def apple_sign_in():
         if not user.get('is_active', True):
             return jsonify({'error': 'Account is disabled'}), 403
 
-        # Create session
+        # Create session with correct role
         tokens = create_session(
             user_id=user['id'],
             device_id=device_id,
             device_name=data.get('device_name'),
             device_type=data.get('device_type', 'ios'),
             ip_address=request.remote_addr,
-            user_agent=request.user_agent.string
+            user_agent=request.user_agent.string,
+            role=user.get('role', 'user')  # Pass user's role from database
         )
 
         logger.info(f"Apple Sign In successful for user {user['id']}")
@@ -652,7 +665,7 @@ def apple_sign_in_web():
         if not user.get('is_active', True):
             return jsonify({'error': 'Account is disabled'}), 403
 
-        # Create session for web
+        # Create session for web with correct role
         device_id = f"web-{request.remote_addr}-{hash(request.user_agent.string) % 10000}"
         tokens = create_session(
             user_id=user['id'],
@@ -660,7 +673,8 @@ def apple_sign_in_web():
             device_name='Web Browser',
             device_type='web',
             ip_address=request.remote_addr,
-            user_agent=request.user_agent.string
+            user_agent=request.user_agent.string,
+            role=user.get('role', 'user')  # Pass user's role from database
         )
 
         # Also set session cookie for server-side auth
@@ -1505,14 +1519,15 @@ def google_sign_in_web():
         if not user.get('is_active', True):
             return jsonify({'error': 'Account is disabled'}), 403
 
-        # Create session
+        # Create session with correct role
         session_tokens = create_session(
             user_id=user['id'],
             device_id=device_id,
             device_name='Web Browser',
             device_type='web',
             ip_address=request.remote_addr,
-            user_agent=request.user_agent.string
+            user_agent=request.user_agent.string,
+            role=user.get('role', 'user')  # Pass user's role from database
         )
 
         # Regenerate session to prevent session fixation attacks
