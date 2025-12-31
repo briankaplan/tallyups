@@ -22322,22 +22322,16 @@ def get_receipt_full_details(receipt_type, receipt_id):
 # =============================================================================
 
 @app.route("/api/incoming/receipts", methods=["GET"])
+@login_required
 def get_incoming_receipts():
     """
-    Get all incoming receipts from Gmail
-    Supports admin_key authentication for API access.
+    Get all incoming receipts from Gmail.
+    Requires authentication via session, admin_key, or JWT token.
 
     Query params:
     - status: 'pending', 'accepted', 'rejected', or 'all' (default: 'all')
     - limit: max number of results (default: 100)
     """
-    # Auth: admin_key OR login
-    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY')
-    if not secure_compare_api_key(admin_key, expected_key):
-        if not is_authenticated():
-            logger.warning(f"INCOMING API: Auth failed - no valid admin_key or session")
-            return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     logger.info(f"INCOMING API: Request received - status={request.args.get('status', 'all')}, limit={request.args.get('limit', 500)}")
 
@@ -31430,12 +31424,11 @@ def library_upload_receipts():
 
 
 @app.route("/api/library/counts", methods=["GET"])
+@login_required
 def get_library_counts():
-    """Get counts for all library categories for sidebar."""
-    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY')
-    if not is_authenticated() and (not expected_key or not secure_compare_api_key(admin_key, expected_key)):
-        return jsonify({'error': 'Authentication required', 'ok': False}), 401
+    """Get counts for all library categories for sidebar.
+    Requires authentication via session, admin_key, or JWT token.
+    """
 
     try:
         conn = db.get_connection()
