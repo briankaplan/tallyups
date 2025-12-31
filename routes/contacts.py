@@ -48,14 +48,37 @@ except ImportError:
 
 
 def check_auth():
-    """Check if request is authenticated using constant-time comparison."""
+    """
+    Check if request is authenticated.
+    Supports JWT tokens (preferred), session auth, and admin_key.
+    Also sets g.user_id, g.user_role if authenticated via JWT.
+    """
+    from flask import g
+
+    # Try JWT auth first
+    try:
+        from auth import JWT_AVAILABLE
+        if JWT_AVAILABLE:
+            from services.jwt_auth_service import get_current_user_from_request
+            user = get_current_user_from_request()
+            if user:
+                g.user_id = user['user_id']
+                g.user_role = user['role']
+                g.auth_method = user['auth_method']
+                return True
+    except ImportError:
+        pass
+
+    # Check admin API key
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
     expected_key = os.getenv('ADMIN_API_KEY')
-    # SECURITY: Use constant-time comparison to prevent timing attacks
     if admin_key and expected_key and secrets.compare_digest(str(admin_key), str(expected_key)):
         return True
+
+    # Check session auth
     if session.get('authenticated'):
         return True
+
     return False
 
 
