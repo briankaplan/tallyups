@@ -47,6 +47,12 @@ except ImportError:
     logger = logging.getLogger(__name__)
 
 
+def get_db_helpers():
+    """Lazy import database helpers"""
+    from viewer_server import get_db_connection, return_db_connection, db, USE_DATABASE
+    return get_db_connection, return_db_connection, db, USE_DATABASE
+
+
 def check_auth():
     """
     Check if request is authenticated.
@@ -117,12 +123,11 @@ def list_contacts():
         # USER SCOPING: Get user_id for filtering
         user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
 
-        from db_mysql import get_mysql_db
-        db = get_mysql_db()
+        get_db_connection, return_db_connection, _, _ = get_db_helpers()
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
 
-        with db._pool.connection() as conn:
-            cursor = conn.cursor()
-
+        try:
             query = """
                 SELECT id, name, email, phone, company, job_title,
                        source, last_touch_date, relationship_score,
@@ -173,6 +178,9 @@ def list_contacts():
             else:
                 cursor.execute("SELECT COUNT(*) FROM contacts")
             total = cursor.fetchone()[0]
+        finally:
+            cursor.close()
+            return_db_connection(conn)
 
         return jsonify({
             'success': True,
