@@ -125,7 +125,7 @@ def list_contacts():
 
             query = """
                 SELECT id, name, email, phone, company, job_title,
-                       source, last_interaction, relationship_score,
+                       source, last_touch_date, relationship_score,
                        created_at, updated_at
                 FROM contacts
                 WHERE 1=1
@@ -161,7 +161,7 @@ def list_contacts():
                     'company': row[4],
                     'title': row[5],
                     'source': row[6],
-                    'last_interaction': str(row[7]) if row[7] else None,
+                    'last_touch_date': str(row[7]) if row[7] else None,
                     'relationship_score': float(row[8]) if row[8] else None,
                     'created_at': str(row[9]),
                     'updated_at': str(row[10])
@@ -283,7 +283,7 @@ def get_contact(contact_id):
             if USER_SCOPING_ENABLED and user_id:
                 cursor.execute("""
                     SELECT id, name, email, phone, company, job_title, notes,
-                           source, last_interaction, relationship_score,
+                           source, last_touch_date, relationship_score,
                            tags, birthday, linkedin_url, twitter_url,
                            created_at, updated_at
                     FROM contacts WHERE id = %s AND user_id = %s
@@ -291,7 +291,7 @@ def get_contact(contact_id):
             else:
                 cursor.execute("""
                     SELECT id, name, email, phone, company, job_title, notes,
-                           source, last_interaction, relationship_score,
+                           source, last_touch_date, relationship_score,
                        interaction_count, created_at, updated_at
                 FROM contacts
                 WHERE id = %s
@@ -310,7 +310,7 @@ def get_contact(contact_id):
                 'title': row[5],
                 'notes': row[6],
                 'source': row[7],
-                'last_interaction': str(row[8]) if row[8] else None,
+                'last_touch_date': str(row[8]) if row[8] else None,
                 'relationship_score': float(row[9]) if row[9] else None,
                 'interaction_count': row[10],
                 'created_at': str(row[11]),
@@ -758,7 +758,7 @@ def get_relationship_health(contact_id):
             "relationship": {
                 "score": 0.85,
                 "trend": "improving",
-                "last_interaction": "2024-12-20",
+                "last_touch_date": "2024-12-20",
                 "interaction_count": 15,
                 "channels": {"email": 10, "meeting": 3, "call": 2},
                 "suggestions": ["Schedule follow-up call"]
@@ -782,12 +782,12 @@ def get_relationship_health(contact_id):
             # Get contact relationship data (with user isolation)
             if user_id:
                 cursor.execute("""
-                    SELECT relationship_score, last_interaction, interaction_count
+                    SELECT relationship_score, last_touch_date, interaction_count
                     FROM contacts WHERE id = %s AND user_id = %s
                 """, (contact_id, user_id))
             else:
                 cursor.execute("""
-                    SELECT relationship_score, last_interaction, interaction_count
+                    SELECT relationship_score, last_touch_date, interaction_count
                     FROM contacts WHERE id = %s
                 """, (contact_id,))
 
@@ -795,10 +795,10 @@ def get_relationship_health(contact_id):
             if not row:
                 return jsonify({'success': False, 'error': 'Contact not found'}), 404
 
-            score, last_interaction, count = row
+            score, last_touch_date, count = row
 
             # Determine trend based on recent activity
-            days_since = (datetime.now() - last_interaction).days if last_interaction else 999
+            days_since = (datetime.now() - last_touch_date).days if last_touch_date else 999
             if days_since < 7:
                 trend = 'strong'
             elif days_since < 30:
@@ -818,7 +818,7 @@ def get_relationship_health(contact_id):
             relationship = {
                 'score': float(score) if score else 0.5,
                 'trend': trend,
-                'last_interaction': str(last_interaction) if last_interaction else None,
+                'last_touch_date': str(last_touch_date) if last_touch_date else None,
                 'days_since_contact': days_since,
                 'interaction_count': count or 0,
                 'suggestions': suggestions
@@ -955,20 +955,20 @@ def get_nudges():
             # Find contacts that need attention (with user isolation)
             if user_id:
                 cursor.execute("""
-                    SELECT id, name, email, last_interaction, relationship_score
+                    SELECT id, name, email, last_touch_date, relationship_score
                     FROM contacts
                     WHERE user_id = %s
-                      AND (last_interaction < DATE_SUB(NOW(), INTERVAL 30 DAY)
-                           OR last_interaction IS NULL)
+                      AND (last_touch_date < DATE_SUB(NOW(), INTERVAL 30 DAY)
+                           OR last_touch_date IS NULL)
                     ORDER BY relationship_score DESC
                     LIMIT 20
                 """, (user_id,))
             else:
                 cursor.execute("""
-                    SELECT id, name, email, last_interaction, relationship_score
+                    SELECT id, name, email, last_touch_date, relationship_score
                     FROM contacts
-                    WHERE last_interaction < DATE_SUB(NOW(), INTERVAL 30 DAY)
-                       OR last_interaction IS NULL
+                    WHERE last_touch_date < DATE_SUB(NOW(), INTERVAL 30 DAY)
+                       OR last_touch_date IS NULL
                     ORDER BY relationship_score DESC
                     LIMIT 20
                 """)
@@ -1039,7 +1039,7 @@ def get_contact_interactions(contact_id):
             # Get contact
             cursor.execute("""
                 SELECT id, name, email, phone, company, job_title,
-                       relationship_score, last_interaction, interaction_count
+                       relationship_score, last_touch_date, interaction_count
                 FROM contacts WHERE id = %s
             """, (contact_id,))
 
@@ -1055,7 +1055,7 @@ def get_contact_interactions(contact_id):
                 'company': row[4],
                 'title': row[5],
                 'relationship_score': float(row[6]) if row[6] else 50,
-                'last_interaction': str(row[7]) if row[7] else None,
+                'last_touch_date': str(row[7]) if row[7] else None,
                 'interaction_count': row[8] or 0
             }
 
@@ -1168,7 +1168,7 @@ def add_contact_interaction(contact_id):
             # Update contact last interaction
             cursor.execute("""
                 UPDATE contacts
-                SET last_interaction = NOW(),
+                SET last_touch_date = NOW(),
                     interaction_count = COALESCE(interaction_count, 0) + 1,
                     updated_at = NOW()
                 WHERE id = %s
