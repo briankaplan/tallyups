@@ -126,14 +126,14 @@ def get_transaction(tx_id):
             user_id = get_current_user_id()
             cursor.execute("""
                 SELECT _index, chase_date, chase_description, chase_amount, business_type,
-                       category, notes, receipt_file, receipt_url, r2_url, review_status,
+                       category, notes, receipt_file, r2_url, review_status,
                        ocr_verified, ocr_verification_status, ocr_data
                 FROM transactions WHERE _index = %s AND user_id = %s
             """, (tx_id, user_id))
         else:
             cursor.execute("""
                 SELECT _index, chase_date, chase_description, chase_amount, business_type,
-                       category, notes, receipt_file, receipt_url, r2_url, review_status,
+                       category, notes, receipt_file, r2_url, review_status,
                        ocr_verified, ocr_verification_status, ocr_data
                 FROM transactions WHERE _index = %s
             """, (tx_id,))
@@ -146,7 +146,7 @@ def get_transaction(tx_id):
             return jsonify({"error": "Transaction not found"}), 404
 
         columns = ['_index', 'chase_date', 'chase_description', 'chase_amount', 'business_type',
-                   'category', 'notes', 'receipt_file', 'receipt_url', 'r2_url', 'review_status',
+                   'category', 'notes', 'receipt_file', 'r2_url', 'review_status',
                    'ocr_verified', 'ocr_verification_status', 'ocr_data']
         tx = dict(zip(columns, row)) if not isinstance(row, dict) else row
 
@@ -182,7 +182,7 @@ def update_transaction(tx_id):
 
         # Build update query from allowed fields
         allowed_fields = ['chase_date', 'chase_description', 'chase_amount', 'business_type',
-                          'review_status', 'notes', 'category', 'receipt_file', 'receipt_url']
+                          'review_status', 'notes', 'category', 'receipt_file', 'r2_url']
         updates = []
         values = []
         for field in allowed_fields:
