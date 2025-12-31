@@ -4050,8 +4050,11 @@ def get_dashboard_stats_ios():
     from datetime import datetime, timedelta
     conn = None
     try:
+        # Debug: show auth context
+        auth_method = getattr(g, 'auth_method', 'unknown')
+        user_role = getattr(g, 'user_role', 'unknown')
         user_id = get_current_user_id()
-        print(f"📊 Dashboard stats for user_id: {user_id}", flush=True)
+        print(f"📊 Dashboard stats request - auth: {auth_method}, role: {user_role}, user_id: {user_id}", flush=True)
 
         conn, db_type = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)

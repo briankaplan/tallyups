@@ -88,6 +88,81 @@ actor APIClient {
         return try decoder.decode(HealthResponse.self, from: data)
     }
 
+    // MARK: - Dashboard Stats
+
+    struct DashboardStats {
+        let needsReceiptCount: Int
+        let uncategorizedCount: Int
+        let weeklySpending: String
+        let weeklyTrend: String?
+        let matchRate: Int
+    }
+
+    struct DashboardStatsResponse: Codable {
+        let success: Bool
+        let needsReceiptCount: Int
+        let uncategorizedCount: Int
+        let weeklySpending: String
+        let weeklyTrend: String?
+        let matchRate: Int
+    }
+
+    func fetchDashboardStats() async throws -> DashboardStats {
+        let request = try makeRequest(path: "/api/dashboard/stats", method: "GET")
+        print("📊 APIClient: Fetching dashboard stats from \(request.url?.absoluteString ?? "nil")")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("📊 APIClient: Invalid response type")
+            throw APIError.invalidResponse
+        }
+
+        print("📊 APIClient: Dashboard stats status: \(httpResponse.statusCode)")
+
+        // Return defaults if not authorized or error
+        guard httpResponse.statusCode == 200 else {
+            if let responseText = String(data: data, encoding: .utf8) {
+                print("📊 APIClient: Dashboard stats error response: \(responseText)")
+            }
+            return DashboardStats(
+                needsReceiptCount: 0,
+                uncategorizedCount: 0,
+                weeklySpending: "$0.00",
+                weeklyTrend: nil,
+                matchRate: 100
+            )
+        }
+
+        if let responseText = String(data: data, encoding: .utf8) {
+            print("📊 APIClient: Dashboard stats response: \(responseText)")
+        }
+
+        let result = try decoder.decode(DashboardStatsResponse.self, from: data)
+        print("📊 APIClient: Decoded stats - needsReceipt: \(result.needsReceiptCount), matchRate: \(result.matchRate)")
+
+        return DashboardStats(
+            needsReceiptCount: result.needsReceiptCount,
+            uncategorizedCount: result.uncategorizedCount,
+            weeklySpending: result.weeklySpending,
+            weeklyTrend: result.weeklyTrend,
+            matchRate: result.matchRate
+        )
+    }
+
+    func runAutoMatch() async throws {
+        var request = try makeRequest(path: "/api/receipts/auto-match", method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
+            throw APIError.serverError(statusCode, "Auto-match failed")
+        }
+    }
+
     // MARK: - Authentication
 
     /// Response from email/password login
@@ -110,11 +185,13 @@ actor APIClient {
         var request = try makeRequest(path: "/api/auth/login", method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        let deviceId = await UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        let deviceName = await UIDevice.current.name
         let body: [String: Any] = [
             "email": email,
             "password": password,
-            "device_id": UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString,
-            "device_name": UIDevice.current.name
+            "device_id": deviceId,
+            "device_name": deviceName
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -133,7 +210,7 @@ actor APIClient {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
         if httpResponse.statusCode == 200 {
-            var loginResponse = try decoder.decode(EmailLoginResponse.self, from: data)
+            let loginResponse = try decoder.decode(EmailLoginResponse.self, from: data)
 
             // Store session cookie if present
             if let url = URL(string: baseURL),
