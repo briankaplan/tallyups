@@ -4054,17 +4054,24 @@ def get_dashboard_stats_ios():
         conn, db_type = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
 
-        # Get transactions needing receipts
+        # Get transactions needing receipts (no r2_url AND no receipt_file)
         cursor.execute("""
             SELECT COUNT(*) as cnt FROM transactions
-            WHERE user_id = %s AND receipt_count = 0 AND excluded = 0
+            WHERE user_id = %s
+            AND (r2_url IS NULL OR r2_url = '')
+            AND (receipt_file IS NULL OR receipt_file = '')
+            AND (review_status IS NULL OR review_status != 'excluded')
+            AND (deleted IS NULL OR deleted = 0)
         """, (user_id,))
         needs_receipt = cursor.fetchone()['cnt']
 
         # Get uncategorized transactions
         cursor.execute("""
             SELECT COUNT(*) as cnt FROM transactions
-            WHERE user_id = %s AND (category IS NULL OR category = '') AND excluded = 0
+            WHERE user_id = %s
+            AND (category IS NULL OR category = '')
+            AND (review_status IS NULL OR review_status != 'excluded')
+            AND (deleted IS NULL OR deleted = 0)
         """, (user_id,))
         uncategorized = cursor.fetchone()['cnt']
 
@@ -4072,7 +4079,10 @@ def get_dashboard_stats_ios():
         week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
         cursor.execute("""
             SELECT COALESCE(SUM(ABS(chase_amount)), 0) as total FROM transactions
-            WHERE user_id = %s AND chase_date >= %s AND excluded = 0 AND chase_amount < 0
+            WHERE user_id = %s AND chase_date >= %s
+            AND (review_status IS NULL OR review_status != 'excluded')
+            AND (deleted IS NULL OR deleted = 0)
+            AND chase_amount < 0
         """, (user_id, week_ago))
         weekly_total = cursor.fetchone()['total'] or 0
 
@@ -4080,7 +4090,10 @@ def get_dashboard_stats_ios():
         two_weeks_ago = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
         cursor.execute("""
             SELECT COALESCE(SUM(ABS(chase_amount)), 0) as total FROM transactions
-            WHERE user_id = %s AND chase_date >= %s AND chase_date < %s AND excluded = 0 AND chase_amount < 0
+            WHERE user_id = %s AND chase_date >= %s AND chase_date < %s
+            AND (review_status IS NULL OR review_status != 'excluded')
+            AND (deleted IS NULL OR deleted = 0)
+            AND chase_amount < 0
         """, (user_id, two_weeks_ago, week_ago))
         last_week_total = cursor.fetchone()['total'] or 0
 
@@ -4093,13 +4106,15 @@ def get_dashboard_stats_ios():
             elif change < -5:
                 weekly_trend = f"{change:.0f}% vs last week"
 
-        # Get match rate
+        # Get match rate (has receipt = has r2_url or receipt_file)
         cursor.execute("""
             SELECT
                 COUNT(*) as total,
-                SUM(CASE WHEN receipt_count > 0 THEN 1 ELSE 0 END) as matched
+                SUM(CASE WHEN (r2_url IS NOT NULL AND r2_url != '') OR (receipt_file IS NOT NULL AND receipt_file != '') THEN 1 ELSE 0 END) as matched
             FROM transactions
-            WHERE user_id = %s AND excluded = 0
+            WHERE user_id = %s
+            AND (review_status IS NULL OR review_status != 'excluded')
+            AND (deleted IS NULL OR deleted = 0)
         """, (user_id,))
         match_data = cursor.fetchone()
         total_transactions = match_data['total'] or 1
@@ -4117,6 +4132,8 @@ def get_dashboard_stats_ios():
 
     except Exception as e:
         print(f"Error getting dashboard stats: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "success": True,
             "needsReceiptCount": 0,
@@ -7260,6 +7277,11 @@ def get_transactions():
                         if rejected and rejected.replace('receipts/', '') in receipt_file:
                             record['Receipt File'] = ''
                             break
+
+                # Add receipt_count and has_receipt for iOS app
+                has_receipt = bool(record.get('r2_url') or record.get('receipt_file') or record.get('Receipt File'))
+                record['receipt_count'] = 1 if has_receipt else 0
+                record['has_receipt'] = has_receipt
 
                 records.append(record)
 
