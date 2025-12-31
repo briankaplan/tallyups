@@ -21,6 +21,9 @@ JWT_ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
+# Debug: Print first 8 chars of secret at startup to verify consistency
+print(f"🔐 JWT Secret Key prefix: {JWT_SECRET_KEY[:8]}... (loaded from env: {bool(os.environ.get('JWT_SECRET_KEY'))})", flush=True)
+
 # Token types
 TOKEN_TYPE_ACCESS = 'access'
 TOKEN_TYPE_REFRESH = 'refresh'
@@ -284,13 +287,16 @@ def get_current_user_from_request():
 
     if token:
         try:
+            print(f"🔐 JWT: Attempting to verify token...", flush=True)
             payload = jwt_service.verify_access_token(token)
+            print(f"🔐 JWT: Token verified successfully for user: {payload.get('sub')}", flush=True)
             user = {
                 'user_id': payload['sub'],
                 'role': payload.get('role', 'user'),
                 'auth_method': 'jwt'
             }
         except JWTError as e:
+            print(f"🔐 JWT: Token verification FAILED: {e}", flush=True)
             logger.debug(f"JWT validation failed: {e}")
 
     # 2. Check X-Admin-Key header (legacy)
