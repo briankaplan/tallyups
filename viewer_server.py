@@ -7161,6 +7161,7 @@ def update_transaction_field():
 
 
 @app.route("/api/transactions")
+@login_required
 def get_transactions():
     """
     Return transactions as JSON from MySQL with pagination support.
@@ -7177,17 +7178,10 @@ def get_transactions():
     - limit: Alternative to per_page
     - offset: Alternative to page calculation
     - all=true: Return all records (for backward compatibility, but discouraged)
-    - admin_key: API key for authentication (or use session login)
 
     Note: Transactions assigned to a report (report_id is set) are hidden by default.
     They become visible again when removed from the report (report_id cleared).
     """
-    # Auth check: admin_key OR login
-    admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
-    expected_key = os.getenv('ADMIN_API_KEY')
-    if not secure_compare_api_key(admin_key, expected_key):
-        if not is_authenticated():
-            return jsonify({'error': 'Authentication required'}), 401
 
     if USE_DATABASE and db:
         try:
