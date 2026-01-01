@@ -1,18 +1,55 @@
 """
+================================================================================
 Incoming Receipts API Blueprint
-===============================
-Gmail inbox monitoring, receipt processing, and auto-matching.
+================================================================================
+Gmail inbox monitoring, receipt processing, and intelligent auto-matching.
 
-Routes:
-- GET  /api/incoming/receipts - List all incoming receipts
-- POST /api/incoming/accept - Accept receipt as transaction
-- POST /api/incoming/reject - Reject receipt
-- POST /api/incoming/scan - Trigger Gmail scan
-- GET  /api/incoming/stats - Get inbox statistics
-- POST /api/incoming/cleanup - Clean up old receipts
-- And more...
+ENDPOINTS:
+----------
+Receipt Queue:
+    GET  /api/incoming/receipts       - List all incoming receipts
+    GET  /api/incoming/receipts/<id>  - Get single receipt details
+    POST /api/incoming/accept         - Accept and link to transaction
+    POST /api/incoming/reject         - Reject/archive receipt
+    POST /api/incoming/archive        - Archive receipt
+    DELETE /api/incoming/receipts/<id> - Delete receipt
 
-This blueprint handles the Gmail receipt inbox system.
+Gmail Integration:
+    POST /api/incoming/scan           - Trigger Gmail scan for new receipts
+    GET  /api/incoming/scan-status    - Check scan status
+    POST /api/incoming/cleanup        - Clean up old/duplicate receipts
+
+Statistics:
+    GET  /api/incoming/stats          - Get inbox statistics
+    GET  /api/incoming/pending-count  - Get pending receipt count
+
+Matching:
+    POST /api/incoming/auto-match     - Run auto-matching algorithm
+    GET  /api/incoming/match-suggestions/<id> - Get match suggestions
+
+WORKFLOW:
+---------
+1. Gmail receipts are scanned and stored in incoming_receipts table
+2. OCR extracts merchant, amount, and date from receipt images
+3. Auto-matching attempts to link receipts to bank transactions
+4. Unmatched receipts appear in the inbox for manual review
+5. Users can accept (link), reject (archive), or delete receipts
+
+RECEIPT STATUSES:
+-----------------
+- pending: New receipt awaiting review
+- matched: Linked to a transaction
+- rejected: Marked as not needed
+- duplicate: Detected as duplicate
+- processing: Currently being processed
+
+SECURITY:
+---------
+- All endpoints require authentication
+- User scoping ensures users only see their own receipts
+- Gmail OAuth tokens stored securely in user_credentials table
+
+================================================================================
 """
 
 import os
@@ -90,7 +127,35 @@ def check_auth():
 
 
 def extract_merchant_from_subject(subject):
-    """Smart merchant extraction from email subject lines."""
+    """
+    Extract merchant name from email subject lines using pattern matching.
+
+    This function uses a prioritized list of regex patterns to identify
+    merchant names from various common email receipt formats.
+
+    Args:
+        subject (str): The email subject line to parse
+
+    Returns:
+        str or None: Extracted merchant name (2-50 chars), or None if not found
+
+    Patterns Recognized:
+        - "Your [Merchant] invoice/receipt"
+        - "Invoice from [Merchant]"
+        - "Receipt from [Merchant]"
+        - "Payment from [Merchant]"
+        - "Your order from [Merchant]"
+        - "[Merchant] Payment Confirmation"
+        - Amazon order indicators
+
+    Examples:
+        >>> extract_merchant_from_subject("Your Spotify invoice")
+        'Spotify'
+        >>> extract_merchant_from_subject("Receipt from Apple Inc.")
+        'Apple'
+        >>> extract_merchant_from_subject("Shipped: Your Amazon.com order")
+        'Amazon'
+    """
     if not subject:
         return None
 
