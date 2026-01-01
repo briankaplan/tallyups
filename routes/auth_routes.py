@@ -1,9 +1,57 @@
 """
+================================================================================
 Authentication Routes for TallyUps
-Handles Apple Sign In, JWT token management, and user management
+================================================================================
+Comprehensive authentication system supporting multiple providers and secure
+session management with JWT tokens.
 
-NOTE: These routes require the multi-user tables to be created (migrations 009-014).
-If tables don't exist, routes will return 503 "Multi-user mode not enabled".
+ENDPOINTS:
+----------
+Login & Registration:
+    POST /api/auth/login              - Email/password login
+    POST /api/auth/register           - Create new account
+    POST /api/auth/apple              - Apple Sign In (iOS)
+    POST /api/auth/apple/web          - Apple Sign In (Web)
+    POST /api/auth/google/web         - Google Sign In (Web)
+
+Token Management:
+    POST /api/auth/refresh            - Refresh access token
+    POST /api/auth/logout             - Logout and revoke session
+
+User Profile:
+    GET  /api/auth/me                 - Get current user profile
+    PATCH /api/auth/me                - Update user profile
+    DELETE /api/auth/delete-account   - Delete account (GDPR)
+    POST /api/auth/onboarding/complete - Mark onboarding done
+
+Session Management:
+    GET  /api/auth/sessions           - List active sessions
+    DELETE /api/auth/sessions/<id>    - Revoke specific session
+
+Password Reset:
+    POST /api/auth/forgot-password    - Request reset email
+    POST /api/auth/reset-password     - Reset with token
+
+Configuration:
+    GET  /api/auth/config             - Get OAuth client IDs
+
+SECURITY FEATURES:
+------------------
+- JWT tokens with short expiry (15 min access, 7 day refresh)
+- Refresh token rotation with reuse detection
+- bcrypt password hashing (cost factor 12)
+- Rate limiting on sensitive endpoints
+- Session tracking with device fingerprinting
+- GDPR-compliant account deletion
+
+DEPENDENCIES:
+-------------
+- Multi-user tables (migrations 009-014)
+- services/jwt_auth_service.py
+- services/apple_auth_service.py
+
+NOTE: If multi-user tables don't exist, routes return 503 "Multi-user mode not enabled".
+================================================================================
 """
 
 import os
@@ -63,7 +111,16 @@ except ImportError:
 
 
 def generate_user_id() -> str:
-    """Generate a new user UUID."""
+    """
+    Generate a new UUID v4 for user identification.
+
+    Returns:
+        str: A 36-character UUID string (e.g., 'f47ac10b-58cc-4372-a567-0e02b2c3d479')
+
+    Note:
+        UUID v4 is randomly generated and has ~122 bits of entropy,
+        making collisions virtually impossible.
+    """
     return str(uuid.uuid4())
 
 
