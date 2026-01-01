@@ -54,12 +54,33 @@ except ImportError:
 # =============================================================================
 
 def get_db_helpers():
-    """Lazy import database helpers"""
+    """
+    Lazy import database helpers to avoid circular imports at module load time.
+
+    Returns:
+        tuple: (get_db_connection, return_db_connection, db, USE_DATABASE)
+            - get_db_connection: Function to acquire a pooled MySQL connection
+            - return_db_connection: Function to return connection to pool
+            - db: MySQLReceiptDatabase instance
+            - USE_DATABASE: Boolean indicating if database is available
+
+    Note:
+        Always call return_db_connection() after using the connection to prevent
+        pool exhaustion. Use try/finally pattern for safety.
+    """
     from viewer_server import get_db_connection, return_db_connection, db, USE_DATABASE
     return get_db_connection, return_db_connection, db, USE_DATABASE
 
 def get_auth_helpers():
-    """Lazy import auth helpers"""
+    """
+    Lazy import authentication helpers to avoid circular imports.
+
+    Returns:
+        tuple: (login_required, is_authenticated, secure_compare_api_key)
+            - login_required: Decorator for routes requiring authentication
+            - is_authenticated: Function to check if current request is authenticated
+            - secure_compare_api_key: Timing-safe API key comparison function
+    """
     from auth import login_required, is_authenticated
     from viewer_server import secure_compare_api_key
     return login_required, is_authenticated, secure_compare_api_key
@@ -67,13 +88,32 @@ def get_auth_helpers():
 
 def check_auth():
     """
-    Check authentication using JWT (preferred) or legacy session/admin_key.
-    Returns True if authenticated, False otherwise.
-    Also sets g.user_id, g.user_role if authenticated via JWT.
+    Check if the current request is authenticated using any supported method.
+
+    Authentication Methods (in order of preference):
+        1. JWT Bearer Token (Authorization: Bearer <token>)
+        2. Session-based authentication (Flask session)
+        3. Admin API key (X-Admin-Key header or admin_key query param)
+
+    Side Effects:
+        If authenticated via JWT, sets the following on Flask's g object:
+            - g.user_id: UUID of the authenticated user
+            - g.user_role: Role of the user ('admin' or 'user')
+            - g.auth_method: Authentication method used ('jwt')
+
+    Returns:
+        bool: True if request is authenticated, False otherwise
+
+    Example:
+        @transactions_bp.route("/example")
+        def protected_route():
+            if not check_auth():
+                return jsonify({'error': 'Authentication required'}), 401
+            # ... rest of handler
     """
     from flask import g
 
-    # Try JWT auth first
+    # Try JWT auth first (preferred for iOS app and API clients)
     try:
         from auth import JWT_AVAILABLE
         if JWT_AVAILABLE:
@@ -87,12 +127,26 @@ def check_auth():
     except ImportError:
         pass
 
-    # Fall back to legacy auth
+    # Fall back to legacy session/admin_key auth (web interface)
     _, is_authenticated, _ = get_auth_helpers()
     return is_authenticated()
 
 def get_user_scope():
-    """Lazy import user scoping - returns (get_current_user_id, is_enabled)"""
+    """
+    Get user scoping configuration for multi-tenant data isolation.
+
+    User scoping ensures users can only access their own data. When enabled,
+    all database queries are filtered by user_id.
+
+    Returns:
+        tuple: (get_current_user_id_func, is_scoping_enabled)
+            - get_current_user_id_func: Function that returns current user's UUID
+            - is_scoping_enabled: Boolean indicating if scoping is active
+
+    Fallback:
+        If user scoping module is not available, returns a fallback function
+        that returns the default admin user UUID and False for is_enabled.
+    """
     try:
         from db_user_scope import get_current_user_id, USER_SCOPING_ENABLED
         return get_current_user_id, USER_SCOPING_ENABLED
@@ -108,8 +162,41 @@ def get_user_scope():
 
 @transactions_bp.route("/transactions/<int:tx_id>", methods=["GET"])
 def get_transaction(tx_id):
-    """Get a single transaction by ID.
-    Requires authentication via session, admin_key, or JWT token.
+    """
+    Retrieve a single transaction by its database ID.
+
+    Args:
+        tx_id (int): The transaction's _index (primary key)
+
+    Returns:
+        JSON: {
+            "ok": true,
+            "transaction": {
+                "_index": int,
+                "chase_date": "YYYY-MM-DD",
+                "chase_description": str,
+                "chase_amount": float,
+                "business_type": str,
+                "category": str,
+                "notes": str,
+                "receipt_file": str,
+                "r2_url": str (Cloudflare R2 URL),
+                "review_status": str,
+                "ocr_verified": bool,
+                "ocr_verification_status": str,
+                "ocr_merchant": str,
+                "ocr_amount": float
+            }
+        }
+
+    Errors:
+        401: Authentication required
+        404: Transaction not found
+        500: Database error
+
+    Security:
+        - Requires authentication (JWT, session, or admin_key)
+        - User scoping: Users can only access their own transactions
     """
     if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
@@ -162,7 +249,39 @@ def get_transaction(tx_id):
 
 @transactions_bp.route("/transactions/<int:tx_id>", methods=["PUT"])
 def update_transaction(tx_id):
-    """Update a transaction's fields (admin only)"""
+    """
+    Update a transaction's fields. Requires admin API key.
+
+    This is an admin-only endpoint for updating any transaction field.
+    For user-facing updates, use the specific endpoints like /notes or /description.
+
+    Args:
+        tx_id (int): The transaction's _index (primary key)
+
+    Request Body (JSON):
+        Any of the allowed fields:
+        - chase_date: Transaction date
+        - chase_description: Merchant/description
+        - chase_amount: Transaction amount
+        - business_type: Business classification (Personal, Down Home, etc.)
+        - review_status: Current review status
+        - notes: User notes
+        - category: Expense category
+        - receipt_file: Legacy receipt file path
+        - r2_url: Cloudflare R2 receipt URL
+
+    Returns:
+        JSON: {"ok": true, "message": "Transaction {tx_id} updated"}
+
+    Errors:
+        400: No data provided or no valid fields
+        401: Admin key required
+        500: Database error
+
+    Security:
+        - Requires ADMIN_API_KEY (not user authentication)
+        - Uses secure timing-safe comparison for API key
+    """
     _, _, secure_compare_api_key = get_auth_helpers()
 
     admin_key = request.args.get('admin_key') or request.headers.get('X-Admin-Key')
@@ -208,7 +327,30 @@ def update_transaction(tx_id):
 
 @transactions_bp.route("/transactions/<int:tx_id>/notes", methods=["PUT"])
 def update_transaction_notes(tx_id):
-    """Update a transaction's notes field"""
+    """
+    Update a transaction's notes field.
+
+    User-facing endpoint for adding/updating notes on a transaction.
+    Notes are free-form text that can include context about the expense.
+
+    Args:
+        tx_id (int): The transaction's database ID
+
+    Request Body (JSON):
+        {"notes": "string content"}
+
+    Returns:
+        JSON: {"ok": true, "message": "Notes updated"}
+
+    Errors:
+        400: No data provided
+        401: Authentication required
+        500: Database error
+
+    Security:
+        - Requires authentication (JWT, session, or admin_key)
+        - User scoping: Users can only update their own transactions
+    """
     if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
@@ -243,7 +385,30 @@ def update_transaction_notes(tx_id):
 
 @transactions_bp.route("/transactions/<int:tx_id>/description", methods=["PUT"])
 def update_transaction_description(tx_id):
-    """Update a transaction's ai_note field (description for reports)"""
+    """
+    Update a transaction's AI-generated description (ai_note field).
+
+    The ai_note field contains AI-generated or user-edited descriptions
+    that appear in expense reports. This is separate from user notes.
+
+    Args:
+        tx_id (int): The transaction's database ID
+
+    Request Body (JSON):
+        {"ai_note": "Expense description for reports"}
+
+    Returns:
+        JSON: {"ok": true, "message": "Description updated"}
+
+    Errors:
+        400: No data provided
+        401: Authentication required
+        500: Database error
+
+    Security:
+        - Requires authentication (JWT, session, or admin_key)
+        - User scoping: Users can only update their own transactions
+    """
     if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
@@ -279,8 +444,39 @@ def update_transaction_description(tx_id):
 @transactions_bp.route("/transaction/update", methods=["POST"])
 def update_transaction_field():
     """
-    Update a single field on a transaction by index.
-    Used by the reconciler viewer for quick edits.
+    Update a single field on a transaction by its index.
+
+    Used by the reconciler web viewer for quick inline edits. Supports
+    updating various fields with a standardized field name mapping.
+
+    Request Body (JSON):
+        {
+            "index": int,       # Transaction _index (required)
+            "field": str,       # Field name to update (required)
+            "value": str        # New value for the field
+        }
+
+    Supported Fields:
+        - Notes/notes: User notes
+        - Business Type/business_type: Business classification
+        - Category/category: Expense category
+        - ai_category: AI-suggested category
+        - ai_note: AI-generated description
+        - Merchant/merchant: chase_description
+        - review_status: Review workflow status
+
+    Returns:
+        JSON: {"ok": true, "message": "Updated {field} for transaction {index}"}
+
+    Errors:
+        400: Missing index/field, invalid index, or unknown field
+        401: Authentication required
+        500: Database error
+
+    Security:
+        - Requires authentication (JWT, session, or admin_key)
+        - Field names are whitelisted to prevent SQL injection
+        - Index is validated as integer
     """
     if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
@@ -347,7 +543,35 @@ def update_transaction_field():
 
 @transactions_bp.route("/transactions/move-to-report", methods=["POST"])
 def move_transactions_to_report():
-    """Move transactions to a different report"""
+    """
+    Move one or more transactions to a specific expense report.
+
+    When moving transactions, their business_type is updated to match
+    the target report's business_type for consistency.
+
+    Request Body (JSON):
+        {
+            "transaction_ids": [int, ...],  # List of transaction IDs to move
+            "target_report_id": int         # Destination report ID
+        }
+
+    Returns:
+        JSON: {
+            "ok": true,
+            "message": "{n} transaction(s) moved",
+            "affected": int
+        }
+
+    Errors:
+        400: Missing transaction_ids or target_report_id
+        401: Authentication required
+        404: Target report not found
+        500: Database error
+
+    Security:
+        - Requires authentication
+        - User scoping: Can only move own transactions to own reports
+    """
     if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
@@ -503,7 +727,40 @@ def bulk_remove_transactions_from_report():
 
 @transactions_bp.route("/transactions/attach-receipt", methods=["POST"])
 def attach_receipt_to_transaction():
-    """Attach a receipt from incoming_receipts to a transaction"""
+    """
+    Attach an incoming receipt to a transaction.
+
+    Links a receipt from the incoming_receipts table (captured from email,
+    scanner, etc.) to a bank transaction. Updates both the transaction's
+    r2_url and marks the receipt as matched.
+
+    Request Body (JSON):
+        {
+            "transaction_index": int,      # Transaction _index to link to
+            "incoming_receipt_id": int     # ID from incoming_receipts table
+        }
+
+    Process:
+        1. Retrieves receipt image URL from incoming_receipts
+        2. Updates transaction's r2_url with the receipt URL
+        3. Marks incoming receipt as 'matched' with transaction reference
+
+    Returns:
+        JSON: {
+            "ok": true,
+            "receipt_url": str,
+            "message": "Receipt attached to transaction {index}"
+        }
+
+    Errors:
+        400: Missing parameters or receipt has no image URL
+        401: Authentication required
+        404: Incoming receipt not found
+        500: Database error
+
+    Security:
+        - Requires authentication
+    """
     if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
@@ -573,7 +830,40 @@ def attach_receipt_to_transaction():
 
 @transactions_bp.route("/transactions/<int:tx_id>/link", methods=["POST"])
 def link_receipt_to_transaction(tx_id):
-    """Link a receipt to a transaction (iOS app endpoint)"""
+    """
+    Link a receipt to a transaction. Primary iOS app endpoint.
+
+    Flexible receipt linking that searches for the receipt in multiple
+    locations: incoming_receipts table or existing transactions.
+
+    Args:
+        tx_id (int): The transaction's _index to link the receipt to
+
+    Request Body (JSON):
+        {"receipt_id": int}  # Can be incoming_receipts.id or transaction._index
+
+    Process:
+        1. First tries to find receipt in incoming_receipts table
+        2. Falls back to looking up by transaction _index
+        3. Updates transaction's r2_url and sets review_status to 'matched'
+        4. Marks incoming receipt as matched (if applicable)
+
+    Returns:
+        JSON: {
+            "ok": true,
+            "message": "Receipt linked to transaction {tx_id}",
+            "receipt_url": str
+        }
+
+    Errors:
+        400: Missing receipt_id
+        401: Authentication required
+        404: Receipt not found
+        500: Database error
+
+    Security:
+        - Requires authentication
+    """
     if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
@@ -650,7 +940,36 @@ def link_receipt_to_transaction(tx_id):
 
 @transactions_bp.route("/transactions/<int:tx_id>/unlink", methods=["POST"])
 def unlink_receipt_from_transaction(tx_id):
-    """Unlink a receipt from a transaction (iOS app endpoint)"""
+    """
+    Unlink a receipt from a transaction. Primary iOS app endpoint.
+
+    Removes the receipt association from a transaction, resetting it
+    to pending status for re-matching.
+
+    Args:
+        tx_id (int): The transaction's _index to unlink the receipt from
+
+    Request Body (JSON - optional):
+        {"receipt_id": int}  # If provided, also resets the specific receipt
+
+    Process:
+        1. Clears transaction's r2_url
+        2. Sets review_status back to 'pending'
+        3. If receipt_id provided, resets that incoming receipt to 'pending'
+
+    Returns:
+        JSON: {
+            "ok": true,
+            "message": "Receipt unlinked from transaction {tx_id}"
+        }
+
+    Errors:
+        401: Authentication required
+        500: Database error
+
+    Security:
+        - Requires authentication
+    """
     if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
@@ -699,7 +1018,39 @@ def unlink_receipt_from_transaction(tx_id):
 
 @transactions_bp.route("/transactions/<int:tx_id>/exclude", methods=["POST"])
 def exclude_transaction(tx_id):
-    """Exclude or unexclude a transaction from receipt matching"""
+    """
+    Exclude or unexclude a transaction from receipt matching.
+
+    Excluded transactions are hidden from the matching queue. Useful for
+    recurring charges, transfers, or transactions that don't need receipts.
+
+    Args:
+        tx_id (int): The transaction's _index
+
+    Request Body (JSON):
+        {
+            "excluded": bool,          # True to exclude, False to unexclude
+            "exclusion_reason": str    # Optional reason for exclusion
+        }
+
+    Process:
+        - When excluding: Sets review_status to 'excluded', appends reason to notes
+        - When unexcluding: Sets review_status based on whether receipt exists
+
+    Returns:
+        JSON: {
+            "ok": true,
+            "message": "Transaction {tx_id} excluded/unexcluded",
+            "excluded": bool
+        }
+
+    Errors:
+        401: Authentication required
+        500: Database error
+
+    Security:
+        - Requires authentication
+    """
     if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
@@ -744,7 +1095,26 @@ def exclude_transaction(tx_id):
 
 @transactions_bp.route("/transactions/<int:tx_id>/reject", methods=["POST"])
 def reject_transaction(tx_id):
-    """Mark a transaction as rejected/hidden"""
+    """
+    Mark a transaction as rejected/hidden.
+
+    Rejected transactions are completely hidden from all views. Use this
+    for erroneous transactions or duplicates that should be ignored.
+
+    Args:
+        tx_id (int): The transaction's _index
+
+    Returns:
+        JSON: {"ok": true, "rejected": int}
+
+    Errors:
+        401: Authentication required
+        503: Database not available
+        500: Database error
+
+    Security:
+        - Requires authentication
+    """
     if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
@@ -774,7 +1144,40 @@ def reject_transaction(tx_id):
 
 @transactions_bp.route("/transactions/fix-business-type", methods=["POST"])
 def fix_business_type():
-    """Fix business type for specific transactions"""
+    """
+    Bulk update business type for transactions.
+
+    Can update by specific transaction IDs or by matching description
+    pattern. Useful for correcting mis-categorized transactions.
+
+    Request Body (JSON):
+        One of the following:
+        {
+            "transaction_ids": [int, ...],  # Specific IDs to update
+            "business_type": str            # New business type
+        }
+        OR
+        {
+            "description_match": str,       # SQL LIKE pattern (e.g., "%UBER%")
+            "business_type": str            # New business type
+        }
+
+    Returns:
+        JSON: {
+            "ok": true,
+            "updated": int,
+            "new_business_type": str
+        }
+
+    Errors:
+        400: Missing business_type or both transaction_ids and description_match
+        401: Authentication required
+        503: Database not available
+        500: Database error
+
+    Security:
+        - Requires authentication
+    """
     if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
 
