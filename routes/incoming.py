@@ -511,11 +511,18 @@ def accept_incoming_receipt():
         "date": "2024-11-15",
         "business_type": "Personal"
     }
+
+    Security:
+        - Requires authentication
+        - User scoping: Users can only accept their own receipts
     """
     if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     USE_DATABASE, db, get_db_connection, return_db_connection, db_execute, _ = get_dependencies()
+
+    # USER SCOPING: Get user_id for filtering
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
 
     try:
         if not USE_DATABASE or not db:
@@ -529,8 +536,11 @@ def accept_incoming_receipt():
 
         conn, db_type = get_db_connection()
 
-        # Get receipt data
-        cursor = db_execute(conn, db_type, 'SELECT * FROM incoming_receipts WHERE id = %s', (receipt_id,))
+        # Get receipt data (scoped by user)
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, 'SELECT * FROM incoming_receipts WHERE id = %s AND user_id = %s', (receipt_id, user_id))
+        else:
+            cursor = db_execute(conn, db_type, 'SELECT * FROM incoming_receipts WHERE id = %s', (receipt_id,))
         receipt_row = cursor.fetchone()
 
         if not receipt_row:
@@ -569,23 +579,41 @@ def accept_incoming_receipt():
         if not receipt_url:
             logger.warning(f"No receipt URL found for receipt {receipt_id}. Available keys: {list(receipt_data.keys())}")
 
-        # Insert new transaction
-        cursor = db_execute(conn, db_type, '''
-            INSERT INTO transactions (
-                _index, chase_date, chase_description, chase_amount,
-                business_type, receipt_file, r2_url, source, review_status, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-        ''', (
-            next_index, trans_date, merchant, amount,
-            business_type, receipt_url, receipt_url, 'gmail_inbox', 'good'
-        ))
+        # Insert new transaction (with user_id for scoping)
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                INSERT INTO transactions (
+                    _index, chase_date, chase_description, chase_amount,
+                    business_type, receipt_file, r2_url, source, review_status, created_at, user_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+            ''', (
+                next_index, trans_date, merchant, amount,
+                business_type, receipt_url, receipt_url, 'gmail_inbox', 'good', user_id
+            ))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                INSERT INTO transactions (
+                    _index, chase_date, chase_description, chase_amount,
+                    business_type, receipt_file, r2_url, source, review_status, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            ''', (
+                next_index, trans_date, merchant, amount,
+                business_type, receipt_url, receipt_url, 'gmail_inbox', 'good'
+            ))
 
-        # Update incoming receipt status
-        cursor = db_execute(conn, db_type, '''
-            UPDATE incoming_receipts
-            SET status = 'accepted', accepted_as_transaction_id = %s, reviewed_at = NOW()
-            WHERE id = %s
-        ''', (next_index, receipt_id))
+        # Update incoming receipt status (scoped by user)
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                UPDATE incoming_receipts
+                SET status = 'accepted', accepted_as_transaction_id = %s, reviewed_at = NOW()
+                WHERE id = %s AND user_id = %s
+            ''', (next_index, receipt_id, user_id))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                UPDATE incoming_receipts
+                SET status = 'accepted', accepted_as_transaction_id = %s, reviewed_at = NOW()
+                WHERE id = %s
+            ''', (next_index, receipt_id))
 
         conn.commit()
         return_db_connection(conn)
@@ -618,11 +646,18 @@ def reject_incoming_receipt():
         "reason": "Not a receipt",  # Optional
         "block_sender": true        # Optional - permanently block this sender
     }
+
+    Security:
+        - Requires authentication
+        - User scoping: Users can only reject their own receipts
     """
     if not check_auth():
         return jsonify({'error': 'Authentication required', 'ok': False}), 401
 
     USE_DATABASE, db, get_db_connection, return_db_connection, db_execute, _ = get_dependencies()
+
+    # USER SCOPING: Get user_id for filtering
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
 
     try:
         if not USE_DATABASE or not db:
@@ -638,22 +673,34 @@ def reject_incoming_receipt():
 
         conn, db_type = get_db_connection()
 
-        # Get the receipt's sender info before rejecting
+        # Get the receipt's sender info before rejecting (scoped by user)
         sender_email = None
         if block_sender:
-            cursor = db_execute(conn, db_type, '''
-                SELECT from_email, subject FROM incoming_receipts WHERE id = %s
-            ''', (receipt_id,))
+            if USER_SCOPING_ENABLED and user_id:
+                cursor = db_execute(conn, db_type, '''
+                    SELECT from_email, subject FROM incoming_receipts WHERE id = %s AND user_id = %s
+                ''', (receipt_id, user_id))
+            else:
+                cursor = db_execute(conn, db_type, '''
+                    SELECT from_email, subject FROM incoming_receipts WHERE id = %s
+                ''', (receipt_id,))
             receipt_info = cursor.fetchone()
             if receipt_info:
                 sender_email = receipt_info.get('from_email') or receipt_info.get(0)
 
-        # Reject the receipt
-        cursor = db_execute(conn, db_type, '''
-            UPDATE incoming_receipts
-            SET status = 'rejected', rejection_reason = %s, reviewed_at = NOW()
-            WHERE id = %s
-        ''', (reason, receipt_id))
+        # Reject the receipt (scoped by user)
+        if USER_SCOPING_ENABLED and user_id:
+            cursor = db_execute(conn, db_type, '''
+                UPDATE incoming_receipts
+                SET status = 'rejected', rejection_reason = %s, reviewed_at = NOW()
+                WHERE id = %s AND user_id = %s
+            ''', (reason, receipt_id, user_id))
+        else:
+            cursor = db_execute(conn, db_type, '''
+                UPDATE incoming_receipts
+                SET status = 'rejected', rejection_reason = %s, reviewed_at = NOW()
+                WHERE id = %s
+            ''', (reason, receipt_id))
 
         # Learn to block this sender pattern for future emails
         blocked_pattern = None
@@ -704,6 +751,9 @@ def bulk_reject_receipts():
 
     USE_DATABASE, db, get_db_connection, return_db_connection, db_execute, _ = get_dependencies()
 
+    # USER SCOPING: Get user_id for filtering
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
     try:
         if not USE_DATABASE or not db:
             return jsonify({'ok': False, 'error': 'Database not available'}), 500
@@ -720,11 +770,19 @@ def bulk_reject_receipts():
         rejected_count = 0
         for rid in receipt_ids:
             try:
-                cursor = db_execute(conn, db_type, '''
-                    UPDATE incoming_receipts
-                    SET status = 'rejected', rejection_reason = %s, reviewed_at = NOW()
-                    WHERE id = %s AND status != 'rejected'
-                ''', (reason, rid))
+                # USER SCOPING: Only reject user's own receipts
+                if USER_SCOPING_ENABLED and user_id:
+                    cursor = db_execute(conn, db_type, '''
+                        UPDATE incoming_receipts
+                        SET status = 'rejected', rejection_reason = %s, reviewed_at = NOW()
+                        WHERE id = %s AND status != 'rejected' AND user_id = %s
+                    ''', (reason, rid, user_id))
+                else:
+                    cursor = db_execute(conn, db_type, '''
+                        UPDATE incoming_receipts
+                        SET status = 'rejected', rejection_reason = %s, reviewed_at = NOW()
+                        WHERE id = %s AND status != 'rejected'
+                    ''', (reason, rid))
                 if cursor.rowcount > 0:
                     rejected_count += 1
             except Exception as e:
