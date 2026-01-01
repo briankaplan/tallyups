@@ -521,10 +521,18 @@ def update_transaction_field():
         except (ValueError, TypeError):
             return jsonify({'ok': False, 'error': 'Invalid index'}), 400
 
+        # USER SCOPING: Get user_id for filtering
+        get_current_user_id, USER_SCOPING_ENABLED = get_user_scope()
+        user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute(f"UPDATE transactions SET {db_field} = %s WHERE `Index` = %s", (value, index))
+        # USER SCOPING: Only update user's own transactions
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute(f"UPDATE transactions SET {db_field} = %s WHERE _index = %s AND user_id = %s", (value, index, user_id))
+        else:
+            cursor.execute(f"UPDATE transactions SET {db_field} = %s WHERE _index = %s", (value, index))
         conn.commit()
         cursor.close()
         return_db_connection(conn)
@@ -869,6 +877,10 @@ def link_receipt_to_transaction(tx_id):
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
 
+    # USER SCOPING: Get user_id for filtering
+    get_current_user_id, USER_SCOPING_ENABLED = get_user_scope()
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
     try:
         data = request.get_json() or {}
         receipt_id = data.get('receipt_id')
@@ -879,11 +891,16 @@ def link_receipt_to_transaction(tx_id):
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Get the receipt's URL from incoming_receipts
+        # Get the receipt's URL from incoming_receipts (scoped by user)
         receipt_url = None
-        cursor.execute('''
-            SELECT receipt_image_url, r2_url FROM incoming_receipts WHERE id = %s
-        ''', (receipt_id,))
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                SELECT receipt_image_url, r2_url FROM incoming_receipts WHERE id = %s AND user_id = %s
+            ''', (receipt_id, user_id))
+        else:
+            cursor.execute('''
+                SELECT receipt_image_url, r2_url FROM incoming_receipts WHERE id = %s
+            ''', (receipt_id,))
         receipt = cursor.fetchone()
         if receipt:
             if isinstance(receipt, dict):
@@ -891,12 +908,17 @@ def link_receipt_to_transaction(tx_id):
             else:
                 receipt_url = receipt[1] or receipt[0]
 
-        # If not found, try by transaction _index
+        # If not found, try by transaction _index (scoped by user)
         if not receipt_url:
             try:
-                cursor.execute('''
-                    SELECT r2_url FROM transactions WHERE _index = %s
-                ''', (int(receipt_id),))
+                if USER_SCOPING_ENABLED and user_id:
+                    cursor.execute('''
+                        SELECT r2_url FROM transactions WHERE _index = %s AND user_id = %s
+                    ''', (int(receipt_id), user_id))
+                else:
+                    cursor.execute('''
+                        SELECT r2_url FROM transactions WHERE _index = %s
+                    ''', (int(receipt_id),))
                 tx = cursor.fetchone()
                 if tx:
                     receipt_url = tx.get('r2_url') if isinstance(tx, dict) else tx[0]
@@ -908,19 +930,33 @@ def link_receipt_to_transaction(tx_id):
             return_db_connection(conn)
             return jsonify({'ok': False, 'error': 'Receipt not found'}), 404
 
-        # Update the transaction with the receipt URL
-        cursor.execute('''
-            UPDATE transactions
-            SET r2_url = %s, review_status = 'matched'
-            WHERE _index = %s
-        ''', (receipt_url, tx_id))
+        # Update the transaction with the receipt URL (scoped by user)
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                UPDATE transactions
+                SET r2_url = %s, review_status = 'matched'
+                WHERE _index = %s AND user_id = %s
+            ''', (receipt_url, tx_id, user_id))
+        else:
+            cursor.execute('''
+                UPDATE transactions
+                SET r2_url = %s, review_status = 'matched'
+                WHERE _index = %s
+            ''', (receipt_url, tx_id))
 
-        # Mark incoming receipt as matched
-        cursor.execute('''
-            UPDATE incoming_receipts
-            SET status = 'matched', matched_transaction_id = %s
-            WHERE id = %s
-        ''', (tx_id, receipt_id))
+        # Mark incoming receipt as matched (scoped by user)
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                UPDATE incoming_receipts
+                SET status = 'matched', matched_transaction_id = %s
+                WHERE id = %s AND user_id = %s
+            ''', (tx_id, receipt_id, user_id))
+        else:
+            cursor.execute('''
+                UPDATE incoming_receipts
+                SET status = 'matched', matched_transaction_id = %s
+                WHERE id = %s
+            ''', (tx_id, receipt_id))
 
         conn.commit()
         cursor.close()
@@ -975,6 +1011,10 @@ def unlink_receipt_from_transaction(tx_id):
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
 
+    # USER SCOPING: Get user_id for filtering
+    get_current_user_id, USER_SCOPING_ENABLED = get_user_scope()
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
     try:
         data = request.get_json() or {}
         receipt_id = data.get('receipt_id')
@@ -982,20 +1022,34 @@ def unlink_receipt_from_transaction(tx_id):
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
-        # Clear the receipt URL from the transaction
-        cursor.execute('''
-            UPDATE transactions
-            SET r2_url = NULL, review_status = 'pending'
-            WHERE _index = %s
-        ''', (tx_id,))
-
-        # If a specific receipt was mentioned, unlink it
-        if receipt_id:
+        # Clear the receipt URL from the transaction (scoped by user)
+        if USER_SCOPING_ENABLED and user_id:
             cursor.execute('''
-                UPDATE incoming_receipts
-                SET status = 'pending', matched_transaction_id = NULL
-                WHERE id = %s AND matched_transaction_id = %s
-            ''', (receipt_id, tx_id))
+                UPDATE transactions
+                SET r2_url = NULL, review_status = 'pending'
+                WHERE _index = %s AND user_id = %s
+            ''', (tx_id, user_id))
+        else:
+            cursor.execute('''
+                UPDATE transactions
+                SET r2_url = NULL, review_status = 'pending'
+                WHERE _index = %s
+            ''', (tx_id,))
+
+        # If a specific receipt was mentioned, unlink it (scoped by user)
+        if receipt_id:
+            if USER_SCOPING_ENABLED and user_id:
+                cursor.execute('''
+                    UPDATE incoming_receipts
+                    SET status = 'pending', matched_transaction_id = NULL
+                    WHERE id = %s AND matched_transaction_id = %s AND user_id = %s
+                ''', (receipt_id, tx_id, user_id))
+            else:
+                cursor.execute('''
+                    UPDATE incoming_receipts
+                    SET status = 'pending', matched_transaction_id = NULL
+                    WHERE id = %s AND matched_transaction_id = %s
+                ''', (receipt_id, tx_id))
 
         conn.commit()
         cursor.close()
@@ -1056,6 +1110,10 @@ def exclude_transaction(tx_id):
 
     get_db_connection, return_db_connection, _, _ = get_db_helpers()
 
+    # USER SCOPING: Get user_id for filtering
+    get_current_user_id, USER_SCOPING_ENABLED = get_user_scope()
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
     try:
         data = request.get_json() or {}
         excluded = data.get('excluded', True)
@@ -1064,18 +1122,33 @@ def exclude_transaction(tx_id):
         conn, db_type = get_db_connection()
         cursor = conn.cursor()
 
+        # USER SCOPING: Only update user's own transactions
         if excluded:
-            cursor.execute('''
-                UPDATE transactions
-                SET review_status = 'excluded', notes = CONCAT(COALESCE(notes, ''), %s)
-                WHERE _index = %s
-            ''', (f' [Excluded: {reason}]' if reason else ' [Excluded]', tx_id))
+            if USER_SCOPING_ENABLED and user_id:
+                cursor.execute('''
+                    UPDATE transactions
+                    SET review_status = 'excluded', notes = CONCAT(COALESCE(notes, ''), %s)
+                    WHERE _index = %s AND user_id = %s
+                ''', (f' [Excluded: {reason}]' if reason else ' [Excluded]', tx_id, user_id))
+            else:
+                cursor.execute('''
+                    UPDATE transactions
+                    SET review_status = 'excluded', notes = CONCAT(COALESCE(notes, ''), %s)
+                    WHERE _index = %s
+                ''', (f' [Excluded: {reason}]' if reason else ' [Excluded]', tx_id))
         else:
-            cursor.execute('''
-                UPDATE transactions
-                SET review_status = CASE WHEN r2_url IS NOT NULL THEN 'matched' ELSE 'pending' END
-                WHERE _index = %s
-            ''', (tx_id,))
+            if USER_SCOPING_ENABLED and user_id:
+                cursor.execute('''
+                    UPDATE transactions
+                    SET review_status = CASE WHEN r2_url IS NOT NULL THEN 'matched' ELSE 'pending' END
+                    WHERE _index = %s AND user_id = %s
+                ''', (tx_id, user_id))
+            else:
+                cursor.execute('''
+                    UPDATE transactions
+                    SET review_status = CASE WHEN r2_url IS NOT NULL THEN 'matched' ELSE 'pending' END
+                    WHERE _index = %s
+                ''', (tx_id,))
 
         conn.commit()
         cursor.close()
@@ -1114,6 +1187,7 @@ def reject_transaction(tx_id):
 
     Security:
         - Requires authentication
+        - User scoping: Users can only reject their own transactions
     """
     if not check_auth():
         return jsonify({'error': 'Authentication required'}), 401
@@ -1123,15 +1197,27 @@ def reject_transaction(tx_id):
     if not USE_DATABASE or not db:
         return jsonify({'ok': False, 'error': 'Database not available'}), 503
 
+    # USER SCOPING: Get user_id for filtering
+    get_current_user_id, USER_SCOPING_ENABLED = get_user_scope()
+    user_id = get_current_user_id() if USER_SCOPING_ENABLED else None
+
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
-            UPDATE transactions
-            SET review_status = 'rejected'
-            WHERE _index = %s
-        ''', (tx_id,))
+        # USER SCOPING: Only update user's own transactions
+        if USER_SCOPING_ENABLED and user_id:
+            cursor.execute('''
+                UPDATE transactions
+                SET review_status = 'rejected'
+                WHERE _index = %s AND user_id = %s
+            ''', (tx_id, user_id))
+        else:
+            cursor.execute('''
+                UPDATE transactions
+                SET review_status = 'rejected'
+                WHERE _index = %s
+            ''', (tx_id,))
 
         conn.commit()
         db.return_connection(conn)
