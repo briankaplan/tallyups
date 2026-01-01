@@ -1,23 +1,53 @@
 """
+================================================================================
 Receipt Library API Blueprint
-==============================
-Receipt library management, search, tagging, and collections.
+================================================================================
+Complete receipt library management system with search, filtering, tagging,
+and collections support.
 
-Routes:
-- GET  /api/library/receipts - List receipts with filtering
-- GET  /api/library/search - Search receipts
-- GET  /api/library/receipts/<id> - Get receipt details
-- PATCH /api/library/receipts/<id> - Update receipt
-- DELETE /api/library/receipts/<id> - Delete receipt
-- POST /api/library/upload - Upload new receipt
-- GET  /api/library/counts - Get receipt counts
-- GET  /api/library/stats - Get library statistics
-- GET  /api/library/tags - List all tags
-- POST /api/library/tags - Create tag
-- GET  /api/library/collections - List collections
-- POST /api/library/collections - Create collection
+ENDPOINTS:
+----------
+Receipt Management:
+    GET  /api/library/receipts        - List receipts with filtering/pagination
+    GET  /api/library/search          - Full-text search across receipts
+    GET  /api/library/receipts/<id>   - Get single receipt details
+    PATCH /api/library/receipts/<id>  - Update receipt metadata
+    DELETE /api/library/receipts/<id> - Delete receipt
+    POST /api/library/upload          - Upload new receipt image
 
-This blueprint manages the receipt library system.
+Statistics:
+    GET  /api/library/counts          - Get receipt counts by source/status
+    GET  /api/library/stats           - Get library statistics and trends
+
+Tags & Collections:
+    GET  /api/library/tags            - List all user tags
+    POST /api/library/tags            - Create new tag
+    GET  /api/library/collections     - List all collections
+    POST /api/library/collections     - Create new collection
+
+DATA SOURCES:
+-------------
+Receipts come from two sources:
+1. Transaction receipts - Linked to bank transactions (r2_url or receipt_file)
+2. Incoming receipts - From email/scanner (incoming_receipts table)
+
+FILTERING OPTIONS:
+------------------
+- source: 'transaction', 'incoming', or 'all'
+- search/q: Text search across merchant, notes, OCR data
+- merchant: Filter by merchant name
+- business_type: Filter by business classification
+- status: Filter by review status
+- date_from/date_to: Date range filter
+- amount_min/amount_max: Amount range filter
+- limit/offset: Pagination (max 500 per page)
+
+SECURITY:
+---------
+- All endpoints require authentication (JWT, session, or admin_key)
+- User scoping ensures users only see their own receipts
+
+================================================================================
 """
 
 import os
