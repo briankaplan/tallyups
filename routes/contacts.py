@@ -208,10 +208,8 @@ def list_contacts():
         })
 
     except Exception as e:
-        import traceback
         logger.error(f"List contacts error: {e}")
-        logger.error(f"List contacts traceback: {traceback.format_exc()}")
-        return jsonify({'success': False, 'error': str(e), 'traceback': traceback.format_exc()}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @contacts_bp.route('', methods=['POST'])
