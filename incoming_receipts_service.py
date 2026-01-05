@@ -2456,27 +2456,48 @@ def load_gmail_service(account_email):
     token_file = f"tokens_{account_email.replace('@', '_').replace('.', '_')}.json"
     token_data = None
 
-    # Try multiple token directories (for local and Railway deployments)
-    token_dirs = [
-        Path(GMAIL_TOKENS_DIR),
-        Path('receipt-system/gmail_tokens'),
-        Path('../Task/receipt-system/gmail_tokens'),
-        Path('gmail_tokens'),
-        Path('.'),
-    ]
+    # Priority 1: Try database first (has complete refreshed tokens)
+    try:
+        from db_mysql import get_db_connection as db_get_connection
+        conn = db_get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT token_data FROM oauth_tokens
+            WHERE account_email = %s
+            ORDER BY updated_at DESC LIMIT 1
+        """, (account_email,))
+        row = cursor.fetchone()
+        if row and row.get('token_data'):
+            # token_data is already JSON type in MySQL
+            token_data = row['token_data'] if isinstance(row['token_data'], dict) else json.loads(row['token_data'])
+            print(f"   ✓ Loaded token from database for {account_email}")
+        cursor.close()
+        conn.close()
+    except Exception as db_err:
+        print(f"   ⚠️ Database token lookup failed: {db_err}")
 
-    for token_dir in token_dirs:
-        token_path = token_dir / token_file
-        if token_path.exists():
-            try:
-                with open(token_path, 'r') as f:
-                    token_data = json.load(f)
-                print(f"   ✓ Loaded token from {token_path}")
-                break
-            except Exception as e:
-                print(f"   ⚠️  Could not read {token_path}: {e}")
+    # Priority 2: Try multiple token directories (for local and Railway deployments)
+    if not token_data:
+        token_dirs = [
+            Path(GMAIL_TOKENS_DIR),
+            Path('receipt-system/gmail_tokens'),
+            Path('../Task/receipt-system/gmail_tokens'),
+            Path('gmail_tokens'),
+            Path('.'),
+        ]
 
-    # Fallback: check environment variable (for Railway)
+        for token_dir in token_dirs:
+            token_path = token_dir / token_file
+            if token_path.exists():
+                try:
+                    with open(token_path, 'r') as f:
+                        token_data = json.load(f)
+                    print(f"   ✓ Loaded token from {token_path}")
+                    break
+                except Exception as e:
+                    print(f"   ⚠️  Could not read {token_path}: {e}")
+
+    # Priority 3: Fallback to environment variable (for Railway)
     if not token_data:
         env_key = f"GMAIL_TOKEN_{account_email.replace('@', '_').replace('.', '_').upper()}"
         env_token = os.getenv(env_key)
