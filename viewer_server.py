@@ -17310,6 +17310,7 @@ def gmail_refresh_account(account_email):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@csrf_exempt_route
 @app.route("/settings/gmail/refresh-all", methods=["POST"])
 def gmail_refresh_all():
     """
@@ -17365,7 +17366,6 @@ GMAIL_ACCOUNTS = {
     'kaplan.brian@gmail.com': {'token_file': 'tokens_kaplan_brian_gmail_com.json', 'name': 'Personal', 'business_type': 'Personal'},
     'brian@downhome.com': {'token_file': 'tokens_brian_downhome_com.json', 'name': 'Down Home', 'business_type': 'Down Home'},
     'brian@musiccityrodeo.com': {'token_file': 'tokens_brian_musiccityrodeo_com.json', 'name': 'Music City Rodeo', 'business_type': 'Music City Rodeo'},
-    'brian@kaplan.com': {'token_file': 'tokens_brian_kaplan_com.json', 'name': 'Kaplan', 'business_type': 'Personal'},
 }
 
 GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
