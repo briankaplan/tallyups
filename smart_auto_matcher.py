@@ -609,7 +609,7 @@ def get_unmatched_transactions(conn, days_back: int = 90) -> List[Dict]:
     """Get transactions without receipts from the last N days."""
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT _index, chase_date, chase_description, chase_amount,
+        SELECT id, _index, chase_date, chase_description, chase_amount,
                business_type, notes, receipt_file, r2_url
         FROM transactions
         WHERE (receipt_file IS NULL OR receipt_file = '')
@@ -697,7 +697,7 @@ def auto_match_pending_receipts(conn) -> Dict:
                     matched_transaction_id = %s,
                     match_score = %s
                 WHERE id = %s
-            ''', (tx['_index'], score, receipt['id']))
+            ''', (tx['id'], score, receipt['id']))
 
             # Get receipt URL from incoming receipt files
             receipt_files = json.loads(receipt.get('receipt_files', '[]')) if isinstance(receipt.get('receipt_files'), str) else receipt.get('receipt_files', [])
@@ -721,7 +721,7 @@ def auto_match_pending_receipts(conn) -> Dict:
                     matched_transaction_id = %s,
                     match_score = %s
                 WHERE id = %s
-            ''', (tx['_index'], score, receipt['id']))
+            ''', (tx['id'], score, receipt['id']))
 
     conn.commit()
 
