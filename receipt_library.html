@@ -274,41 +274,155 @@
         </div>
       </div>
 
-      <!-- Filter Chips -->
-      <div class="filter-chips" id="filter-chips">
-        <button class="filter-chip active" data-filter="all">All</button>
-        <button class="filter-chip" data-preset="today">Today</button>
-        <button class="filter-chip" data-preset="week">This Week</button>
-        <button class="filter-chip" data-preset="month">This Month</button>
-        <button class="filter-chip" data-status="verified">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          Verified
-        </button>
-        <button class="filter-chip" data-status="needs_review">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
-          Needs Review
-        </button>
-        <button class="filter-chip" data-status="mismatch">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-          Mismatched
-        </button>
+      <!-- Unified Filter Bar -->
+      <div class="filter-bar" id="filter-bar">
+        <!-- Quick Time Filters -->
+        <div class="filter-group filter-group--time">
+          <button class="filter-chip active" data-filter="all">All</button>
+          <button class="filter-chip" data-preset="today">Today</button>
+          <button class="filter-chip" data-preset="week">Week</button>
+          <button class="filter-chip" data-preset="month">Month</button>
+        </div>
+
+        <!-- Divider -->
+        <div class="filter-divider"></div>
+
+        <!-- Business Type Dropdown -->
+        <div class="filter-dropdown" id="business-dropdown">
+          <button class="filter-dropdown-btn" id="business-filter-btn">
+            <span class="filter-label">Business</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="filter-dropdown-menu" id="business-menu">
+            <button class="filter-option active" data-business="all">All Types</button>
+            <button class="filter-option" data-business="business">
+              <span class="business-dot business"></span>Business
+            </button>
+            <button class="filter-option" data-business="personal">
+              <span class="business-dot personal"></span>Personal
+            </button>
+            <button class="filter-option" data-business="sec">
+              <span class="business-dot sec"></span>Secondary
+            </button>
+          </div>
+        </div>
+
+        <!-- Status Dropdown -->
+        <div class="filter-dropdown" id="status-dropdown">
+          <button class="filter-dropdown-btn" id="status-filter-btn">
+            <span class="filter-label">Status</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="filter-dropdown-menu" id="status-menu">
+            <button class="filter-option active" data-status="all">All Status</button>
+            <button class="filter-option" data-status="verified">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Verified
+            </button>
+            <button class="filter-option" data-status="matched">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              </svg>
+              Matched
+            </button>
+            <button class="filter-option" data-status="needs_review">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+              </svg>
+              Needs Review
+            </button>
+            <button class="filter-option" data-status="mismatch">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              Mismatch
+            </button>
+          </div>
+        </div>
+
+        <!-- Sort Dropdown -->
+        <div class="filter-dropdown" id="sort-dropdown">
+          <button class="filter-dropdown-btn" id="sort-filter-btn">
+            <span class="filter-label">Newest</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="filter-dropdown-menu" id="sort-menu">
+            <button class="filter-option active" data-sort="date_desc">Newest First</button>
+            <button class="filter-option" data-sort="date_asc">Oldest First</button>
+            <button class="filter-option" data-sort="amount_desc">Highest Amount</button>
+            <button class="filter-option" data-sort="amount_asc">Lowest Amount</button>
+            <button class="filter-option" data-sort="merchant_asc">Merchant A-Z</button>
+          </div>
+        </div>
+
+        <!-- Active Filters Display -->
+        <div class="active-filters" id="active-filters"></div>
       </div>
 
       <!-- Receipts Container -->
       <div class="receipts-container" id="receipts-container">
-        <!-- Loading State -->
-        <div class="loading-container" id="loading">
-          <div class="loading-spinner"></div>
-          <span>Loading receipts...</span>
+        <!-- Skeleton Loading State -->
+        <div class="skeleton-container" id="loading">
+          <div class="skeleton-group">
+            <div class="skeleton-group-header">
+              <div class="skeleton-line skeleton-title"></div>
+              <div class="skeleton-line skeleton-amount"></div>
+            </div>
+            <div class="skeleton-grid">
+              <div class="skeleton-card">
+                <div class="skeleton-thumb"></div>
+                <div class="skeleton-info">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
+              </div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb"></div>
+                <div class="skeleton-info">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
+              </div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb"></div>
+                <div class="skeleton-info">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
+              </div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb"></div>
+                <div class="skeleton-info">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
+              </div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb"></div>
+                <div class="skeleton-info">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
+              </div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb"></div>
+                <div class="skeleton-info">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line short"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Receipt Grid -->
@@ -377,6 +491,45 @@
         </div>
       </div>
     </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <a href="/" class="bottom-nav-item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>Home</span>
+      </a>
+      <a href="/scanner" class="bottom-nav-item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <span>Scan</span>
+      </a>
+      <a href="/library" class="bottom-nav-item active">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 016.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"></path>
+        </svg>
+        <span>Library</span>
+      </a>
+      <a href="/incoming" class="bottom-nav-item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+          <path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"></path>
+        </svg>
+        <span>Inbox</span>
+      </a>
+      <a href="/viewer" class="bottom-nav-item">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"></path>
+          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"></path>
+        </svg>
+        <span>Match</span>
+      </a>
+    </nav>
   </div>
 
   <!-- Detail Modal Backdrop - click to close -->

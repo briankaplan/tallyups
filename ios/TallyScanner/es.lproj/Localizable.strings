@@ -1,0 +1,372 @@
+/*
+  Localizable.strings (Spanish)
+  TallyScanner
+
+  Spanish localization for TallyUps expense management app.
+  Professional translations for business expense tracking.
+*/
+
+// MARK: - Tab Bar Items
+"Home" = "Inicio";
+"Charges" = "Cargos";
+"Library" = "Biblioteca";
+"Receipts" = "Recibos";
+"More" = "Mas";
+"Scan" = "Escanear";
+"Dashboard" = "Panel";
+
+// MARK: - Scanner UI
+"Capture" = "Capturar";
+"Flash" = "Flash";
+"Auto" = "Auto";
+"Smart" = "Inteligente";
+"Document" = "Documento";
+"Batch" = "Lote";
+"Batch Mode" = "Modo Lote";
+"Live Preview" = "Vista Previa";
+"Position receipt within frame" = "Posicione el recibo dentro del marco";
+"Position receipt in frame" = "Posicione el recibo en el marco";
+"Move closer to receipt" = "Acerquese al recibo";
+"Move back a little" = "Alejese un poco";
+"Hold phone more level" = "Mantenga el telefono mas nivelado";
+"Hold steady..." = "Mantenga firme...";
+"Capturing..." = "Capturando...";
+"Perfect!" = "Perfecto!";
+"Good lighting" = "Buena iluminacion";
+"Too dark - add light" = "Muy oscuro - agregue luz";
+"Too bright - reduce glare" = "Muy brillante - reduzca el reflejo";
+"Uneven lighting" = "Iluminacion desigual";
+"Preview OCR" = "Vista Previa OCR";
+"Retake" = "Repetir";
+"Use Photo" = "Usar Foto";
+"Scan New Receipt" = "Escanear Nuevo Recibo";
+"Review %d Receipts" = "Revisar %d Recibos";
+"Upload %d" = "Subir %d";
+
+// MARK: - Duplicate Detection
+"Duplicate Detected" = "Duplicado Detectado";
+"match confidence" = "confianza de coincidencia";
+"Existing" = "Existente";
+"New" = "Nuevo";
+"Keep Existing Receipt" = "Mantener Recibo Existente";
+"Replace with New" = "Reemplazar con Nuevo";
+
+// MARK: - Transaction Labels
+"Amount" = "Monto";
+"Date" = "Fecha";
+"Category" = "Categoria";
+"Business Type" = "Tipo de Negocio";
+"Business" = "Negocio";
+"Merchant" = "Comerciante";
+"Status" = "Estado";
+"Notes" = "Notas";
+"Tap to add notes" = "Toque para agregar notas";
+"Select category" = "Seleccionar categoria";
+"Select Business Type" = "Seleccionar Tipo de Negocio";
+"Transaction" = "Transaccion";
+"Transactions" = "Transacciones";
+"Select Charges" = "Seleccionar Cargos";
+"Loading transactions..." = "Cargando transacciones...";
+"No transactions found" = "No se encontraron transacciones";
+"Card charges will appear here" = "Los cargos de tarjeta apareceran aqui";
+"Search transactions..." = "Buscar transacciones...";
+"Processing %d transactions" = "Procesando %d transacciones";
+
+// MARK: - Transaction Status
+"Pending" = "Pendiente";
+"Matched" = "Coincidente";
+"Unmatched" = "Sin Coincidencia";
+"Excluded" = "Excluido";
+"Receipt Matched" = "Recibo Coincidente";
+"Missing Receipt" = "Recibo Faltante";
+"Missing receipt" = "Recibo faltante";
+"%d receipt" = "%d recibo";
+"%d receipts" = "%d recibos";
+"%d receipts linked" = "%d recibos vinculados";
+"Add Receipt" = "Agregar Recibo";
+
+// MARK: - Transaction Actions
+"Exclude Transaction" = "Excluir Transaccion";
+"Restore Transaction" = "Restaurar Transaccion";
+"Scan Receipt" = "Escanear Recibo";
+"Link Receipt" = "Vincular Recibo";
+"Unlink" = "Desvincular";
+"Unlink this receipt?" = "Desvincular este recibo?";
+"Linking receipt..." = "Vinculando recibo...";
+"View" = "Ver";
+
+// MARK: - Batch Operations
+"Select All" = "Seleccionar Todo";
+"Deselect All" = "Deseleccionar Todo";
+"%d selected" = "%d seleccionados";
+"Auto-Categorize" = "Categorizar Automaticamente";
+"Auto-categorizing..." = "Categorizando automaticamente...";
+"Generate Descriptions" = "Generar Descripciones";
+"Generating descriptions..." = "Generando descripciones...";
+"Change Business Type" = "Cambiar Tipo de Negocio";
+"Updating business type..." = "Actualizando tipo de negocio...";
+"Set Category" = "Establecer Categoria";
+"Updating category..." = "Actualizando categoria...";
+"Add to Project" = "Agregar a Proyecto";
+"Adding to project..." = "Agregando a proyecto...";
+"Add to Report" = "Agregar a Informe";
+"Exclude Transactions" = "Excluir Transacciones";
+"Excluding transactions..." = "Excluyendo transacciones...";
+"Use AI to categorize selected transactions" = "Usar IA para categorizar transacciones seleccionadas";
+"Create smart notes for each transaction" = "Crear notas inteligentes para cada transaccion";
+"Set business type for all selected" = "Establecer tipo de negocio para todos los seleccionados";
+"Apply category to all selected" = "Aplicar categoria a todos los seleccionados";
+"Assign to a project" = "Asignar a un proyecto";
+"Include in expense report" = "Incluir en informe de gastos";
+"Remove from receipt matching" = "Remover de coincidencia de recibos";
+"AI Actions" = "Acciones de IA";
+"Organize" = "Organizar";
+"Reports" = "Informes";
+"Other" = "Otro";
+"Auto" = "Auto";
+"Project" = "Proyecto";
+"Category" = "Categoria";
+
+// MARK: - Quick Actions
+"Quick Actions" = "Acciones Rapidas";
+"Auto-Sort" = "Auto-Ordenar";
+"Auto-Match" = "Auto-Coincidir";
+"Report" = "Informe";
+"Match" = "Coincidir";
+"Exclude" = "Excluir";
+
+// MARK: - Statistics
+"Total" = "Total";
+"With Receipt" = "Con Recibo";
+"Missing" = "Faltantes";
+"This Month" = "Este Mes";
+"This Week" = "Esta Semana";
+"All" = "Todos";
+"All Cards" = "Todas las Tarjetas";
+"Total Amount" = "Monto Total";
+"Match Rate" = "Tasa de Coincidencia";
+"Needs Receipts" = "Necesita Recibos";
+"Uncategorized" = "Sin Categoria";
+"Action needed" = "Accion necesaria";
+
+// MARK: - Library View
+"Receipts" = "Recibos";
+"Scan History" = "Historial de Escaneos";
+"Matched" = "Coincidentes";
+"Unmatched" = "Sin Coincidencia";
+"Loading receipts..." = "Cargando recibos...";
+"No receipts found" = "No se encontraron recibos";
+"Scan a receipt to get started" = "Escanee un recibo para comenzar";
+"Search receipts..." = "Buscar recibos...";
+"No unmatched receipts found" = "No se encontraron recibos sin coincidir";
+"Try scanning a new receipt" = "Intente escanear un nuevo recibo";
+"No receipts linked" = "No hay recibos vinculados";
+"Linked Receipts" = "Recibos Vinculados";
+"Receipt" = "Recibo";
+
+// MARK: - Filters
+"Filters" = "Filtros";
+"Filter by date" = "Filtrar por fecha";
+"Date Range" = "Rango de Fechas";
+"Start" = "Inicio";
+"End" = "Fin";
+"Reset" = "Restablecer";
+"Apply" = "Aplicar";
+"Loading..." = "Cargando...";
+
+// MARK: - Settings
+"Settings" = "Configuracion";
+"Account" = "Cuenta";
+"Signed in with Apple" = "Iniciado sesion con Apple";
+"Sign in with %@" = "Iniciar sesion con %@";
+"Upload Queue" = "Cola de Subida";
+"Pending Uploads" = "Subidas Pendientes";
+"Uploading..." = "Subiendo...";
+"Clear Queue" = "Limpiar Cola";
+"Server" = "Servidor";
+"Server URL" = "URL del Servidor";
+"Not configured" = "No configurado";
+"Check Connection" = "Verificar Conexion";
+"Server Version" = "Version del Servidor";
+"DB Connections" = "Conexiones BD";
+"Features" = "Funciones";
+"Projects" = "Proyectos";
+"Contacts" = "Contactos";
+"Smart Contacts" = "Contactos Inteligentes";
+"Email Rules" = "Reglas de Correo";
+"Preferences" = "Preferencias";
+"Default Values" = "Valores Predeterminados";
+"Notifications" = "Notificaciones";
+"Storage & Data" = "Almacenamiento y Datos";
+"Legal" = "Legal";
+"Terms of Service" = "Terminos de Servicio";
+"Privacy Policy" = "Politica de Privacidad";
+"About" = "Acerca de";
+"Version" = "Version";
+"Build" = "Compilacion";
+"GitHub" = "GitHub";
+"Website" = "Sitio Web";
+"Sign Out" = "Cerrar Sesion";
+"Are you sure you want to sign out?" = "Esta seguro que desea cerrar sesion?";
+"This will remove all pending uploads. This action cannot be undone." = "Esto eliminara todas las subidas pendientes. Esta accion no se puede deshacer.";
+
+// MARK: - Integrations
+"Integrations" = "Integraciones";
+"Connected Services" = "Servicios Conectados";
+"Gmail, Calendar, Bank Accounts" = "Gmail, Calendario, Cuentas Bancarias";
+"API Keys" = "Claves API";
+"OpenAI, Gemini, Anthropic" = "OpenAI, Gemini, Anthropic";
+"Connect your email, calendar, and bank accounts for automatic receipt import and transaction matching." = "Conecte su correo, calendario y cuentas bancarias para importacion automatica de recibos y coincidencia de transacciones.";
+"Gmail, Calendar, Banks" = "Gmail, Calendario, Bancos";
+"Auto-categorize by sender" = "Auto-categorizar por remitente";
+
+// MARK: - Default Settings
+"Default Business" = "Negocio Predeterminado";
+"Scanning" = "Escaneo";
+"Auto OCR on upload" = "OCR automatico al subir";
+"Auto-enhance images" = "Mejorar imagenes automaticamente";
+"Save location with receipts" = "Guardar ubicacion con recibos";
+
+// MARK: - Notification Settings
+"Upload complete" = "Subida completa";
+"OCR extraction complete" = "Extraccion OCR completa";
+"Match found" = "Coincidencia encontrada";
+
+// MARK: - Storage Settings
+"Cache" = "Cache";
+"Image Cache" = "Cache de Imagenes";
+"Calculating..." = "Calculando...";
+"Clear Cache" = "Limpiar Cache";
+"Data" = "Datos";
+"Clear All Local Data" = "Limpiar Todos los Datos Locales";
+
+// MARK: - Login View
+"Welcome to TallyUps" = "Bienvenido a TallyUps";
+"TallyUps" = "TallyUps";
+"Never do expenses again. Seriously." = "Nunca mas haga gastos. En serio.";
+"Sign in with Apple" = "Iniciar sesion con Apple";
+"Try Demo Account" = "Probar Cuenta Demo";
+"or" = "o";
+"Sign in with Email" = "Iniciar sesion con Correo";
+"Other sign in options" = "Otras opciones de inicio";
+"Email" = "Correo";
+"Password" = "Contrasena";
+"PIN" = "PIN";
+"API Key" = "Clave API";
+"Sign In" = "Iniciar Sesion";
+"Login Method" = "Metodo de Inicio";
+"Server Settings" = "Configuracion del Servidor";
+"Test Connection" = "Probar Conexion";
+"Connection successful!" = "Conexion exitosa!";
+"Server responded but reported unhealthy status" = "El servidor respondio pero reporto estado no saludable";
+"Enter the URL of your TallyUps server" = "Ingrese la URL de su servidor TallyUps";
+"The iOS app connects to your TallyUps server to upload receipts and sync data. Your server should be running on Railway or another hosting provider." = "La aplicacion iOS se conecta a su servidor TallyUps para subir recibos y sincronizar datos. Su servidor debe estar ejecutandose en Railway u otro proveedor de alojamiento.";
+
+// MARK: - Onboarding
+"Welcome to TallyUps" = "Bienvenido a TallyUps";
+"Hi, %@!" = "Hola, %@!";
+"Let's get you set up to scan and manage your receipts in just a few steps." = "Vamos a configurarlo para escanear y administrar sus recibos en unos pocos pasos.";
+"Camera Access" = "Acceso a Camara";
+"TallyUps needs camera access to scan your receipts. This is required for the scanner to work." = "TallyUps necesita acceso a la camara para escanear sus recibos. Esto es necesario para que el escaner funcione.";
+"Photo Library" = "Biblioteca de Fotos";
+"Allow access to your photo library to import existing receipt images and save scanned receipts." = "Permita acceso a su biblioteca de fotos para importar imagenes de recibos existentes y guardar recibos escaneados.";
+"Notifications" = "Notificaciones";
+"Get notified when receipts are processed, matched to transactions, or need your attention." = "Reciba notificaciones cuando los recibos se procesen, coincidan con transacciones o necesiten su atencion.";
+"(Optional)" = "(Opcional)";
+"Allow Access" = "Permitir Acceso";
+"Permission Granted" = "Permiso Concedido";
+"You're All Set!" = "Todo Listo!";
+"Start scanning receipts right away. You can connect additional services like Gmail and Calendar later in Settings." = "Comience a escanear recibos inmediatamente. Puede conectar servicios adicionales como Gmail y Calendario mas tarde en Configuracion.";
+"Tap the camera button to scan" = "Toque el boton de camara para escanear";
+"Import from photo library" = "Importar desde biblioteca de fotos";
+"Auto-matching with transactions" = "Coincidencia automatica con transacciones";
+"Back" = "Atras";
+"Continue" = "Continuar";
+"Get Started" = "Comenzar";
+
+// MARK: - Common Actions
+"Save" = "Guardar";
+"Cancel" = "Cancelar";
+"Delete" = "Eliminar";
+"Edit" = "Editar";
+"Done" = "Listo";
+"Close" = "Cerrar";
+"OK" = "Aceptar";
+"Confirm" = "Confirmar";
+"Search" = "Buscar";
+"Refresh" = "Actualizar";
+"Retry" = "Reintentar";
+"Loading" = "Cargando";
+"Error" = "Error";
+"Success" = "Exito";
+"Warning" = "Advertencia";
+"Info" = "Informacion";
+
+// MARK: - Error Messages
+"Something went wrong" = "Algo salio mal";
+"Please try again" = "Por favor intente de nuevo";
+"Network error" = "Error de red";
+"Unable to connect to server" = "No se puede conectar al servidor";
+"Invalid credentials" = "Credenciales invalidas";
+"Session expired" = "Sesion expirada";
+"Please sign in again" = "Por favor inicie sesion nuevamente";
+"Failed to load data" = "Error al cargar datos";
+"Failed to save changes" = "Error al guardar cambios";
+"Failed to upload receipt" = "Error al subir recibo";
+"Failed to categorize transaction" = "Error al categorizar transaccion";
+"No camera access" = "Sin acceso a camara";
+"Please enable camera access in Settings" = "Por favor habilite el acceso a la camara en Configuracion";
+"No photo library access" = "Sin acceso a biblioteca de fotos";
+"Please enable photo library access in Settings" = "Por favor habilite el acceso a la biblioteca de fotos en Configuracion";
+"Unknown" = "Desconocido";
+
+// MARK: - Dashboard / Action Center
+"Analytics Dashboard" = "Panel de Analisis";
+"Spending trends & insights" = "Tendencias y perspectivas de gastos";
+"Insights" = "Perspectivas";
+"Manage your contacts" = "Administrar sus contactos";
+"AI-powered contact matching" = "Coincidencia de contactos con IA";
+"Organize expenses by project" = "Organizar gastos por proyecto";
+"Generate expense reports" = "Generar informes de gastos";
+"Tools" = "Herramientas";
+"Needs Attention" = "Necesita Atencion";
+"See All (%d)" = "Ver Todo (%d)";
+"Recent Activity" = "Actividad Reciente";
+"All caught up!" = "Todo al dia!";
+"No pending actions" = "Sin acciones pendientes";
+
+// MARK: - Projects
+"No Projects" = "Sin Proyectos";
+"Create a project first to organize your transactions" = "Cree un proyecto primero para organizar sus transacciones";
+"Select Project" = "Seleccionar Proyecto";
+
+// MARK: - Categories
+"Food & Dining" = "Comida y Restaurantes";
+"Transportation" = "Transporte";
+"Shopping" = "Compras";
+"Entertainment" = "Entretenimiento";
+"Travel" = "Viajes";
+"Utilities" = "Servicios";
+"Health & Medical" = "Salud y Medicina";
+"Office Supplies" = "Suministros de Oficina";
+"Software & Subscriptions" = "Software y Suscripciones";
+"Professional Services" = "Servicios Profesionales";
+"Marketing & Advertising" = "Marketing y Publicidad";
+"Equipment" = "Equipo";
+"Fees & Charges" = "Tarifas y Cargos";
+"Insurance" = "Seguro";
+"Taxes" = "Impuestos";
+"Select Category" = "Seleccionar Categoria";
+
+// MARK: - Business Types
+"Personal" = "Personal";
+
+// MARK: - Upload Status
+"pending upload" = "subida pendiente";
+"pending uploads" = "subidas pendientes";
+
+// MARK: - Details
+"Details" = "Detalles";
+
+// MARK: - Number Formatting
+"%d%%" = "%d%%";

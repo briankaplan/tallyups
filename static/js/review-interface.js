@@ -148,14 +148,6 @@ class TransactionReviewInterface {
             this.transactions = await res.json() || [];
             this.applyFilters();
 
-            const elapsed = performance.now() - startTime;
-            console.log(`Loaded ${this.transactions.length} transactions in ${elapsed.toFixed(0)}ms`);
-
-            // Warn if slow
-            if (elapsed > 1000) {
-                console.warn('Page load exceeded 1 second target');
-            }
-
         } catch (e) {
             this.showToast('Failed to load transactions: ' + e.message, '❌');
         }

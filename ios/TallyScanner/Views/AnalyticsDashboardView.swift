@@ -461,7 +461,6 @@ class AnalyticsViewModel: ObservableObject {
     }
 
     private func generateChartData(transactions: [Transaction], period: TimePeriod) -> [ChartDataPoint] {
-        let calendar = Calendar.current
         var groupedData: [String: Double] = [:]
 
         let dateFormatter = DateFormatter()

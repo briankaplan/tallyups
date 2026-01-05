@@ -31,7 +31,6 @@ const ImageUtils = {
                 const config = await response.json();
                 if (config.r2_public_url) {
                     this.R2_PUBLIC_URL = config.r2_public_url;
-                    console.log('[ImageUtils] R2 URL configured:', this.R2_PUBLIC_URL);
                 }
                 if (config.wrong_buckets) {
                     this.WRONG_BUCKETS = config.wrong_buckets;

@@ -29,6 +29,8 @@ struct ProjectsView: View {
                         Image(systemName: "plus.circle.fill")
                             .foregroundColor(.tallyAccent)
                     }
+                    .accessibilityLabel("Create new project")
+                    .accessibilityHint("Opens form to create a new expense project")
                 }
             }
             .searchable(text: $searchText, prompt: "Search projects")
@@ -56,6 +58,7 @@ struct ProjectsView: View {
             Image(systemName: "folder.fill.badge.plus")
                 .font(.system(size: 64))
                 .foregroundColor(.gray)
+                .accessibilityHidden(true)
 
             VStack(spacing: 8) {
                 Text("No Projects Yet")
@@ -67,6 +70,7 @@ struct ProjectsView: View {
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
             }
+            .accessibilityElement(children: .combine)
 
             Button(action: { showingCreateProject = true }) {
                 HStack {
@@ -80,6 +84,8 @@ struct ProjectsView: View {
                 .background(Color.tallyAccent)
                 .cornerRadius(12)
             }
+            .accessibilityLabel("Create Project")
+            .accessibilityHint("Opens form to create a new expense project")
         }
         .padding()
     }
@@ -171,6 +177,19 @@ struct ProjectsView: View {
 struct ProjectRow: View {
     let project: Project
 
+    private var accessibilityDescription: String {
+        var parts = [project.name]
+        parts.append("\(project.transactionCount) transactions")
+        parts.append(project.formattedTotalSpent)
+        if let progress = project.budgetProgress {
+            parts.append("\(Int(progress * 100))% of budget used")
+            if project.isOverBudget {
+                parts.append("over budget")
+            }
+        }
+        return parts.joined(separator: ", ")
+    }
+
     var body: some View {
         HStack(spacing: 16) {
             // Icon
@@ -182,6 +201,7 @@ struct ProjectRow: View {
                 Image(systemName: project.icon)
                     .foregroundColor(project.swiftUIColor)
             }
+            .accessibilityHidden(true)
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
@@ -209,13 +229,19 @@ struct ProjectRow: View {
                     color: project.isOverBudget ? .red : project.swiftUIColor
                 )
                 .frame(width: 36, height: 36)
+                .accessibilityHidden(true)
             }
 
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundColor(.gray)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityDescription)
+        .accessibilityHint("Double tap to view project details")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -270,6 +296,8 @@ struct TemplateButton: View {
             .background(Color.tallyCard)
             .cornerRadius(12)
         }
+        .accessibilityLabel("Create \(template.name) project")
+        .accessibilityHint("Creates a new project using the \(template.name) template")
     }
 }
 
@@ -517,7 +545,7 @@ struct ProjectDetailView: View {
                 )
             }
 
-            if let budget = project.budget, let remaining = project.budgetRemaining {
+            if let _ = project.budget, let remaining = project.budgetRemaining {
                 VStack(spacing: 8) {
                     HStack {
                         Text("Budget")

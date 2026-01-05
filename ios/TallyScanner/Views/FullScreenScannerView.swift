@@ -66,10 +66,26 @@ struct FullScreenScannerView: View {
                     FocusRingView(point: point)
                 }
 
+                // Glare Region Overlay
+                if camera.hasGlareWarning {
+                    GlareOverlayView(
+                        glareResult: camera.glareResult,
+                        viewSize: geometry.size
+                    )
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                }
+
                 // Controls Layer
                 VStack(spacing: 0) {
                     topBar
                     Spacer()
+
+                    // Glare Warning Indicator (shown above lighting indicator)
+                    if camera.hasGlareWarning {
+                        glareWarningIndicator
+                    }
+
                     lightingIndicator
                     edgeStatusIndicator
                     if showZoomSlider { zoomSlider }
@@ -79,6 +95,24 @@ struct FullScreenScannerView: View {
                 // Batch Counter
                 if batchMode && !batchImages.isEmpty {
                     batchCounter
+                }
+
+                // Quality Score Overlay (top-left, shown when receipt detected)
+                VStack {
+                    HStack {
+                        QualityScoreOverlay(
+                            qualityScore: camera.qualityScore,
+                            qualityLevel: camera.qualityLevel,
+                            sharpnessScore: camera.sharpnessScore,
+                            brightnessScore: camera.brightnessScore,
+                            feedback: camera.qualityFeedback,
+                            isVisible: camera.detectedRectangle != nil
+                        )
+                        Spacer()
+                    }
+                    .padding(.leading, 16)
+                    .padding(.top, 120)
+                    Spacer()
                 }
             }
         }
@@ -125,6 +159,8 @@ struct FullScreenScannerView: View {
                     isPresented = false
                 }
             }
+            .accessibilityLabel(batchMode && !batchImages.isEmpty ? "Review batch" : "Close scanner")
+            .accessibilityHint(batchMode && !batchImages.isEmpty ? "Review \(batchImages.count) captured receipts" : "Returns to previous screen")
 
             Spacer()
 
@@ -139,6 +175,9 @@ struct FullScreenScannerView: View {
                     if !batchMode { batchImages.removeAll() }
                 }
             }
+            .accessibilityLabel("Batch mode, \(batchMode ? "on" : "off")")
+            .accessibilityValue(batchMode ? "\(batchImages.count) receipts captured" : "")
+            .accessibilityHint("Double tap to \(batchMode ? "disable" : "enable") capturing multiple receipts")
 
             // Auto Toggle
             GlassButton(
@@ -150,6 +189,8 @@ struct FullScreenScannerView: View {
                     autoCapture.toggle()
                 }
             }
+            .accessibilityLabel("Auto capture, \(autoCapture ? "on" : "off")")
+            .accessibilityHint("When enabled, automatically captures when receipt is detected and stable")
 
             // Flash
             GlassButton(
@@ -160,11 +201,14 @@ struct FullScreenScannerView: View {
                 flashEnabled.toggle()
                 camera.toggleFlash(flashEnabled)
             }
+            .accessibilityLabel("Flash, \(flashEnabled ? "on" : "off")")
+            .accessibilityHint("Double tap to toggle camera flash")
 
             // Settings
             GlassButton(icon: "gearshape.fill") {
                 showingSettings.toggle()
             }
+            .accessibilityLabel("Scanner settings")
         }
         .padding(.horizontal, 16)
         .padding(.top, 60)
@@ -178,6 +222,7 @@ struct FullScreenScannerView: View {
                 HStack(spacing: 8) {
                     Image(systemName: quality.icon)
                         .foregroundColor(quality.color)
+                        .accessibilityHidden(true)
                     Text(quality.message)
                         .font(.caption.weight(.medium))
                         .foregroundColor(.white)
@@ -189,6 +234,8 @@ struct FullScreenScannerView: View {
                 .cornerRadius(20)
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .animation(.spring(response: 0.4), value: camera.lightingQuality)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Lighting warning: \(quality.message)")
             }
         }
         .padding(.bottom, 8)
@@ -199,46 +246,111 @@ struct FullScreenScannerView: View {
     private var edgeStatusIndicator: some View {
         VStack(spacing: 8) {
             if camera.detectedRectangle != nil {
-                HStack(spacing: 8) {
-                    Image(systemName: camera.isEdgeStable ? "checkmark.circle.fill" : "viewfinder")
-                        .foregroundColor(camera.isEdgeStable ? .green : .tallyAccent)
-                        .font(.system(size: 16, weight: .semibold))
-
-                    Text(camera.isEdgeStable ? "Hold steady..." : "Receipt detected")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundColor(.white)
-
-                    if camera.isEdgeStable {
-                        Text("•")
-                            .foregroundColor(.gray)
-                        Text("\(Int(camera.captureConfidence * 100))%")
-                            .font(.caption.weight(.bold))
-                            .foregroundColor(.tallyAccent)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(.ultraThinMaterial.opacity(0.9))
-                .cornerRadius(25)
-
-                // Stability Progress
-                if camera.isEdgeStable && autoCapture {
-                    ProgressCapsule(progress: camera.stabilityProgress)
-                        .frame(width: 140, height: 6)
-                }
+                // Smart Guidance Hint
+                SmartGuidanceView(
+                    guidance: camera.currentGuidance,
+                    isStable: camera.isEdgeStable,
+                    confidence: camera.captureConfidence,
+                    stabilityProgress: camera.stabilityProgress,
+                    showProgress: camera.isEdgeStable && autoCapture
+                )
             } else {
-                Text("Position receipt within frame")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundColor(.white.opacity(0.9))
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial.opacity(0.6))
-                    .cornerRadius(25)
+                // Initial guidance - animated hint
+                ScannerGuidanceHint(
+                    icon: "viewfinder",
+                    message: "Position receipt within frame",
+                    color: .white,
+                    isAnimating: true
+                )
             }
         }
         .padding(.bottom, 12)
         .animation(.spring(response: 0.3), value: camera.detectedRectangle != nil)
         .animation(.spring(response: 0.3), value: camera.isEdgeStable)
+        .animation(.spring(response: 0.3), value: camera.currentGuidance)
+    }
+
+    // MARK: - Glare Warning Indicator
+
+    private var glareWarningIndicator: some View {
+        let result = camera.glareResult
+        let severity = result.severity
+        let warningColor: Color = severity >= 0.35 ? .red : (severity >= 0.20 ? .orange : .yellow)
+
+        return VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                // Animated warning icon
+                Image(systemName: "sun.max.trianglebadge.exclamationmark.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(warningColor)
+                    .symbolEffect(.pulse, options: .repeating)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(result.guidance.message.isEmpty ? "Glare detected" : result.guidance.message)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.white)
+
+                    if result.isBlockingText {
+                        Text("May affect text readability")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                }
+
+                Spacer()
+
+                // Override button if glare is blocking capture
+                if camera.glareBlocksCapture {
+                    Button(action: {
+                        camera.toggleGlareOverride()
+                        HapticService.shared.selection()
+                    }) {
+                        Text("Capture Anyway")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(warningColor)
+                            .cornerRadius(12)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(warningColor.opacity(0.15))
+            .background(.ultraThinMaterial.opacity(0.9))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(warningColor.opacity(0.3), lineWidth: 1)
+            )
+
+            // Severity indicator bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.2))
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [.yellow, .orange, .red],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geo.size.width * severity)
+                }
+            }
+            .frame(height: 4)
+            .padding(.horizontal, 20)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .animation(.spring(response: 0.4), value: camera.hasGlareWarning)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Glare warning: \(result.guidance.message). Severity \(Int(severity * 100)) percent")
     }
 
     // MARK: - Zoom Slider
@@ -247,15 +359,20 @@ struct FullScreenScannerView: View {
         HStack(spacing: 16) {
             Image(systemName: "minus.magnifyingglass")
                 .foregroundColor(.white.opacity(0.7))
+                .accessibilityHidden(true)
 
             Slider(value: $camera.zoomLevel, in: 1.0...5.0)
                 .accentColor(.tallyAccent)
                 .onChange(of: camera.zoomLevel) { _, newValue in
                     camera.setZoom(newValue)
                 }
+                .accessibilityLabel("Camera zoom")
+                .accessibilityValue("\(String(format: "%.1f", camera.zoomLevel))x")
+                .accessibilityHint("Adjust from 1x to 5x zoom")
 
             Image(systemName: "plus.magnifyingglass")
                 .foregroundColor(.white.opacity(0.7))
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, 30)
         .padding(.vertical, 12)
@@ -345,12 +462,18 @@ struct FullScreenScannerView: View {
             // Mode Selector
             HStack(spacing: 24) {
                 ModeTab(icon: "camera.fill", label: "Smart", isSelected: true)
+                    .accessibilityLabel("Smart mode, selected")
+                    .accessibilityHint("Automatic receipt detection with edge tracking")
                 ModeTab(icon: "doc.viewfinder", label: "Document", isSelected: false) {
                     showingDocumentScanner = true
                 }
+                .accessibilityLabel("Document mode")
+                .accessibilityHint("Open iOS document scanner for multi-page documents")
                 ModeTab(icon: "photo.stack", label: "Batch", isSelected: batchMode) {
                     withAnimation { batchMode.toggle() }
                 }
+                .accessibilityLabel("Batch mode, \(batchMode ? "selected" : "not selected")")
+                .accessibilityHint("Capture multiple receipts in a row")
             }
 
             // Capture Controls
@@ -361,6 +484,8 @@ struct FullScreenScannerView: View {
                         showZoomSlider.toggle()
                     }
                 }
+                .accessibilityLabel(showZoomSlider ? "Hide zoom slider" : "Show zoom slider")
+                .accessibilityHint("Toggle camera zoom controls")
 
                 // Main Capture Button
                 CaptureButton(
@@ -370,14 +495,32 @@ struct FullScreenScannerView: View {
                 ) {
                     performCapture()
                 }
+                .accessibilityLabel(captureButtonAccessibilityLabel)
+                .accessibilityHint(camera.detectedRectangle != nil ? "Capture the receipt" : "Point camera at a receipt first")
 
                 // Flip Camera
                 GlassCircleButton(icon: "camera.rotate.fill", size: 54) {
                     camera.flipCamera()
                 }
+                .accessibilityLabel("Switch camera")
+                .accessibilityHint("Toggle between front and back camera")
             }
         }
         .padding(.bottom, 40)
+    }
+
+    private var captureButtonAccessibilityLabel: String {
+        if camera.isCapturing {
+            return "Capturing receipt"
+        } else if camera.detectedRectangle != nil {
+            if camera.isEdgeStable {
+                return "Capture receipt, \(Int(camera.stabilityProgress * 100)) percent ready"
+            } else {
+                return "Capture receipt, hold steady"
+            }
+        } else {
+            return "Capture button, no receipt detected"
+        }
     }
 
     // MARK: - Batch Counter
@@ -429,8 +572,8 @@ struct FullScreenScannerView: View {
                     }
                 }
 
-                // Haptic
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                // Haptic feedback for focus
+                HapticService.shared.focusAchieved()
             }
     }
 
@@ -456,7 +599,8 @@ struct FullScreenScannerView: View {
     }
 
     private func performCapture() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        // Haptic feedback: shutter click for capture
+        HapticService.shared.playCapturePattern()
 
         camera.captureBurst { images in
             // Pick best image from burst
@@ -464,11 +608,17 @@ struct FullScreenScannerView: View {
                 if batchMode {
                     batchImages.append(best)
                     camera.resetStability()
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    // Haptic feedback: scan success for batch capture
+                    HapticService.shared.scanSuccess()
                 } else {
                     capturedImage = best
                     showingPreview = true
+                    // Haptic feedback: success for single capture
+                    HapticService.shared.success()
                 }
+            } else {
+                // Haptic feedback: error if capture failed
+                HapticService.shared.captureError()
             }
         }
     }
@@ -479,10 +629,13 @@ struct FullScreenScannerView: View {
         if batchMode {
             batchImages.append(image)
             camera.resetStability()
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            // Haptic feedback: scan success for auto batch capture
+            HapticService.shared.scanSuccess()
         } else {
             capturedImage = image
             showingPreview = true
+            // Haptic feedback: success for auto single capture
+            HapticService.shared.success()
         }
     }
 
@@ -569,9 +722,119 @@ class PremiumCameraController: NSObject, ObservableObject, AVCapturePhotoCapture
     @Published var lightingQuality: LightingQuality?
     @Published var zoomLevel: CGFloat = 1.0
     @Published var isCapturing = false
+    @Published var currentGuidance: ScannerGuidance = .positionReceipt
+
+    // Glare Detection
+    @Published var glareResult: GlareDetector.GlareResult = .none
+    @Published var hasGlareWarning: Bool = false
+    @Published var glareBlocksCapture: Bool = false
+    private let glareDetector = GlareDetector()
+    private var glareCheckCounter = 0
+    private let glareCheckInterval = 5 // Check every 5th processed frame for performance
+    var allowCaptureWithGlare: Bool = false // Manual override for glare blocking
+
+    // Quality Score Properties
+    @Published var qualityScore: Int = 0  // 0-100
+    @Published var sharpnessScore: Double = 0.5  // 0-1
+    @Published var brightnessScore: Double = 0.5  // 0-1
+    @Published var qualityFeedback: String?
+    @Published var isQualityAcceptable: Bool = true
+    @Published var qualityLevel: QualityLevel = .good
+    private var qualityCheckCounter = 0
+    private let qualityCheckInterval = 6 // Check every 6th processed frame for performance
+
+    enum QualityLevel: String {
+        case excellent = "Excellent"
+        case good = "Good"
+        case fair = "Fair"
+        case poor = "Poor"
+
+        var color: Color {
+            switch self {
+            case .excellent: return .green
+            case .good: return .green
+            case .fair: return .yellow
+            case .poor: return .red
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .excellent: return "checkmark.circle.fill"
+            case .good: return "checkmark.circle"
+            case .fair: return "exclamationmark.circle"
+            case .poor: return "xmark.circle"
+            }
+        }
+    }
 
     var baseZoom: CGFloat = 1.0
     var onAutoCapture: ((UIImage) -> Void)?
+
+    // Smart Guidance Types
+    enum ScannerGuidance: Equatable {
+        case positionReceipt
+        case moveCloser
+        case moveFarther
+        case tiltLess
+        case holdSteady
+        case capturing
+        case perfect
+        case glareDetected(severity: GlareSeverity)
+
+        enum GlareSeverity: Equatable {
+            case mild
+            case moderate
+            case severe
+        }
+
+        var icon: String {
+            switch self {
+            case .positionReceipt: return "viewfinder"
+            case .moveCloser: return "arrow.up.left.and.arrow.down.right"
+            case .moveFarther: return "arrow.down.right.and.arrow.up.left"
+            case .tiltLess: return "rectangle.portrait.rotate"
+            case .holdSteady: return "hand.raised.fill"
+            case .capturing: return "camera.fill"
+            case .perfect: return "checkmark.circle.fill"
+            case .glareDetected: return "sun.max.trianglebadge.exclamationmark.fill"
+            }
+        }
+
+        var message: String {
+            switch self {
+            case .positionReceipt: return "Position receipt in frame"
+            case .moveCloser: return "Move closer to receipt"
+            case .moveFarther: return "Move back a little"
+            case .tiltLess: return "Hold phone more level"
+            case .holdSteady: return "Hold steady..."
+            case .capturing: return "Capturing..."
+            case .perfect: return "Perfect!"
+            case .glareDetected(let severity):
+                switch severity {
+                case .mild: return "Slight glare - try tilting"
+                case .moderate: return "Glare detected - tilt receipt"
+                case .severe: return "Strong glare - move away from light"
+                }
+            }
+        }
+
+        var color: Color {
+            switch self {
+            case .positionReceipt: return .white
+            case .moveCloser, .moveFarther, .tiltLess: return .orange
+            case .holdSteady: return .tallyAccent
+            case .capturing: return .blue
+            case .perfect: return .green
+            case .glareDetected(let severity):
+                switch severity {
+                case .mild: return .yellow
+                case .moderate: return .orange
+                case .severe: return .red
+                }
+            }
+        }
+    }
 
     private var lastRectangles: [VNRectangleObservation] = []
     private var stableFrameCount = 0
@@ -784,8 +1047,124 @@ class PremiumCameraController: NSObject, ObservableObject, AVCapturePhotoCapture
             analyzeLighting(pixelBuffer)
         }
 
+        // Glare detection (every 5th processed frame for performance)
+        glareCheckCounter += 1
+        if glareCheckCounter >= glareCheckInterval {
+            glareCheckCounter = 0
+            analyzeGlare(pixelBuffer)
+        }
+
+        // Quality analysis (every 6th processed frame for performance)
+        qualityCheckCounter += 1
+        if qualityCheckCounter >= qualityCheckInterval {
+            qualityCheckCounter = 0
+            analyzeQuality(pixelBuffer)
+        }
+
         try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
             .perform([rectRequest, textRequest])
+    }
+
+    // MARK: - Quality Analysis
+
+    private func analyzeQuality(_ pixelBuffer: CVPixelBuffer) {
+        // Use the quick quality check from ScannerService for performance
+        let (sharpness, brightness, acceptable) = ScannerService.shared.quickQualityCheck(pixelBuffer: pixelBuffer)
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            self.sharpnessScore = sharpness
+            self.brightnessScore = brightness
+            self.isQualityAcceptable = acceptable
+
+            // Calculate overall quality score (0-100)
+            // Weights: sharpness 50%, brightness 50%
+            let sharpnessComponent = sharpness * 50
+            let brightnessComponent: Double
+            if brightness < 0.2 || brightness > 0.9 {
+                brightnessComponent = 0
+            } else if brightness < 0.35 || brightness > 0.75 {
+                brightnessComponent = 25
+            } else {
+                brightnessComponent = 50
+            }
+
+            self.qualityScore = Int(sharpnessComponent + brightnessComponent)
+
+            // Determine quality level
+            if self.qualityScore >= 75 {
+                self.qualityLevel = .excellent
+                self.qualityFeedback = nil
+            } else if self.qualityScore >= 50 {
+                self.qualityLevel = .good
+                self.qualityFeedback = nil
+            } else if self.qualityScore >= 30 {
+                self.qualityLevel = .fair
+                // Generate feedback
+                if sharpness < 0.4 {
+                    self.qualityFeedback = "Hold steady"
+                } else if brightness < 0.3 {
+                    self.qualityFeedback = "Too dark"
+                } else if brightness > 0.8 {
+                    self.qualityFeedback = "Too bright"
+                } else {
+                    self.qualityFeedback = "Adjust position"
+                }
+            } else {
+                self.qualityLevel = .poor
+                // Generate critical feedback
+                if sharpness < 0.3 {
+                    self.qualityFeedback = "Hold steady"
+                } else if brightness < 0.25 {
+                    self.qualityFeedback = "Too dark"
+                } else if brightness > 0.85 {
+                    self.qualityFeedback = "Too bright"
+                } else {
+                    self.qualityFeedback = "Poor quality"
+                }
+            }
+        }
+    }
+
+    // MARK: - Glare Analysis
+
+    private func analyzeGlare(_ pixelBuffer: CVPixelBuffer) {
+        // Perform glare detection with current receipt rectangle for focused analysis
+        let result = glareDetector.analyzeFrame(pixelBuffer, receiptRect: detectedRectangle)
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            self.glareResult = result
+            self.hasGlareWarning = self.glareDetector.shouldWarn(result)
+            self.glareBlocksCapture = self.glareDetector.shouldBlockCapture(result) && !self.allowCaptureWithGlare
+
+            // Log glare event for analytics if significant
+            if result.severity > 0.3 {
+                self.logGlareEvent(result)
+            }
+        }
+    }
+
+    private func logGlareEvent(_ result: GlareDetector.GlareResult) {
+        // Analytics logging for glare events
+        #if DEBUG
+        print("[GlareDetector] Severity: \(String(format: "%.1f%%", result.severity * 100)), Affected: \(String(format: "%.1f%%", result.affectedPercentage)), Blocking text: \(result.isBlockingText)")
+        #endif
+    }
+
+    /// Toggle manual override for glare blocking
+    func toggleGlareOverride() {
+        allowCaptureWithGlare.toggle()
+        if allowCaptureWithGlare {
+            glareBlocksCapture = false
+        }
+    }
+
+    /// Reset glare override (e.g., after capture)
+    func resetGlareOverride() {
+        allowCaptureWithGlare = false
     }
 
     private func handleRectangleDetection(_ request: VNRequest) {
@@ -796,13 +1175,67 @@ class PremiumCameraController: NSObject, ObservableObject, AVCapturePhotoCapture
                 self.detectedRectangle = rect
                 self.captureConfidence = CGFloat(rect.confidence)
                 self.updateStability(with: rect)
+                self.updateGuidance(with: rect)
             } else {
                 self.detectedRectangle = nil
                 self.stableFrameCount = 0
                 self.isEdgeStable = false
                 self.stabilityProgress = 0
                 self.captureConfidence = 0
+                self.currentGuidance = .positionReceipt
             }
+        }
+    }
+
+    private func updateGuidance(with rect: VNRectangleObservation) {
+        // Calculate rectangle properties for guidance
+        let width = abs(rect.topRight.x - rect.topLeft.x)
+        let height = abs(rect.topLeft.y - rect.bottomLeft.y)
+        let area = width * height
+
+        // Check if too small (move closer)
+        if area < 0.15 {
+            currentGuidance = .moveCloser
+            return
+        }
+
+        // Check if too large (move farther)
+        if area > 0.85 {
+            currentGuidance = .moveFarther
+            return
+        }
+
+        // Check for excessive tilt (compare top edge to bottom edge lengths)
+        let topEdge = hypot(rect.topRight.x - rect.topLeft.x, rect.topRight.y - rect.topLeft.y)
+        let bottomEdge = hypot(rect.bottomRight.x - rect.bottomLeft.x, rect.bottomRight.y - rect.bottomLeft.y)
+        let edgeRatio = min(topEdge, bottomEdge) / max(topEdge, bottomEdge)
+
+        if edgeRatio < 0.7 {
+            currentGuidance = .tiltLess
+            return
+        }
+
+        // Check for glare (prioritize if blocking text or severe)
+        if hasGlareWarning && !allowCaptureWithGlare {
+            let severity: ScannerGuidance.GlareSeverity
+            if glareResult.severity >= 0.35 || glareResult.isBlockingText {
+                severity = .severe
+            } else if glareResult.severity >= 0.20 {
+                severity = .moderate
+            } else {
+                severity = .mild
+            }
+            currentGuidance = .glareDetected(severity: severity)
+            return
+        }
+
+        // Check stability
+        if isCapturing {
+            currentGuidance = .capturing
+        } else if isEdgeStable {
+            currentGuidance = stabilityProgress > 0.9 ? .perfect : .holdSteady
+        } else {
+            currentGuidance = .holdSteady
         }
     }
 
@@ -864,9 +1297,17 @@ class PremiumCameraController: NSObject, ObservableObject, AVCapturePhotoCapture
                 isEdgeStable = true
             }
 
+            // Only auto-capture if:
+            // 1. Enough stable frames accumulated
+            // 2. Haven't auto-captured already
+            // 3. No blocking glare (or user has overridden glare check)
             if stableFrameCount >= requiredStableFrames && !hasAutoCaptured {
-                hasAutoCaptured = true
-                performAutoCapture()
+                if !glareBlocksCapture {
+                    hasAutoCaptured = true
+                    performAutoCapture()
+                }
+                // If glare is blocking, we pause auto-capture but don't reset stability
+                // This allows instant capture when glare clears
             }
         } else {
             stableFrameCount = max(0, stableFrameCount - 2)
@@ -897,7 +1338,10 @@ class PremiumCameraController: NSObject, ObservableObject, AVCapturePhotoCapture
     }
 
     private func performAutoCapture() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        // Haptic feedback: auto capture triggered
+        Task { @MainActor in
+            HapticService.shared.scanSuccess()
+        }
 
         let settings = AVCapturePhotoSettings()
         // Use max photo dimensions instead of deprecated isHighResolutionPhotoEnabled
@@ -1294,6 +1738,82 @@ struct EdgeOverlayView: View {
     }
 }
 
+// MARK: - Glare Overlay
+
+/// Visual overlay showing detected glare regions on the camera preview
+struct GlareOverlayView: View {
+    let glareResult: GlareDetector.GlareResult
+    let viewSize: CGSize
+
+    @State private var pulseAnimation = false
+
+    var body: some View {
+        Canvas { context, size in
+            // Draw glare regions
+            for region in glareResult.glareRegions {
+                // Convert normalized coordinates to view coordinates
+                let rect = CGRect(
+                    x: region.origin.x * size.width,
+                    y: region.origin.y * size.height,
+                    width: region.size.width * size.width,
+                    height: region.size.height * size.height
+                )
+
+                // Expand rect slightly for visibility
+                let expandedRect = rect.insetBy(dx: -8, dy: -8)
+
+                // Create rounded rect path
+                let path = RoundedRectangle(cornerRadius: 12)
+                    .path(in: expandedRect)
+
+                // Severity-based color
+                let glareColor: Color = glareResult.severity >= 0.35 ? .red : (glareResult.severity >= 0.20 ? .orange : .yellow)
+
+                // Outer glow
+                context.stroke(
+                    path,
+                    with: .color(glareColor.opacity(0.4)),
+                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                )
+
+                // Inner border
+                context.stroke(
+                    path,
+                    with: .color(glareColor.opacity(0.8)),
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 4])
+                )
+
+                // Fill with semi-transparent color
+                context.fill(path, with: .color(glareColor.opacity(0.15)))
+
+                // Add small warning icon at center of region
+                let iconCenter = CGPoint(
+                    x: expandedRect.midX,
+                    y: expandedRect.midY
+                )
+
+                // Draw circular background for icon
+                var iconBg = Path()
+                iconBg.addEllipse(in: CGRect(
+                    x: iconCenter.x - 14,
+                    y: iconCenter.y - 14,
+                    width: 28,
+                    height: 28
+                ))
+                context.fill(iconBg, with: .color(glareColor))
+            }
+        }
+        .opacity(pulseAnimation ? 0.8 : 1.0)
+        .animation(
+            .easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+            value: pulseAnimation
+        )
+        .onAppear {
+            pulseAnimation = true
+        }
+    }
+}
+
 // MARK: - Premium Preview View
 
 struct PremiumPreviewView: View {
@@ -1305,6 +1825,8 @@ struct PremiumPreviewView: View {
     @State private var isCheckingDuplicate = false
     @State private var duplicateResult: ScannerService.DuplicateCheckResult?
     @State private var showDuplicateAlert = false
+    @State private var showQualityAlert = false
+    @State private var qualityResult: ScannerService.ImageQualityResult?
 
     var body: some View {
         ZStack {
@@ -1424,12 +1946,57 @@ struct PremiumPreviewView: View {
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
+
+            // Quality Gate Alert
+            if showQualityAlert, let quality = qualityResult {
+                QualityGateAlert(
+                    qualityScore: quality.overallScore,
+                    qualityLevel: quality.qualityLevel.toCameraQualityLevel(),
+                    onRetake: {
+                        showQualityAlert = false
+                        onConfirm(false)
+                    },
+                    onForceUpload: {
+                        showQualityAlert = false
+                        // Proceed with duplicate check then upload
+                        checkDuplicateAndUpload()
+                    },
+                    onCancel: {
+                        showQualityAlert = false
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
         }
         .statusBarHidden()
         .animation(.spring(response: 0.3), value: showDuplicateAlert)
+        .animation(.spring(response: 0.3), value: showQualityAlert)
     }
 
     private func handleUsePhoto() {
+        isCheckingDuplicate = true
+
+        Task {
+            // First check quality
+            let quality = ScannerService.shared.assessImageQuality(image)
+
+            await MainActor.run {
+                // If quality is not acceptable, show warning
+                if !quality.isAcceptable {
+                    isCheckingDuplicate = false
+                    qualityResult = quality
+                    showQualityAlert = true
+                    HapticService.shared.warning()
+                    return
+                }
+
+                // Quality is acceptable, proceed with duplicate check
+                checkDuplicateAndUpload()
+            }
+        }
+    }
+
+    private func checkDuplicateAndUpload() {
         isCheckingDuplicate = true
 
         Task {
@@ -1442,8 +2009,11 @@ struct PremiumPreviewView: View {
                 if result.isDuplicate {
                     duplicateResult = result
                     showDuplicateAlert = true
-                    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                    // Haptic feedback: warning for duplicate detected
+                    HapticService.shared.warning()
                 } else {
+                    // Haptic feedback: success for confirmed capture
+                    HapticService.shared.saveSuccess()
                     onConfirm(true)
                 }
             }
@@ -1711,6 +2281,343 @@ struct BatchImageCard: View {
                 }
                 .padding(8)
             }
+        }
+    }
+}
+
+// MARK: - Smart Guidance Views
+
+struct SmartGuidanceView: View {
+    let guidance: PremiumCameraController.ScannerGuidance
+    let isStable: Bool
+    let confidence: CGFloat
+    let stabilityProgress: CGFloat
+    let showProgress: Bool
+
+    @State private var pulseScale: CGFloat = 1.0
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                // Animated icon
+                ZStack {
+                    Circle()
+                        .fill(guidance.color.opacity(0.2))
+                        .frame(width: 32, height: 32)
+                        .scaleEffect(pulseScale)
+
+                    Image(systemName: guidance.icon)
+                        .foregroundColor(guidance.color)
+                        .font(.system(size: 14, weight: .semibold))
+                }
+
+                Text(guidance.message)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(.white)
+
+                if isStable && confidence > 0 {
+                    Text("•")
+                        .foregroundColor(.gray)
+                    Text("\(Int(confidence * 100))%")
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(.tallyAccent)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial.opacity(0.9))
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(guidance.color.opacity(0.3), lineWidth: 1)
+                    )
+            )
+
+            // Stability Progress
+            if showProgress {
+                ProgressCapsule(progress: stabilityProgress)
+                    .frame(width: 140, height: 6)
+            }
+        }
+        .onAppear {
+            startPulseAnimation()
+        }
+        .onChange(of: guidance) { _, _ in
+            startPulseAnimation()
+        }
+    }
+
+    private func startPulseAnimation() {
+        pulseScale = 1.0
+        withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+            pulseScale = 1.15
+        }
+    }
+}
+
+struct ScannerGuidanceHint: View {
+    let icon: String
+    let message: String
+    let color: Color
+    let isAnimating: Bool
+
+    @State private var opacity: CGFloat = 0.7
+    @State private var iconScale: CGFloat = 1.0
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .font(.system(size: 16, weight: .semibold))
+                .scaleEffect(iconScale)
+
+            Text(message)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(color.opacity(opacity))
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial.opacity(0.6))
+        .cornerRadius(25)
+        .onAppear {
+            if isAnimating {
+                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                    opacity = 1.0
+                    iconScale = 1.1
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Quality Score Overlay
+
+struct QualityScoreOverlay: View {
+    let qualityScore: Int
+    let qualityLevel: PremiumCameraController.QualityLevel
+    let sharpnessScore: Double
+    let brightnessScore: Double
+    let feedback: String?
+    let isVisible: Bool
+
+    @State private var animate = false
+
+    var body: some View {
+        Group {
+            if isVisible {
+                VStack(spacing: 6) {
+                    // Main quality indicator
+                    HStack(spacing: 8) {
+                        // Quality icon with color
+                        ZStack {
+                            Circle()
+                                .fill(qualityLevel.color.opacity(0.2))
+                                .frame(width: 28, height: 28)
+
+                            Image(systemName: qualityLevel.icon)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(qualityLevel.color)
+                        }
+
+                        // Score and level
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text("\(qualityScore)")
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+
+                                Text(qualityLevel.rawValue)
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundColor(qualityLevel.color)
+                            }
+
+                            // Mini quality bars
+                            HStack(spacing: 4) {
+                                QualityMiniBar(
+                                    label: "Sharp",
+                                    value: sharpnessScore,
+                                    color: sharpnessScore >= 0.5 ? .green : (sharpnessScore >= 0.3 ? .yellow : .red)
+                                )
+
+                                QualityMiniBar(
+                                    label: "Light",
+                                    value: brightnessScore >= 0.3 && brightnessScore <= 0.7 ? 1.0 : (brightnessScore >= 0.2 && brightnessScore <= 0.8 ? 0.6 : 0.3),
+                                    color: brightnessScore >= 0.3 && brightnessScore <= 0.7 ? .green : (brightnessScore >= 0.2 && brightnessScore <= 0.8 ? .yellow : .red)
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(.ultraThinMaterial.opacity(0.9))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(qualityLevel.color.opacity(0.3), lineWidth: 1)
+                            )
+                    )
+
+                    // Feedback text (if any)
+                    if let feedback = feedback {
+                        HStack(spacing: 4) {
+                            Image(systemName: "info.circle.fill")
+                                .font(.system(size: 10))
+                            Text(feedback)
+                                .font(.caption2.weight(.medium))
+                        }
+                        .foregroundColor(qualityLevel.color)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(qualityLevel.color.opacity(0.15))
+                        )
+                        .scaleEffect(animate ? 1.02 : 1.0)
+                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: animate)
+                    }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                .onAppear {
+                    animate = true
+                }
+            }
+        }
+        .animation(.spring(response: 0.3), value: isVisible)
+        .animation(.spring(response: 0.3), value: qualityLevel)
+    }
+}
+
+struct QualityMiniBar: View {
+    let label: String
+    let value: Double
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 8, weight: .medium))
+                .foregroundColor(.gray)
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.white.opacity(0.2))
+
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(color)
+                        .frame(width: geo.size.width * CGFloat(value))
+                }
+            }
+            .frame(width: 40, height: 3)
+        }
+    }
+}
+
+// MARK: - Quality Gate Alert
+
+struct QualityGateAlert: View {
+    let qualityScore: Int
+    let qualityLevel: PremiumCameraController.QualityLevel
+    let onRetake: () -> Void
+    let onForceUpload: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        ZStack {
+            // Dimmed background
+            Color.black.opacity(0.85)
+                .ignoresSafeArea()
+                .onTapGesture { onCancel() }
+
+            VStack(spacing: 20) {
+                // Header
+                VStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(qualityLevel.color.opacity(0.2))
+                            .frame(width: 72, height: 72)
+
+                        Image(systemName: qualityLevel.icon)
+                            .font(.system(size: 32))
+                            .foregroundColor(qualityLevel.color)
+                    }
+
+                    Text("Quality Check")
+                        .font(.title2.weight(.bold))
+                        .foregroundColor(.white)
+
+                    Text("Score: \(qualityScore)/100 (\(qualityLevel.rawValue))")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
+
+                // Quality details
+                VStack(spacing: 8) {
+                    Text("The image quality is below optimal. This may affect text recognition accuracy.")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                // Actions
+                VStack(spacing: 12) {
+                    Button(action: onRetake) {
+                        HStack {
+                            Image(systemName: "arrow.counterclockwise")
+                            Text("Retake Photo")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.tallyAccent)
+                        .cornerRadius(14)
+                    }
+
+                    Button(action: onForceUpload) {
+                        HStack {
+                            Image(systemName: "arrow.up.circle")
+                            Text("Upload Anyway")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.white.opacity(0.15))
+                        .cornerRadius(14)
+                    }
+
+                    Button(action: onCancel) {
+                        Text("Cancel")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .padding(.top, 8)
+                    }
+                }
+            }
+            .padding(24)
+            .frame(maxWidth: 320)
+            .background(
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color(white: 0.12))
+            )
+        }
+    }
+}
+
+// MARK: - Quality Level Conversion Extension
+
+extension ScannerService.ImageQualityResult.QualityLevel {
+    /// Convert ScannerService quality level to PremiumCameraController quality level
+    func toCameraQualityLevel() -> PremiumCameraController.QualityLevel {
+        switch self {
+        case .excellent: return .excellent
+        case .good: return .good
+        case .fair: return .fair
+        case .poor: return .poor
         }
     }
 }

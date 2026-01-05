@@ -158,8 +158,6 @@
                 token: linkToken,
 
                 onSuccess: async (publicToken, metadata) => {
-                    console.log('Plaid Link success:', metadata);
-
                     try {
                         // Exchange public token for access token
                         const result = await apiRequest(CONFIG.endpoints.exchangeToken, {
@@ -186,8 +184,6 @@
                 },
 
                 onExit: (error, metadata) => {
-                    console.log('Plaid Link exit:', error, metadata);
-
                     if (error) {
                         dispatchEvent('plaid:error', { error, metadata });
                     } else {
@@ -201,7 +197,8 @@
                 },
 
                 onEvent: (eventName, metadata) => {
-                    console.log('Plaid Link event:', eventName, metadata);
+                    // Events dispatched for analytics if needed
+                    dispatchEvent('plaid:event', { eventName, metadata });
                 },
 
                 ...options

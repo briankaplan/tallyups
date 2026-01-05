@@ -59,21 +59,80 @@
     return path.startsWith(href);
   }
 
+  // Page hierarchy for breadcrumbs
+  const PAGE_HIERARCHY = {
+    '/': { title: 'Dashboard', parent: null },
+    '/viewer': { title: 'Match Receipts', parent: null },
+    '/incoming': { title: 'Inbox', parent: null },
+    '/library': { title: 'Library', parent: null },
+    '/scanner': { title: 'Scan', parent: null },
+    '/reports': { title: 'Reports', parent: null },
+    '/gmail': { title: 'Gmail', parent: null },
+    '/contacts': { title: 'Contacts', parent: null },
+    '/settings': { title: 'Settings', parent: '/' },
+    '/bank-accounts': { title: 'Bank Accounts', parent: '/settings' },
+    '/profile': { title: 'Profile', parent: '/settings' },
+    '/receipt': { title: 'Receipt Details', parent: '/library' },
+    '/report': { title: 'Report Details', parent: '/reports' }
+  };
+
   function getPageTitle() {
     const path = getCurrentPath();
-    const titles = {
-      '/': 'Dashboard',
-      '/viewer': 'Match Receipts',
-      '/incoming': 'Inbox',
-      '/library': 'Library',
-      '/scanner': 'Scan',
-      '/reports': 'Reports',
-      '/settings': 'Settings',
-      '/gmail': 'Gmail',
-      '/contacts': 'Contacts',
-      '/bank-accounts': 'Bank Accounts'
-    };
-    return titles[path] || 'TallyUps';
+    const pageInfo = PAGE_HIERARCHY[path];
+    return pageInfo ? pageInfo.title : 'TallyUps';
+  }
+
+  function getBreadcrumbs() {
+    const path = getCurrentPath();
+    const crumbs = [];
+    let currentPath = path;
+
+    // Build breadcrumb chain from current page to root
+    while (currentPath) {
+      const pageInfo = PAGE_HIERARCHY[currentPath];
+      if (pageInfo) {
+        crumbs.unshift({ path: currentPath, title: pageInfo.title });
+        currentPath = pageInfo.parent;
+      } else {
+        break;
+      }
+    }
+
+    return crumbs;
+  }
+
+  function needsBreadcrumbs() {
+    const path = getCurrentPath();
+    const pageInfo = PAGE_HIERARCHY[path];
+    return pageInfo && pageInfo.parent !== null;
+  }
+
+  function createBreadcrumbBar() {
+    if (!needsBreadcrumbs()) return '';
+
+    const crumbs = getBreadcrumbs();
+    const breadcrumbItems = crumbs.map((crumb, index) => {
+      const isLast = index === crumbs.length - 1;
+      if (isLast) {
+        return `<span class="tu-breadcrumb__current">${crumb.title}</span>`;
+      }
+      return `
+        <a href="${crumb.path}" class="tu-breadcrumb__link">${crumb.title}</a>
+        <span class="tu-breadcrumb__separator">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </span>
+      `;
+    }).join('');
+
+    return `
+      <div class="tu-breadcrumb">
+        <div class="tu-breadcrumb__inner">
+          ${breadcrumbItems}
+        </div>
+      </div>
+    `;
   }
 
   function createHeader() {
@@ -88,8 +147,11 @@
       </a>
     `).join('');
 
+    // Breadcrumb bar for sub-pages
+    const breadcrumbBar = createBreadcrumbBar();
+
     return `
-      <header class="tu-header">
+      <header class="tu-header ${needsBreadcrumbs() ? 'has-breadcrumbs' : ''}">
         <div class="tu-header__left">
           <a href="/" class="tu-header__brand">
             <div class="tu-header__logo">
@@ -117,6 +179,7 @@
           </button>
         </div>
       </header>
+      ${breadcrumbBar}
     `;
   }
 
@@ -469,6 +532,68 @@
         background: #0a0f14;
         color: #fff;
       }
+
+      /* Breadcrumb Bar */
+      .tu-breadcrumb {
+        background: #0d1117;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        padding: 10px 24px;
+        position: sticky;
+        top: 56px;
+        z-index: 999;
+      }
+
+      .tu-breadcrumb__inner {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .tu-breadcrumb__link {
+        color: #5a6577;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: all 0.15s ease;
+      }
+
+      .tu-breadcrumb__link:hover {
+        color: #00ff88;
+        background: rgba(0,255,136,0.1);
+      }
+
+      .tu-breadcrumb__separator {
+        color: #3a4557;
+        display: flex;
+        align-items: center;
+      }
+
+      .tu-breadcrumb__current {
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 4px 8px;
+      }
+
+      @media (max-width: 768px) {
+        .tu-breadcrumb {
+          padding: 8px 16px;
+          top: 48px;
+        }
+        .tu-breadcrumb__link,
+        .tu-breadcrumb__current {
+          font-size: 12px;
+        }
+      }
+
+      /* Adjust body padding when breadcrumbs present */
+      body.has-tu-header.has-breadcrumbs {
+        padding-top: 96px; /* header + breadcrumb */
+      }
     `;
     document.head.appendChild(styles);
   }
@@ -494,7 +619,7 @@
     // Inject styles first
     injectStyles();
 
-    // Inject header
+    // Inject header (includes breadcrumbs if needed)
     document.body.insertAdjacentHTML('afterbegin', createHeader());
 
     // Inject bottom nav for mobile
@@ -503,8 +628,11 @@
     // Inject mobile menu (hamburger slide-out)
     document.body.insertAdjacentHTML('beforeend', createMobileMenu());
 
-    // Add body class
+    // Add body classes
     document.body.classList.add('has-tu-header');
+    if (needsBreadcrumbs()) {
+      document.body.classList.add('has-breadcrumbs');
+    }
   }
 
   function init() {

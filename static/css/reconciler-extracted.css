@@ -920,13 +920,13 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   position:fixed;top:0;left:0;right:0;bottom:0;
   background:rgba(0,0,0,.75);
   display:none;align-items:center;justify-content:center;
-  z-index:10000;backdrop-filter:blur(8px);
+  z-index:var(--z-modal-backdrop, 200);backdrop-filter:blur(8px);
   animation:fadeIn .2s ease;
 }
 .modal-overlay.active{display:flex}
 
-/* Progress Modal - Highest Z-Index */
-#progress-modal{z-index:10001!important}
+/* Progress Modal */
+#progress-modal{z-index:var(--z-modal, 250)!important}
 
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -966,7 +966,7 @@ th:nth-child(7){text-align:center;border-left:1px solid var(--edge)}
   min-width: 320px;
   max-width: 400px;
   box-shadow: 0 24px 48px rgba(0,0,0,.5);
-  z-index: 10002;
+  z-index: var(--z-popover, 300);
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease;
@@ -3078,7 +3078,7 @@ body { padding-bottom: 60px; }
 .bulk-cancel:hover { border-color: var(--muted); }
 
 /* Bulk Progress Overlay */
-.bulk-progress { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.8); }
+.bulk-progress { display: none; position: fixed; inset: 0; z-index: var(--z-modal-backdrop, 200); background: rgba(0,0,0,.8); }
 .bulk-progress.visible { display: flex; align-items: center; justify-content: center; }
 .progress-content {
   background: var(--panel); padding: 32px; border-radius: 16px;

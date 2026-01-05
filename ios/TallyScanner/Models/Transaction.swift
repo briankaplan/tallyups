@@ -217,6 +217,43 @@ struct Transaction: Identifiable, Codable, Hashable {
         return formatter.string(from: date)
     }
 
+    /// Clean merchant name for display
+    var displayMerchant: String {
+        // Remove common prefixes and clean up merchant name
+        var clean = merchant
+        // Remove common payment prefixes
+        let prefixes = ["TST*", "SQ *", "SQU*", "PAYPAL *", "PP*", "STRIPE*"]
+        for prefix in prefixes {
+            if clean.uppercased().hasPrefix(prefix) {
+                clean = String(clean.dropFirst(prefix.count))
+            }
+        }
+        // Trim and title case first word
+        return clean.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Whether this transaction is excluded from matching
+    var isExcluded: Bool {
+        status == .excluded
+    }
+
+    /// Business type (alias for business property)
+    var businessType: String? {
+        business
+    }
+
+    /// AI suggestion for this transaction (if available)
+    var aiSuggestion: APIClient.AISuggestion? {
+        guard let cat = aiCategory else { return nil }
+        return APIClient.AISuggestion(
+            category: cat,
+            businessType: aiBusinessType,
+            description: aiDescription,
+            confidence: aiConfidence ?? 0,
+            source: "transaction"
+        )
+    }
+
     /// Display name for the card/account (e.g., "Chase ••1234" or "Manual Entry")
     var cardDisplayName: String {
         if let last4 = cardLast4, !last4.isEmpty {

@@ -1,0 +1,4638 @@
+{
+  "timestamp": "2026-01-02T15:25:43.340974",
+  "accounts": {
+    "kaplan.brian@gmail.com": {
+      "email": "kaplan.brian@gmail.com",
+      "profile": {
+        "emailAddress": "kaplan.brian@gmail.com",
+        "messagesTotal": 75778,
+        "threadsTotal": 64261,
+        "historyId": "41019421"
+      },
+      "labels": {
+        "total": 38,
+        "system": [
+          {
+            "id": "CHAT",
+            "name": "CHAT",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "SENT",
+            "name": "SENT",
+            "type": "system",
+            "messages_total": 2891,
+            "messages_unread": 0
+          },
+          {
+            "id": "INBOX",
+            "name": "INBOX",
+            "type": "system",
+            "messages_total": 379,
+            "messages_unread": 312
+          },
+          {
+            "id": "IMPORTANT",
+            "name": "IMPORTANT",
+            "type": "system",
+            "messages_total": 756,
+            "messages_unread": 148
+          },
+          {
+            "id": "TRASH",
+            "name": "TRASH",
+            "type": "system",
+            "messages_total": 2710,
+            "messages_unread": 1997
+          },
+          {
+            "id": "DRAFT",
+            "name": "DRAFT",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "SPAM",
+            "name": "SPAM",
+            "type": "system",
+            "messages_total": 402,
+            "messages_unread": 401
+          },
+          {
+            "id": "CATEGORY_FORUMS",
+            "name": "CATEGORY_FORUMS",
+            "type": "system",
+            "messages_total": 547,
+            "messages_unread": 29
+          },
+          {
+            "id": "CATEGORY_UPDATES",
+            "name": "CATEGORY_UPDATES",
+            "type": "system",
+            "messages_total": 29990,
+            "messages_unread": 3277
+          },
+          {
+            "id": "CATEGORY_PERSONAL",
+            "name": "CATEGORY_PERSONAL",
+            "type": "system",
+            "messages_total": 11863,
+            "messages_unread": 446
+          },
+          {
+            "id": "CATEGORY_PROMOTIONS",
+            "name": "CATEGORY_PROMOTIONS",
+            "type": "system",
+            "messages_total": 24178,
+            "messages_unread": 2488
+          },
+          {
+            "id": "CATEGORY_SOCIAL",
+            "name": "CATEGORY_SOCIAL",
+            "type": "system",
+            "messages_total": 807,
+            "messages_unread": 24
+          },
+          {
+            "id": "YELLOW_STAR",
+            "name": "YELLOW_STAR",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "STARRED",
+            "name": "STARRED",
+            "type": "system",
+            "messages_total": 31,
+            "messages_unread": 1
+          },
+          {
+            "id": "UNREAD",
+            "name": "UNREAD",
+            "type": "system",
+            "messages_total": 6267,
+            "messages_unread": 6267
+          }
+        ],
+        "user": [
+          {
+            "id": "Label_322",
+            "name": "Receipts",
+            "type": "user",
+            "messages_total": 1765,
+            "messages_unread": 493
+          },
+          {
+            "id": "Label_323",
+            "name": "Action",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_324",
+            "name": "Waiting",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_325",
+            "name": "Reference",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_326",
+            "name": "Newsletters",
+            "type": "user",
+            "messages_total": 10,
+            "messages_unread": 3
+          },
+          {
+            "id": "Label_327",
+            "name": "Notifications",
+            "type": "user",
+            "messages_total": 103,
+            "messages_unread": 8
+          },
+          {
+            "id": "Label_330",
+            "name": "Actioned",
+            "type": "user",
+            "messages_total": 61,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_331",
+            "name": "Inbox Zero",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_332",
+            "name": "Inbox Zero/Unsubscribed",
+            "type": "user",
+            "messages_total": 172,
+            "messages_unread": 171
+          },
+          {
+            "id": "Label_333",
+            "name": "@Action",
+            "type": "user",
+            "messages_total": 2,
+            "messages_unread": 1
+          },
+          {
+            "id": "Label_334",
+            "name": "@Waiting",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_335",
+            "name": "@Someday",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_336",
+            "name": "@Reference",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_337",
+            "name": "To Reply",
+            "type": "user",
+            "messages_total": 1,
+            "messages_unread": 1
+          },
+          {
+            "id": "Label_338",
+            "name": "Awaiting Reply",
+            "type": "user",
+            "messages_total": 1,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_339",
+            "name": "Receipt",
+            "type": "user",
+            "messages_total": 1,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_340",
+            "name": "Notification",
+            "type": "user",
+            "messages_total": 14,
+            "messages_unread": 14
+          },
+          {
+            "id": "Label_341",
+            "name": "Marketing",
+            "type": "user",
+            "messages_total": 16,
+            "messages_unread": 16
+          },
+          {
+            "id": "Label_342",
+            "name": "Newsletter",
+            "type": "user",
+            "messages_total": 2,
+            "messages_unread": 2
+          },
+          {
+            "id": "Label_343",
+            "name": "Zero Inbox",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_344",
+            "name": "Zero Inbox/Promotions",
+            "type": "user",
+            "messages_total": 2,
+            "messages_unread": 2
+          },
+          {
+            "id": "Label_345",
+            "name": "Zero Inbox/Newsletters",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_346",
+            "name": "FYI",
+            "type": "user",
+            "messages_total": 1,
+            "messages_unread": 1
+          }
+        ],
+        "nested": [
+          {
+            "id": "Label_332",
+            "name": "Inbox Zero/Unsubscribed",
+            "type": "user",
+            "messages_total": 172,
+            "messages_unread": 171
+          },
+          {
+            "id": "Label_344",
+            "name": "Zero Inbox/Promotions",
+            "type": "user",
+            "messages_total": 2,
+            "messages_unread": 2
+          },
+          {
+            "id": "Label_345",
+            "name": "Zero Inbox/Newsletters",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          }
+        ],
+        "duplicates": [],
+        "by_type": {
+          "system": [
+            {
+              "id": "CHAT",
+              "name": "CHAT",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "SENT",
+              "name": "SENT",
+              "type": "system",
+              "messages_total": 2891,
+              "messages_unread": 0
+            },
+            {
+              "id": "INBOX",
+              "name": "INBOX",
+              "type": "system",
+              "messages_total": 379,
+              "messages_unread": 312
+            },
+            {
+              "id": "IMPORTANT",
+              "name": "IMPORTANT",
+              "type": "system",
+              "messages_total": 756,
+              "messages_unread": 148
+            },
+            {
+              "id": "TRASH",
+              "name": "TRASH",
+              "type": "system",
+              "messages_total": 2710,
+              "messages_unread": 1997
+            },
+            {
+              "id": "DRAFT",
+              "name": "DRAFT",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "SPAM",
+              "name": "SPAM",
+              "type": "system",
+              "messages_total": 402,
+              "messages_unread": 401
+            },
+            {
+              "id": "CATEGORY_FORUMS",
+              "name": "CATEGORY_FORUMS",
+              "type": "system",
+              "messages_total": 547,
+              "messages_unread": 29
+            },
+            {
+              "id": "CATEGORY_UPDATES",
+              "name": "CATEGORY_UPDATES",
+              "type": "system",
+              "messages_total": 29990,
+              "messages_unread": 3277
+            },
+            {
+              "id": "CATEGORY_PERSONAL",
+              "name": "CATEGORY_PERSONAL",
+              "type": "system",
+              "messages_total": 11863,
+              "messages_unread": 446
+            },
+            {
+              "id": "CATEGORY_PROMOTIONS",
+              "name": "CATEGORY_PROMOTIONS",
+              "type": "system",
+              "messages_total": 24178,
+              "messages_unread": 2488
+            },
+            {
+              "id": "CATEGORY_SOCIAL",
+              "name": "CATEGORY_SOCIAL",
+              "type": "system",
+              "messages_total": 807,
+              "messages_unread": 24
+            },
+            {
+              "id": "YELLOW_STAR",
+              "name": "YELLOW_STAR",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "STARRED",
+              "name": "STARRED",
+              "type": "system",
+              "messages_total": 31,
+              "messages_unread": 1
+            },
+            {
+              "id": "UNREAD",
+              "name": "UNREAD",
+              "type": "system",
+              "messages_total": 6267,
+              "messages_unread": 6267
+            }
+          ],
+          "user": [
+            {
+              "id": "Label_322",
+              "name": "Receipts",
+              "type": "user",
+              "messages_total": 1765,
+              "messages_unread": 493
+            },
+            {
+              "id": "Label_323",
+              "name": "Action",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_324",
+              "name": "Waiting",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_325",
+              "name": "Reference",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_326",
+              "name": "Newsletters",
+              "type": "user",
+              "messages_total": 10,
+              "messages_unread": 3
+            },
+            {
+              "id": "Label_327",
+              "name": "Notifications",
+              "type": "user",
+              "messages_total": 103,
+              "messages_unread": 8
+            },
+            {
+              "id": "Label_330",
+              "name": "Actioned",
+              "type": "user",
+              "messages_total": 61,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_331",
+              "name": "Inbox Zero",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_332",
+              "name": "Inbox Zero/Unsubscribed",
+              "type": "user",
+              "messages_total": 172,
+              "messages_unread": 171
+            },
+            {
+              "id": "Label_333",
+              "name": "@Action",
+              "type": "user",
+              "messages_total": 2,
+              "messages_unread": 1
+            },
+            {
+              "id": "Label_334",
+              "name": "@Waiting",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_335",
+              "name": "@Someday",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_336",
+              "name": "@Reference",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_337",
+              "name": "To Reply",
+              "type": "user",
+              "messages_total": 1,
+              "messages_unread": 1
+            },
+            {
+              "id": "Label_338",
+              "name": "Awaiting Reply",
+              "type": "user",
+              "messages_total": 1,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_339",
+              "name": "Receipt",
+              "type": "user",
+              "messages_total": 1,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_340",
+              "name": "Notification",
+              "type": "user",
+              "messages_total": 14,
+              "messages_unread": 14
+            },
+            {
+              "id": "Label_341",
+              "name": "Marketing",
+              "type": "user",
+              "messages_total": 16,
+              "messages_unread": 16
+            },
+            {
+              "id": "Label_342",
+              "name": "Newsletter",
+              "type": "user",
+              "messages_total": 2,
+              "messages_unread": 2
+            },
+            {
+              "id": "Label_343",
+              "name": "Zero Inbox",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_344",
+              "name": "Zero Inbox/Promotions",
+              "type": "user",
+              "messages_total": 2,
+              "messages_unread": 2
+            },
+            {
+              "id": "Label_345",
+              "name": "Zero Inbox/Newsletters",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_346",
+              "name": "FYI",
+              "type": "user",
+              "messages_total": 1,
+              "messages_unread": 1
+            }
+          ]
+        }
+      },
+      "filters": {
+        "total": 88,
+        "filters": [
+          {
+            "id": "ANe1BmjoeHMAhoYSS71Ym0aDx-giCIOrG-p_EA",
+            "criteria": {
+              "from": "shipment-tracking@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:shipment-tracking@amazon.com"
+          },
+          {
+            "id": "ANe1BmjNWIv67yv7XUpNmJr5-apIOh4uOtDDOQ",
+            "criteria": {
+              "from": "auto-confirm@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:auto-confirm@amazon.com"
+          },
+          {
+            "id": "ANe1BmhrTzTMwt7zXGeQyCtF9gfMGncjyJ-k4A",
+            "criteria": {
+              "from": "digital-no-reply@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:digital-no-reply@amazon.com"
+          },
+          {
+            "id": "ANe1BmilIs-EFZTb2P8Ktxmmh6NZimogr8XCRQ",
+            "criteria": {
+              "from": "no_reply@email.apple.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no_reply@email.apple.com"
+          },
+          {
+            "id": "ANe1BmisGG5sY640V3ecBvXJqm8tjH3b7z_j0Q",
+            "criteria": {
+              "from": "googleplay-noreply@google.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:googleplay-noreply@google.com"
+          },
+          {
+            "id": "ANe1BmhmY0jNPQ0Cqe9SWjYQ9A_mhRt1vgeS-g",
+            "criteria": {
+              "from": "no-reply@doordash.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@doordash.com"
+          },
+          {
+            "id": "ANe1BmhwBE2KoTceoc3_IJw_r1skf-_gQZv1ZA",
+            "criteria": {
+              "from": "uber.eats@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:uber.eats@uber.com"
+          },
+          {
+            "id": "ANe1BmjXw83y8Z1kLFJAgc-rzAjH1hJISzZbkw",
+            "criteria": {
+              "from": "receipts@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:receipts@uber.com"
+          },
+          {
+            "id": "ANe1BmjXCPG44Brs04HeMq9Luq228KuS_0bDdQ",
+            "criteria": {
+              "from": "no-reply@lyftmail.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@lyftmail.com"
+          },
+          {
+            "id": "ANe1BmjV1W5AJTseh2PDLjgLRYRZccIMA6IeNQ",
+            "criteria": {
+              "from": "service@paypal.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:service@paypal.com"
+          },
+          {
+            "id": "ANe1BmjLVb7EV-oDXVc8bTli1n77sQ545ibZuA",
+            "criteria": {
+              "from": "venmo@venmo.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:venmo@venmo.com"
+          },
+          {
+            "id": "ANe1BmiIf3NdJ1cbE1RI4A83cfz_Sob0L5ezIg",
+            "criteria": {
+              "from": "invoice+statements@mail.anthropic.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:invoice+statements@mail.anthropic.com"
+          },
+          {
+            "id": "ANe1BmhUyMIA4LA-BPULud0SjL-WD43epwlxQQ",
+            "criteria": {
+              "from": "invoice+statements+acct_1hnrvlcjopsrzqsd@stripe.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:invoice+statements+acct_1hnrvlcjopsrzqsd@stripe.com"
+          },
+          {
+            "id": "ANe1BmiOnylcFyZ76pg_t9JBTrfSuPqFsbFNag",
+            "criteria": {
+              "from": "invoice+statements@midjourney.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:invoice+statements@midjourney.com"
+          },
+          {
+            "id": "ANe1BmiRjfSnfmmF3qcFnMQqnbExKBq-wLy0lg",
+            "criteria": {
+              "from": "noreply@notify.cloudflare.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@notify.cloudflare.com"
+          },
+          {
+            "id": "ANe1BmiffLFiAXCKvHzaNG9ZeqF0rSuW3YBQxQ",
+            "criteria": {
+              "from": "cloud-manager-support@mongodb.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:cloud-manager-support@mongodb.com"
+          },
+          {
+            "id": "ANe1BmiwKA_hdlxlGLfEZSgoLBMgMPEMHJhOIg",
+            "criteria": {
+              "from": "receipts@stripe.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:receipts@stripe.com"
+          },
+          {
+            "id": "ANe1BmjJo6YOzU86-rPDrvgHt1lgqW7CirZ8gQ",
+            "criteria": {
+              "from": "donotreply@audible.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:donotreply@audible.com"
+          },
+          {
+            "id": "ANe1BmhzYIXC9C5-zLSJHvLFHMu-kSximN3hkA",
+            "criteria": {
+              "from": "noreply@order.eventbrite.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@order.eventbrite.com"
+          },
+          {
+            "id": "ANe1Bmil-5k1b7Ii8TyyR6FAD4l7jCU5tqi0Pw",
+            "criteria": {
+              "from": "bestbuyinfo@emailinfo.bestbuy.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:bestbuyinfo@emailinfo.bestbuy.com"
+          },
+          {
+            "id": "ANe1BmhT09NTstoqbifqEN6ynJYIcV8gQhoHZQ",
+            "criteria": {
+              "from": "email@e.academy.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:email@e.academy.com"
+          },
+          {
+            "id": "ANe1BmjvWrhh17H3cBNBkScbAiUan0onT-9GDA",
+            "criteria": {
+              "from": "donotreply@godaddy.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:donotreply@godaddy.com"
+          },
+          {
+            "id": "ANe1BmjNJesEf-3x-85gq6WM3tV1J-NhSOI6DA",
+            "criteria": {
+              "from": "cs-noreply@zappos.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:cs-noreply@zappos.com"
+          },
+          {
+            "id": "ANe1Bmg1Q57R7VEjTulZ17BVx1oO-N2C62F_lw",
+            "criteria": {
+              "from": "no-reply@sonicdrivein.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@sonicdrivein.com"
+          },
+          {
+            "id": "ANe1Bmg2M7zOUisQAn91gG8dYbPShLmECfGJ9g",
+            "criteria": {
+              "from": "concierge@expensify.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:concierge@expensify.com"
+          },
+          {
+            "id": "ANe1Bmhp0Cj8ARqKD6dqG7OiMGzJJisNWwx2hQ",
+            "criteria": {
+              "from": "invoice@elementor.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:invoice@elementor.com"
+          },
+          {
+            "id": "ANe1Bmj-y6WRsopGd43iSUIzDdSlXCGP0D8x2w",
+            "criteria": {
+              "subject": "receipt OR \"order confirmation\" OR invoice"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:receipt OR \"order confirmation\" OR invoice"
+          },
+          {
+            "id": "ANe1Bmh5oByFzRINfyu29TeUWLTXa2Q8VOzItw",
+            "criteria": {
+              "from": "jetblueairways@email.jetblue.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:jetblueairways@email.jetblue.com"
+          },
+          {
+            "id": "ANe1Bmg_JZHOVjtrCFHNQeNN-UWpIW_Qy7P3vA",
+            "criteria": {
+              "from": "southwestairlines@iluv.southwest.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:southwestairlines@iluv.southwest.com"
+          },
+          {
+            "id": "ANe1Bmg2hdBwDr9EodtDL-yBew-WDYma5Dzk1Q",
+            "criteria": {
+              "from": "southwestairlines@luv.southwest.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:southwestairlines@luv.southwest.com"
+          },
+          {
+            "id": "ANe1Bmg2yWmrzpSoh1fDJur4XBcdvUl4yWqYOQ",
+            "criteria": {
+              "from": "unitedairlines@united.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:unitedairlines@united.com"
+          },
+          {
+            "id": "ANe1Bmhb6hfh4MH30QqB6-rHFc9dGoy5RPMH4g",
+            "criteria": {
+              "from": "noreply@premiumparking.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@premiumparking.com"
+          },
+          {
+            "id": "ANe1BmjXSomYHp--UklzvVwiowzg43gvq72Aww",
+            "criteria": {
+              "from": "no-reply@spplus.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@spplus.com"
+          },
+          {
+            "id": "ANe1BmiMKoEHCR6teyFlxNChxEpnjwKQ8KUJPQ",
+            "criteria": {
+              "from": "postmaster@text2park.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:postmaster@text2park.com"
+          },
+          {
+            "id": "ANe1BmgRSA4sUSJ3wk9WlBnyAibDmyr9QdFV6Q",
+            "criteria": {
+              "from": "noreply@alerts.parkmobile.io"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@alerts.parkmobile.io"
+          },
+          {
+            "id": "ANe1Bmjm7ban4hF6fSB1RVg4H31O1OJ7Fl36OA",
+            "criteria": {
+              "from": "help@hoteltonight.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:help@hoteltonight.com"
+          },
+          {
+            "id": "ANe1BmhN5zSrVsE0t1Cef1XhQmELYRukqWZIgQ",
+            "criteria": {
+              "from": "noreply@h6.hilton.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@h6.hilton.com"
+          },
+          {
+            "id": "ANe1Bmj54qOD4EtkSX3XqlxEGDiDOw4E5vtbrQ",
+            "criteria": {
+              "from": "reservations@res-marriott.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:reservations@res-marriott.com"
+          },
+          {
+            "id": "ANe1BmgRFcOC6Xyof-8oC8UjsNaA0MbNwOCkZw",
+            "criteria": {
+              "from": "reservations@nationalcar.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:reservations@nationalcar.com"
+          },
+          {
+            "id": "ANe1Bmh5lMyGL2GxkdYO8SKm6x8u7JBbm4TXaQ",
+            "criteria": {
+              "from": "avis@e.avis.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:avis@e.avis.com"
+          },
+          {
+            "id": "ANe1BmjweVuLdJcJkIKpWh0Nw9wAdWIQMHFOTg",
+            "criteria": {
+              "from": "receipts@messaging.squareup.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:receipts@messaging.squareup.com"
+          },
+          {
+            "id": "ANe1BmjJGo_6VYkdkcjMt1S9IVvrmjV4An6f-g",
+            "criteria": {
+              "from": "one@chick-fil-a.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:one@chick-fil-a.com"
+          },
+          {
+            "id": "ANe1BmggPyc66k_bb5J45U6FY0uaT7aSlILSmA",
+            "criteria": {
+              "from": "one@email.chick-fil-a.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:one@email.chick-fil-a.com"
+          },
+          {
+            "id": "ANe1BmjRbq9ImLAUZbuQUs7_xo7fYawAiDoYkQ",
+            "criteria": {
+              "from": "no-reply@spotify.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@spotify.com"
+          },
+          {
+            "id": "ANe1BmhotfzGy51dbunxaRizDkkJy2gI8pOJKQ",
+            "criteria": {
+              "from": "info@account.netflix.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:info@account.netflix.com"
+          },
+          {
+            "id": "ANe1BmhRKVBchhqZqqAaFiFW4815KVBLvm5PgA",
+            "criteria": {
+              "from": "attuverse@e.online.att-mail.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:attuverse@e.online.att-mail.com"
+          },
+          {
+            "id": "ANe1BmimoOAhvaFRSvfmYmAgHrsnH2v6qUm-6g",
+            "criteria": {
+              "from": "update@emailff.att-mail.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:update@emailff.att-mail.com"
+          },
+          {
+            "id": "ANe1Bmg__0ESHp1nFDLHJzBYo0_4_AsSz65Tqw",
+            "criteria": {
+              "from": "vzwmail@ecrmemail.verizonwireless.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:vzwmail@ecrmemail.verizonwireless.com"
+          },
+          {
+            "id": "ANe1Bmhe4WC7TmvRv76mmJevPnkMnouwPp1SQQ",
+            "criteria": {
+              "from": "communications@em.aetna.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:communications@em.aetna.com"
+          },
+          {
+            "id": "ANe1BmgS-iM5UNFequvFlkvGtZJTp5cAe5BH7Q",
+            "criteria": {
+              "from": "walgreens@eml.walgreens.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:walgreens@eml.walgreens.com"
+          },
+          {
+            "id": "ANe1BmhkDyj484EiqHw8DqW9HRFVtJWeniTq9A",
+            "criteria": {
+              "from": "lowes@e.lowes.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:lowes@e.lowes.com"
+          },
+          {
+            "id": "ANe1BmirpQrTku13UBp8XOxhMVNFCvmD2bRRhg",
+            "criteria": {
+              "from": "service@wayfair.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:service@wayfair.com"
+          },
+          {
+            "id": "ANe1BmgWFubmEdk3W4cP2586dkk9F1FL92J9Kw",
+            "criteria": {
+              "from": "help@walmart.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:help@walmart.com"
+          },
+          {
+            "id": "ANe1BmgjrqU4xdyUWkjuo19SgweCRw3Ca2OT3Q",
+            "criteria": {
+              "from": "orders@oe.target.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:orders@oe.target.com"
+          },
+          {
+            "id": "ANe1BmiJeB_yqGq8BeormpekvUQ-IUcaA1mPtQ",
+            "criteria": {
+              "from": "homedepot@order.homedepot.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:homedepot@order.homedepot.com"
+          },
+          {
+            "id": "ANe1BmggApSTlGxIcTw2uY7bMG9J0L77DkcyVg",
+            "criteria": {
+              "from": "mcdonalds"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:mcdonalds"
+          },
+          {
+            "id": "ANe1Bmi48MqOJI0EzOK0t4TiDVPUwpk4xIXLlQ",
+            "criteria": {
+              "from": "kiafinanceamerica"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:kiafinanceamerica"
+          },
+          {
+            "id": "ANe1Bmga9m2WMh_IQS1OdSmthwFA2NKmJkiFbg",
+            "criteria": {
+              "from": "noreply@speedpay.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@speedpay.com"
+          },
+          {
+            "id": "ANe1Bmiy1c-p9ZHSkzBYfLbcJxY2B6prbcCGgQ",
+            "criteria": {
+              "from": "adventuresci"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:adventuresci"
+          },
+          {
+            "id": "ANe1Bmgo6teNVYyn8AZDGmRvbFzTBtdjNqLZPw",
+            "criteria": {
+              "from": "playstation"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:playstation"
+          },
+          {
+            "id": "ANe1BmgKf6VBhjrYWXvVUeUVTewH9imI7RASew",
+            "criteria": {
+              "from": "spothero"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:spothero"
+          },
+          {
+            "id": "ANe1BmjMYjR_ju5Gy4ebOk4Ofx-t6gNj-SrzbQ",
+            "criteria": {
+              "from": "ticketmaster"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:ticketmaster"
+          },
+          {
+            "id": "ANe1BmjpObli9G7J5tpb3YH-lf30VcRkUnwUeA",
+            "criteria": {
+              "from": "axs.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:axs.com"
+          },
+          {
+            "id": "ANe1BmiB8QOuvs4-boYLRL7iSpGy9lxjLsNf5g",
+            "criteria": {
+              "from": "seatgeek"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:seatgeek"
+          },
+          {
+            "id": "ANe1Bmg5EWedDIR0OKXvEtxkQWZBy6CBCdsiZQ",
+            "criteria": {
+              "from": "stubhub"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:stubhub"
+          },
+          {
+            "id": "ANe1Bmjwk4UpLLJU8zkycpm69A-r14KifvqAhA",
+            "criteria": {
+              "from": "livenation"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:livenation"
+          },
+          {
+            "id": "ANe1BmgiEFzlx5sdhSRLoj1E8ARkQKQZp7iM9w",
+            "criteria": {
+              "from": "fandango"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:fandango"
+          },
+          {
+            "id": "ANe1BmhXAm4r6AI1_bjEhemXHEVYQzfoqtNeSQ",
+            "criteria": {
+              "from": "amctheatres"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:amctheatres"
+          },
+          {
+            "id": "ANe1BmiLLLW10ue06I22ymAtGnymMpXBqH9yyg",
+            "criteria": {
+              "from": "regalcinemas"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:regalcinemas"
+          },
+          {
+            "id": "ANe1BmjIriBUrvNhCt6FKqoqst6Cie-ffte4Og",
+            "criteria": {
+              "from": "grubhub"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:grubhub"
+          },
+          {
+            "id": "ANe1BmgzXYdla0jE3DaBYjD1cL-lrsZ4G453Bw",
+            "criteria": {
+              "from": "postmates"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:postmates"
+          },
+          {
+            "id": "ANe1BmgqaJ-izLr4nIJF-UAyMbl1yWseJxO2Bg",
+            "criteria": {
+              "from": "instacart"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:instacart"
+          },
+          {
+            "id": "ANe1BmhtSmMDML4_S--ZroQPYYXV_bVSS_cOjA",
+            "criteria": {
+              "from": "shipt"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:shipt"
+          },
+          {
+            "id": "ANe1Bmhy_ekS8qwh-fYpkZSBtYtb6ufCMLIHXA",
+            "criteria": {
+              "from": "cvs.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:cvs.com"
+          },
+          {
+            "id": "ANe1Bmg1nh23ysaUO-ZRmZfUKQ7K9qiAk8m_1g",
+            "criteria": {
+              "from": "costco.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:costco.com"
+          },
+          {
+            "id": "ANe1Bmj3JhvEiv0W7wNEpmp90H5Bj7KAedCelQ",
+            "criteria": {
+              "from": "southwest.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:southwest.com"
+          },
+          {
+            "id": "ANe1BmgAkoKGvndtcYGkTgCwW2wxH9KJd1-ZHg",
+            "criteria": {
+              "from": "delta.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:delta.com"
+          },
+          {
+            "id": "ANe1BmhL0MCLSjqyXbY0YHd1-N3SKBG719H9rQ",
+            "criteria": {
+              "from": "aa.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:aa.com"
+          },
+          {
+            "id": "ANe1BmiWRHGeyR35tt_Q8GwyM3gjMonGFrI59w",
+            "criteria": {
+              "from": "hcahealthcare"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:hcahealthcare"
+          },
+          {
+            "id": "ANe1BmidJi4S9x1CJtZiAaati6zpuZTjaC8Ahg",
+            "criteria": {
+              "from": "valant.io"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_327"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:valant.io"
+          },
+          {
+            "id": "ANe1BmiG-fm_tugMivzxHUTi889occx9FDA1IQ",
+            "criteria": {
+              "from": "pbr.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_327"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:pbr.com"
+          },
+          {
+            "id": "ANe1BmgiWNFlHfG0nMIr7XmCKGxDPuT45eSvNA",
+            "criteria": {
+              "from": "choicehotels"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:choicehotels"
+          },
+          {
+            "id": "ANe1BmjP77p59FzYRx6UKi5VpVZlSiect6ZVHw",
+            "criteria": {
+              "from": "cowboychannel"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_322"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:cowboychannel"
+          },
+          {
+            "id": "ANe1BmhGUao_dKaZjvPTDDkYjtGf8x3ls-fCPQ",
+            "criteria": {
+              "from": "mtjulietdental"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_327"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:mtjulietdental"
+          },
+          {
+            "id": "ANe1BmirSbHc_CkwrsJCcZu-y9FGU6Fd9gcSmQ",
+            "criteria": {
+              "from": "philips"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_327"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:philips"
+          },
+          {
+            "id": "ANe1BmgKXFtsjVm8ZNLwwhhT8_qlqhT9IKG-GA",
+            "criteria": {
+              "from": "parentlink",
+              "subject": "Progress Report"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_327"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:parentlink|subject:Progress Report"
+          },
+          {
+            "id": "ANe1Bmig18oE_ffCqQdafkCGGCM6sULiWrlLGg",
+            "criteria": {
+              "from": "parentsquare.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_327"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:parentsquare.com"
+          },
+          {
+            "id": "ANe1BmhGfHVvhvOy6oLi0dlLIlMYnWYP00B8-g",
+            "criteria": {
+              "from": "rutland",
+              "subject": "PTO"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_327"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:rutland|subject:PTO"
+          }
+        ],
+        "duplicates": [],
+        "conflicts": []
+      },
+      "distribution": {
+        "INBOX": 201,
+        "SENT": 201,
+        "DRAFTS": 0,
+        "SPAM": 201,
+        "TRASH": 201,
+        "STARRED": 201,
+        "UNREAD": 201,
+        "Archived (no labels)": 201
+      }
+    },
+    "brian@downhome.com": {
+      "email": "brian@downhome.com",
+      "profile": {
+        "emailAddress": "brian@downhome.com",
+        "messagesTotal": 21190,
+        "threadsTotal": 9959,
+        "historyId": "4213660"
+      },
+      "labels": {
+        "total": 32,
+        "system": [
+          {
+            "id": "CHAT",
+            "name": "CHAT",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "SENT",
+            "name": "SENT",
+            "type": "system",
+            "messages_total": 1233,
+            "messages_unread": 1
+          },
+          {
+            "id": "INBOX",
+            "name": "INBOX",
+            "type": "system",
+            "messages_total": 96,
+            "messages_unread": 18
+          },
+          {
+            "id": "IMPORTANT",
+            "name": "IMPORTANT",
+            "type": "system",
+            "messages_total": 4038,
+            "messages_unread": 342
+          },
+          {
+            "id": "TRASH",
+            "name": "TRASH",
+            "type": "system",
+            "messages_total": 24,
+            "messages_unread": 9
+          },
+          {
+            "id": "DRAFT",
+            "name": "DRAFT",
+            "type": "system",
+            "messages_total": 3,
+            "messages_unread": 0
+          },
+          {
+            "id": "SPAM",
+            "name": "SPAM",
+            "type": "system",
+            "messages_total": 7,
+            "messages_unread": 6
+          },
+          {
+            "id": "CATEGORY_FORUMS",
+            "name": "CATEGORY_FORUMS",
+            "type": "system",
+            "messages_total": 29,
+            "messages_unread": 0
+          },
+          {
+            "id": "CATEGORY_UPDATES",
+            "name": "CATEGORY_UPDATES",
+            "type": "system",
+            "messages_total": 2473,
+            "messages_unread": 374
+          },
+          {
+            "id": "CATEGORY_PERSONAL",
+            "name": "CATEGORY_PERSONAL",
+            "type": "system",
+            "messages_total": 15449,
+            "messages_unread": 413
+          },
+          {
+            "id": "CATEGORY_PROMOTIONS",
+            "name": "CATEGORY_PROMOTIONS",
+            "type": "system",
+            "messages_total": 1969,
+            "messages_unread": 445
+          },
+          {
+            "id": "CATEGORY_SOCIAL",
+            "name": "CATEGORY_SOCIAL",
+            "type": "system",
+            "messages_total": 12,
+            "messages_unread": 8
+          },
+          {
+            "id": "ORANGE_STAR",
+            "name": "ORANGE_STAR",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "YELLOW_STAR",
+            "name": "YELLOW_STAR",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "STARRED",
+            "name": "STARRED",
+            "type": "system",
+            "messages_total": 46,
+            "messages_unread": 0
+          },
+          {
+            "id": "UNREAD",
+            "name": "UNREAD",
+            "type": "system",
+            "messages_total": 1245,
+            "messages_unread": 1245
+          }
+        ],
+        "user": [
+          {
+            "id": "Label_871",
+            "name": "DH/Artists",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_872",
+            "name": "DH/Investors",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_873",
+            "name": "DH/Operations",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_874",
+            "name": "DH/Finance",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_875",
+            "name": "DH/Team",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_876",
+            "name": "DH/Legal",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_877",
+            "name": "DH/Venues",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_878",
+            "name": "DH/Action",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_879",
+            "name": "Receipts",
+            "type": "user",
+            "messages_total": 43,
+            "messages_unread": 15
+          },
+          {
+            "id": "Label_880",
+            "name": "Newsletters",
+            "type": "user",
+            "messages_total": 73,
+            "messages_unread": 40
+          },
+          {
+            "id": "Label_881",
+            "name": "Notifications",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_882",
+            "name": "@Action",
+            "type": "user",
+            "messages_total": 2,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_883",
+            "name": "@Waiting",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_884",
+            "name": "@Someday",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_885",
+            "name": "@Reference",
+            "type": "user",
+            "messages_total": 1,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_886",
+            "name": "Music City Rodeo",
+            "type": "user",
+            "messages_total": 5,
+            "messages_unread": 0
+          }
+        ],
+        "nested": [
+          {
+            "id": "Label_871",
+            "name": "DH/Artists",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_872",
+            "name": "DH/Investors",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_873",
+            "name": "DH/Operations",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_874",
+            "name": "DH/Finance",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_875",
+            "name": "DH/Team",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_876",
+            "name": "DH/Legal",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_877",
+            "name": "DH/Venues",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_878",
+            "name": "DH/Action",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          }
+        ],
+        "duplicates": [],
+        "by_type": {
+          "system": [
+            {
+              "id": "CHAT",
+              "name": "CHAT",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "SENT",
+              "name": "SENT",
+              "type": "system",
+              "messages_total": 1233,
+              "messages_unread": 1
+            },
+            {
+              "id": "INBOX",
+              "name": "INBOX",
+              "type": "system",
+              "messages_total": 96,
+              "messages_unread": 18
+            },
+            {
+              "id": "IMPORTANT",
+              "name": "IMPORTANT",
+              "type": "system",
+              "messages_total": 4038,
+              "messages_unread": 342
+            },
+            {
+              "id": "TRASH",
+              "name": "TRASH",
+              "type": "system",
+              "messages_total": 24,
+              "messages_unread": 9
+            },
+            {
+              "id": "DRAFT",
+              "name": "DRAFT",
+              "type": "system",
+              "messages_total": 3,
+              "messages_unread": 0
+            },
+            {
+              "id": "SPAM",
+              "name": "SPAM",
+              "type": "system",
+              "messages_total": 7,
+              "messages_unread": 6
+            },
+            {
+              "id": "CATEGORY_FORUMS",
+              "name": "CATEGORY_FORUMS",
+              "type": "system",
+              "messages_total": 29,
+              "messages_unread": 0
+            },
+            {
+              "id": "CATEGORY_UPDATES",
+              "name": "CATEGORY_UPDATES",
+              "type": "system",
+              "messages_total": 2473,
+              "messages_unread": 374
+            },
+            {
+              "id": "CATEGORY_PERSONAL",
+              "name": "CATEGORY_PERSONAL",
+              "type": "system",
+              "messages_total": 15449,
+              "messages_unread": 413
+            },
+            {
+              "id": "CATEGORY_PROMOTIONS",
+              "name": "CATEGORY_PROMOTIONS",
+              "type": "system",
+              "messages_total": 1969,
+              "messages_unread": 445
+            },
+            {
+              "id": "CATEGORY_SOCIAL",
+              "name": "CATEGORY_SOCIAL",
+              "type": "system",
+              "messages_total": 12,
+              "messages_unread": 8
+            },
+            {
+              "id": "ORANGE_STAR",
+              "name": "ORANGE_STAR",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "YELLOW_STAR",
+              "name": "YELLOW_STAR",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "STARRED",
+              "name": "STARRED",
+              "type": "system",
+              "messages_total": 46,
+              "messages_unread": 0
+            },
+            {
+              "id": "UNREAD",
+              "name": "UNREAD",
+              "type": "system",
+              "messages_total": 1245,
+              "messages_unread": 1245
+            }
+          ],
+          "user": [
+            {
+              "id": "Label_871",
+              "name": "DH/Artists",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_872",
+              "name": "DH/Investors",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_873",
+              "name": "DH/Operations",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_874",
+              "name": "DH/Finance",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_875",
+              "name": "DH/Team",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_876",
+              "name": "DH/Legal",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_877",
+              "name": "DH/Venues",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_878",
+              "name": "DH/Action",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_879",
+              "name": "Receipts",
+              "type": "user",
+              "messages_total": 43,
+              "messages_unread": 15
+            },
+            {
+              "id": "Label_880",
+              "name": "Newsletters",
+              "type": "user",
+              "messages_total": 73,
+              "messages_unread": 40
+            },
+            {
+              "id": "Label_881",
+              "name": "Notifications",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_882",
+              "name": "@Action",
+              "type": "user",
+              "messages_total": 2,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_883",
+              "name": "@Waiting",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_884",
+              "name": "@Someday",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_885",
+              "name": "@Reference",
+              "type": "user",
+              "messages_total": 1,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_886",
+              "name": "Music City Rodeo",
+              "type": "user",
+              "messages_total": 5,
+              "messages_unread": 0
+            }
+          ]
+        }
+      },
+      "filters": {
+        "total": 55,
+        "filters": [
+          {
+            "id": "ANe1Bmg76O8c-QIwbvO2bbPkJp7vTbhd-jlx0g",
+            "criteria": {
+              "from": "auto-confirm@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:auto-confirm@amazon.com"
+          },
+          {
+            "id": "ANe1BmiUeC1-nG8gEb6lToL_ya4N9mG9n1AVfQ",
+            "criteria": {
+              "from": "ship-confirm@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:ship-confirm@amazon.com"
+          },
+          {
+            "id": "ANe1BmhtUh9w4qWMC-okTu9dJ-32FrRHo6tuqQ",
+            "criteria": {
+              "from": "digital-no-reply@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:digital-no-reply@amazon.com"
+          },
+          {
+            "id": "ANe1BmgFLHHALQ5fR-zwUO3fwv5ekdL5WQd88g",
+            "criteria": {
+              "from": "order-update@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:order-update@amazon.com"
+          },
+          {
+            "id": "ANe1BmgnPM3owfTES8Nq8p_9gJt3Iqkc-QrFwg",
+            "criteria": {
+              "from": "no_reply@email.apple.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no_reply@email.apple.com"
+          },
+          {
+            "id": "ANe1BmhfUWRqnflOEZTFbpZBie2qKMF5zseuMg",
+            "criteria": {
+              "from": "appleid@id.apple.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:appleid@id.apple.com"
+          },
+          {
+            "id": "ANe1BmiWiQt_F4olDWPB-JutXgOZgkbXs6PWNQ",
+            "criteria": {
+              "from": "service@paypal.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:service@paypal.com"
+          },
+          {
+            "id": "ANe1Bmjj8C2JtATQHSo9d3kxq5Lj5ClLbYt9AA",
+            "criteria": {
+              "from": "paypal@mail.paypal.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:paypal@mail.paypal.com"
+          },
+          {
+            "id": "ANe1Bmj6gE09SWvrcE8qW55kh_xR9yNMYjhKLw",
+            "criteria": {
+              "from": "SouthwestAirlines@luv.southwest.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:SouthwestAirlines@luv.southwest.com"
+          },
+          {
+            "id": "ANe1BmibvsJOw9_J8u44jipmxmpyTWCdUKeqcA",
+            "criteria": {
+              "from": "reservation@southwest.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:reservation@southwest.com"
+          },
+          {
+            "id": "ANe1Bmhm3FGjg5G_LAJZHjIo1tj_ycXWIFYpwQ",
+            "criteria": {
+              "from": "DeltaAirLines@e.delta.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:DeltaAirLines@e.delta.com"
+          },
+          {
+            "id": "ANe1Bmiv-Bnu4Ax-Mmo8OjOXJVvcGZ-zngYJig",
+            "criteria": {
+              "from": "thejetbluecard@info.jetblue.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:thejetbluecard@info.jetblue.com"
+          },
+          {
+            "id": "ANe1BmgXZdnQ71FhpVK5fghb8_pOLVk5cCEx9A",
+            "criteria": {
+              "from": "reservations@united.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:reservations@united.com"
+          },
+          {
+            "id": "ANe1BmgyfR_Dvo_6rhmQ4RwZW2Nc2K4UGyePFw",
+            "criteria": {
+              "from": "americanairlines@aa.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:americanairlines@aa.com"
+          },
+          {
+            "id": "ANe1BmjWxPwjcXDyOgLHLXTpy3peOgYJ689Rhg",
+            "criteria": {
+              "from": "Hilton@e.hilton.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:Hilton@e.hilton.com"
+          },
+          {
+            "id": "ANe1BmgJq6V57EqoolYVECaeFs_AXc8j07iNyw",
+            "criteria": {
+              "from": "marriott@marriott-email.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:marriott@marriott-email.com"
+          },
+          {
+            "id": "ANe1BmiTLfTa2ZRAnnxRlwUQ_VIc1m8iW0w4tQ",
+            "criteria": {
+              "from": "express@express.marriott.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:express@express.marriott.com"
+          },
+          {
+            "id": "ANe1Bmiu8B2tSw1jIDrPJ-lAdHJ0YKXGWmzhEQ",
+            "criteria": {
+              "from": "hyatt@e.hyatt.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:hyatt@e.hyatt.com"
+          },
+          {
+            "id": "ANe1Bmj4XhQ4AqsZsXx3yXc-v9lvUrGmVJ7kdg",
+            "criteria": {
+              "from": "automated@airbnb.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:automated@airbnb.com"
+          },
+          {
+            "id": "ANe1BmjClkva_XERg_2oL_Y9yp7ylosVs86kHg",
+            "criteria": {
+              "from": "express@airbnb.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:express@airbnb.com"
+          },
+          {
+            "id": "ANe1BmjRMMYATuHh_4mPunJzT8hOy-z0qFlSkQ",
+            "criteria": {
+              "from": "uber.us@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:uber.us@uber.com"
+          },
+          {
+            "id": "ANe1BmimWAw0MovBysySXaiSifsvm4KEtMsjkQ",
+            "criteria": {
+              "from": "noreply@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@uber.com"
+          },
+          {
+            "id": "ANe1BmggLF_oekoI2n5Vmsqfecn_SnZduIRXQQ",
+            "criteria": {
+              "from": "receipts@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:receipts@uber.com"
+          },
+          {
+            "id": "ANe1BmjbaXKi390iFdX_A6u74b2JfrpIx8Icbw",
+            "criteria": {
+              "from": "no-reply@lyft.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@lyft.com"
+          },
+          {
+            "id": "ANe1Bmh-qaRgW6ixlNVwYnLMCfiOPd_p1iJKTw",
+            "criteria": {
+              "from": "ride@lyft.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:ride@lyft.com"
+          },
+          {
+            "id": "ANe1BmhG4twbBoHXYMNM0eeTAljuBHLMPxBbKg",
+            "criteria": {
+              "from": "no-reply@doordash.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@doordash.com"
+          },
+          {
+            "id": "ANe1BmhpqtTc43WiKVqCj-TPEsmgnxGVgBSuKw",
+            "criteria": {
+              "from": "orders@doordash.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:orders@doordash.com"
+          },
+          {
+            "id": "ANe1BmgeGsEk2yHZzct8lki23wGxQuiT_sKBbQ",
+            "criteria": {
+              "from": "orders@grubhub.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:orders@grubhub.com"
+          },
+          {
+            "id": "ANe1BmhdrUm8HRuegrcCsJ7ijhMA0W7LynO1gQ",
+            "criteria": {
+              "from": "ubereats@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:ubereats@uber.com"
+          },
+          {
+            "id": "ANe1BmgtDld-DlggX2ID4byKnT2fqaFbboKjSQ",
+            "criteria": {
+              "from": "noreply@parkmobile.io"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@parkmobile.io"
+          },
+          {
+            "id": "ANe1BmjzEcFWwFjNpbRsCZbG2xXa3MtSuxJc3g",
+            "criteria": {
+              "from": "info@spothero.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:info@spothero.com"
+          },
+          {
+            "id": "ANe1BmgmIBrgbNgdmOrh2V1pCEriMr4Acz9NSA",
+            "criteria": {
+              "from": "receipts@stripe.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:receipts@stripe.com"
+          },
+          {
+            "id": "ANe1Bmi1Uj0uxlHTUwm-Iq4tPTMysq5oaYdJAw",
+            "criteria": {
+              "from": "noreply@squareup.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@squareup.com"
+          },
+          {
+            "id": "ANe1BmjlKLj-5S-mbVuQvH7iKgm7fK8cEVkWIg",
+            "criteria": {
+              "from": "noreply@md.getharvest.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@md.getharvest.com"
+          },
+          {
+            "id": "ANe1BmglwIMgZbqAK9wYiC7watw3IZfJgNMVhA",
+            "criteria": {
+              "from": "info@account.netflix.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:info@account.netflix.com"
+          },
+          {
+            "id": "ANe1BmiVcmOfS5Tbef7943w2srZ-cK80Sc-yGQ",
+            "criteria": {
+              "from": "no-reply@spotify.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@spotify.com"
+          },
+          {
+            "id": "ANe1BmgM9rTGzxcc6986KZBBwWtXy1_0CqlqBQ",
+            "criteria": {
+              "from": "disneyplus@mail.disneyplus.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:disneyplus@mail.disneyplus.com"
+          },
+          {
+            "id": "ANe1BmgNBDIsbcxeQ3W-9HOEF7kVM3AxEHahWg",
+            "criteria": {
+              "from": "hulu@hulumail.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:hulu@hulumail.com"
+          },
+          {
+            "id": "ANe1BmgFhDqaO6pBfLIO1Sp7fzpvEmjVU6pA9g",
+            "criteria": {
+              "from": "noreply@github.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@github.com"
+          },
+          {
+            "id": "ANe1BmjMkGTpyweOfmBFP9v5uCLYhxEHcFkl5w",
+            "criteria": {
+              "from": "noreply@dropbox.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@dropbox.com"
+          },
+          {
+            "id": "ANe1Bmi8U4Qkd7KWN4t_iM_gemkDDWbET-gRnw",
+            "criteria": {
+              "from": "billing@zoom.us"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:billing@zoom.us"
+          },
+          {
+            "id": "ANe1Bmimd6cqKQl0i439IIV00-p2CTt07i38Hg",
+            "criteria": {
+              "from": "invoices@notion.so"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:invoices@notion.so"
+          },
+          {
+            "id": "ANe1BmjCp1E4_fvOydapTYSI_4MEp8RJmzgKbQ",
+            "criteria": {
+              "from": "noreply@slack.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@slack.com"
+          },
+          {
+            "id": "ANe1BmhIL8tr60uFcIDeH_vSJsvEIXit3CsPTw",
+            "criteria": {
+              "from": "orders@target.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:orders@target.com"
+          },
+          {
+            "id": "ANe1BmjVvpGtNGAb078EfRfZ1WN6HiR6PvxF5g",
+            "criteria": {
+              "from": "help@walmart.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:help@walmart.com"
+          },
+          {
+            "id": "ANe1BmhuGJvpo8jdnnQXkabhiSsS5ANlN_SkRg",
+            "criteria": {
+              "from": "costco@online.costco.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:costco@online.costco.com"
+          },
+          {
+            "id": "ANe1Bmgygk7RHrrXSsiFLjHasQOYo_Zm6t0qjw",
+            "criteria": {
+              "from": "noreply@venmo.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@venmo.com"
+          },
+          {
+            "id": "ANe1BmhDOnnZO8vk66mDU4lOSp9jlqpYoAdXyg",
+            "criteria": {
+              "from": "cashapp@square.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:cashapp@square.com"
+          },
+          {
+            "id": "ANe1BmiPKSqQ2KIPTqfhzALdlPbft89dxBbCug",
+            "criteria": {
+              "from": "confirm@ticketmaster.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:confirm@ticketmaster.com"
+          },
+          {
+            "id": "ANe1Bmi7fCIilif0YTNWpR39j_zwPQm3mTRAYw",
+            "criteria": {
+              "from": "orders@eventbrite.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:orders@eventbrite.com"
+          },
+          {
+            "id": "ANe1BmiBeGoqngLZFUpu_J9JKOalk6gZDiB0og",
+            "criteria": {
+              "subject": "receipt"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:receipt"
+          },
+          {
+            "id": "ANe1Bmh__f_dGgn4mOo6q5CmRuf5mFHvf1dugw",
+            "criteria": {
+              "subject": "order confirmation"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:order confirmation"
+          },
+          {
+            "id": "ANe1BmjeTxcCEMBIU5hK8Jo8wDDn-QSv9Xw_0g",
+            "criteria": {
+              "subject": "payment received"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:payment received"
+          },
+          {
+            "id": "ANe1Bmj0Y0VO0ZqLzPlkbqREoI8oVByxgOLLqw",
+            "criteria": {
+              "subject": "invoice"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:invoice"
+          },
+          {
+            "id": "ANe1Bmh1FI8Qz_Zpd58QNqY8R1XGrnsfO1Fa3w",
+            "criteria": {
+              "subject": "your order has shipped"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_879"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:your order has shipped"
+          }
+        ],
+        "duplicates": [],
+        "conflicts": []
+      },
+      "distribution": {
+        "INBOX": 201,
+        "SENT": 201,
+        "DRAFTS": 201,
+        "SPAM": 201,
+        "TRASH": 201,
+        "STARRED": 201,
+        "UNREAD": 201,
+        "Archived (no labels)": 201
+      }
+    },
+    "brian@musiccityrodeo.com": {
+      "email": "brian@musiccityrodeo.com",
+      "profile": {
+        "emailAddress": "brian@musiccityrodeo.com",
+        "messagesTotal": 1705,
+        "threadsTotal": 683,
+        "historyId": "500677"
+      },
+      "labels": {
+        "total": 30,
+        "system": [
+          {
+            "id": "CHAT",
+            "name": "CHAT",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "SENT",
+            "name": "SENT",
+            "type": "system",
+            "messages_total": 289,
+            "messages_unread": 0
+          },
+          {
+            "id": "INBOX",
+            "name": "INBOX",
+            "type": "system",
+            "messages_total": 47,
+            "messages_unread": 13
+          },
+          {
+            "id": "IMPORTANT",
+            "name": "IMPORTANT",
+            "type": "system",
+            "messages_total": 1238,
+            "messages_unread": 165
+          },
+          {
+            "id": "TRASH",
+            "name": "TRASH",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "DRAFT",
+            "name": "DRAFT",
+            "type": "system",
+            "messages_total": 2,
+            "messages_unread": 0
+          },
+          {
+            "id": "SPAM",
+            "name": "SPAM",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "CATEGORY_FORUMS",
+            "name": "CATEGORY_FORUMS",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "CATEGORY_UPDATES",
+            "name": "CATEGORY_UPDATES",
+            "type": "system",
+            "messages_total": 183,
+            "messages_unread": 111
+          },
+          {
+            "id": "CATEGORY_PERSONAL",
+            "name": "CATEGORY_PERSONAL",
+            "type": "system",
+            "messages_total": 1178,
+            "messages_unread": 124
+          },
+          {
+            "id": "CATEGORY_PROMOTIONS",
+            "name": "CATEGORY_PROMOTIONS",
+            "type": "system",
+            "messages_total": 51,
+            "messages_unread": 37
+          },
+          {
+            "id": "CATEGORY_SOCIAL",
+            "name": "CATEGORY_SOCIAL",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "YELLOW_STAR",
+            "name": "YELLOW_STAR",
+            "type": "system",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "STARRED",
+            "name": "STARRED",
+            "type": "system",
+            "messages_total": 1,
+            "messages_unread": 0
+          },
+          {
+            "id": "UNREAD",
+            "name": "UNREAD",
+            "type": "system",
+            "messages_total": 274,
+            "messages_unread": 274
+          }
+        ],
+        "user": [
+          {
+            "id": "Label_13",
+            "name": "MCR/Artists",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_14",
+            "name": "MCR/Sponsors",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_15",
+            "name": "MCR/Operations",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_16",
+            "name": "MCR/Ticketing",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_17",
+            "name": "MCR/Team",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_18",
+            "name": "MCR/Venue",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_19",
+            "name": "MCR/Marketing",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_20",
+            "name": "MCR/Action",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_21",
+            "name": "Receipts",
+            "type": "user",
+            "messages_total": 61,
+            "messages_unread": 29
+          },
+          {
+            "id": "Label_22",
+            "name": "Newsletters",
+            "type": "user",
+            "messages_total": 13,
+            "messages_unread": 7
+          },
+          {
+            "id": "Label_23",
+            "name": "Notifications",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_24",
+            "name": "@Action",
+            "type": "user",
+            "messages_total": 8,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_25",
+            "name": "@Waiting",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_26",
+            "name": "@Someday",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_27",
+            "name": "@Reference",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          }
+        ],
+        "nested": [
+          {
+            "id": "Label_13",
+            "name": "MCR/Artists",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_14",
+            "name": "MCR/Sponsors",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_15",
+            "name": "MCR/Operations",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_16",
+            "name": "MCR/Ticketing",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_17",
+            "name": "MCR/Team",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_18",
+            "name": "MCR/Venue",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_19",
+            "name": "MCR/Marketing",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          },
+          {
+            "id": "Label_20",
+            "name": "MCR/Action",
+            "type": "user",
+            "messages_total": 0,
+            "messages_unread": 0
+          }
+        ],
+        "duplicates": [],
+        "by_type": {
+          "system": [
+            {
+              "id": "CHAT",
+              "name": "CHAT",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "SENT",
+              "name": "SENT",
+              "type": "system",
+              "messages_total": 289,
+              "messages_unread": 0
+            },
+            {
+              "id": "INBOX",
+              "name": "INBOX",
+              "type": "system",
+              "messages_total": 47,
+              "messages_unread": 13
+            },
+            {
+              "id": "IMPORTANT",
+              "name": "IMPORTANT",
+              "type": "system",
+              "messages_total": 1238,
+              "messages_unread": 165
+            },
+            {
+              "id": "TRASH",
+              "name": "TRASH",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "DRAFT",
+              "name": "DRAFT",
+              "type": "system",
+              "messages_total": 2,
+              "messages_unread": 0
+            },
+            {
+              "id": "SPAM",
+              "name": "SPAM",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "CATEGORY_FORUMS",
+              "name": "CATEGORY_FORUMS",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "CATEGORY_UPDATES",
+              "name": "CATEGORY_UPDATES",
+              "type": "system",
+              "messages_total": 183,
+              "messages_unread": 111
+            },
+            {
+              "id": "CATEGORY_PERSONAL",
+              "name": "CATEGORY_PERSONAL",
+              "type": "system",
+              "messages_total": 1178,
+              "messages_unread": 124
+            },
+            {
+              "id": "CATEGORY_PROMOTIONS",
+              "name": "CATEGORY_PROMOTIONS",
+              "type": "system",
+              "messages_total": 51,
+              "messages_unread": 37
+            },
+            {
+              "id": "CATEGORY_SOCIAL",
+              "name": "CATEGORY_SOCIAL",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "YELLOW_STAR",
+              "name": "YELLOW_STAR",
+              "type": "system",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "STARRED",
+              "name": "STARRED",
+              "type": "system",
+              "messages_total": 1,
+              "messages_unread": 0
+            },
+            {
+              "id": "UNREAD",
+              "name": "UNREAD",
+              "type": "system",
+              "messages_total": 274,
+              "messages_unread": 274
+            }
+          ],
+          "user": [
+            {
+              "id": "Label_13",
+              "name": "MCR/Artists",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_14",
+              "name": "MCR/Sponsors",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_15",
+              "name": "MCR/Operations",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_16",
+              "name": "MCR/Ticketing",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_17",
+              "name": "MCR/Team",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_18",
+              "name": "MCR/Venue",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_19",
+              "name": "MCR/Marketing",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_20",
+              "name": "MCR/Action",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_21",
+              "name": "Receipts",
+              "type": "user",
+              "messages_total": 61,
+              "messages_unread": 29
+            },
+            {
+              "id": "Label_22",
+              "name": "Newsletters",
+              "type": "user",
+              "messages_total": 13,
+              "messages_unread": 7
+            },
+            {
+              "id": "Label_23",
+              "name": "Notifications",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_24",
+              "name": "@Action",
+              "type": "user",
+              "messages_total": 8,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_25",
+              "name": "@Waiting",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_26",
+              "name": "@Someday",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            },
+            {
+              "id": "Label_27",
+              "name": "@Reference",
+              "type": "user",
+              "messages_total": 0,
+              "messages_unread": 0
+            }
+          ]
+        }
+      },
+      "filters": {
+        "total": 55,
+        "filters": [
+          {
+            "id": "ANe1Bmjpclp4dwMqvpyfsXSLf1XnViQ2tv296w",
+            "criteria": {
+              "from": "auto-confirm@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:auto-confirm@amazon.com"
+          },
+          {
+            "id": "ANe1BmgqqvX2v1FFzMHzHl6kHrg8nat5878LmQ",
+            "criteria": {
+              "from": "ship-confirm@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:ship-confirm@amazon.com"
+          },
+          {
+            "id": "ANe1Bmg1Dq7o6f2zkHWWbGpDeaAeJmsfyUbMLQ",
+            "criteria": {
+              "from": "digital-no-reply@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:digital-no-reply@amazon.com"
+          },
+          {
+            "id": "ANe1Bmi9yhqjYyYs3iSzR_SlPv8_sY60HUgp0Q",
+            "criteria": {
+              "from": "order-update@amazon.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:order-update@amazon.com"
+          },
+          {
+            "id": "ANe1Bmhr-2ow8TkZY07rHRxoXyYRiE3aNvvhzQ",
+            "criteria": {
+              "from": "no_reply@email.apple.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no_reply@email.apple.com"
+          },
+          {
+            "id": "ANe1BmgZv76sRFvRYZwhgc0ToXn3pI9DILLSVQ",
+            "criteria": {
+              "from": "appleid@id.apple.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:appleid@id.apple.com"
+          },
+          {
+            "id": "ANe1Bmhh2Wy-0Uze2RRCttCRVjNAI0sgYF-k6w",
+            "criteria": {
+              "from": "service@paypal.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:service@paypal.com"
+          },
+          {
+            "id": "ANe1BmhR1RW2-UXPj-8qb9tw9PY4OozwrOrSkQ",
+            "criteria": {
+              "from": "paypal@mail.paypal.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:paypal@mail.paypal.com"
+          },
+          {
+            "id": "ANe1BmhrHOmFXS3oQleUJ1wgIznqs-QyAtNHnQ",
+            "criteria": {
+              "from": "SouthwestAirlines@luv.southwest.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:SouthwestAirlines@luv.southwest.com"
+          },
+          {
+            "id": "ANe1Bmha-cpynvvxuFzCWR5_8KPKIbWVfp5ZJQ",
+            "criteria": {
+              "from": "reservation@southwest.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:reservation@southwest.com"
+          },
+          {
+            "id": "ANe1BmgybgYnPztCdLUQwe4GBE8gQrahwyzaAA",
+            "criteria": {
+              "from": "DeltaAirLines@e.delta.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:DeltaAirLines@e.delta.com"
+          },
+          {
+            "id": "ANe1Bmg5fSeJqVDi8qljxIkhYAFcSfbP9prWWg",
+            "criteria": {
+              "from": "thejetbluecard@info.jetblue.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:thejetbluecard@info.jetblue.com"
+          },
+          {
+            "id": "ANe1BmhKq9GPu35_qDlCHVmpIECeoCuF6WqP5g",
+            "criteria": {
+              "from": "reservations@united.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:reservations@united.com"
+          },
+          {
+            "id": "ANe1Bmjv2L85Vb9sq7qJDNBWCb_D3vb9TMA2-A",
+            "criteria": {
+              "from": "americanairlines@aa.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:americanairlines@aa.com"
+          },
+          {
+            "id": "ANe1Bmhiqd84UUdnJFQdQajFW4RJp7jWdn2tTQ",
+            "criteria": {
+              "from": "Hilton@e.hilton.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:Hilton@e.hilton.com"
+          },
+          {
+            "id": "ANe1Bmhp5BFLwKSM0vImMwHmdlYS9Mf5GGriMA",
+            "criteria": {
+              "from": "marriott@marriott-email.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:marriott@marriott-email.com"
+          },
+          {
+            "id": "ANe1BmjPg81RBmjHv36ja_qJh0i9qI5YbOj5nw",
+            "criteria": {
+              "from": "express@express.marriott.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:express@express.marriott.com"
+          },
+          {
+            "id": "ANe1BmgzbuCqhHxExAEZaf0UWJ-b0KZDw-ojpQ",
+            "criteria": {
+              "from": "hyatt@e.hyatt.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:hyatt@e.hyatt.com"
+          },
+          {
+            "id": "ANe1Bmj3NfnHRA4C29qS-I-0IHVLWy1GvfENLw",
+            "criteria": {
+              "from": "automated@airbnb.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:automated@airbnb.com"
+          },
+          {
+            "id": "ANe1BmgTI0aZaWGtD1KP6GDxp_3jqlaik_eU7w",
+            "criteria": {
+              "from": "express@airbnb.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:express@airbnb.com"
+          },
+          {
+            "id": "ANe1BmgIE49UV1I5g2iZGWEJs6md3Ph-51-Igw",
+            "criteria": {
+              "from": "uber.us@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:uber.us@uber.com"
+          },
+          {
+            "id": "ANe1BmhUEGvqxzkr2bm-F7RVUJAafX38-Z8smA",
+            "criteria": {
+              "from": "noreply@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@uber.com"
+          },
+          {
+            "id": "ANe1BmhD9E5_bzKvkWOFUY1iWFNR718jHlEOXQ",
+            "criteria": {
+              "from": "receipts@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:receipts@uber.com"
+          },
+          {
+            "id": "ANe1Bmhb0qDAcnxiPeqdHeRw3uqpdU7fEJMfZg",
+            "criteria": {
+              "from": "no-reply@lyft.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@lyft.com"
+          },
+          {
+            "id": "ANe1Bmiw_uNUdc88X3lFyaMy6c0AE-vT_enXPg",
+            "criteria": {
+              "from": "ride@lyft.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:ride@lyft.com"
+          },
+          {
+            "id": "ANe1BmgAxOD2pkJCzJF8bBiCQcv1xvJSun6bAw",
+            "criteria": {
+              "from": "no-reply@doordash.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@doordash.com"
+          },
+          {
+            "id": "ANe1Bmi1rbIM58vx3DWd0VWUfGSADdTLLhDSTg",
+            "criteria": {
+              "from": "orders@doordash.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:orders@doordash.com"
+          },
+          {
+            "id": "ANe1BmgA9gNqFNq76Isf_ssaFDW1xg0btjmp1A",
+            "criteria": {
+              "from": "orders@grubhub.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:orders@grubhub.com"
+          },
+          {
+            "id": "ANe1Bmh6OhXrbSsNhemoFUwD_FSt-3TRJyVPhQ",
+            "criteria": {
+              "from": "ubereats@uber.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:ubereats@uber.com"
+          },
+          {
+            "id": "ANe1BmjS8bD0igg5DThc1K6Ma_3RLkj3oNNMeA",
+            "criteria": {
+              "from": "noreply@parkmobile.io"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@parkmobile.io"
+          },
+          {
+            "id": "ANe1BmiWlp6PPfxmqCpUu9JPdFq5J8kc0c-z5w",
+            "criteria": {
+              "from": "info@spothero.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:info@spothero.com"
+          },
+          {
+            "id": "ANe1Bmgogc_3fVJ3mRZlnYyDKLPkCB4DiYAjJg",
+            "criteria": {
+              "from": "receipts@stripe.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:receipts@stripe.com"
+          },
+          {
+            "id": "ANe1BmhRCSNWS9WLY7aCEgZ3C3sy_aa1wHBVVw",
+            "criteria": {
+              "from": "noreply@squareup.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@squareup.com"
+          },
+          {
+            "id": "ANe1BmitANZW2cUGE20rT3NWrwXVLXD5WjvGtA",
+            "criteria": {
+              "from": "noreply@md.getharvest.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@md.getharvest.com"
+          },
+          {
+            "id": "ANe1BmhsAICWAmXdqKpe5ZfNINs7eQGDeOl5Nw",
+            "criteria": {
+              "from": "info@account.netflix.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:info@account.netflix.com"
+          },
+          {
+            "id": "ANe1BmhoviufWsdwc4qOckOZ7IWsQLf5PrVuiQ",
+            "criteria": {
+              "from": "no-reply@spotify.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:no-reply@spotify.com"
+          },
+          {
+            "id": "ANe1BmhOFQPSR7zbVCqAER0WQTxvbm-kRkuZcQ",
+            "criteria": {
+              "from": "disneyplus@mail.disneyplus.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:disneyplus@mail.disneyplus.com"
+          },
+          {
+            "id": "ANe1BmiRIsAMf0JTviaSjWmN7yW9sOp9wc-lLw",
+            "criteria": {
+              "from": "hulu@hulumail.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:hulu@hulumail.com"
+          },
+          {
+            "id": "ANe1Bmgm07E5Ls_wv7gMySSDuguZmr51iqXUCg",
+            "criteria": {
+              "from": "noreply@github.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@github.com"
+          },
+          {
+            "id": "ANe1BmhEo35ey7foSCX7VNJ53CzgMSdDIeC9qw",
+            "criteria": {
+              "from": "noreply@dropbox.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@dropbox.com"
+          },
+          {
+            "id": "ANe1BmifBK0D4_gnZlEg-RTACnfuihyYb9_chQ",
+            "criteria": {
+              "from": "billing@zoom.us"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:billing@zoom.us"
+          },
+          {
+            "id": "ANe1BmiSx5cZZ-rD5uaru7tUJBRnldk6ZRvBvg",
+            "criteria": {
+              "from": "invoices@notion.so"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:invoices@notion.so"
+          },
+          {
+            "id": "ANe1BmgHGV8iEeRALN9d2bIoNJ4R4ynEowjbnQ",
+            "criteria": {
+              "from": "noreply@slack.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@slack.com"
+          },
+          {
+            "id": "ANe1BmjuIL5c-XWOeAOchMsb4UpDjD4CZIzGfA",
+            "criteria": {
+              "from": "orders@target.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:orders@target.com"
+          },
+          {
+            "id": "ANe1BmgTIeB_0nQ6_fMPOHGg0VXQRj5mNbxKZg",
+            "criteria": {
+              "from": "help@walmart.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:help@walmart.com"
+          },
+          {
+            "id": "ANe1BmhOIZjThslYobGleSIWwrwsmRLHLVV7dQ",
+            "criteria": {
+              "from": "costco@online.costco.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:costco@online.costco.com"
+          },
+          {
+            "id": "ANe1Bmh6mh7zVkcxUwatf_LJFSHCcF3uKYv-7g",
+            "criteria": {
+              "from": "noreply@venmo.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:noreply@venmo.com"
+          },
+          {
+            "id": "ANe1Bmhb1Wme0Uqn1jIRZn2djmXUCpVaRVCJNw",
+            "criteria": {
+              "from": "cashapp@square.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:cashapp@square.com"
+          },
+          {
+            "id": "ANe1BmhLMdxOZxxc0d5K8Tz_YqswB_N9kCzHXA",
+            "criteria": {
+              "from": "confirm@ticketmaster.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:confirm@ticketmaster.com"
+          },
+          {
+            "id": "ANe1BmgUub3swSftkex5wbAu41bYj_9tNVhwhA",
+            "criteria": {
+              "from": "orders@eventbrite.com"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "from:orders@eventbrite.com"
+          },
+          {
+            "id": "ANe1Bmjse_espYvkS0_Givi1SF4-xRRAdkYDcA",
+            "criteria": {
+              "subject": "receipt"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:receipt"
+          },
+          {
+            "id": "ANe1BmijamzT9UopJO4s976dnbo8D-8a-OBc0w",
+            "criteria": {
+              "subject": "order confirmation"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:order confirmation"
+          },
+          {
+            "id": "ANe1Bmhz4JkbPSDkRutPJj8ZCRuPQY3jnSlDCA",
+            "criteria": {
+              "subject": "payment received"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:payment received"
+          },
+          {
+            "id": "ANe1Bmi3AKzMKdiSNKy1aYEZQRBEYhl3TAuZrQ",
+            "criteria": {
+              "subject": "invoice"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:invoice"
+          },
+          {
+            "id": "ANe1BmgDNZTw6FDyAnjkKSVRH6FqVPu45PAz3g",
+            "criteria": {
+              "subject": "your order has shipped"
+            },
+            "action": {
+              "addLabelIds": [
+                "Label_21"
+              ],
+              "removeLabelIds": [
+                "INBOX"
+              ]
+            },
+            "signature": "subject:your order has shipped"
+          }
+        ],
+        "duplicates": [],
+        "conflicts": []
+      },
+      "distribution": {
+        "INBOX": 201,
+        "SENT": 201,
+        "DRAFTS": 201,
+        "SPAM": 0,
+        "TRASH": 0,
+        "STARRED": 201,
+        "UNREAD": 201,
+        "Archived (no labels)": 201
+      }
+    }
+  },
+  "issues": [],
+  "summary": {}
+}

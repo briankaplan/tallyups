@@ -22,6 +22,8 @@ struct LibraryView: View {
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
                     .padding(.top, 8)
+                    .accessibilityLabel("Library view selector")
+                    .accessibilityHint("Switch between receipts and scan history")
 
                     if selectedTab == 0 {
                         // Receipts Tab
@@ -55,11 +57,15 @@ struct LibraryView: View {
                     Button(action: { showingFilters = true }) {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                     }
+                    .accessibilityLabel("Filter receipts")
+                    .accessibilityHint("Opens filter options for status, business type, and date range")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { Task { await viewModel.refresh() } }) {
                         Image(systemName: "arrow.clockwise")
                     }
+                    .accessibilityLabel("Refresh")
+                    .accessibilityHint("Reloads receipt list from server")
                 }
             }
             .refreshable {
@@ -93,26 +99,39 @@ struct LibraryView: View {
                     value: "\(viewModel.stats?.totalReceipts ?? 0)",
                     color: .tallyAccent
                 )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Total receipts: \(viewModel.stats?.totalReceipts ?? 0)")
+
                 LibraryStatPill(
                     title: "Matched",
                     value: "\(viewModel.stats?.matchedReceipts ?? 0)",
                     color: .green
                 )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Matched receipts: \(viewModel.stats?.matchedReceipts ?? 0)")
+
                 LibraryStatPill(
                     title: "Unmatched",
                     value: "\(viewModel.stats?.unmatchedReceipts ?? 0)",
                     color: .orange
                 )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Unmatched receipts: \(viewModel.stats?.unmatchedReceipts ?? 0)")
+
                 LibraryStatPill(
                     title: "Total Amount",
                     value: formatCurrency(viewModel.stats?.totalAmount ?? 0),
                     color: .blue
                 )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Total amount: \(formatCurrency(viewModel.stats?.totalAmount ?? 0))")
             }
             .padding(.horizontal)
             .padding(.vertical, 12)
         }
         .background(Color.tallyCard)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Receipt statistics")
     }
 
     // MARK: - Search Bar
@@ -121,13 +140,18 @@ struct LibraryView: View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.gray)
+                .accessibilityHidden(true)
             TextField("Search receipts...", text: $searchText)
                 .textFieldStyle(.plain)
+                .accessibilityLabel("Search receipts")
+                .accessibilityHint("Enter merchant name, amount, or date to search")
             if !searchText.isEmpty {
                 Button(action: { searchText = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.gray)
                 }
+                .accessibilityLabel("Clear search")
+                .accessibilityHint("Clears the current search text")
             }
         }
         .padding()
@@ -180,6 +204,7 @@ struct LibraryView: View {
             Image(systemName: "doc.text.magnifyingglass")
                 .font(.system(size: 44))
                 .foregroundColor(.gray.opacity(0.6))
+                .accessibilityHidden(true)
             Text("No receipts found")
                 .font(.headline)
                 .foregroundColor(.white)
@@ -188,6 +213,8 @@ struct LibraryView: View {
                 .foregroundColor(.gray)
         }
         .frame(maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("No receipts found. Scan a receipt to get started.")
     }
 
     private func formatCurrency(_ value: Double) -> String {

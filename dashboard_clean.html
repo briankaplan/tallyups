@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0a0f14">
   <title>TallyUps</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>T</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
   <link rel="stylesheet" href="/static/css/tallyups-clean.css">
   <link rel="stylesheet" href="/static/css/mobile-responsive.css">
   <script src="/static/js/unified-header.js" defer></script>
@@ -180,7 +180,7 @@
     // Load dashboard data
     async function loadDashboard() {
       try {
-        const response = await fetch('/api/dashboard/stats');
+        const response = await fetch('/api/dashboard/stats', { credentials: 'include' });
         if (!response.ok) throw new Error('Failed to fetch');
         const data = await response.json();
 
@@ -206,7 +206,7 @@
 
     async function loadActivity() {
       try {
-        const response = await fetch('/api/receipts/recent?limit=5');
+        const response = await fetch('/api/receipts/recent?limit=5', { credentials: 'include' });
         if (!response.ok) throw new Error('Failed');
         const data = await response.json();
         const receipts = data.receipts || data.items || [];

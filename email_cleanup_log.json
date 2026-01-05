@@ -1,0 +1,146 @@
+{
+  "timestamp": "2026-01-02T15:41:55.332099",
+  "mode": "preview",
+  "actions": [
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "MERGE_LABELS",
+      "description": "Move 1 emails from 'Receipt' to 'Receipts'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161408"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "MERGE_LABELS",
+      "description": "Move 2 emails from 'Newsletter' to 'Newsletters'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161433"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "MERGE_LABELS",
+      "description": "Move 14 emails from 'Notification' to 'Notifications'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161436"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label 'Zero Inbox'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161439"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label 'Zero Inbox/Newsletters'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161441"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "MERGE_LABELS",
+      "description": "Move 3 emails from 'Zero Inbox/Promotions' to 'Inbox Zero/Unsubscribed'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161443"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label 'Action'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161456"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label 'Waiting'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161458"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label 'Reference'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161460"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label 'Inbox Zero'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161462"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label '@Waiting'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161464"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label '@Someday'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161467"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label '@Reference'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161468"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label 'Zero Inbox'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161471"
+    },
+    {
+      "account": "kaplan.brian@gmail.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label 'Zero Inbox/Newsletters'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:48.161472"
+    },
+    {
+      "account": "brian@downhome.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label '@Waiting'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:51.757331"
+    },
+    {
+      "account": "brian@downhome.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label '@Someday'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:51.757347"
+    },
+    {
+      "account": "brian@musiccityrodeo.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label '@Waiting'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:55.331526"
+    },
+    {
+      "account": "brian@musiccityrodeo.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label '@Someday'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:55.331539"
+    },
+    {
+      "account": "brian@musiccityrodeo.com",
+      "type": "DELETE_EMPTY_LABEL",
+      "description": "Delete empty label '@Reference'",
+      "executed": false,
+      "timestamp": "2026-01-02T15:41:55.331544"
+    }
+  ]
+}

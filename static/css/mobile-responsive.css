@@ -22,6 +22,73 @@ body {
 }
 
 /* ===========================================
+   MOBILE BOTTOM NAVIGATION
+   =========================================== */
+
+/* Hide on desktop */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--bg-secondary, #1a1a24);
+    border-top: 1px solid var(--border, rgba(255,255,255,0.1));
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 1000;
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 0;
+    color: var(--text-muted, rgba(255,255,255,0.5));
+    text-decoration: none;
+    transition: color 0.2s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bottom-nav-item:active {
+    transform: scale(0.95);
+  }
+
+  .bottom-nav-item svg {
+    transition: transform 0.2s;
+  }
+
+  .bottom-nav-item span {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .bottom-nav-item.active {
+    color: var(--accent, #00ff88);
+  }
+
+  .bottom-nav-item.active svg {
+    transform: scale(1.1);
+  }
+
+  /* Add padding to main content to account for bottom nav */
+  .app-container,
+  .main-content,
+  .receipts-container {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* ===========================================
    MOBILE BREAKPOINT (< 768px)
    =========================================== */
 @media (max-width: 768px) {

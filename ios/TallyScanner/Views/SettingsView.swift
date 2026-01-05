@@ -85,6 +85,7 @@ struct SettingsView: View {
                             .fontWeight(.semibold)
                             .foregroundColor(.tallyAccent)
                     }
+                    .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(authService.currentUser?.name ?? "TallyUps User")
@@ -107,15 +108,21 @@ struct SettingsView: View {
                     Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundColor(.gray)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.vertical, 4)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Profile: \(authService.currentUser?.name ?? "TallyUps User")")
+            .accessibilityHint("Double tap to view and edit your profile")
 
             // Biometric Settings
             if authService.biometricType != .none {
                 Toggle(isOn: Binding(
                     get: { authService.biometricsEnabled },
                     set: { newValue in
+                        // Haptic feedback: toggle changed
+                        HapticService.shared.toggleChanged()
                         if newValue {
                             // User wants to enable - they'll set it up on next login
                         } else {
@@ -128,6 +135,8 @@ struct SettingsView: View {
                         systemImage: authService.biometricType.icon
                     )
                 }
+                .accessibilityLabel("Sign in with \(authService.biometricType.name), \(authService.biometricsEnabled ? "enabled" : "disabled")")
+                .accessibilityHint("Double tap to \(authService.biometricsEnabled ? "disable" : "enable") biometric sign in")
             }
         }
         .sheet(isPresented: $showingProfile) {
@@ -226,6 +235,8 @@ struct SettingsView: View {
                 Text("\(uploadQueue.pendingCount)")
                     .foregroundColor(.gray)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Pending uploads: \(uploadQueue.pendingCount)")
 
             if uploadQueue.isUploading {
                 HStack {
@@ -233,12 +244,15 @@ struct SettingsView: View {
                     Text("Uploading...")
                         .foregroundColor(.gray)
                 }
+                .accessibilityLabel("Upload in progress")
             }
 
             if uploadQueue.pendingCount > 0 {
                 Button("Clear Queue", role: .destructive) {
                     showingClearQueueConfirm = true
                 }
+                .accessibilityLabel("Clear upload queue")
+                .accessibilityHint("Remove all \(uploadQueue.pendingCount) pending uploads. This cannot be undone.")
             }
         }
     }
@@ -257,6 +271,10 @@ struct SettingsView: View {
             .onTapGesture {
                 showingServerSettings = true
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Server URL: \(authService.serverURL.isEmpty ? "Not configured" : shortenURL(authService.serverURL))")
+            .accessibilityHint("Double tap to change server settings")
+            .accessibilityAddTraits(.isButton)
 
             Button(action: checkServerHealth) {
                 HStack {
@@ -264,12 +282,16 @@ struct SettingsView: View {
                     Spacer()
                     if isCheckingHealth {
                         ProgressView()
+                            .accessibilityHidden(true)
                     } else if let health = healthStatus {
                         Image(systemName: health.ok ? "checkmark.circle.fill" : "xmark.circle.fill")
                             .foregroundColor(health.ok ? .green : .red)
+                            .accessibilityHidden(true)
                     }
                 }
             }
+            .accessibilityLabel(serverConnectionAccessibilityLabel)
+            .accessibilityHint("Double tap to test server connection")
 
             if let health = healthStatus {
                 if let version = health.version {
@@ -279,6 +301,8 @@ struct SettingsView: View {
                         Text(version)
                             .foregroundColor(.gray)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Server version: \(version)")
                 }
 
                 if let poolSize = health.poolSize, let active = health.activeConnections {
@@ -288,8 +312,20 @@ struct SettingsView: View {
                         Text("\(active)/\(poolSize)")
                             .foregroundColor(.gray)
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Database connections: \(active) of \(poolSize) active")
                 }
             }
+        }
+    }
+
+    private var serverConnectionAccessibilityLabel: String {
+        if isCheckingHealth {
+            return "Checking server connection"
+        } else if let health = healthStatus {
+            return "Check connection, status: \(health.ok ? "connected" : "disconnected")"
+        } else {
+            return "Check server connection"
         }
     }
 
@@ -483,9 +519,35 @@ struct DefaultsSettingsView: View {
             }
 
             Section("Scanning") {
-                Toggle("Auto OCR on upload", isOn: $autoOCR)
-                Toggle("Auto-enhance images", isOn: $autoEnhance)
-                Toggle("Save location with receipts", isOn: $saveLocation)
+                Toggle("Auto OCR on upload", isOn: Binding(
+                    get: { autoOCR },
+                    set: { newValue in
+                        HapticService.shared.toggleChanged()
+                        autoOCR = newValue
+                    }
+                ))
+                .accessibilityLabel("Auto OCR on upload, \(autoOCR ? "enabled" : "disabled")")
+                .accessibilityHint("When enabled, automatically extracts text from receipts after upload")
+
+                Toggle("Auto-enhance images", isOn: Binding(
+                    get: { autoEnhance },
+                    set: { newValue in
+                        HapticService.shared.toggleChanged()
+                        autoEnhance = newValue
+                    }
+                ))
+                .accessibilityLabel("Auto-enhance images, \(autoEnhance ? "enabled" : "disabled")")
+                .accessibilityHint("When enabled, automatically improves image quality for better OCR")
+
+                Toggle("Save location with receipts", isOn: Binding(
+                    get: { saveLocation },
+                    set: { newValue in
+                        HapticService.shared.toggleChanged()
+                        saveLocation = newValue
+                    }
+                ))
+                .accessibilityLabel("Save location with receipts, \(saveLocation ? "enabled" : "disabled")")
+                .accessibilityHint("When enabled, stores GPS coordinates when scanning receipts")
             }
         }
         .navigationTitle("Default Values")
@@ -506,9 +568,35 @@ struct NotificationSettingsView: View {
     var body: some View {
         Form {
             Section("Notifications") {
-                Toggle("Upload complete", isOn: $notifyUploadComplete)
-                Toggle("OCR extraction complete", isOn: $notifyOCRComplete)
-                Toggle("Match found", isOn: $notifyMatchFound)
+                Toggle("Upload complete", isOn: Binding(
+                    get: { notifyUploadComplete },
+                    set: { newValue in
+                        HapticService.shared.toggleChanged()
+                        notifyUploadComplete = newValue
+                    }
+                ))
+                .accessibilityLabel("Upload complete notification, \(notifyUploadComplete ? "enabled" : "disabled")")
+                .accessibilityHint("Notify when receipt upload finishes")
+
+                Toggle("OCR extraction complete", isOn: Binding(
+                    get: { notifyOCRComplete },
+                    set: { newValue in
+                        HapticService.shared.toggleChanged()
+                        notifyOCRComplete = newValue
+                    }
+                ))
+                .accessibilityLabel("OCR extraction complete notification, \(notifyOCRComplete ? "enabled" : "disabled")")
+                .accessibilityHint("Notify when text extraction from receipt finishes")
+
+                Toggle("Match found", isOn: Binding(
+                    get: { notifyMatchFound },
+                    set: { newValue in
+                        HapticService.shared.toggleChanged()
+                        notifyMatchFound = newValue
+                    }
+                ))
+                .accessibilityLabel("Match found notification, \(notifyMatchFound ? "enabled" : "disabled")")
+                .accessibilityHint("Notify when a receipt is matched to a transaction")
             }
         }
         .navigationTitle("Notifications")
@@ -531,17 +619,27 @@ struct StorageSettingsView: View {
                     Text(cacheSize)
                         .foregroundColor(.gray)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Image cache size: \(cacheSize)")
 
                 Button("Clear Cache") {
+                    // Haptic feedback: action started
+                    HapticService.shared.buttonPress()
                     clearCache()
                 }
                 .disabled(isClearing)
+                .accessibilityLabel("Clear cache")
+                .accessibilityHint("Remove all cached images to free up storage space")
             }
 
             Section("Data") {
                 Button("Clear All Local Data", role: .destructive) {
+                    // Haptic feedback: warning for destructive action
+                    HapticService.shared.warning()
                     clearAllData()
                 }
+                .accessibilityLabel("Clear all local data")
+                .accessibilityHint("Remove all locally stored data. This cannot be undone.")
             }
         }
         .navigationTitle("Storage & Data")
@@ -577,7 +675,11 @@ struct StorageSettingsView: View {
 
         Task {
             guard let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
-                await MainActor.run { isClearing = false }
+                await MainActor.run {
+                    isClearing = false
+                    // Haptic feedback: error
+                    HapticService.shared.error()
+                }
                 return
             }
             try? FileManager.default.removeItem(at: cacheURL)
@@ -586,6 +688,8 @@ struct StorageSettingsView: View {
             await MainActor.run {
                 calculateCacheSize()
                 isClearing = false
+                // Haptic feedback: cache cleared successfully
+                HapticService.shared.success()
             }
         }
     }
@@ -596,6 +700,8 @@ struct StorageSettingsView: View {
         }
         KeychainService.shared.clearAll()
         clearCache()
+        // Haptic feedback: all data cleared
+        HapticService.shared.success()
     }
 }
 

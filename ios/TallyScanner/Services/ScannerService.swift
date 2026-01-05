@@ -268,6 +268,421 @@ class ScannerService: NSObject, ObservableObject {
         duplicateResult = nil
     }
 
+    // MARK: - Image Quality Assessment
+
+    /// Quality assessment result for an image
+    struct ImageQualityResult {
+        let overallScore: Int  // 0-100
+        let sharpnessScore: Double  // 0-1
+        let brightnessScore: Double  // 0-1
+        let contrastScore: Double  // 0-1
+        let isAcceptable: Bool
+        let feedback: [QualityFeedback]
+
+        var qualityLevel: QualityLevel {
+            if overallScore >= 75 { return .excellent }
+            if overallScore >= 50 { return .good }
+            if overallScore >= 30 { return .fair }
+            return .poor
+        }
+
+        enum QualityLevel: String {
+            case excellent = "Excellent"
+            case good = "Good"
+            case fair = "Fair"
+            case poor = "Poor"
+
+            var color: String {
+                switch self {
+                case .excellent: return "green"
+                case .good: return "green"
+                case .fair: return "yellow"
+                case .poor: return "red"
+                }
+            }
+        }
+
+        struct QualityFeedback {
+            let type: FeedbackType
+            let message: String
+            let severity: Severity
+
+            enum FeedbackType {
+                case sharpness
+                case brightness
+                case contrast
+            }
+
+            enum Severity {
+                case info
+                case warning
+                case critical
+            }
+        }
+
+        static let acceptable = ImageQualityResult(
+            overallScore: 75,
+            sharpnessScore: 0.75,
+            brightnessScore: 0.75,
+            contrastScore: 0.75,
+            isAcceptable: true,
+            feedback: []
+        )
+    }
+
+    /// Calculate image sharpness using Laplacian variance method
+    /// Returns a value between 0 and 1, where 1 is perfectly sharp
+    func calculateSharpness(_ image: UIImage) -> Double {
+        guard let cgImage = image.cgImage else { return 0 }
+
+        let ciImage = CIImage(cgImage: cgImage)
+
+        // Apply Laplacian filter to detect edges
+        guard let laplacianFilter = CIFilter(name: "CIConvolution3X3") else { return 0 }
+
+        // Laplacian kernel for edge detection
+        let laplacianKernel: [CGFloat] = [
+            0, 1, 0,
+            1, -4, 1,
+            0, 1, 0
+        ]
+
+        laplacianFilter.setValue(ciImage, forKey: kCIInputImageKey)
+        laplacianFilter.setValue(CIVector(values: laplacianKernel, count: 9), forKey: "inputWeights")
+        laplacianFilter.setValue(0, forKey: "inputBias")
+
+        guard let outputImage = laplacianFilter.outputImage else { return 0 }
+
+        // Calculate variance of the Laplacian output
+        // Higher variance = sharper image
+        let context = CIContext()
+
+        // Sample the image at multiple points to calculate variance
+        let extent = outputImage.extent
+        let sampleSize = 64
+        let sampleRect = CGRect(
+            x: extent.midX - CGFloat(sampleSize) / 2,
+            y: extent.midY - CGFloat(sampleSize) / 2,
+            width: CGFloat(sampleSize),
+            height: CGFloat(sampleSize)
+        )
+
+        guard let bitmap = context.createCGImage(outputImage, from: sampleRect) else { return 0 }
+
+        // Extract pixel values
+        let width = bitmap.width
+        let height = bitmap.height
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        var pixelData = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
+
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let ctx = CGContext(
+                data: &pixelData,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+              ) else { return 0 }
+
+        ctx.draw(bitmap, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        // Calculate variance
+        var sum: Double = 0
+        var sumSquared: Double = 0
+        var count = 0
+
+        for y in 0..<height {
+            for x in 0..<width {
+                let offset = (y * bytesPerRow) + (x * bytesPerPixel)
+                // Use grayscale approximation
+                let gray = Double(pixelData[offset]) * 0.299 +
+                          Double(pixelData[offset + 1]) * 0.587 +
+                          Double(pixelData[offset + 2]) * 0.114
+                sum += gray
+                sumSquared += gray * gray
+                count += 1
+            }
+        }
+
+        let mean = sum / Double(count)
+        let variance = (sumSquared / Double(count)) - (mean * mean)
+
+        // Normalize variance to 0-1 range
+        // Typical sharp images have variance > 500, blurry < 100
+        let normalizedSharpness = min(1.0, variance / 1000.0)
+
+        return normalizedSharpness
+    }
+
+    /// Assess lighting quality of an image
+    /// Returns brightness (0-1) and evenness assessment
+    func assessLighting(_ image: UIImage) -> (brightness: Double, isEven: Bool, feedback: String?) {
+        guard let cgImage = image.cgImage else {
+            return (0.5, true, nil)
+        }
+
+        let width = cgImage.width
+        let height = cgImage.height
+
+        // Sample at grid points for efficiency
+        let gridSize = 8
+        var brightnessValues: [Double] = []
+        var regionBrightness: [[Double]] = Array(repeating: Array(repeating: 0, count: gridSize), count: gridSize)
+
+        guard let dataProvider = cgImage.dataProvider,
+              let data = dataProvider.data,
+              let bytes = CFDataGetBytePtr(data) else {
+            return (0.5, true, nil)
+        }
+
+        let bytesPerPixel = cgImage.bitsPerPixel / 8
+        let bytesPerRow = cgImage.bytesPerRow
+
+        for row in 0..<gridSize {
+            for col in 0..<gridSize {
+                let x = (col * width) / gridSize
+                let y = (row * height) / gridSize
+
+                let offset = (y * bytesPerRow) + (x * bytesPerPixel)
+
+                // RGB to luminance
+                let r = Double(bytes[offset])
+                let g = Double(bytes[offset + 1])
+                let b = Double(bytes[offset + 2])
+
+                let luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+                brightnessValues.append(luminance)
+                regionBrightness[row][col] = luminance
+            }
+        }
+
+        // Calculate overall brightness
+        let avgBrightness = brightnessValues.reduce(0, +) / Double(brightnessValues.count)
+
+        // Check for evenness (compare quadrants)
+        let topHalf = regionBrightness[0..<gridSize/2].flatMap { $0 }
+        let bottomHalf = regionBrightness[gridSize/2..<gridSize].flatMap { $0 }
+        let leftHalf = regionBrightness.flatMap { Array($0[0..<gridSize/2]) }
+        let rightHalf = regionBrightness.flatMap { Array($0[gridSize/2..<gridSize]) }
+
+        let topAvg = topHalf.reduce(0, +) / Double(topHalf.count)
+        let bottomAvg = bottomHalf.reduce(0, +) / Double(bottomHalf.count)
+        let leftAvg = leftHalf.reduce(0, +) / Double(leftHalf.count)
+        let rightAvg = rightHalf.reduce(0, +) / Double(rightHalf.count)
+
+        // Check if lighting is uneven (>20% difference between regions)
+        let verticalDiff = abs(topAvg - bottomAvg)
+        let horizontalDiff = abs(leftAvg - rightAvg)
+        let isEven = verticalDiff < 0.2 && horizontalDiff < 0.2
+
+        // Generate feedback
+        var feedback: String?
+        if avgBrightness < 0.25 {
+            feedback = "Too dark"
+        } else if avgBrightness > 0.85 {
+            feedback = "Too bright"
+        } else if !isEven {
+            feedback = "Uneven lighting"
+        }
+
+        return (avgBrightness, isEven, feedback)
+    }
+
+    /// Calculate contrast of an image
+    func calculateContrast(_ image: UIImage) -> Double {
+        guard let cgImage = image.cgImage else { return 0.5 }
+
+        let width = cgImage.width
+        let height = cgImage.height
+
+        guard let dataProvider = cgImage.dataProvider,
+              let data = dataProvider.data,
+              let bytes = CFDataGetBytePtr(data) else {
+            return 0.5
+        }
+
+        let bytesPerPixel = cgImage.bitsPerPixel / 8
+        let bytesPerRow = cgImage.bytesPerRow
+
+        var minLuminance: Double = 1.0
+        var maxLuminance: Double = 0.0
+
+        // Sample image
+        let step = max(1, (width * height) / 10000)
+        var index = 0
+
+        for y in stride(from: 0, to: height, by: Int(sqrt(Double(step)))) {
+            for x in stride(from: 0, to: width, by: Int(sqrt(Double(step)))) {
+                let offset = (y * bytesPerRow) + (x * bytesPerPixel)
+
+                let r = Double(bytes[offset])
+                let g = Double(bytes[offset + 1])
+                let b = Double(bytes[offset + 2])
+
+                let luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+                minLuminance = min(minLuminance, luminance)
+                maxLuminance = max(maxLuminance, luminance)
+                index += 1
+            }
+        }
+
+        // Contrast is the range of luminance values
+        let contrast = maxLuminance - minLuminance
+
+        return contrast
+    }
+
+    /// Comprehensive image quality assessment
+    func assessImageQuality(_ image: UIImage) -> ImageQualityResult {
+        let sharpness = calculateSharpness(image)
+        let (brightness, isEven, lightingFeedback) = assessLighting(image)
+        let contrast = calculateContrast(image)
+
+        var feedback: [ImageQualityResult.QualityFeedback] = []
+
+        // Sharpness feedback
+        if sharpness < 0.3 {
+            feedback.append(ImageQualityResult.QualityFeedback(
+                type: .sharpness,
+                message: "Hold steady",
+                severity: .critical
+            ))
+        } else if sharpness < 0.5 {
+            feedback.append(ImageQualityResult.QualityFeedback(
+                type: .sharpness,
+                message: "Slightly blurry",
+                severity: .warning
+            ))
+        }
+
+        // Brightness feedback
+        if brightness < 0.25 {
+            feedback.append(ImageQualityResult.QualityFeedback(
+                type: .brightness,
+                message: "Too dark",
+                severity: .critical
+            ))
+        } else if brightness > 0.85 {
+            feedback.append(ImageQualityResult.QualityFeedback(
+                type: .brightness,
+                message: "Too bright",
+                severity: .warning
+            ))
+        } else if brightness >= 0.35 && brightness <= 0.75 {
+            feedback.append(ImageQualityResult.QualityFeedback(
+                type: .brightness,
+                message: "Good lighting",
+                severity: .info
+            ))
+        }
+
+        // Contrast feedback
+        if contrast < 0.3 {
+            feedback.append(ImageQualityResult.QualityFeedback(
+                type: .contrast,
+                message: "Low contrast",
+                severity: .warning
+            ))
+        }
+
+        // Calculate overall score
+        // Weights: sharpness 40%, brightness 35%, contrast 25%
+        let sharpnessComponent = sharpness * 40
+        let brightnessComponent: Double
+        if brightness < 0.2 || brightness > 0.9 {
+            brightnessComponent = 0
+        } else if brightness < 0.35 || brightness > 0.75 {
+            brightnessComponent = 20
+        } else {
+            brightnessComponent = 35
+        }
+        let contrastComponent = contrast * 25
+
+        let overallScore = Int(sharpnessComponent + brightnessComponent + contrastComponent)
+
+        // Quality is acceptable if score >= 45 or if we have good individual metrics
+        let isAcceptable = overallScore >= 45 ||
+            (sharpness >= 0.4 && brightness >= 0.25 && brightness <= 0.85)
+
+        return ImageQualityResult(
+            overallScore: min(100, overallScore),
+            sharpnessScore: sharpness,
+            brightnessScore: brightness,
+            contrastScore: contrast,
+            isAcceptable: isAcceptable,
+            feedback: feedback
+        )
+    }
+
+    /// Quick quality check for real-time feedback (optimized for performance)
+    func quickQualityCheck(pixelBuffer: CVPixelBuffer) -> (sharpness: Double, brightness: Double, isAcceptable: Bool) {
+        CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+        guard let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) else {
+            return (0.5, 0.5, true)
+        }
+
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
+
+        // Quick brightness sampling
+        var brightnessSum: Double = 0
+        var samples = 0
+
+        // Quick sharpness via gradient magnitude
+        var gradientSum: Double = 0
+        var gradientSamples = 0
+
+        let stepX = max(1, width / 20)
+        let stepY = max(1, height / 20)
+
+        for y in stride(from: stepY, to: height - stepY, by: stepY) {
+            for x in stride(from: stepX, to: width - stepX, by: stepX) {
+                let offset = y * bytesPerRow + x * 4
+                let pixel = baseAddress.advanced(by: offset).assumingMemoryBound(to: UInt8.self)
+
+                // Brightness
+                let brightness = (Double(pixel[0]) + Double(pixel[1]) + Double(pixel[2])) / (3 * 255)
+                brightnessSum += brightness
+                samples += 1
+
+                // Gradient for sharpness (simple Sobel-like)
+                let offsetRight = y * bytesPerRow + (x + stepX) * 4
+                let offsetDown = (y + stepY) * bytesPerRow + x * 4
+
+                if offsetRight < bytesPerRow * height && offsetDown < bytesPerRow * height {
+                    let pixelRight = baseAddress.advanced(by: offsetRight).assumingMemoryBound(to: UInt8.self)
+                    let pixelDown = baseAddress.advanced(by: offsetDown).assumingMemoryBound(to: UInt8.self)
+
+                    let grayCenter = Double(pixel[0]) * 0.299 + Double(pixel[1]) * 0.587 + Double(pixel[2]) * 0.114
+                    let grayRight = Double(pixelRight[0]) * 0.299 + Double(pixelRight[1]) * 0.587 + Double(pixelRight[2]) * 0.114
+                    let grayDown = Double(pixelDown[0]) * 0.299 + Double(pixelDown[1]) * 0.587 + Double(pixelDown[2]) * 0.114
+
+                    let gradX = abs(grayRight - grayCenter)
+                    let gradY = abs(grayDown - grayCenter)
+                    gradientSum += sqrt(gradX * gradX + gradY * gradY)
+                    gradientSamples += 1
+                }
+            }
+        }
+
+        let avgBrightness = samples > 0 ? brightnessSum / Double(samples) : 0.5
+        let avgGradient = gradientSamples > 0 ? gradientSum / Double(gradientSamples) : 0
+
+        // Normalize gradient to 0-1 sharpness score
+        let sharpness = min(1.0, avgGradient / 50.0)
+
+        // Check acceptability
+        let isAcceptable = sharpness >= 0.3 && avgBrightness >= 0.2 && avgBrightness <= 0.9
+
+        return (sharpness, avgBrightness, isAcceptable)
+    }
+
     // MARK: - Location
 
     var currentLocation: (latitude: Double, longitude: Double)? {

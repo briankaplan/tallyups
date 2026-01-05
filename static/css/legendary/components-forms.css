@@ -1,0 +1,614 @@
+/**
+ * TALLYUPS FORM COMPONENTS
+ * Standardized inputs, selects, toggles, and form controls
+ */
+
+/* =================================================================
+   FORM WRAPPER
+   ================================================================= */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.form-section-title {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--brand-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: var(--space-2);
+}
+
+/* =================================================================
+   FORM GROUP
+   ================================================================= */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-group--inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.form-group--inline .form-label {
+  margin-bottom: 0;
+}
+
+/* =================================================================
+   LABELS
+   ================================================================= */
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.form-label--required::after {
+  content: '*';
+  color: var(--error);
+  margin-left: var(--space-1);
+}
+
+.form-sublabel {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+/* =================================================================
+   BASE INPUT STYLES
+   ================================================================= */
+.form-input,
+.form-select,
+.form-textarea {
+  display: block;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-text);
+  font-size: var(--text-base);
+  font-weight: var(--weight-normal);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+
+  /* iOS zoom prevention */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Placeholder */
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+/* Hover */
+.form-input:hover:not(:disabled):not(:focus),
+.form-select:hover:not(:disabled):not(:focus),
+.form-textarea:hover:not(:disabled):not(:focus) {
+  background: var(--input-hover);
+  border-color: var(--text-tertiary);
+}
+
+/* Focus */
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  background: var(--bg-elevated);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(0, 255, 163, 0.15);
+}
+
+/* Disabled */
+.form-input:disabled,
+.form-select:disabled,
+.form-textarea:disabled {
+  background: var(--input-disabled);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* =================================================================
+   INPUT SIZES
+   ================================================================= */
+.form-input--sm,
+.form-select--sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-base);
+}
+
+.form-input--lg,
+.form-select--lg {
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-lg);
+  border-radius: var(--radius-lg);
+}
+
+/* =================================================================
+   INPUT WITH ICON
+   ================================================================= */
+.form-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.form-input-wrapper .form-input {
+  padding-left: var(--space-10);
+}
+
+.form-input-icon {
+  position: absolute;
+  left: var(--space-3);
+  width: 20px;
+  height: 20px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.form-input-wrapper--right .form-input {
+  padding-left: var(--space-4);
+  padding-right: var(--space-10);
+}
+
+.form-input-wrapper--right .form-input-icon {
+  left: auto;
+  right: var(--space-3);
+}
+
+/* =================================================================
+   SELECT
+   ================================================================= */
+.form-select {
+  padding-right: var(--space-10);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right var(--space-3) center;
+  background-repeat: no-repeat;
+  background-size: 20px;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
+
+/* =================================================================
+   TEXTAREA
+   ================================================================= */
+.form-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.form-textarea--auto {
+  resize: none;
+  overflow: hidden;
+}
+
+/* =================================================================
+   CHECKBOX
+   ================================================================= */
+.form-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-checkbox input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.form-checkbox-box {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  background: var(--input-bg);
+  border: 2px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.form-checkbox input:checked + .form-checkbox-box {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.form-checkbox-box::after {
+  content: '';
+  position: absolute;
+  display: none;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid #000;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.form-checkbox input:checked + .form-checkbox-box::after {
+  display: block;
+}
+
+.form-checkbox:hover .form-checkbox-box {
+  border-color: var(--brand-primary);
+}
+
+.form-checkbox input:focus-visible + .form-checkbox-box {
+  box-shadow: 0 0 0 3px rgba(0, 255, 163, 0.15);
+}
+
+/* =================================================================
+   RADIO
+   ================================================================= */
+.form-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-radio input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.form-radio-circle {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  background: var(--input-bg);
+  border: 2px solid var(--input-border);
+  border-radius: var(--radius-full);
+  transition: all var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.form-radio input:checked + .form-radio-circle {
+  border-color: var(--brand-primary);
+}
+
+.form-radio-circle::after {
+  content: '';
+  position: absolute;
+  display: none;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--brand-primary);
+  border-radius: var(--radius-full);
+  transform: translate(-50%, -50%);
+}
+
+.form-radio input:checked + .form-radio-circle::after {
+  display: block;
+}
+
+.form-radio:hover .form-radio-circle {
+  border-color: var(--brand-primary);
+}
+
+/* =================================================================
+   TOGGLE SWITCH
+   ================================================================= */
+.form-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.form-toggle-track {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  transition: all var(--duration-base) var(--ease-spring);
+  flex-shrink: 0;
+}
+
+.form-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--duration-base) var(--ease-spring);
+}
+
+.form-toggle input:checked + .form-toggle-track {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.form-toggle input:checked + .form-toggle-track .form-toggle-thumb {
+  left: calc(100% - 23px);
+}
+
+.form-toggle:hover .form-toggle-track {
+  border-color: var(--brand-primary);
+}
+
+.form-toggle input:focus-visible + .form-toggle-track {
+  box-shadow: 0 0 0 3px rgba(0, 255, 163, 0.15);
+}
+
+/* Toggle sizes */
+.form-toggle--sm .form-toggle-track {
+  width: 36px;
+  height: 20px;
+}
+
+.form-toggle--sm .form-toggle-thumb {
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+}
+
+.form-toggle--sm input:checked + .form-toggle-track .form-toggle-thumb {
+  left: calc(100% - 16px);
+}
+
+/* =================================================================
+   FORM VALIDATION STATES
+   ================================================================= */
+.form-input--error,
+.form-select--error,
+.form-textarea--error {
+  border-color: var(--error);
+  background: var(--error-dim);
+}
+
+.form-input--error:focus,
+.form-select--error:focus,
+.form-textarea--error:focus {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px var(--error-dim);
+}
+
+.form-input--success,
+.form-select--success {
+  border-color: var(--success);
+}
+
+.form-input--success:focus,
+.form-select--success:focus {
+  border-color: var(--success);
+  box-shadow: 0 0 0 3px var(--success-dim);
+}
+
+.form-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--error);
+  margin-top: var(--space-1);
+}
+
+.form-help {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
+/* =================================================================
+   SEARCH INPUT
+   ================================================================= */
+.form-search {
+  position: relative;
+}
+
+.form-search .form-input {
+  padding-left: var(--space-10);
+  padding-right: var(--space-10);
+  border-radius: var(--radius-full);
+}
+
+.form-search-icon {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.form-search-clear {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.form-search .form-input:not(:placeholder-shown) ~ .form-search-clear {
+  opacity: 1;
+}
+
+.form-search-clear:hover {
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+}
+
+/* =================================================================
+   FORM ACTIONS
+   ================================================================= */
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-primary);
+  margin-top: var(--space-4);
+}
+
+.form-actions--right {
+  justify-content: flex-end;
+}
+
+.form-actions--between {
+  justify-content: space-between;
+}
+
+.form-actions--stack {
+  flex-direction: column;
+}
+
+.form-actions--stack .btn {
+  width: 100%;
+}
+
+/* =================================================================
+   MOBILE OPTIMIZATIONS
+   ================================================================= */
+@media (max-width: 640px) {
+  /* Larger touch targets */
+  .form-input,
+  .form-select {
+    min-height: 48px;
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+
+  .form-checkbox-box,
+  .form-radio-circle {
+    width: 24px;
+    height: 24px;
+  }
+
+  .form-toggle-track {
+    width: 52px;
+    height: 32px;
+  }
+
+  .form-toggle-thumb {
+    width: 24px;
+    height: 24px;
+  }
+
+  .form-toggle input:checked + .form-toggle-track .form-toggle-thumb {
+    left: calc(100% - 27px);
+  }
+
+  /* Stack form actions */
+  .form-actions:not(.form-actions--inline) {
+    flex-direction: column;
+  }
+
+  .form-actions:not(.form-actions--inline) .btn {
+    width: 100%;
+  }
+}
+
+/* =================================================================
+   LEGACY COMPATIBILITY
+   ================================================================= */
+
+/* Support for old .toggle class used in settings.html */
+.toggle {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  background: var(--bg-tertiary);
+  border-radius: 14px;
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.toggle.active {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s;
+  box-shadow: var(--shadow-sm);
+}
+
+.toggle.active .toggle-knob {
+  left: calc(100% - 23px);
+}
+
+/* Support for old input styles */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+select,
+textarea {
+  font-family: var(--font-text);
+}

@@ -59,8 +59,9 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 class ReceiptSource(Enum):
+    """Source of receipt - where it came from."""
     GMAIL_PERSONAL = "gmail_personal"
-    GMAIL_MCR = "gmail_sec"
+    GMAIL_SECONDARY = "gmail_secondary"  # Secondary business email
     GMAIL_BUSINESS = "gmail_business"
     SCANNER_MOBILE = "scanner_mobile"
     SCANNER_WEB = "scanner_web"
@@ -71,6 +72,7 @@ class ReceiptSource(Enum):
 
 
 class ReceiptStatus(Enum):
+    """Processing status of a receipt."""
     PROCESSING = "processing"
     READY = "ready"
     MATCHED = "matched"
@@ -80,12 +82,14 @@ class ReceiptStatus(Enum):
 
 
 class BusinessType(Enum):
-    BUSINESS = "business"
-    MCR = "sec"
+    """
+    Generic business type categories.
+    User-specific business names are stored separately in user preferences.
+    """
     PERSONAL = "personal"
-    CEO = "ceo"
-    EM_CO = "em_co"
-    UNKNOWN = "unknown"
+    BUSINESS = "business"      # Primary business
+    SECONDARY = "secondary"    # Secondary business
+    OTHER = "other"            # Catch-all for other categories
 
 
 @dataclass

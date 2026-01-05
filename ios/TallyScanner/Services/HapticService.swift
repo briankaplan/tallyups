@@ -309,4 +309,85 @@ class HapticService {
             shutterClick()
         }
     }
+
+    // MARK: - Toggle & Switch Haptics
+
+    /// Toggle switch changed
+    func toggleChanged() {
+        selectionFeedback.selectionChanged()
+    }
+
+    /// Picker value changed
+    func pickerChanged() {
+        lightImpact.impactOccurred(intensity: 0.3)
+    }
+
+    // MARK: - Swipe Action Haptics
+
+    /// Swipe action revealed (showing action buttons)
+    func swipeRevealed() {
+        lightImpact.impactOccurred(intensity: 0.4)
+    }
+
+    /// Swipe action triggered
+    func swipeActionTriggered() {
+        mediumImpact.impactOccurred(intensity: 0.7)
+    }
+
+    /// Swipe action completed successfully
+    func swipeActionComplete() {
+        notificationFeedback.notificationOccurred(.success)
+    }
+
+    // MARK: - Save & Link Haptics
+
+    /// Data saved successfully
+    func saveSuccess() {
+        // Satisfying confirmation
+        mediumImpact.impactOccurred(intensity: 0.6)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+            self?.notificationFeedback.notificationOccurred(.success)
+        }
+    }
+
+    /// Receipt linked to transaction
+    func linkSuccess() {
+        // Double tap for connection confirmation
+        rigidImpact.impactOccurred(intensity: 0.8)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.mediumImpact.impactOccurred(intensity: 0.5)
+        }
+    }
+
+    /// Capture error occurred
+    func captureError() {
+        notificationFeedback.notificationOccurred(.error)
+    }
+
+    /// Focus achieved (tap to focus feedback)
+    func focusAchieved() {
+        lightImpact.impactOccurred(intensity: 0.3)
+    }
+
+    // MARK: - Batch Selection Haptics
+
+    /// Item selected in batch mode
+    func batchItemSelected() {
+        lightImpact.impactOccurred(intensity: 0.4)
+    }
+
+    /// Item deselected in batch mode
+    func batchItemDeselected() {
+        lightImpact.impactOccurred(intensity: 0.25)
+    }
+
+    /// Batch selection mode entered
+    func batchModeEntered() {
+        mediumImpact.impactOccurred(intensity: 0.6)
+    }
+
+    /// Batch action started
+    func batchActionStarted() {
+        heavyImpact.impactOccurred(intensity: 0.7)
+    }
 }

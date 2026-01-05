@@ -8,13 +8,20 @@
     <meta name="theme-color" content="#0A0A0A">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" type="image/png" href="/receipt-icon-192.png">
-    <link rel="apple-touch-icon" href="/receipt-icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+    <!-- Help Tooltips -->
+    <link rel="stylesheet" href="/static/css/tooltips.css">
+    <!-- Apple Sign In JS SDK -->
+    <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+    <!-- Google Sign In JS SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
             --brand-primary: #00FF88;
             --brand-primary-hover: #00E077;
             --brand-primary-glow: rgba(0, 255, 136, 0.2);
+            --brand-secondary: #5B7FFF;
             --gray-50: #FAFAFA;
             --gray-100: #F5F5F5;
             --gray-200: #E5E5E5;
@@ -34,81 +41,174 @@
             --radius-sm: 8px;
             --radius-md: 12px;
             --radius-lg: 16px;
-            --radius-xl: 20px;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.1);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
-            --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
+            --radius-xl: 24px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(180deg, var(--gray-950) 0%, #0D1117 100%);
+            background: var(--gray-950);
             color: var(--gray-50);
             min-height: 100vh;
             min-height: 100dvh;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
             -webkit-font-smoothing: antialiased;
         }
 
-        .auth-container {
+        /* Split Layout */
+        .auth-layout {
+            display: flex;
             width: 100%;
-            max-width: 420px;
-            animation: fadeIn 0.4s ease-out;
+            min-height: 100vh;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* Left Panel - Branding */
+        .auth-hero {
+            flex: 1;
+            background: linear-gradient(135deg, #0D1117 0%, var(--gray-950) 50%, #0a1628 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            position: relative;
+            overflow: hidden;
         }
 
-        /* Logo */
-        .logo {
+        .auth-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 50%, rgba(0, 255, 136, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(91, 127, 255, 0.06) 0%, transparent 40%);
+            animation: pulse-bg 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse-bg {
+            0% { opacity: 0.5; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.1); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
             text-align: center;
-            margin-bottom: 40px;
+            max-width: 480px;
         }
 
-        .logo-icon {
-            width: 80px;
-            height: 80px;
+        .hero-logo {
+            width: 100px;
+            height: 100px;
             background: linear-gradient(135deg, var(--brand-primary) 0%, #00CC6A 100%);
             border-radius: var(--radius-xl);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 16px;
-            box-shadow: 0 0 48px var(--brand-primary-glow);
+            margin-bottom: 32px;
+            box-shadow: 0 0 80px var(--brand-primary-glow),
+                        0 20px 60px rgba(0, 0, 0, 0.4);
         }
 
-        .logo-icon svg {
-            width: 40px;
-            height: 40px;
+        .hero-logo svg {
+            width: 50px;
+            height: 50px;
             color: var(--gray-950);
         }
 
-        .logo h1 {
+        .hero-title {
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 0%, var(--gray-300) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 18px;
+            color: var(--gray-400);
+            line-height: 1.6;
+            margin-bottom: 48px;
+        }
+
+        .hero-features {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            text-align: left;
+        }
+
+        .hero-feature {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-md);
+            backdrop-filter: blur(10px);
+        }
+
+        .hero-feature-icon {
+            width: 44px;
+            height: 44px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .hero-feature-icon svg {
+            width: 22px;
+            height: 22px;
+            color: var(--brand-primary);
+        }
+
+        .hero-feature-text h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .hero-feature-text p {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        /* Right Panel - Form */
+        .auth-form-panel {
+            width: 520px;
+            min-width: 520px;
+            background: var(--gray-900);
+            border-left: 1px solid var(--gray-800);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 48px 56px;
+            overflow-y: auto;
+        }
+
+        .auth-form-header {
+            margin-bottom: 32px;
+        }
+
+        .auth-form-header h2 {
             font-size: 28px;
             font-weight: 700;
-            letter-spacing: -0.5px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
-        .logo p {
+        .auth-form-header p {
             color: var(--gray-500);
             font-size: 15px;
-        }
-
-        /* Auth Card */
-        .auth-card {
-            background: var(--gray-900);
-            border: 1px solid var(--gray-800);
-            border-radius: var(--radius-lg);
-            padding: 32px;
         }
 
         /* Tabs */
@@ -122,7 +222,7 @@
 
         .auth-tab {
             flex: 1;
-            padding: 12px 16px;
+            padding: 12px 20px;
             background: transparent;
             border: none;
             border-radius: var(--radius-sm);
@@ -142,16 +242,15 @@
             color: var(--gray-300);
         }
 
-        /* Social Auth */
+        /* Social Auth - Side by Side */
         .social-auth {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 12px;
             margin-bottom: 24px;
         }
 
         .btn {
-            width: 100%;
             padding: 14px 20px;
             border: none;
             border-radius: var(--radius-md);
@@ -162,7 +261,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .btn-apple {
@@ -172,8 +271,8 @@
 
         .btn-apple:hover {
             background: #fff;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.1);
         }
 
         .btn-apple svg {
@@ -189,7 +288,7 @@
 
         .btn-google:hover {
             background: var(--gray-700);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
         }
 
         /* Divider */
@@ -200,6 +299,8 @@
             margin: 24px 0;
             color: var(--gray-500);
             font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .divider::before, .divider::after {
@@ -281,15 +382,17 @@
 
         /* Submit button */
         .btn-primary {
+            width: 100%;
             background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-hover) 100%);
             color: var(--gray-950);
             font-weight: 600;
             margin-top: 8px;
+            padding: 16px 24px;
         }
 
         .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 20px var(--brand-primary-glow);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px var(--brand-primary-glow);
         }
 
         .btn-primary:active {
@@ -379,16 +482,11 @@
             text-decoration: underline;
         }
 
-        .terms a:hover {
-            color: var(--gray-300);
-        }
-
         /* Page Footer */
         .page-footer {
-            margin-top: 40px;
+            margin-top: auto;
+            padding-top: 32px;
             text-align: center;
-            padding-top: 24px;
-            border-top: 1px solid var(--gray-800);
         }
 
         .page-footer-links {
@@ -421,31 +519,6 @@
 
         .auth-panel.active {
             display: block;
-        }
-
-        /* Responsive */
-        @media (max-width: 480px) {
-            body {
-                padding: 16px;
-            }
-
-            .auth-card {
-                padding: 24px;
-            }
-
-            .logo-icon {
-                width: 64px;
-                height: 64px;
-            }
-
-            .logo-icon svg {
-                width: 32px;
-                height: 32px;
-            }
-
-            .logo h1 {
-                font-size: 24px;
-            }
         }
 
         /* Account linking modal */
@@ -511,53 +584,155 @@
         .btn-secondary:hover {
             background: var(--gray-700);
         }
+
+        /* Responsive - Tablet */
+        @media (max-width: 1024px) {
+            .auth-hero {
+                display: none;
+            }
+
+            .auth-form-panel {
+                width: 100%;
+                min-width: unset;
+                max-width: 480px;
+                margin: 0 auto;
+                border-left: none;
+                background: transparent;
+                padding: 32px 24px;
+            }
+
+            body {
+                justify-content: center;
+                align-items: center;
+                background: linear-gradient(180deg, var(--gray-950) 0%, #0D1117 100%);
+            }
+
+            .auth-layout {
+                min-height: auto;
+                flex-direction: column;
+            }
+        }
+
+        /* Responsive - Mobile */
+        @media (max-width: 480px) {
+            .auth-form-panel {
+                padding: 24px 20px;
+            }
+
+            .social-auth {
+                grid-template-columns: 1fr;
+            }
+
+            .auth-form-header h2 {
+                font-size: 24px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="auth-container">
-        <div class="logo">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="18" height="16" rx="2"/>
-                    <line x1="7" y1="9" x2="17" y2="9"/>
-                    <line x1="7" y1="13" x2="13" y2="13"/>
-                    <line x1="7" y1="17" x2="10" y2="17"/>
-                </svg>
+    <main class="auth-layout" role="main">
+        <!-- Left Panel - Hero -->
+        <div class="auth-hero">
+            <div class="hero-content">
+                <div class="hero-logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="16" rx="2"/>
+                        <line x1="7" y1="9" x2="17" y2="9"/>
+                        <line x1="7" y1="13" x2="13" y2="13"/>
+                        <line x1="7" y1="17" x2="10" y2="17"/>
+                    </svg>
+                </div>
+                <h1 class="hero-title">TallyUps</h1>
+                <p class="hero-subtitle">The smartest way to manage receipts and expenses for your business</p>
+
+                <div class="hero-features">
+                    <div class="hero-feature">
+                        <div class="hero-feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                                <circle cx="12" cy="13" r="4"/>
+                            </svg>
+                        </div>
+                        <div class="hero-feature-text">
+                            <h3>Snap & Capture</h3>
+                            <p>Scan receipts instantly with AI-powered extraction</p>
+                        </div>
+                    </div>
+                    <div class="hero-feature">
+                        <div class="hero-feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                            </svg>
+                        </div>
+                        <div class="hero-feature-text">
+                            <h3>Auto-Match</h3>
+                            <p>Link receipts to bank transactions automatically</p>
+                        </div>
+                    </div>
+                    <div class="hero-feature">
+                        <div class="hero-feature-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <div class="hero-feature-text">
+                            <h3>Expense Reports</h3>
+                            <p>Generate professional reports in seconds</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <h1>TallyUps</h1>
-            <p>Smart receipt management</p>
         </div>
 
-        <div class="auth-card">
+        <!-- Right Panel - Form -->
+        <div class="auth-form-panel">
+            <div class="auth-form-header">
+                <h2>Welcome back</h2>
+                <p>Sign in to your account to continue</p>
+            </div>
+
             <!-- Tabs -->
-            <div class="auth-tabs">
-                <button class="auth-tab active" onclick="showPanel('signin')" id="tab-signin">Sign In</button>
-                <button class="auth-tab" onclick="showPanel('signup')" id="tab-signup">Sign Up</button>
+            <div class="auth-tabs" role="tablist" aria-label="Authentication options">
+                <button class="auth-tab active" onclick="showPanel('signin')" id="tab-signin" role="tab" aria-selected="true" aria-controls="panel-signin">Sign In</button>
+                <button class="auth-tab" onclick="showPanel('signup')" id="tab-signup" role="tab" aria-selected="false" aria-controls="panel-signup">Sign Up</button>
             </div>
 
             <!-- Error/Success Messages -->
             <div id="message-container"></div>
 
             <!-- Sign In Panel -->
-            <div class="auth-panel active" id="panel-signin">
+            <div class="auth-panel active" id="panel-signin" role="tabpanel" aria-labelledby="tab-signin">
                 <div class="social-auth">
-                    <button type="button" class="btn btn-apple" onclick="signInWithApple()">
+                    <button type="button" class="btn btn-apple" onclick="signInWithApple()" data-tooltip="Sign in with your Apple ID. Great if you use an iPhone or Mac." data-tooltip-position="bottom">
                         <svg viewBox="0 0 24 24" fill="currentColor">
                             <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                         </svg>
-                        Continue with Apple
+                        Apple
+                    </button>
+                    <button type="button" class="btn btn-google" onclick="signInWithGoogle()" data-tooltip="Sign in using your Google account (like Gmail). This is quick and secure." data-tooltip-position="bottom">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Google
                     </button>
                 </div>
 
-                <div class="divider">or</div>
+                <div class="divider">or continue with email</div>
 
                 <form id="signin-form" onsubmit="handleSignIn(event)">
                     <div class="form-group">
-                        <label for="signin-email">Email</label>
+                        <label for="signin-email">Email <button type="button" class="help-tooltip" data-tooltip="Enter the email address you used when creating your account." data-tooltip-position="right" aria-label="Email help">?</button></label>
                         <input type="email" id="signin-email" name="email" placeholder="you@example.com" required autocomplete="email">
                     </div>
                     <div class="form-group">
-                        <label for="signin-password">Password</label>
+                        <label for="signin-password">Password <button type="button" class="help-tooltip" data-tooltip="Enter the password you chose when you signed up. Forgot it? Click the link below to reset." data-tooltip-position="right" aria-label="Password help">?</button></label>
                         <input type="password" id="signin-password" name="password" placeholder="Enter your password" required autocomplete="current-password">
                     </div>
                     <button type="submit" class="btn btn-primary" id="signin-btn">
@@ -571,31 +746,40 @@
             </div>
 
             <!-- Sign Up Panel -->
-            <div class="auth-panel" id="panel-signup">
+            <div class="auth-panel" id="panel-signup" role="tabpanel" aria-labelledby="tab-signup">
                 <div class="social-auth">
-                    <button type="button" class="btn btn-apple" onclick="signInWithApple()">
+                    <button type="button" class="btn btn-apple" onclick="signInWithApple()" data-tooltip="Create an account using your Apple ID. No new password needed." data-tooltip-position="bottom">
                         <svg viewBox="0 0 24 24" fill="currentColor">
                             <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                         </svg>
-                        Sign up with Apple
+                        Apple
+                    </button>
+                    <button type="button" class="btn btn-google" onclick="signInWithGoogle()" data-tooltip="Create an account using your Google account. Quick and easy." data-tooltip-position="bottom">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Google
                     </button>
                 </div>
 
-                <div class="divider">or</div>
+                <div class="divider">or continue with email</div>
 
                 <form id="signup-form" onsubmit="handleSignUp(event)">
                     <div class="form-group">
-                        <label for="signup-name">Full Name</label>
+                        <label for="signup-name">Full Name <button type="button" class="help-tooltip" data-tooltip="Enter your name as you'd like it to appear on your account and expense reports." data-tooltip-position="right" aria-label="Name help">?</button></label>
                         <input type="text" id="signup-name" name="name" placeholder="John Doe" required autocomplete="name">
                     </div>
                     <div class="form-group">
-                        <label for="signup-email">Email</label>
+                        <label for="signup-email">Email <button type="button" class="help-tooltip" data-tooltip="Use an email you check often. We'll send important updates here." data-tooltip-position="right" aria-label="Email help">?</button></label>
                         <input type="email" id="signup-email" name="email" placeholder="you@example.com" required autocomplete="email">
                     </div>
                     <div class="form-group">
-                        <label for="signup-password">Password</label>
+                        <label for="signup-password">Password <button type="button" class="help-tooltip" data-tooltip="Your password should be at least 8 characters long and include a number. This keeps your account safe." data-tooltip-position="right" aria-label="Password help">?</button></label>
                         <input type="password" id="signup-password" name="password" placeholder="Create a password" required autocomplete="new-password" minlength="8" oninput="checkPasswordStrength(this.value)">
-                        <div class="password-strength" id="password-strength">
+                        <div class="password-strength" id="password-strength" data-tooltip="The bars show password strength: red is weak, green is strong. Add more characters, numbers, and symbols for a stronger password." data-tooltip-position="bottom">
                             <div class="strength-bar" id="str-1"></div>
                             <div class="strength-bar" id="str-2"></div>
                             <div class="strength-bar" id="str-3"></div>
@@ -613,22 +797,22 @@
                     <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>
                 </div>
             </div>
-        </div>
 
-        <div class="page-footer">
-            <div class="page-footer-links">
-                <a href="/terms">Terms</a>
-                <a href="/privacy">Privacy</a>
-                <a href="mailto:support@tallyups.com">Help</a>
+            <div class="page-footer">
+                <div class="page-footer-links">
+                    <a href="/terms">Terms</a>
+                    <a href="/privacy">Privacy</a>
+                    <a href="mailto:support@tallyups.com">Help</a>
+                </div>
+                <p>&copy; 2025 TallyUps</p>
             </div>
-            <p>&copy; 2025 TallyUps. All rights reserved.</p>
         </div>
-    </div>
+    </main>
 
     <!-- Account Linking Modal -->
-    <div class="modal-overlay" id="link-modal">
+    <div class="modal-overlay" id="link-modal" role="dialog" aria-modal="true" aria-labelledby="link-modal-title" aria-hidden="true">
         <div class="modal">
-            <h3>Link Your Account?</h3>
+            <h3 id="link-modal-title">Link Your Account?</h3>
             <p id="link-modal-message">
                 An account with this email already exists. Would you like to link your Apple ID to this account?
             </p>
@@ -648,18 +832,31 @@
         function showPanel(panel) {
             currentPanel = panel;
 
+            // Update header text
+            const header = document.querySelector('.auth-form-header');
+            if (panel === 'signup') {
+                header.querySelector('h2').textContent = 'Create account';
+                header.querySelector('p').textContent = 'Get started with TallyUps today';
+            } else {
+                header.querySelector('h2').textContent = 'Welcome back';
+                header.querySelector('p').textContent = 'Sign in to your account to continue';
+            }
+
             // Update tabs
-            document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(`tab-${panel}`).classList.add('active');
+            document.querySelectorAll('.auth-tab').forEach(tab => {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            });
+            const activeTab = document.getElementById(`tab-${panel}`);
+            activeTab.classList.add('active');
+            activeTab.setAttribute('aria-selected', 'true');
 
             // Update panels
             document.querySelectorAll('.auth-panel').forEach(p => p.classList.remove('active'));
             document.getElementById(`panel-${panel}`).classList.add('active');
 
-            // Clear messages
             clearMessage();
 
-            // Update URL without refresh
             const url = panel === 'signup' ? '/register' : '/login';
             history.replaceState(null, '', url);
         }
@@ -671,14 +868,14 @@
                 ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
                 : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
 
-            container.innerHTML = `<div class="message ${type}">${icon}<span>${text}</span></div>`;
+            container.innerHTML = `<div class="message ${type}" role="alert">${icon}<span>${text}</span></div>`;
         }
 
         function clearMessage() {
             document.getElementById('message-container').innerHTML = '';
         }
 
-        // Password strength checker
+        // Password strength
         function checkPasswordStrength(password) {
             const bars = ['str-1', 'str-2', 'str-3', 'str-4'];
             let strength = 0;
@@ -693,13 +890,11 @@
             bars.forEach((bar, i) => {
                 const el = document.getElementById(bar);
                 el.className = 'strength-bar';
-                if (i < strength) {
-                    el.classList.add(classes[strength]);
-                }
+                if (i < strength) el.classList.add(classes[strength]);
             });
         }
 
-        // Set loading state
+        // Loading state
         function setLoading(formId, loading) {
             const btn = document.getElementById(`${formId}-btn`);
             const form = document.getElementById(`${formId}-form`);
@@ -728,6 +923,7 @@
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',  // Important: receive and send session cookies
                     body: JSON.stringify({
                         email,
                         password,
@@ -739,15 +935,8 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Store tokens if provided
-                    if (data.access_token) {
-                        localStorage.setItem('access_token', data.access_token);
-                    }
-                    if (data.refresh_token) {
-                        localStorage.setItem('refresh_token', data.refresh_token);
-                    }
-
-                    // Redirect to dashboard
+                    if (data.access_token) localStorage.setItem('access_token', data.access_token);
+                    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
                     window.location.href = '/';
                 } else {
                     showMessage(data.error || 'Invalid email or password');
@@ -768,7 +957,6 @@
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
 
-            // Validate password
             if (password.length < 8) {
                 showMessage('Password must be at least 8 characters');
                 return;
@@ -785,6 +973,7 @@
                 const response = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',  // Important: receive and send session cookies
                     body: JSON.stringify({
                         name,
                         email,
@@ -797,19 +986,13 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Store tokens
-                    if (data.access_token) {
-                        localStorage.setItem('access_token', data.access_token);
-                    }
-                    if (data.refresh_token) {
-                        localStorage.setItem('refresh_token', data.refresh_token);
-                    }
-
-                    showMessage('Account created successfully! Redirecting...', 'success');
+                    if (data.access_token) localStorage.setItem('access_token', data.access_token);
+                    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+                    showMessage('Account created! Redirecting...', 'success');
                     setTimeout(() => window.location.href = '/', 1500);
                 } else {
                     if (data.error === 'Email already registered') {
-                        showMessage('An account with this email already exists. <a href="#" onclick="showPanel(\'signin\'); return false;">Sign in instead</a>');
+                        showMessage('Account exists. <a href="#" onclick="showPanel(\'signin\'); return false;">Sign in instead</a>');
                     } else {
                         showMessage(data.error || 'Registration failed');
                     }
@@ -822,27 +1005,155 @@
         }
 
         // Apple Sign In
-        function signInWithApple() {
-            // Redirect to Apple auth endpoint
-            const returnUrl = encodeURIComponent(window.location.origin + '/auth/apple/callback');
-            window.location.href = '/auth/apple?return_url=' + returnUrl;
+        async function signInWithApple() {
+            try {
+                AppleID.auth.init({
+                    clientId: 'com.tallyups.web',
+                    scope: 'name email',
+                    redirectURI: window.location.origin + '/auth/apple/callback',
+                    usePopup: true
+                });
+
+                const response = await AppleID.auth.signIn();
+
+                const result = await fetch('/api/auth/apple/web', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        id_token: response.authorization.id_token,
+                        code: response.authorization.code,
+                        user: response.user
+                    })
+                });
+
+                const data = await result.json();
+
+                if (result.ok && data.access_token) {
+                    localStorage.setItem('access_token', data.access_token);
+                    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+                    showMessage('Success! Redirecting...', 'success');
+                    setTimeout(() => window.location.href = '/', 1000);
+                } else {
+                    showMessage(data.error || 'Apple Sign In failed', 'error');
+                }
+            } catch (error) {
+                if (error.error === 'popup_closed_by_user') return;
+                showMessage('Apple Sign In failed. Please try again.', 'error');
+            }
         }
 
-        // Account linking modal
+        // Google Sign In
+        let googleClient = null;
+
+        function initGoogleSignIn() {
+            console.log('initGoogleSignIn called, google SDK available:', typeof google !== 'undefined');
+
+            if (typeof google === 'undefined' || !google.accounts) {
+                console.log('Waiting for Google SDK to load...');
+                setTimeout(initGoogleSignIn, 100);
+                return;
+            }
+
+            try {
+                googleClient = google.accounts.oauth2.initCodeClient({
+                    client_id: window.GOOGLE_CLIENT_ID || '',
+                    scope: 'email profile',
+                    ux_mode: 'popup',
+                    callback: handleGoogleResponse
+                });
+                console.log('Google client initialized successfully');
+            } catch (e) {
+                console.error('Failed to initialize Google client:', e);
+            }
+        }
+
+        async function signInWithGoogle() {
+            // If config hasn't loaded yet, fetch it now
+            if (!window.GOOGLE_CLIENT_ID) {
+                try {
+                    const configResp = await fetch('/api/auth/config', { credentials: 'include' });
+                    if (configResp.ok) {
+                        const config = await configResp.json();
+                        if (config.google_enabled && config.google_client_id) {
+                            window.GOOGLE_CLIENT_ID = config.google_client_id;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch auth config:', e);
+                }
+            }
+
+            if (!window.GOOGLE_CLIENT_ID) {
+                showMessage('Google Sign In is not configured. Please use email login.', 'error');
+                return;
+            }
+
+            // Initialize Google client if needed
+            if (!googleClient) {
+                initGoogleSignIn();
+                // Wait for Google SDK to be ready
+                let attempts = 0;
+                while (!googleClient && attempts < 10) {
+                    await new Promise(r => setTimeout(r, 100));
+                    attempts++;
+                }
+            }
+
+            if (googleClient) {
+                googleClient.requestCode();
+            } else {
+                showMessage('Google Sign In is still loading. Please try again.', 'error');
+            }
+        }
+
+        async function handleGoogleResponse(response) {
+            if (response.error) {
+                showMessage('Google Sign In failed.', 'error');
+                return;
+            }
+
+            try {
+                const result = await fetch('/api/auth/google/web', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ code: response.code, device_id: getDeviceId() })
+                });
+
+                const data = await result.json();
+
+                if (result.ok && data.access_token) {
+                    localStorage.setItem('access_token', data.access_token);
+                    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+                    showMessage('Success! Redirecting...', 'success');
+                    setTimeout(() => window.location.href = '/', 1000);
+                } else {
+                    showMessage(data.error || 'Google Sign In failed', 'error');
+                }
+            } catch (error) {
+                showMessage('Google Sign In failed.', 'error');
+            }
+        }
+
+        // Modal functions
         function showLinkModal(email) {
+            const modal = document.getElementById('link-modal');
             document.getElementById('link-modal-message').innerHTML =
-                `An account with <strong>${email}</strong> already exists. Would you like to link your Apple ID to this account for easier sign-in?`;
-            document.getElementById('link-modal').classList.add('active');
+                `An account with <strong>${email}</strong> already exists. Link your Apple ID?`;
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
         }
 
         function closeLinkModal() {
-            document.getElementById('link-modal').classList.remove('active');
+            const modal = document.getElementById('link-modal');
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
             pendingLinkData = null;
         }
 
         function confirmLinkAccount() {
             if (pendingLinkData) {
-                // Complete the linking
                 fetch('/api/auth/link-apple', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -858,7 +1169,7 @@
             }
         }
 
-        // Generate device ID
+        // Device ID
         function getDeviceId() {
             let deviceId = localStorage.getItem('device_id');
             if (!deviceId) {
@@ -869,24 +1180,76 @@
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            // Check URL for panel
-            if (window.location.pathname === '/register') {
-                showPanel('signup');
-            }
+        let authConfigLoaded = false;
 
-            // Check for error message in URL
+        async function loadAuthConfig() {
+            try {
+                const configResp = await fetch('/api/auth/config', { credentials: 'include' });
+                if (configResp.ok) {
+                    const config = await configResp.json();
+                    console.log('Auth config loaded:', config);
+
+                    // Setup Google Sign In if enabled
+                    if (config.google_enabled && config.google_client_id) {
+                        window.GOOGLE_CLIENT_ID = config.google_client_id;
+                        console.log('Google client ID set:', config.google_client_id);
+                        initGoogleSignIn();
+                    } else {
+                        // Hide Google buttons if not configured
+                        document.querySelectorAll('.btn-google').forEach(btn => btn.style.display = 'none');
+                    }
+
+                    // Hide Apple buttons if not configured
+                    if (!config.apple_enabled) {
+                        document.querySelectorAll('.btn-apple').forEach(btn => btn.style.display = 'none');
+                    }
+
+                    // If neither OAuth is enabled, hide the social auth section
+                    if (!config.google_enabled && !config.apple_enabled) {
+                        document.querySelectorAll('.social-auth').forEach(el => el.style.display = 'none');
+                        document.querySelectorAll('.divider').forEach(el => el.style.display = 'none');
+                    }
+
+                    // If only one is enabled, make it full width
+                    if (config.google_enabled !== config.apple_enabled) {
+                        document.querySelectorAll('.social-auth').forEach(el => {
+                            el.style.gridTemplateColumns = '1fr';
+                        });
+                    }
+
+                    authConfigLoaded = true;
+                }
+            } catch (e) {
+                console.error('Failed to load auth config:', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('DOMContentLoaded fired');
+
+            if (window.location.pathname === '/register') showPanel('signup');
+
             const params = new URLSearchParams(window.location.search);
             const error = params.get('error');
-            if (error) {
-                showMessage(decodeURIComponent(error));
-            }
+            if (error) showMessage(decodeURIComponent(error));
 
             const message = params.get('message');
-            if (message) {
-                showMessage(decodeURIComponent(message), 'success');
-            }
+            if (message) showMessage(decodeURIComponent(message), 'success');
+
+            // Load auth config
+            console.log('Loading auth config...');
+            await loadAuthConfig();
+            console.log('Auth config load complete. GOOGLE_CLIENT_ID:', window.GOOGLE_CLIENT_ID ? 'SET' : 'NOT SET');
         });
+
+        // Also try loading config immediately in case DOMContentLoaded already fired
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            console.log('Document already ready, loading config immediately');
+            loadAuthConfig();
+        }
     </script>
+
+    <!-- Help Tooltips -->
+    <script src="/static/js/tooltips.js"></script>
 </body>
 </html>

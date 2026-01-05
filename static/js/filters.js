@@ -355,11 +355,6 @@ class TransactionFilter {
             return true;
         });
 
-        const elapsed = performance.now() - startTime;
-        if (elapsed > 50) {
-            console.log(`Filter took ${elapsed.toFixed(1)}ms for ${transactions.length} -> ${results.length} transactions`);
-        }
-
         return results;
     }
 

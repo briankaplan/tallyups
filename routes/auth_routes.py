@@ -413,6 +413,15 @@ def email_login():
         else:
             tokens = {'access_token': None, 'refresh_token': None}
 
+        # Always set session cookie for web auth (fallback when JWT unavailable)
+        from flask import session
+        session.clear()
+        session['authenticated'] = True
+        session['user_id'] = user['id']
+        session['user_email'] = user['email']
+        session['user_role'] = user.get('role', 'user')
+        session.permanent = True
+
         return jsonify({
             'success': True,
             'access_token': tokens.get('access_token'),

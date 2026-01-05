@@ -342,25 +342,71 @@
     updateStats();
   }
 
-  function renderGridView(receipts) {
-    elements.receiptGrid.innerHTML = receipts.map((receipt, index) => `
+  // Helper to group receipts by smart date categories
+  function groupBySmartDate(receipts) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+    const groups = {
+      'Today': [],
+      'Yesterday': [],
+      'This Week': [],
+      'This Month': [],
+      'Older': []
+    };
+
+    receipts.forEach(receipt => {
+      const date = new Date(receipt.receipt_date);
+      date.setHours(0, 0, 0, 0);
+
+      if (date >= today) {
+        groups['Today'].push(receipt);
+      } else if (date >= yesterday) {
+        groups['Yesterday'].push(receipt);
+      } else if (date >= weekAgo) {
+        groups['This Week'].push(receipt);
+      } else if (date >= monthAgo) {
+        groups['This Month'].push(receipt);
+      } else {
+        groups['Older'].push(receipt);
+      }
+    });
+
+    return groups;
+  }
+
+  function renderReceiptCard(receipt, index) {
+    const imageUrl = getReceiptImageUrl(receipt);
+    const hasImage = !!imageUrl;
+    return `
       <div class="receipt-card ${state.selectedReceipts.has(receipt.uuid) ? 'selected' : ''}"
            data-uuid="${receipt.uuid}"
            data-index="${index}"
            onclick="handleReceiptClick(event, ${index})"
            tabindex="0">
-        <div class="receipt-thumb ${getReceiptImageUrl(receipt) ? '' : 'no-image'}">
-          ${getReceiptImageUrl(receipt) ?
-            `<img src="${getThumbnailUrl(getReceiptImageUrl(receipt))}"
+        <div class="receipt-thumb ${hasImage ? '' : 'no-image'}">
+          ${hasImage ? `<img src="${getThumbnailUrl(imageUrl)}"
                   alt="${escapeHtml(receipt.merchant_name || 'Receipt')}"
                   loading="lazy"
-                  onload="this.classList.add('loaded')"
-                  onerror="this.parentElement.classList.add('no-image'); this.remove();">` :
-            `<svg class="placeholder" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none';"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'; this.parentElement.classList.add('no-image');">` : ''}
+          <div class="receipt-placeholder" style="${hasImage ? 'display:none' : 'display:flex'}">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
               <rect x="9" y="3" width="6" height="4" rx="1"></rect>
-            </svg>`
-          }
+              <line x1="9" y1="12" x2="15" y2="12"></line>
+              <line x1="9" y1="16" x2="13" y2="16"></line>
+            </svg>
+          </div>
           <div class="receipt-badges">
             ${getStatusBadge(receipt)}
             ${getSourceBadge(receipt)}
@@ -385,27 +431,69 @@
           ` : ''}
         </div>
       </div>
-    `).join('');
+    `;
+  }
+
+  function renderGridView(receipts) {
+    // Group by smart date categories
+    const groups = groupBySmartDate(receipts);
+    const groupOrder = ['Today', 'Yesterday', 'This Week', 'This Month', 'Older'];
+
+    let html = '';
+    let currentIndex = 0;
+
+    groupOrder.forEach(groupName => {
+      const groupReceipts = groups[groupName];
+      if (groupReceipts.length === 0) return;
+
+      // Calculate group total
+      const groupTotal = groupReceipts.reduce((sum, r) => sum + Math.abs(parseFloat(r.amount) || 0), 0);
+
+      html += `
+        <div class="receipt-group">
+          <div class="receipt-group-header">
+            <div class="receipt-group-title">
+              <span class="group-name">${groupName}</span>
+              <span class="group-count">${groupReceipts.length}</span>
+            </div>
+            <span class="group-total">${formatCurrency(groupTotal)}</span>
+          </div>
+          <div class="receipt-group-grid">
+            ${groupReceipts.map(receipt => {
+              const card = renderReceiptCard(receipt, currentIndex);
+              currentIndex++;
+              return card;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    });
+
+    elements.receiptGrid.innerHTML = html;
   }
 
   function renderListView(receipts) {
-    elements.receiptList.innerHTML = receipts.map((receipt, index) => `
+    elements.receiptList.innerHTML = receipts.map((receipt, index) => {
+      const imageUrl = getReceiptImageUrl(receipt);
+      const hasImage = !!imageUrl;
+      return `
       <div class="list-item ${state.selectedReceipts.has(receipt.uuid) ? 'selected' : ''}"
            data-uuid="${receipt.uuid}"
            data-index="${index}"
            onclick="handleReceiptClick(event, ${index})"
            tabindex="0">
         <div class="list-thumb">
-          ${getReceiptImageUrl(receipt) ?
-            `<img src="${getThumbnailUrl(getReceiptImageUrl(receipt))}"
+          ${hasImage ? `<img src="${getThumbnailUrl(imageUrl)}"
                   alt="${escapeHtml(receipt.merchant_name || 'Receipt')}"
                   loading="lazy"
-                  onload="this.classList.add('loaded')">` :
-            `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  onload="this.classList.add('loaded'); this.nextElementSibling.style.display='none';"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+          <div class="list-placeholder" style="${hasImage ? 'display:none' : 'display:flex'}">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
               <rect x="9" y="3" width="6" height="4" rx="1"></rect>
-            </svg>`
-          }
+            </svg>
+          </div>
         </div>
         <div class="list-info">
           <div class="list-merchant">${escapeHtml(receipt.merchant_name || 'Unknown')}</div>
@@ -418,7 +506,7 @@
         </div>
         <div class="list-amount ${receipt.amount < 0 ? 'refund' : ''}">${formatCurrency(receipt.amount)}</div>
       </div>
-    `).join('');
+    `}).join('');
   }
 
   function renderTimelineView(receipts) {
@@ -1196,6 +1284,103 @@
   }
 
   // ============================================
+  // Filter Dropdowns
+  // ============================================
+
+  function setupFilterDropdowns() {
+    const dropdowns = document.querySelectorAll('.filter-dropdown');
+
+    // Toggle dropdown on button click
+    dropdowns.forEach(dropdown => {
+      const btn = dropdown.querySelector('.filter-dropdown-btn');
+      btn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Close other dropdowns
+        dropdowns.forEach(d => {
+          if (d !== dropdown) d.classList.remove('open');
+        });
+        dropdown.classList.toggle('open');
+      });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      dropdowns.forEach(d => d.classList.remove('open'));
+    });
+
+    // Business filter options
+    document.querySelectorAll('#business-menu .filter-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const business = opt.dataset.business;
+        state.filters.business = business;
+
+        // Update UI
+        document.querySelectorAll('#business-menu .filter-option').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+
+        // Update button label
+        const btn = document.querySelector('#business-filter-btn .filter-label');
+        if (btn) btn.textContent = business === 'all' ? 'Business' : opt.textContent.trim();
+
+        // Toggle active state on dropdown
+        const dropdown = document.getElementById('business-dropdown');
+        dropdown?.classList.toggle('active', business !== 'all');
+        dropdown?.classList.remove('open');
+
+        state.page = 1;
+        loadReceipts();
+        updateActiveFilters();
+      });
+    });
+
+    // Status filter options
+    document.querySelectorAll('#status-menu .filter-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const status = opt.dataset.status;
+        state.filters.status = status;
+
+        // Update UI
+        document.querySelectorAll('#status-menu .filter-option').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+
+        // Update button label
+        const btn = document.querySelector('#status-filter-btn .filter-label');
+        if (btn) btn.textContent = status === 'all' ? 'Status' : opt.textContent.trim();
+
+        // Toggle active state on dropdown
+        const dropdown = document.getElementById('status-dropdown');
+        dropdown?.classList.toggle('active', status !== 'all');
+        dropdown?.classList.remove('open');
+
+        state.page = 1;
+        loadReceipts();
+        updateActiveFilters();
+      });
+    });
+
+    // Sort options
+    document.querySelectorAll('#sort-menu .filter-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const sort = opt.dataset.sort;
+        state.sortBy = sort;
+
+        // Update UI
+        document.querySelectorAll('#sort-menu .filter-option').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+
+        // Update button label
+        const btn = document.querySelector('#sort-filter-btn .filter-label');
+        if (btn) btn.textContent = opt.textContent.trim();
+
+        document.getElementById('sort-dropdown')?.classList.remove('open');
+
+        state.page = 1;
+        loadReceipts();
+      });
+    });
+  }
+
+  // ============================================
   // Event Listeners Setup
   // ============================================
 
@@ -1378,6 +1563,9 @@
         updateActiveFilters();
       });
     });
+
+    // Filter dropdowns
+    setupFilterDropdowns();
 
     // Keyboard
     document.addEventListener('keydown', handleKeydown);

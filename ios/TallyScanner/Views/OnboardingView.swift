@@ -3,6 +3,21 @@ import AVFoundation
 import Photos
 import UserNotifications
 
+// MARK: - Onboarding Step Data
+
+struct OnboardingStep: Identifiable {
+    let id = UUID()
+    let icon: String
+    let title: String
+    let subtitle: String
+    let description: String
+    let tips: [String]
+    let imageName: String?
+    let backgroundColor: Color
+}
+
+// MARK: - Onboarding View
+
 struct OnboardingView: View {
     @EnvironmentObject var authService: AuthService
     @Environment(\.dismiss) private var dismiss
@@ -13,27 +28,100 @@ struct OnboardingView: View {
     @State private var notificationPermissionGranted = false
     @State private var isCompletingOnboarding = false
 
-    private let totalSteps = 5
+    private let steps: [OnboardingStep] = [
+        OnboardingStep(
+            icon: "hand.wave.fill",
+            title: "Welcome to TallyUps",
+            subtitle: "Your Personal Receipt Manager",
+            description: "Keep all your receipts organized in one place. No more lost receipts or messy folders!",
+            tips: [
+                "Snap photos of paper receipts",
+                "Import receipts from email",
+                "Match receipts to bank charges"
+            ],
+            imageName: nil,
+            backgroundColor: Color.tallyAccent.opacity(0.15)
+        ),
+        OnboardingStep(
+            icon: "camera.viewfinder",
+            title: "Scan Your Receipts",
+            subtitle: "It's Easy as 1-2-3",
+            description: "Just point your camera at any receipt and tap the button. We'll do the rest!",
+            tips: [
+                "Hold your phone steady over the receipt",
+                "Make sure there's good lighting",
+                "The whole receipt should be visible"
+            ],
+            imageName: nil,
+            backgroundColor: Color.blue.opacity(0.15)
+        ),
+        OnboardingStep(
+            icon: "creditcard.fill",
+            title: "Track Your Charges",
+            subtitle: "See Where Your Money Goes",
+            description: "Connect your bank to automatically import charges. We'll help you match receipts to each purchase.",
+            tips: [
+                "View all your credit card charges",
+                "See which charges have receipts",
+                "Never miss an expense report item"
+            ],
+            imageName: nil,
+            backgroundColor: Color.green.opacity(0.15)
+        ),
+        OnboardingStep(
+            icon: "folder.fill.badge.gearshape",
+            title: "Stay Organized",
+            subtitle: "Tips for Managing Expenses",
+            description: "A few simple habits will keep your receipts perfectly organized.",
+            tips: [
+                "Scan receipts right after you shop",
+                "Check the Inbox for unmatched items",
+                "Use projects to group related expenses"
+            ],
+            imageName: nil,
+            backgroundColor: Color.purple.opacity(0.15)
+        ),
+        OnboardingStep(
+            icon: "checkmark.seal.fill",
+            title: "You're All Set!",
+            subtitle: "Let's Get Started",
+            description: "You're ready to start scanning. We just need a couple of permissions first.",
+            tips: [
+                "Camera access to scan receipts",
+                "Photo library to import images",
+                "Notifications for updates (optional)"
+            ],
+            imageName: nil,
+            backgroundColor: Color.tallyAccent.opacity(0.15)
+        )
+    ]
+
+    private var totalSteps: Int { steps.count }
 
     var body: some View {
         ZStack {
+            // Background
             Color.tallyBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Progress indicator
-                progressIndicator
-                    .padding(.top, 20)
+                // Header with progress and skip
+                headerView
+                    .padding(.top, 8)
 
-                // Content
+                // Main content
                 TabView(selection: $currentStep) {
-                    welcomeStep.tag(0)
-                    cameraStep.tag(1)
-                    photoLibraryStep.tag(2)
-                    notificationsStep.tag(3)
-                    readyStep.tag(4)
+                    ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                        if index < steps.count - 1 {
+                            TutorialStepView(step: step)
+                                .tag(index)
+                        } else {
+                            permissionsStep
+                                .tag(index)
+                        }
+                    }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut, value: currentStep)
+                .animation(.easeInOut(duration: 0.3), value: currentStep)
 
                 // Navigation buttons
                 navigationButtons
@@ -43,208 +131,126 @@ struct OnboardingView: View {
         }
     }
 
+    // MARK: - Header View
+
+    private var headerView: some View {
+        VStack(spacing: 16) {
+            // Skip button (top right)
+            HStack {
+                Spacer()
+
+                if currentStep < totalSteps - 1 {
+                    Button(action: skipToEnd) {
+                        Text("Skip")
+                            .font(.body)
+                            .foregroundColor(.gray)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                    }
+                    .accessibilityLabel("Skip to permissions")
+                    .accessibilityHint("Skips tutorial steps and goes to permission requests")
+                }
+            }
+            .padding(.horizontal, 16)
+
+            // Progress indicator
+            progressIndicator
+        }
+    }
+
     // MARK: - Progress Indicator
 
     private var progressIndicator: some View {
-        HStack(spacing: 8) {
-            ForEach(0..<totalSteps, id: \.self) { step in
-                Capsule()
-                    .fill(step <= currentStep ? Color.tallyAccent : Color.gray.opacity(0.3))
-                    .frame(height: 4)
+        VStack(spacing: 8) {
+            // Step counter text
+            Text("Step \(currentStep + 1) of \(totalSteps)")
+                .font(.subheadline)
+                .foregroundColor(.gray)
+
+            // Progress bar
+            HStack(spacing: 8) {
+                ForEach(0..<totalSteps, id: \.self) { step in
+                    Capsule()
+                        .fill(step <= currentStep ? Color.tallyAccent : Color.gray.opacity(0.3))
+                        .frame(height: 6)
+                        .animation(.spring(response: 0.3), value: currentStep)
+                }
             }
+            .padding(.horizontal, 40)
         }
-        .padding(.horizontal, 40)
     }
 
-    // MARK: - Step 1: Welcome
+    // MARK: - Permissions Step (Final Step)
 
-    private var welcomeStep: some View {
-        VStack(spacing: 32) {
-            Spacer()
+    private var permissionsStep: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Icon and title
+                VStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(steps.last?.backgroundColor ?? Color.tallyCard)
+                            .frame(width: 120, height: 120)
 
-            Image(systemName: "doc.viewfinder.fill")
-                .font(.system(size: 100))
-                .foregroundColor(.tallyAccent)
+                        Image(systemName: steps.last?.icon ?? "checkmark.seal.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.tallyAccent)
+                    }
+                    .padding(.top, 20)
 
-            VStack(spacing: 16) {
-                Text("Welcome to TallyUps")
-                    .font(.largeTitle.bold())
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
+                    Text(steps.last?.title ?? "You're All Set!")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
 
-                if let userName = authService.currentUser?.name {
-                    Text("Hi, \(userName)!")
-                        .font(.title2)
+                    Text(steps.last?.subtitle ?? "Let's Get Started")
+                        .font(.title3)
                         .foregroundColor(.tallyAccent)
                 }
 
-                Text("Let's get you set up to scan and manage your receipts in just a few steps.")
-                    .font(.body)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-            }
-
-            Spacer()
-            Spacer()
-        }
-    }
-
-    // MARK: - Step 2: Camera Permission
-
-    private var cameraStep: some View {
-        permissionStep(
-            icon: "camera.fill",
-            title: "Camera Access",
-            description: "TallyUps needs camera access to scan your receipts. This is required for the scanner to work.",
-            isGranted: cameraPermissionGranted,
-            grantAction: requestCameraPermission
-        )
-    }
-
-    // MARK: - Step 3: Photo Library
-
-    private var photoLibraryStep: some View {
-        permissionStep(
-            icon: "photo.on.rectangle",
-            title: "Photo Library",
-            description: "Allow access to your photo library to import existing receipt images and save scanned receipts.",
-            isGranted: photoLibraryPermissionGranted,
-            grantAction: requestPhotoLibraryPermission
-        )
-    }
-
-    // MARK: - Step 4: Notifications
-
-    private var notificationsStep: some View {
-        permissionStep(
-            icon: "bell.fill",
-            title: "Notifications",
-            description: "Get notified when receipts are processed, matched to transactions, or need your attention.",
-            isGranted: notificationPermissionGranted,
-            grantAction: requestNotificationPermission,
-            isOptional: true
-        )
-    }
-
-    // MARK: - Step 5: Ready
-
-    private var readyStep: some View {
-        VStack(spacing: 32) {
-            Spacer()
-
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 100))
-                .foregroundColor(.green)
-
-            VStack(spacing: 16) {
-                Text("You're All Set!")
-                    .font(.largeTitle.bold())
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-
-                Text("Start scanning receipts right away. You can connect additional services like Gmail and Calendar later in Settings.")
-                    .font(.body)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-            }
-
-            // Quick tips
-            VStack(alignment: .leading, spacing: 12) {
-                tipRow(icon: "camera.viewfinder", text: "Tap the camera button to scan")
-                tipRow(icon: "photo.stack", text: "Import from photo library")
-                tipRow(icon: "doc.text.magnifyingglass", text: "Auto-matching with transactions")
-            }
-            .padding()
-            .background(Color.tallyCard)
-            .cornerRadius(16)
-            .padding(.horizontal, 24)
-
-            Spacer()
-            Spacer()
-        }
-    }
-
-    // MARK: - Helper Views
-
-    private func permissionStep(
-        icon: String,
-        title: String,
-        description: String,
-        isGranted: Bool,
-        grantAction: @escaping () -> Void,
-        isOptional: Bool = false
-    ) -> some View {
-        VStack(spacing: 32) {
-            Spacer()
-
-            ZStack {
-                Circle()
-                    .fill(isGranted ? Color.green.opacity(0.2) : Color.tallyCard)
-                    .frame(width: 120, height: 120)
-
-                Image(systemName: isGranted ? "checkmark.circle.fill" : icon)
-                    .font(.system(size: 50))
-                    .foregroundColor(isGranted ? .green : .tallyAccent)
-            }
-
-            VStack(spacing: 16) {
-                Text(title)
-                    .font(.title.bold())
-                    .foregroundColor(.white)
-
-                Text(description)
-                    .font(.body)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-
-                if isOptional {
-                    Text("(Optional)")
-                        .font(.caption)
-                        .foregroundColor(.gray.opacity(0.7))
-                }
-            }
-
-            if !isGranted {
-                Button(action: grantAction) {
-                    Text("Allow Access")
+                // Permissions section
+                VStack(spacing: 16) {
+                    Text("We need a few permissions:")
                         .font(.headline)
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.tallyAccent)
-                        .cornerRadius(12)
+                        .foregroundColor(.white)
+
+                    // Camera permission
+                    OnboardingPermissionRow(
+                        icon: "camera.fill",
+                        title: "Camera",
+                        description: "To scan your receipts",
+                        isGranted: cameraPermissionGranted,
+                        isRequired: true,
+                        action: requestCameraPermission
+                    )
+
+                    // Photo library permission
+                    OnboardingPermissionRow(
+                        icon: "photo.on.rectangle",
+                        title: "Photo Library",
+                        description: "To import receipt images",
+                        isGranted: photoLibraryPermissionGranted,
+                        isRequired: false,
+                        action: requestPhotoLibraryPermission
+                    )
+
+                    // Notifications permission
+                    OnboardingPermissionRow(
+                        icon: "bell.fill",
+                        title: "Notifications",
+                        description: "To alert you about receipts",
+                        isGranted: notificationPermissionGranted,
+                        isRequired: false,
+                        action: requestNotificationPermission
+                    )
                 }
-                .padding(.horizontal, 40)
-            } else {
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text("Permission Granted")
-                        .foregroundColor(.green)
-                }
-                .font(.headline)
+                .padding(.horizontal, 24)
+
+                Spacer(minLength: 60)
             }
-
-            Spacer()
-            Spacer()
         }
-    }
-
-    private func tipRow(icon: String, text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundColor(.tallyAccent)
-                .frame(width: 30)
-
-            Text(text)
-                .font(.subheadline)
-                .foregroundColor(.white)
-
-            Spacer()
+        .onAppear {
+            checkCurrentPermissions()
         }
     }
 
@@ -254,58 +260,84 @@ struct OnboardingView: View {
         HStack(spacing: 16) {
             // Back button (not on first step)
             if currentStep > 0 {
-                Button(action: { withAnimation { currentStep -= 1 } }) {
-                    HStack {
+                Button(action: goBack) {
+                    HStack(spacing: 8) {
                         Image(systemName: "chevron.left")
+                            .font(.headline)
                         Text("Back")
+                            .font(.headline)
                     }
-                    .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding()
+                    .padding(.vertical, 18)
                     .background(Color.tallyCard)
-                    .cornerRadius(12)
+                    .cornerRadius(16)
                 }
+                .accessibilityLabel("Back")
+                .accessibilityHint("Go to previous step")
             }
 
-            // Next/Finish button
+            // Next/Get Started button
             Button(action: handleNextStep) {
-                HStack {
+                HStack(spacing: 8) {
                     if isCompletingOnboarding {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .black))
                     } else {
-                        Text(currentStep == totalSteps - 1 ? "Get Started" : "Continue")
+                        Text(currentStep == totalSteps - 1 ? "Get Started" : "Next")
+                            .font(.headline.bold())
                         if currentStep < totalSteps - 1 {
                             Image(systemName: "chevron.right")
+                                .font(.headline)
                         }
                     }
                 }
-                .font(.headline)
                 .foregroundColor(.black)
                 .frame(maxWidth: .infinity)
-                .padding()
+                .padding(.vertical, 18)
                 .background(Color.tallyAccent)
-                .cornerRadius(12)
+                .cornerRadius(16)
             }
             .disabled(isCompletingOnboarding)
+            .accessibilityLabel(currentStep == totalSteps - 1 ? "Get Started" : "Next step")
+            .accessibilityHint(currentStep == totalSteps - 1 ? "Complete onboarding and start using the app" : "Go to next tutorial step")
         }
     }
 
     // MARK: - Actions
 
+    private func goBack() {
+        withAnimation(.spring(response: 0.3)) {
+            currentStep = max(0, currentStep - 1)
+        }
+        HapticService.shared.lightTap()
+    }
+
+    private func skipToEnd() {
+        withAnimation(.spring(response: 0.3)) {
+            currentStep = totalSteps - 1
+        }
+        HapticService.shared.lightTap()
+    }
+
     private func handleNextStep() {
         if currentStep == totalSteps - 1 {
             completeOnboarding()
         } else {
-            withAnimation {
+            withAnimation(.spring(response: 0.3)) {
                 currentStep += 1
             }
+            HapticService.shared.lightTap()
         }
     }
 
     private func completeOnboarding() {
         isCompletingOnboarding = true
+        HapticService.shared.success()
+
+        // Store completion locally
+        UserDefaults.standard.set(true, forKey: "onboarding_completed")
+        UserDefaults.standard.set(Date(), forKey: "onboarding_completed_date")
 
         Task {
             do {
@@ -349,12 +381,34 @@ struct OnboardingView: View {
         }
     }
 
+    // MARK: - Permission Checking
+
+    private func checkCurrentPermissions() {
+        // Check camera
+        let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        cameraPermissionGranted = (cameraStatus == .authorized)
+
+        // Check photo library
+        let photoStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        photoLibraryPermissionGranted = (photoStatus == .authorized || photoStatus == .limited)
+
+        // Check notifications
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                notificationPermissionGranted = (settings.authorizationStatus == .authorized)
+            }
+        }
+    }
+
     // MARK: - Permission Requests
 
     private func requestCameraPermission() {
         AVCaptureDevice.requestAccess(for: .video) { granted in
             DispatchQueue.main.async {
                 cameraPermissionGranted = granted
+                if granted {
+                    HapticService.shared.success()
+                }
             }
         }
     }
@@ -363,6 +417,9 @@ struct OnboardingView: View {
         PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
             DispatchQueue.main.async {
                 photoLibraryPermissionGranted = (status == .authorized || status == .limited)
+                if photoLibraryPermissionGranted {
+                    HapticService.shared.success()
+                }
             }
         }
     }
@@ -371,14 +428,251 @@ struct OnboardingView: View {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
             DispatchQueue.main.async {
                 notificationPermissionGranted = granted
+                if granted {
+                    HapticService.shared.success()
+                }
             }
         }
     }
 }
 
+// MARK: - Tutorial Step View
+
+struct TutorialStepView: View {
+    let step: OnboardingStep
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Spacer(minLength: 20)
+
+                // Large icon with background
+                ZStack {
+                    Circle()
+                        .fill(step.backgroundColor)
+                        .frame(width: 140, height: 140)
+
+                    Image(systemName: step.icon)
+                        .font(.system(size: 70))
+                        .foregroundColor(.tallyAccent)
+                }
+                .padding(.top, 20)
+                .accessibilityHidden(true)
+
+                // Title section
+                VStack(spacing: 12) {
+                    Text(step.title)
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+
+                    Text(step.subtitle)
+                        .font(.title3)
+                        .foregroundColor(.tallyAccent)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, 24)
+                .accessibilityElement(children: .combine)
+
+                // Description
+                Text(step.description)
+                    .font(.body)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 32)
+
+                // Tips section
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(step.tips, id: \.self) { tip in
+                        TipRow(text: tip)
+                    }
+                }
+                .padding(20)
+                .background(Color.tallyCard)
+                .cornerRadius(20)
+                .padding(.horizontal, 24)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Tips")
+
+                Spacer(minLength: 80)
+            }
+        }
+    }
+}
+
+// MARK: - Tip Row
+
+struct TipRow: View {
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title2)
+                .foregroundColor(.tallyAccent)
+                .accessibilityHidden(true)
+
+            Text(text)
+                .font(.body)
+                .foregroundColor(.white)
+                .lineSpacing(2)
+
+            Spacer()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
+    }
+}
+
+// MARK: - Onboarding Permission Row
+
+struct OnboardingPermissionRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    let isGranted: Bool
+    let isRequired: Bool
+    let action: () -> Void
+
+    private var accessibilityDescription: String {
+        var parts = [title, description]
+        if isRequired {
+            parts.append("Required")
+        }
+        parts.append(isGranted ? "Granted" : "Not granted")
+        return parts.joined(separator: ", ")
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(isGranted ? Color.green.opacity(0.2) : Color.tallyCard)
+                    .frame(width: 50, height: 50)
+
+                Image(systemName: isGranted ? "checkmark.circle.fill" : icon)
+                    .font(.title2)
+                    .foregroundColor(isGranted ? .green : .tallyAccent)
+            }
+            .accessibilityHidden(true)
+
+            // Text
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(.white)
+
+                    if isRequired {
+                        Text("Required")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.2))
+                            .cornerRadius(8)
+                    }
+                }
+
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+
+            Spacer()
+
+            // Action button
+            if !isGranted {
+                Button(action: action) {
+                    Text("Allow")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.tallyAccent)
+                        .cornerRadius(10)
+                }
+                .accessibilityLabel("Allow \(title)")
+                .accessibilityHint("Requests permission for \(description.lowercased())")
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.green)
+                    .accessibilityLabel("\(title) permission granted")
+            }
+        }
+        .padding(16)
+        .background(Color.tallyCard)
+        .cornerRadius(16)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+// MARK: - Onboarding Manager
+
+class OnboardingManager: ObservableObject {
+    static let shared = OnboardingManager()
+
+    @Published var hasCompletedOnboarding: Bool
+    @Published var shouldShowOnboarding: Bool = false
+
+    private let completedKey = "onboarding_completed"
+    private let versionKey = "onboarding_version"
+    private let currentVersion = 1 // Increment this to force re-show onboarding
+
+    private init() {
+        let completed = UserDefaults.standard.bool(forKey: completedKey)
+        let savedVersion = UserDefaults.standard.integer(forKey: versionKey)
+
+        // Show onboarding if never completed or if version changed
+        if !completed || savedVersion < currentVersion {
+            hasCompletedOnboarding = false
+        } else {
+            hasCompletedOnboarding = true
+        }
+    }
+
+    func markOnboardingComplete() {
+        UserDefaults.standard.set(true, forKey: completedKey)
+        UserDefaults.standard.set(currentVersion, forKey: versionKey)
+        hasCompletedOnboarding = true
+        shouldShowOnboarding = false
+    }
+
+    func resetOnboarding() {
+        UserDefaults.standard.set(false, forKey: completedKey)
+        hasCompletedOnboarding = false
+    }
+
+    func checkShouldShowOnboarding() {
+        shouldShowOnboarding = !hasCompletedOnboarding
+    }
+}
+
 // MARK: - Previews
 
-#Preview {
+#Preview("Onboarding Flow") {
     OnboardingView()
         .environmentObject(AuthService.shared)
+}
+
+#Preview("Tutorial Step") {
+    TutorialStepView(step: OnboardingStep(
+        icon: "camera.viewfinder",
+        title: "Scan Your Receipts",
+        subtitle: "It's Easy as 1-2-3",
+        description: "Just point your camera at any receipt and tap the button. We'll do the rest!",
+        tips: [
+            "Hold your phone steady over the receipt",
+            "Make sure there's good lighting",
+            "The whole receipt should be visible"
+        ],
+        imageName: nil,
+        backgroundColor: Color.blue.opacity(0.15)
+    ))
+    .background(Color.tallyBackground)
 }

@@ -16,6 +16,9 @@
   <!-- Legendary Design System -->
   <link rel="stylesheet" href="/static/css/legendary/index.css">
 
+  <!-- Help Tooltips -->
+  <link rel="stylesheet" href="/static/css/tooltips.css">
+
   <!-- Unified Header & App Shell -->
   <script src="/static/js/unified-header.js"></script>
   <script src="/static/js/design-system.js"></script>
@@ -581,9 +584,9 @@
 
       <!-- Stats Grid -->
       <div class="stats-grid" id="stats-grid">
-        <div class="stat-card business" onclick="filterByBusiness('Business')">
+        <div class="stat-card business" onclick="filterByBusiness('Business')" data-tooltip="Money spent for your business. Click to see all business expenses. These can often be deducted from your taxes.">
           <div class="stat-card-header">
-            <div class="stat-label">Business</div>
+            <div class="stat-label">Business <button type="button" class="help-tooltip" data-tooltip="Business expenses are purchases made for work purposes. These are often tax-deductible." aria-label="Business expenses help">?</button></div>
             <div class="stat-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
@@ -597,9 +600,9 @@
           </div>
         </div>
 
-        <div class="stat-card sec" onclick="filterByBusiness('Secondary')">
+        <div class="stat-card sec" onclick="filterByBusiness('Secondary')" data-tooltip="Expenses for a secondary business or project you're tracking separately.">
           <div class="stat-card-header">
-            <div class="stat-label">Secondary</div>
+            <div class="stat-label">Secondary <button type="button" class="help-tooltip" data-tooltip="Track expenses for a second business or special project separately from your main business." aria-label="Secondary expenses help">?</button></div>
             <div class="stat-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 2L2 7l10 5 10-5-10-5z"/>
@@ -614,9 +617,9 @@
           </div>
         </div>
 
-        <div class="stat-card personal" onclick="filterByBusiness('Personal')">
+        <div class="stat-card personal" onclick="filterByBusiness('Personal')" data-tooltip="Personal spending that is not for business purposes. Click to see all personal expenses.">
           <div class="stat-card-header">
-            <div class="stat-label">Personal</div>
+            <div class="stat-label">Personal <button type="button" class="help-tooltip" data-tooltip="Personal expenses are non-business purchases for yourself or family." aria-label="Personal expenses help">?</button></div>
             <div class="stat-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
@@ -631,9 +634,9 @@
           </div>
         </div>
 
-        <div class="stat-card receipts" onclick="window.location='/library'">
+        <div class="stat-card receipts" onclick="window.location='/library'" data-tooltip="Total number of receipts you've saved. Click to view your full receipt library.">
           <div class="stat-card-header">
-            <div class="stat-label">Receipts Captured</div>
+            <div class="stat-label">Receipts Captured <button type="button" class="help-tooltip" data-tooltip="The total number of receipts you've scanned, uploaded, or received by email." aria-label="Receipts help">?</button></div>
             <div class="stat-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -651,27 +654,27 @@
 
       <!-- Quick Actions -->
       <div class="quick-actions">
-        <a href="/scanner" class="quick-action">
+        <a href="/scanner" class="quick-action" data-tooltip="Take a photo of a receipt to add it to your records.">
           <div class="quick-action-icon">📸</div>
           <span class="quick-action-label">Scan</span>
         </a>
-        <a href="/inbox" class="quick-action">
+        <a href="/inbox" class="quick-action" data-tooltip="View new receipts that were found in your email or uploaded recently.">
           <div class="quick-action-icon">📥</div>
           <span class="quick-action-label">Inbox</span>
         </a>
-        <a href="/library" class="quick-action">
+        <a href="/library" class="quick-action" data-tooltip="Browse all your saved receipts in one place.">
           <div class="quick-action-icon">📚</div>
           <span class="quick-action-label">Library</span>
         </a>
-        <a href="/reports-dashboard" class="quick-action">
+        <a href="/reports-dashboard" class="quick-action" data-tooltip="Create expense reports for reimbursement or taxes.">
           <div class="quick-action-icon">📊</div>
           <span class="quick-action-label">Reports</span>
         </a>
-        <a href="/reconciler" class="quick-action">
+        <a href="/reconciler" class="quick-action" data-tooltip="Match receipts with your bank transactions to make sure everything lines up.">
           <div class="quick-action-icon">🔍</div>
           <span class="quick-action-label">Reconciler</span>
         </a>
-        <a href="/settings" class="quick-action">
+        <a href="/settings" class="quick-action" data-tooltip="Change your account settings, connect bank accounts, and more.">
           <div class="quick-action-icon">⚙️</div>
           <span class="quick-action-label">Settings</span>
         </a>
@@ -685,19 +688,19 @@
 
       <!-- Filters -->
       <div class="filters-bar" id="filters-bar">
-        <div class="filter-chip active" data-filter="all">
+        <div class="filter-chip active" data-filter="all" data-tooltip="Show all your transactions, including those with and without receipts.">
           All
           <span class="filter-badge" id="filter-all-count">0</span>
         </div>
-        <div class="filter-chip" data-filter="needs-review">
+        <div class="filter-chip" data-filter="needs-review" data-tooltip="Show only items that need your attention. These might be missing receipts or need to be categorized.">
           Needs Review
           <span class="filter-badge" id="filter-review-count">0</span>
         </div>
-        <div class="filter-chip" data-filter="verified">
+        <div class="filter-chip" data-filter="verified" data-tooltip="Show items that have been checked and everything looks correct. No action needed.">
           Verified
           <span class="filter-badge" id="filter-verified-count">0</span>
         </div>
-        <div class="filter-chip" data-filter="mismatch">
+        <div class="filter-chip" data-filter="mismatch" data-tooltip="Show items where the receipt amount doesn't match what your bank shows. This might be due to a tip, tax, or wrong receipt.">
           Mismatch
           <span class="filter-badge" id="filter-mismatch-count">0</span>
         </div>
@@ -941,6 +944,17 @@
         window.location = `/reconciler?index=${index}`;
       }
     }
+  </script>
+
+  <!-- Help Tooltips -->
+  <script src="/static/js/tooltips.js"></script>
+  <script>
+    // Enhance dashboard with tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof TallyTooltips !== 'undefined') {
+        TallyTooltips.enhancePage('dashboard');
+      }
+    });
   </script>
 
 </body>

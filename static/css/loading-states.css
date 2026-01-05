@@ -1,0 +1,353 @@
+/**
+ * Loading States CSS for TallyUps
+ * Consistent loading states for buttons and forms
+ */
+
+/* ===========================================
+   LOADING SPINNER
+   =========================================== */
+
+.loading-spinner {
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ===========================================
+   BUTTON LOADING STATE
+   =========================================== */
+
+button[data-loading="true"],
+.btn[data-loading="true"] {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.85;
+    cursor: wait;
+}
+
+.btn-loading-content,
+.btn-success-content,
+.btn-error-content,
+.btn-progress-content {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-loading-content svg,
+.btn-success-content svg,
+.btn-error-content svg {
+    flex-shrink: 0;
+}
+
+.btn-loading-text {
+    white-space: nowrap;
+}
+
+/* ===========================================
+   SUCCESS STATE
+   =========================================== */
+
+.btn-success {
+    background: var(--success, #22c55e) !important;
+    border-color: var(--success, #22c55e) !important;
+    color: white !important;
+}
+
+.btn-success-content svg {
+    color: currentColor;
+}
+
+/* ===========================================
+   ERROR STATE
+   =========================================== */
+
+.btn-error {
+    background: var(--error, #ef4444) !important;
+    border-color: var(--error, #ef4444) !important;
+    color: white !important;
+}
+
+.btn-error-content svg {
+    color: currentColor;
+}
+
+/* ===========================================
+   PROGRESS BUTTON
+   =========================================== */
+
+button[data-progress],
+.btn[data-progress] {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-progress-content {
+    position: relative;
+    width: 100%;
+    z-index: 1;
+}
+
+.btn-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(0, 255, 136, 0.3);
+    transition: width 0.2s ease;
+    z-index: 0;
+}
+
+.btn-progress-text {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================
+   SKELETON LOADING
+   =========================================== */
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--gray-800, #262626) 25%,
+        var(--gray-700, #404040) 50%,
+        var(--gray-800, #262626) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-pulse {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+    height: 1em;
+    margin-bottom: 0.5em;
+}
+
+.skeleton-text:last-child {
+    width: 75%;
+}
+
+.skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.skeleton-button {
+    height: 44px;
+    width: 120px;
+}
+
+.skeleton-card {
+    padding: 16px;
+    border-radius: 12px;
+}
+
+/* ===========================================
+   PAGE LOADING OVERLAY
+   =========================================== */
+
+.page-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 15, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.page-loading-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.page-loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--gray-700, #404040);
+    border-top-color: var(--brand-primary, #00ff88);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.page-loading-text {
+    margin-top: 16px;
+    color: var(--text-secondary, #a1a1aa);
+    font-size: 14px;
+}
+
+/* ===========================================
+   INLINE LOADING
+   =========================================== */
+
+.inline-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted, #71717a);
+    font-size: 14px;
+}
+
+.inline-loading::before {
+    content: '';
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* ===========================================
+   TABLE ROW LOADING
+   =========================================== */
+
+tr.loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+tr.loading td {
+    position: relative;
+}
+
+tr.loading td::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 15, 0.5);
+}
+
+/* ===========================================
+   CARD LOADING
+   =========================================== */
+
+.card.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.card.loading::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 15, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+}
+
+.card.loading::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 2px solid var(--gray-600);
+    border-top-color: var(--brand-primary, #00ff88);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    z-index: 1;
+}
+
+/* ===========================================
+   INPUT LOADING
+   =========================================== */
+
+.input-loading {
+    position: relative;
+}
+
+.input-loading::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border: 2px solid var(--gray-600);
+    border-top-color: var(--brand-primary, #00ff88);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.input-loading input,
+.input-loading select {
+    padding-right: 40px;
+}
+
+/* ===========================================
+   LIST LOADING (Infinite Scroll)
+   =========================================== */
+
+.list-loading {
+    display: flex;
+    justify-content: center;
+    padding: 24px;
+}
+
+.list-loading::before {
+    content: '';
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--gray-600);
+    border-top-color: var(--brand-primary, #00ff88);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* ===========================================
+   PULSE ANIMATION (for notifications)
+   =========================================== */
+
+.pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ===========================================
+   REDUCED MOTION
+   =========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-spinner,
+    .page-loading-spinner,
+    .inline-loading::before,
+    .card.loading::before,
+    .input-loading::after,
+    .list-loading::before {
+        animation: none;
+    }
+
+    .skeleton {
+        animation: none;
+        background: var(--gray-700, #404040);
+    }
+
+    .pulse {
+        animation: none;
+    }
+}

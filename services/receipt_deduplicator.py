@@ -36,11 +36,12 @@ load_dotenv()
 # =============================================================================
 
 MYSQL_CONFIG = {
-    'host': os.getenv('MYSQL_HOST', 'metro.proxy.rlwy.net'),
-    'port': int(os.getenv('MYSQL_PORT', 19800)),
-    'user': os.getenv('MYSQL_USER', 'root'),
-    'password': os.getenv('MYSQL_PASSWORD', ''),
-    'database': os.getenv('MYSQL_DATABASE', 'railway'),
+    # Use MYSQLHOST (Railway's private hostname) to avoid egress fees
+    'host': os.getenv('MYSQLHOST') or os.getenv('MYSQL_HOST', ''),
+    'port': int(os.getenv('MYSQLPORT') or os.getenv('MYSQL_PORT', 3306)),
+    'user': os.getenv('MYSQLUSER') or os.getenv('MYSQL_USER', 'root'),
+    'password': os.getenv('MYSQLPASSWORD') or os.getenv('MYSQL_PASSWORD', ''),
+    'database': os.getenv('MYSQLDATABASE') or os.getenv('MYSQL_DATABASE', 'railway'),
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor
 }

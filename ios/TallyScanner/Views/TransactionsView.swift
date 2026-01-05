@@ -164,7 +164,8 @@ struct TransactionsView: View {
         withAnimation(.spring(response: 0.3)) {
             isSelectionMode = true
         }
-        HapticService.shared.impact(.medium)
+        // Haptic feedback: entering batch selection mode
+        HapticService.shared.batchModeEntered()
     }
 
     private func exitSelectionMode() {
@@ -175,20 +176,26 @@ struct TransactionsView: View {
     }
 
     private func toggleSelectAll() {
-        HapticService.shared.impact(.light)
         if selectedTransactions.count == viewModel.filteredTransactions.count {
             selectedTransactions.removeAll()
+            // Haptic feedback: all deselected
+            HapticService.shared.batchItemDeselected()
         } else {
             selectedTransactions = Set(viewModel.filteredTransactions.map { $0.index })
+            // Haptic feedback: all selected
+            HapticService.shared.batchItemSelected()
         }
     }
 
     private func toggleSelection(for transaction: Transaction) {
-        HapticService.shared.impact(.light)
         if selectedTransactions.contains(transaction.index) {
             selectedTransactions.remove(transaction.index)
+            // Haptic feedback: item deselected
+            HapticService.shared.batchItemDeselected()
         } else {
             selectedTransactions.insert(transaction.index)
+            // Haptic feedback: item selected
+            HapticService.shared.batchItemSelected()
         }
     }
 
@@ -215,6 +222,18 @@ struct TransactionsView: View {
         }
         .padding()
         .background(Color.tallyCard)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(selectionModeAccessibilityLabel)
+    }
+
+    private var selectionModeAccessibilityLabel: String {
+        guard selectedTransactions.count > 0 else {
+            return "No transactions selected"
+        }
+        let totalAmount = viewModel.filteredTransactions
+            .filter { selectedTransactions.contains($0.index) }
+            .reduce(0.0) { $0 + abs($1.amount) }
+        return "\(selectedTransactions.count) transactions selected, total \(formatCurrency(totalAmount))"
     }
 
     // MARK: - Batch Action Bar
@@ -224,22 +243,32 @@ struct TransactionsView: View {
             BatchActionButton(icon: "sparkles", label: "Auto") {
                 handleBatchAction(.autoCategorize)
             }
+            .accessibilityLabel("Auto categorize")
+            .accessibilityHint("Automatically categorize \(selectedTransactions.count) selected transactions using AI")
 
             BatchActionButton(icon: "folder.fill", label: "Project") {
                 showingBatchProjectPicker = true
             }
+            .accessibilityLabel("Assign to project")
+            .accessibilityHint("Add \(selectedTransactions.count) selected transactions to a project")
 
             BatchActionButton(icon: "briefcase.fill", label: "Business") {
                 showingBatchBusinessPicker = true
             }
+            .accessibilityLabel("Set business type")
+            .accessibilityHint("Set business type for \(selectedTransactions.count) selected transactions")
 
             BatchActionButton(icon: "tag.fill", label: "Category") {
                 showingBatchCategoryPicker = true
             }
+            .accessibilityLabel("Set category")
+            .accessibilityHint("Set category for \(selectedTransactions.count) selected transactions")
 
             BatchActionButton(icon: "ellipsis.circle.fill", label: "More") {
                 showingBatchActions = true
             }
+            .accessibilityLabel("More actions")
+            .accessibilityHint("Show additional batch actions")
         }
         .padding()
         .background(Color.tallyCard)
@@ -521,13 +550,17 @@ struct TransactionsView: View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.gray)
+                .accessibilityHidden(true)
             TextField("Search transactions...", text: $searchText)
                 .textFieldStyle(.plain)
+                .accessibilityLabel("Search transactions")
+                .accessibilityHint("Type to search by merchant name, amount, or category")
             if !searchText.isEmpty {
                 Button(action: { searchText = "" }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.gray)
                 }
+                .accessibilityLabel("Clear search")
             }
         }
         .padding()
@@ -543,7 +576,7 @@ struct TransactionsView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.filteredTransactions) { transaction in
-                    SelectableTransactionCard(
+                    SwipeableTransactionCard(
                         transaction: transaction,
                         isSelected: selectedTransactions.contains(transaction.index),
                         isSelectionMode: isSelectionMode,
@@ -559,6 +592,15 @@ struct TransactionsView: View {
                                 enterSelectionMode()
                                 toggleSelection(for: transaction)
                             }
+                        },
+                        onQuickCategorize: {
+                            quickCategorize(transaction)
+                        },
+                        onQuickExclude: {
+                            quickExclude(transaction)
+                        },
+                        onQuickMatch: {
+                            selectedTransaction = transaction
                         }
                     )
                 }
@@ -575,6 +617,36 @@ struct TransactionsView: View {
                 }
             }
             .padding()
+        }
+    }
+
+    // MARK: - Quick Actions
+
+    private func quickCategorize(_ transaction: Transaction) {
+        HapticService.shared.impact(.medium)
+        Task {
+            do {
+                let suggestion = try await APIClient.shared.getAISuggestions(transactionIndex: transaction.index)
+                if let category = suggestion.category {
+                    try await APIClient.shared.updateTransaction(index: transaction.index, category: category)
+                    HapticService.shared.notification(.success)
+                    await viewModel.refresh()
+                }
+            } catch {
+                HapticService.shared.notification(.error)
+                print("Failed to categorize: \(error)")
+            }
+        }
+    }
+
+    private func quickExclude(_ transaction: Transaction) {
+        HapticService.shared.impact(.medium)
+        Task {
+            _ = await viewModel.excludeTransaction(
+                transactionIndex: transaction.index,
+                reason: "Quick excluded via swipe"
+            )
+            HapticService.shared.notification(.success)
         }
     }
 
@@ -628,6 +700,7 @@ struct FilterPillButton: View {
                 if let icon = icon {
                     Image(systemName: icon)
                         .font(.caption2)
+                        .accessibilityHidden(true)
                 }
                 Text(title)
                     .font(.subheadline.weight(isSelected ? .semibold : .regular))
@@ -643,6 +716,9 @@ struct FilterPillButton: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(title) filter, \(isSelected ? "selected" : "not selected")")
+        .accessibilityHint("Double tap to filter transactions by \(title)")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 
@@ -660,6 +736,7 @@ struct CardFilterPill: View {
             HStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.caption2)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.caption.weight(isSelected ? .semibold : .regular))
                 if let count = count, count > 0, !isSelected {
@@ -679,6 +756,9 @@ struct CardFilterPill: View {
             .cornerRadius(12)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(title), \(isSelected ? "selected" : "not selected")\(count != nil ? ", \(count!) transactions" : "")")
+        .accessibilityHint("Double tap to filter by this card")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }
 
@@ -702,6 +782,8 @@ struct StatPill: View {
         .padding(.vertical, 8)
         .background(Color.tallyCard.opacity(0.5))
         .cornerRadius(12)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 }
 
@@ -838,6 +920,10 @@ struct TransactionCardView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 )
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityDescription)
+        .accessibilityHint("Double tap to view details. Swipe for quick actions.")
+        .accessibilityAddTraits(.isButton)
     }
 
     private var statusColor: Color {
@@ -850,6 +936,21 @@ struct TransactionCardView: View {
         case .unmatched: return .orange
         case .excluded: return .gray
         }
+    }
+
+    private var accessibilityDescription: String {
+        var description = "\(transaction.merchant), \(transaction.formattedAmount)"
+        description += ", \(transaction.formattedDate)"
+        if transaction.hasReceipt {
+            description += ", \(transaction.receiptCount) receipt\(transaction.receiptCount == 1 ? "" : "s") attached"
+        } else {
+            description += ", missing receipt"
+        }
+        if let category = transaction.category {
+            description += ", category: \(category)"
+        }
+        description += ", \(transaction.business) account"
+        return description
     }
 }
 
@@ -1746,6 +1847,135 @@ struct ReceiptImageViewer: View {
 
 // MARK: - Batch Selection Components
 
+/// Swipeable transaction card with quick actions
+struct SwipeableTransactionCard: View {
+    let transaction: Transaction
+    let isSelected: Bool
+    let isSelectionMode: Bool
+    let onTap: () -> Void
+    let onLongPress: () -> Void
+    let onQuickCategorize: () -> Void
+    let onQuickExclude: () -> Void
+    let onQuickMatch: () -> Void
+
+    @State private var offset: CGFloat = 0
+    @State private var isPressed = false
+    private let swipeThreshold: CGFloat = 80
+    private let actionWidth: CGFloat = 70
+
+    var body: some View {
+        ZStack {
+            // Background actions (revealed on swipe)
+            HStack(spacing: 0) {
+                // Left action (swipe right) - Quick categorize
+                HStack {
+                    VStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.title3)
+                        Text("Auto")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.white)
+                    .frame(width: actionWidth)
+                }
+                .frame(maxHeight: .infinity)
+                .background(Color.purple)
+                .opacity(offset > 0 ? 1 : 0)
+
+                Spacer()
+
+                // Right actions (swipe left) - Match & Exclude
+                HStack(spacing: 0) {
+                    // Match receipt action
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3)) {
+                            offset = 0
+                        }
+                        // Haptic feedback: swipe action triggered
+                        HapticService.shared.swipeActionTriggered()
+                        onQuickMatch()
+                    }) {
+                        VStack(spacing: 4) {
+                            Image(systemName: "doc.badge.plus")
+                                .font(.title3)
+                            Text("Match")
+                                .font(.caption2)
+                        }
+                        .foregroundColor(.white)
+                        .frame(width: actionWidth)
+                        .frame(maxHeight: .infinity)
+                    }
+                    .background(Color.blue)
+
+                    // Exclude action
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3)) {
+                            offset = 0
+                        }
+                        // Haptic feedback: swipe action triggered
+                        HapticService.shared.swipeActionTriggered()
+                        onQuickExclude()
+                    }) {
+                        VStack(spacing: 4) {
+                            Image(systemName: "xmark.circle")
+                                .font(.title3)
+                            Text("Exclude")
+                                .font(.caption2)
+                        }
+                        .foregroundColor(.white)
+                        .frame(width: actionWidth)
+                        .frame(maxHeight: .infinity)
+                    }
+                    .background(Color.red)
+                }
+                .opacity(offset < 0 ? 1 : 0)
+            }
+            .cornerRadius(12)
+
+            // Main card content
+            SelectableTransactionCard(
+                transaction: transaction,
+                isSelected: isSelected,
+                isSelectionMode: isSelectionMode,
+                onTap: onTap,
+                onLongPress: onLongPress
+            )
+            .offset(x: offset)
+            .gesture(
+                isSelectionMode ? nil : DragGesture()
+                    .onChanged { value in
+                        // Limit swipe distance
+                        let newOffset = value.translation.width
+                        if newOffset > 0 {
+                            offset = min(newOffset, actionWidth + 20)
+                        } else {
+                            offset = max(newOffset, -(actionWidth * 2 + 20))
+                        }
+                    }
+                    .onEnded { value in
+                        withAnimation(.spring(response: 0.3)) {
+                            if value.translation.width > swipeThreshold {
+                                // Swiped right - quick categorize
+                                offset = 0
+                                // Haptic feedback: swipe action triggered
+                                HapticService.shared.swipeActionTriggered()
+                                onQuickCategorize()
+                            } else if value.translation.width < -swipeThreshold {
+                                // Swiped left - show actions
+                                offset = -(actionWidth * 2)
+                                // Haptic feedback: swipe revealed actions
+                                HapticService.shared.swipeRevealed()
+                            } else {
+                                offset = 0
+                            }
+                        }
+                    }
+            )
+        }
+        .animation(.spring(response: 0.3), value: offset)
+    }
+}
+
 /// Selectable transaction card with long-press and selection support
 struct SelectableTransactionCard: View {
     let transaction: Transaction
@@ -1808,7 +2038,11 @@ struct BatchActionButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            // Haptic feedback: batch action button tapped
+            HapticService.shared.batchActionStarted()
+            action()
+        }) {
             VStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 20))

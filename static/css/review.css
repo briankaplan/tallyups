@@ -1328,7 +1328,7 @@ body.ai-loading [data-ai-action] {
     position: fixed;
     top: calc(var(--header-height, 64px) + 16px); /* Below app header */
     right: 20px;
-    z-index: 10000; /* Must be above all modals */
+    z-index: var(--z-toast, 400); /* Above modals, uses design system scale */
     display: flex;
     flex-direction: column;
     gap: 8px;

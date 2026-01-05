@@ -77,7 +77,8 @@ class ReceiptProcessorService:
         account: str,
         message_id: str,
         attachment_id: str,
-        filename: str
+        filename: str,
+        user_id: str = None
     ) -> Optional[Dict]:
         """
         Download attachment, convert to JPG, upload to R2
@@ -88,6 +89,7 @@ class ReceiptProcessorService:
             message_id: Gmail message ID
             attachment_id: Gmail attachment ID
             filename: Original filename
+            user_id: User ID for data isolation (multi-tenant)
 
         Returns:
             Dict with R2 upload result or None if failed
@@ -129,7 +131,7 @@ class ReceiptProcessorService:
                     print(f"❌ Failed to convert HTML")
                     return None
 
-                result = self._upload_to_r2(jpg_file, receipt_id)
+                result = self._upload_to_r2(jpg_file, receipt_id, user_id)
 
                 if result:
                     result['total_pages'] = 1
@@ -149,7 +151,7 @@ class ReceiptProcessorService:
                 # Process all pages
                 upload_results = []
                 for jpg_file in jpg_files:
-                    result = self._upload_to_r2(jpg_file, receipt_id)
+                    result = self._upload_to_r2(jpg_file, receipt_id, user_id)
                     if result:
                         upload_results.append(result)
 
@@ -173,7 +175,7 @@ class ReceiptProcessorService:
                     print(f"❌ Failed to process image")
                     return None
 
-                result = self._upload_to_r2(jpg_file, receipt_id)
+                result = self._upload_to_r2(jpg_file, receipt_id, user_id)
 
                 if result:
                     result['total_pages'] = 1
@@ -359,27 +361,30 @@ class ReceiptProcessorService:
             print(f"Error converting image: {e}")
             return None
 
-    def _upload_to_r2(self, file_path: Path, receipt_id: int) -> Optional[Dict]:
+    def _upload_to_r2(self, file_path: Path, receipt_id: int, user_id: str = None) -> Optional[Dict]:
         """
-        Upload file to R2 storage
+        Upload file to R2 storage with user isolation
 
         Args:
             file_path: Path to file to upload
             receipt_id: Receipt ID for metadata
+            user_id: User ID for data isolation (multi-tenant)
 
         Returns:
             Upload result dict or None if failed
         """
         try:
-            print(f"☁️  Uploading to R2: {file_path.name}")
+            print(f"☁️  Uploading to R2: {file_path.name} (user: {user_id or 'legacy'})")
 
-            # Upload to R2
+            # Upload to R2 with user scoping
             result = self.r2.upload_file(
                 file_path=str(file_path),
                 metadata={
                     'receipt_id': str(receipt_id),
-                    'original_filename': file_path.name
-                }
+                    'original_filename': file_path.name,
+                    'user_id': user_id or ''
+                },
+                user_id=user_id  # Enable user-scoped storage path
             )
 
             print(f"✅ Uploaded: {result['r2_key']}")
@@ -495,7 +500,8 @@ class ReceiptProcessorService:
         amount: float = None,
         date: str = None,
         business_type: str = None,
-        source: str = 'manual_upload'
+        source: str = 'manual_upload',
+        user_id: str = None
     ) -> Optional[int]:
         """
         Upload a local receipt file to R2 and create database record
@@ -507,6 +513,7 @@ class ReceiptProcessorService:
             date: Transaction date (optional)
             business_type: Business type (optional)
             source: Receipt source (default: manual_upload)
+            user_id: User ID for data isolation (multi-tenant)
 
         Returns:
             Receipt ID if successful, None if failed
@@ -539,8 +546,10 @@ class ReceiptProcessorService:
                     file_path=str(jpg_file),
                     metadata={
                         'merchant': merchant or '',
-                        'source': source
-                    }
+                        'source': source,
+                        'user_id': user_id or ''
+                    },
+                    user_id=user_id
                 )
 
                 if not primary_result:
@@ -563,8 +572,10 @@ class ReceiptProcessorService:
                         file_path=str(jpg_file),
                         metadata={
                             'merchant': merchant or '',
-                            'source': source
-                        }
+                            'source': source,
+                            'user_id': user_id or ''
+                        },
+                        user_id=user_id
                     )
                     if result:
                         upload_results.append(result)
@@ -588,8 +599,10 @@ class ReceiptProcessorService:
                     file_path=str(jpg_file),
                     metadata={
                         'merchant': merchant or '',
-                        'source': source
-                    }
+                        'source': source,
+                        'user_id': user_id or ''
+                    },
+                    user_id=user_id
                 )
 
                 if not primary_result:

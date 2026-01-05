@@ -4,9 +4,11 @@ struct ContentView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var uploadQueue: UploadQueue
     @StateObject private var deepLinkHandler = DeepLinkHandler.shared
+    @StateObject private var onboardingManager = OnboardingManager.shared
     @State private var selectedTab = 0
     @State private var showFullScreenScanner = false
     @State private var selectedTransactionId: Int?
+    @State private var showOnboarding = false
 
     var body: some View {
         Group {
@@ -17,6 +19,26 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut, value: authService.isAuthenticated)
+        // Show onboarding for first-time users
+        .fullScreenCover(isPresented: $showOnboarding) {
+            OnboardingView()
+                .environmentObject(authService)
+                .onDisappear {
+                    onboardingManager.markOnboardingComplete()
+                }
+        }
+        // Check if onboarding should be shown when user authenticates
+        .onChange(of: authService.isAuthenticated) { _, isAuthenticated in
+            if isAuthenticated {
+                checkOnboardingStatus()
+            }
+        }
+        // Also check on appear (for existing sessions)
+        .onAppear {
+            if authService.isAuthenticated {
+                checkOnboardingStatus()
+            }
+        }
         // Handle deep links from widgets
         .onOpenURL { url in
             handleDeepLink(url)
@@ -91,11 +113,27 @@ struct ContentView: View {
         HapticService.shared.success()
     }
 
+    // MARK: - Onboarding
+
+    private func checkOnboardingStatus() {
+        // Check both local storage and server-side flag
+        let localCompleted = onboardingManager.hasCompletedOnboarding
+        let serverCompleted = !(authService.needsOnboarding)
+
+        // Show onboarding if either local or server indicates it's needed
+        if !localCompleted || authService.needsOnboarding {
+            // Small delay to ensure the main view is rendered first
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                showOnboarding = true
+            }
+        }
+    }
+
     private var mainTabView: some View {
         TabView(selection: $selectedTab) {
-            ScannerView()
+            ActionCenterView()
                 .tabItem {
-                    Label("Scan", systemImage: "camera.fill")
+                    Label("Home", systemImage: "house.fill")
                 }
                 .tag(0)
 
@@ -117,9 +155,9 @@ struct ContentView: View {
                 }
                 .tag(3)
 
-            SettingsView()
+            MoreView()
                 .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
+                    Label("More", systemImage: "ellipsis.circle.fill")
                 }
                 .tag(4)
         }

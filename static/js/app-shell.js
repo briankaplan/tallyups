@@ -6,16 +6,16 @@
 (function() {
   'use strict';
 
-  // Navigation items configuration - matches unified-header.js
+  // Navigation items configuration - synced with unified-header.js
   const NAV_ITEMS = [
     { id: 'home', label: 'Home', icon: '🏠', href: '/', paths: ['/', '/dashboard'] },
-    { id: 'reconcile', label: 'Reconcile', icon: '🔄', href: '/viewer', paths: ['/viewer', '/reconcile'] },
-    { id: 'library', label: 'Library', icon: '📚', href: '/library', paths: ['/library'] },
-    { id: 'scan', label: 'Scan', icon: '📸', href: '/scanner', paths: ['/scanner', '/mobile_scanner'] },
+    { id: 'match', label: 'Match', icon: '🔗', href: '/viewer', paths: ['/viewer', '/reconcile'] },
     { id: 'inbox', label: 'Inbox', icon: '📥', href: '/incoming', paths: ['/incoming', '/inbox'], badge: 'inboxCount' },
+    { id: 'library', label: 'Library', icon: '📚', href: '/library', paths: ['/library'] },
     { id: 'reports', label: 'Reports', icon: '📊', href: '/reports', paths: ['/reports', '/report'] },
     { id: 'gmail', label: 'Gmail', icon: '📧', href: '/gmail', paths: ['/gmail'] },
-    { id: 'contacts', label: 'Contacts', icon: '👥', href: '/contacts', paths: ['/contacts'] }
+    { id: 'contacts', label: 'Contacts', icon: '👥', href: '/contacts', paths: ['/contacts'] },
+    { id: 'banks', label: 'Banks', icon: '💳', href: '/bank-accounts', paths: ['/bank-accounts'] }
   ];
 
   // App state

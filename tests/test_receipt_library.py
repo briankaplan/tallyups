@@ -38,12 +38,13 @@ class TestReceiptLibraryService:
         """Test that ReceiptSource enum has all expected values."""
         from services.receipt_library_service import ReceiptSource
 
-        expected = ['gmail_personal', 'gmail_sec', 'gmail_business',
-                   'scanner_mobile', 'scanner_web', 'manual_upload',
-                   'forwarded_email', 'bank_statement_pdf', 'import']
+        # Check enum member names (not values)
+        expected_members = ['GMAIL_PERSONAL', 'GMAIL_SECONDARY', 'GMAIL_BUSINESS',
+                           'SCANNER_MOBILE', 'SCANNER_WEB', 'MANUAL_UPLOAD',
+                           'FORWARDED_EMAIL', 'BANK_STATEMENT_PDF', 'IMPORT']
 
-        for source in expected:
-            assert hasattr(ReceiptSource, source.upper()), f"Missing source: {source}"
+        for member in expected_members:
+            assert hasattr(ReceiptSource, member), f"Missing source: {member}"
 
     def test_receipt_status_enum_values(self):
         """Test that ReceiptStatus enum has all expected values."""
@@ -58,10 +59,11 @@ class TestReceiptLibraryService:
         """Test that BusinessType enum has all expected values."""
         from services.receipt_library_service import BusinessType
 
-        expected = ['business', 'sec', 'personal', 'ceo', 'em_co', 'unknown']
+        # Check generic enum member names (user-specific names stored separately)
+        expected_members = ['PERSONAL', 'BUSINESS', 'SECONDARY', 'OTHER']
 
-        for bt in expected:
-            assert hasattr(BusinessType, bt.upper()), f"Missing business type: {bt}"
+        for member in expected_members:
+            assert hasattr(BusinessType, member), f"Missing business type: {member}"
 
     def test_receipt_library_item_creation(self):
         """Test creating a ReceiptLibraryItem dataclass."""

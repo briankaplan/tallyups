@@ -116,7 +116,6 @@
                 const data = await clone.json();
                 if (data.error && data.error.toLowerCase().includes('csrf')) {
                     // Token expired, refresh and retry
-                    console.log('CSRF token expired, refreshing...');
                     const newToken = await refreshCsrfToken();
                     if (newToken) {
                         options.headers['X-CSRFToken'] = newToken;

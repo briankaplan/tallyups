@@ -28,7 +28,6 @@ class WidgetService: ObservableObject {
         let now = Date()
 
         // Calculate date ranges
-        let startOfDay = calendar.startOfDay(for: now)
         let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
         let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
 

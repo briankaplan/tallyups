@@ -1,0 +1,777 @@
+{
+  "account": "brian@downhome.com",
+  "backed_up_at": "2026-01-02T15:53:06.686750",
+  "filter_count": 55,
+  "filters": [
+    {
+      "id": "ANe1Bmg76O8c-QIwbvO2bbPkJp7vTbhd-jlx0g",
+      "criteria": {
+        "from": "auto-confirm@amazon.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiUeC1-nG8gEb6lToL_ya4N9mG9n1AVfQ",
+      "criteria": {
+        "from": "ship-confirm@amazon.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhtUh9w4qWMC-okTu9dJ-32FrRHo6tuqQ",
+      "criteria": {
+        "from": "digital-no-reply@amazon.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgFLHHALQ5fR-zwUO3fwv5ekdL5WQd88g",
+      "criteria": {
+        "from": "order-update@amazon.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgnPM3owfTES8Nq8p_9gJt3Iqkc-QrFwg",
+      "criteria": {
+        "from": "no_reply@email.apple.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhfUWRqnflOEZTFbpZBie2qKMF5zseuMg",
+      "criteria": {
+        "from": "appleid@id.apple.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiWiQt_F4olDWPB-JutXgOZgkbXs6PWNQ",
+      "criteria": {
+        "from": "service@paypal.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmjj8C2JtATQHSo9d3kxq5Lj5ClLbYt9AA",
+      "criteria": {
+        "from": "paypal@mail.paypal.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmj6gE09SWvrcE8qW55kh_xR9yNMYjhKLw",
+      "criteria": {
+        "from": "SouthwestAirlines@luv.southwest.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmibvsJOw9_J8u44jipmxmpyTWCdUKeqcA",
+      "criteria": {
+        "from": "reservation@southwest.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmhm3FGjg5G_LAJZHjIo1tj_ycXWIFYpwQ",
+      "criteria": {
+        "from": "DeltaAirLines@e.delta.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmiv-Bnu4Ax-Mmo8OjOXJVvcGZ-zngYJig",
+      "criteria": {
+        "from": "thejetbluecard@info.jetblue.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgXZdnQ71FhpVK5fghb8_pOLVk5cCEx9A",
+      "criteria": {
+        "from": "reservations@united.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgyfR_Dvo_6rhmQ4RwZW2Nc2K4UGyePFw",
+      "criteria": {
+        "from": "americanairlines@aa.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjWxPwjcXDyOgLHLXTpy3peOgYJ689Rhg",
+      "criteria": {
+        "from": "Hilton@e.hilton.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgJq6V57EqoolYVECaeFs_AXc8j07iNyw",
+      "criteria": {
+        "from": "marriott@marriott-email.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiTLfTa2ZRAnnxRlwUQ_VIc1m8iW0w4tQ",
+      "criteria": {
+        "from": "express@express.marriott.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmiu8B2tSw1jIDrPJ-lAdHJ0YKXGWmzhEQ",
+      "criteria": {
+        "from": "hyatt@e.hyatt.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmj4XhQ4AqsZsXx3yXc-v9lvUrGmVJ7kdg",
+      "criteria": {
+        "from": "automated@airbnb.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjClkva_XERg_2oL_Y9yp7ylosVs86kHg",
+      "criteria": {
+        "from": "express@airbnb.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjRMMYATuHh_4mPunJzT8hOy-z0qFlSkQ",
+      "criteria": {
+        "from": "uber.us@uber.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmimWAw0MovBysySXaiSifsvm4KEtMsjkQ",
+      "criteria": {
+        "from": "noreply@uber.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmggLF_oekoI2n5Vmsqfecn_SnZduIRXQQ",
+      "criteria": {
+        "from": "receipts@uber.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjbaXKi390iFdX_A6u74b2JfrpIx8Icbw",
+      "criteria": {
+        "from": "no-reply@lyft.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmh-qaRgW6ixlNVwYnLMCfiOPd_p1iJKTw",
+      "criteria": {
+        "from": "ride@lyft.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhG4twbBoHXYMNM0eeTAljuBHLMPxBbKg",
+      "criteria": {
+        "from": "no-reply@doordash.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhpqtTc43WiKVqCj-TPEsmgnxGVgBSuKw",
+      "criteria": {
+        "from": "orders@doordash.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgeGsEk2yHZzct8lki23wGxQuiT_sKBbQ",
+      "criteria": {
+        "from": "orders@grubhub.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhdrUm8HRuegrcCsJ7ijhMA0W7LynO1gQ",
+      "criteria": {
+        "from": "ubereats@uber.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgtDld-DlggX2ID4byKnT2fqaFbboKjSQ",
+      "criteria": {
+        "from": "noreply@parkmobile.io"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjzEcFWwFjNpbRsCZbG2xXa3MtSuxJc3g",
+      "criteria": {
+        "from": "info@spothero.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgmIBrgbNgdmOrh2V1pCEriMr4Acz9NSA",
+      "criteria": {
+        "from": "receipts@stripe.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmi1Uj0uxlHTUwm-Iq4tPTMysq5oaYdJAw",
+      "criteria": {
+        "from": "noreply@squareup.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjlKLj-5S-mbVuQvH7iKgm7fK8cEVkWIg",
+      "criteria": {
+        "from": "noreply@md.getharvest.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmglwIMgZbqAK9wYiC7watw3IZfJgNMVhA",
+      "criteria": {
+        "from": "info@account.netflix.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiVcmOfS5Tbef7943w2srZ-cK80Sc-yGQ",
+      "criteria": {
+        "from": "no-reply@spotify.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgM9rTGzxcc6986KZBBwWtXy1_0CqlqBQ",
+      "criteria": {
+        "from": "disneyplus@mail.disneyplus.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgNBDIsbcxeQ3W-9HOEF7kVM3AxEHahWg",
+      "criteria": {
+        "from": "hulu@hulumail.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgFhDqaO6pBfLIO1Sp7fzpvEmjVU6pA9g",
+      "criteria": {
+        "from": "noreply@github.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjMkGTpyweOfmBFP9v5uCLYhxEHcFkl5w",
+      "criteria": {
+        "from": "noreply@dropbox.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmi8U4Qkd7KWN4t_iM_gemkDDWbET-gRnw",
+      "criteria": {
+        "from": "billing@zoom.us"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmimd6cqKQl0i439IIV00-p2CTt07i38Hg",
+      "criteria": {
+        "from": "invoices@notion.so"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjCp1E4_fvOydapTYSI_4MEp8RJmzgKbQ",
+      "criteria": {
+        "from": "noreply@slack.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhIL8tr60uFcIDeH_vSJsvEIXit3CsPTw",
+      "criteria": {
+        "from": "orders@target.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjVvpGtNGAb078EfRfZ1WN6HiR6PvxF5g",
+      "criteria": {
+        "from": "help@walmart.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhuGJvpo8jdnnQXkabhiSsS5ANlN_SkRg",
+      "criteria": {
+        "from": "costco@online.costco.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmgygk7RHrrXSsiFLjHasQOYo_Zm6t0qjw",
+      "criteria": {
+        "from": "noreply@venmo.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhDOnnZO8vk66mDU4lOSp9jlqpYoAdXyg",
+      "criteria": {
+        "from": "cashapp@square.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiPKSqQ2KIPTqfhzALdlPbft89dxBbCug",
+      "criteria": {
+        "from": "confirm@ticketmaster.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmi7fCIilif0YTNWpR39j_zwPQm3mTRAYw",
+      "criteria": {
+        "from": "orders@eventbrite.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiBeGoqngLZFUpu_J9JKOalk6gZDiB0og",
+      "criteria": {
+        "subject": "receipt"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmh__f_dGgn4mOo6q5CmRuf5mFHvf1dugw",
+      "criteria": {
+        "subject": "order confirmation"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjeTxcCEMBIU5hK8Jo8wDDn-QSv9Xw_0g",
+      "criteria": {
+        "subject": "payment received"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmj0Y0VO0ZqLzPlkbqREoI8oVByxgOLLqw",
+      "criteria": {
+        "subject": "invoice"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmh1FI8Qz_Zpd58QNqY8R1XGrnsfO1Fa3w",
+      "criteria": {
+        "subject": "your order has shipped"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_879"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      }
+    }
+  ]
+}

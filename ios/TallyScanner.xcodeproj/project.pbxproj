@@ -37,6 +37,8 @@
 		A1000028 /* TransactionsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000030 /* TransactionsViewModel.swift */; };
 		A1000029 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000031 /* NotificationService.swift */; };
 		A1000031 /* HapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000033 /* HapticService.swift */; };
+		A1000081 /* GlareDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000081 /* GlareDetector.swift */; };
+		A1000082 /* TutorialService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000082 /* TutorialService.swift */; };
 		A1000032 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000034 /* LocationService.swift */; };
 		A1000040 /* AppleSignInService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000040 /* AppleSignInService.swift */; };
 		A1000041 /* BiometricAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000041 /* BiometricAuthService.swift */; };
@@ -66,6 +68,9 @@
 		A1000070 /* LegalDocumentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000070 /* LegalDocumentsView.swift */; };
 		A1000071 /* ConnectedServicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000071 /* ConnectedServicesView.swift */; };
 		A1000072 /* APIKeysView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000072 /* APIKeysView.swift */; };
+		A1000073 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000073 /* MoreView.swift */; };
+		A1000074 /* FullScreenImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000074 /* FullScreenImageView.swift */; };
+		A1000075 /* ActionCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000075 /* ActionCenterView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -101,6 +106,8 @@
 		A2000030 /* TransactionsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionsViewModel.swift; sourceTree = "<group>"; };
 		A2000031 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		A2000033 /* HapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticService.swift; sourceTree = "<group>"; };
+		A2000081 /* GlareDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlareDetector.swift; sourceTree = "<group>"; };
+		A2000082 /* TutorialService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TutorialService.swift; sourceTree = "<group>"; };
 		A2000034 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		A2000040 /* AppleSignInService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInService.swift; sourceTree = "<group>"; };
 		A2000041 /* BiometricAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthService.swift; sourceTree = "<group>"; };
@@ -130,6 +137,9 @@
 		A2000070 /* LegalDocumentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocumentsView.swift; sourceTree = "<group>"; };
 		A2000071 /* ConnectedServicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectedServicesView.swift; sourceTree = "<group>"; };
 		A2000072 /* APIKeysView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeysView.swift; sourceTree = "<group>"; };
+		A2000073 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
+		A2000074 /* FullScreenImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenImageView.swift; sourceTree = "<group>"; };
+		A2000075 /* ActionCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionCenterView.swift; sourceTree = "<group>"; };
 		A3000001 /* TallyScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TallyScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -187,6 +197,7 @@
 		A5000005 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				A2000075 /* ActionCenterView.swift */,
 				A2000050 /* AnalyticsDashboardView.swift */,
 				A2000021 /* CameraView.swift */,
 				A2000051 /* ContactsView.swift */,
@@ -213,6 +224,8 @@
 				A2000070 /* LegalDocumentsView.swift */,
 				A2000071 /* ConnectedServicesView.swift */,
 				A2000072 /* APIKeysView.swift */,
+				A2000073 /* MoreView.swift */,
+				A2000074 /* FullScreenImageView.swift */,
 				A2000029 /* TransactionsView.swift */,
 				A2000023 /* UploadProgressView.swift */,
 			);
@@ -240,7 +253,9 @@
 				A2000043 /* CelebrationService.swift */,
 				A2000044 /* ContactsService.swift */,
 				A2000064 /* EmailMappingService.swift */,
+				A2000081 /* GlareDetector.swift */,
 				A2000033 /* HapticService.swift */,
+				A2000082 /* TutorialService.swift */,
 				A2000018 /* KeychainService.swift */,
 				A2000034 /* LocationService.swift */,
 				A2000019 /* NetworkMonitor.swift */,
@@ -374,6 +389,8 @@
 				A1000028 /* TransactionsViewModel.swift in Sources */,
 				A1000029 /* NotificationService.swift in Sources */,
 				A1000031 /* HapticService.swift in Sources */,
+				A1000081 /* GlareDetector.swift in Sources */,
+				A1000082 /* TutorialService.swift in Sources */,
 				A1000032 /* LocationService.swift in Sources */,
 				A1000040 /* AppleSignInService.swift in Sources */,
 				A1000041 /* BiometricAuthService.swift in Sources */,
@@ -403,6 +420,9 @@
 				A1000070 /* LegalDocumentsView.swift in Sources */,
 				A1000071 /* ConnectedServicesView.swift in Sources */,
 				A1000072 /* APIKeysView.swift in Sources */,
+				A1000073 /* MoreView.swift in Sources */,
+				A1000074 /* FullScreenImageView.swift in Sources */,
+				A1000075 /* ActionCenterView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

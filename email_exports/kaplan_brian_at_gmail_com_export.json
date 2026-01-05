@@ -1,0 +1,2910 @@
+{
+  "account": "kaplan.brian@gmail.com",
+  "type": "Personal",
+  "exported_at": "2026-01-02T15:43:55.693093",
+  "profile": {
+    "email": "kaplan.brian@gmail.com",
+    "messagesTotal": 75781,
+    "threadsTotal": 64264,
+    "historyId": "41019686"
+  },
+  "labels": [
+    {
+      "id": "CHAT",
+      "name": "CHAT",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelHide",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": null,
+      "sample_emails": []
+    },
+    {
+      "id": "SENT",
+      "name": "SENT",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 2891,
+      "messagesUnread": 0,
+      "threadsTotal": 2535,
+      "threadsUnread": 0,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b7fc9cffc9b46f",
+          "subject": "Switching emails",
+          "from": "Brian Kaplan <kaplan.brian@gmail.com>",
+          "date": "Fri, 2 Jan 2026 11:38:00 -0600"
+        },
+        {
+          "id": "19b6b07fe58ab286",
+          "subject": "Fwd: Order received! Does everything look right?",
+          "from": "kaplan.brian@gmail.com",
+          "date": "Mon, 29 Dec 2025 08:54:04 -0800"
+        },
+        {
+          "id": "19b636411ac79f53",
+          "subject": "Fwd: Payment confirmation",
+          "from": "kaplan.brian@gmail.com",
+          "date": "Sun, 28 Dec 2025 00:17:41 -0500"
+        }
+      ]
+    },
+    {
+      "id": "INBOX",
+      "name": "INBOX",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 379,
+      "messagesUnread": 312,
+      "threadsTotal": 359,
+      "threadsUnread": 294,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b8058f1eeadf83",
+          "subject": "Re: Switching emails",
+          "from": "Scott Siman <Scott@em.co>",
+          "date": "Fri, 2 Jan 2026 20:14:27 +0000"
+        },
+        {
+          "id": "19b78db1976118d0",
+          "subject": "Welcome to your Home Assistant Cloud Trial!",
+          "from": "no-reply@nabucasa.com",
+          "date": "Thu, 1 Jan 2026 09:19:42 +0000"
+        },
+        {
+          "id": "19b78daad7fdde88",
+          "subject": "Verify your Nabu Casa account",
+          "from": "no-reply@nabucasa.com",
+          "date": "Thu, 1 Jan 2026 09:19:15 +0000"
+        }
+      ]
+    },
+    {
+      "id": "IMPORTANT",
+      "name": "IMPORTANT",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 756,
+      "messagesUnread": 148,
+      "threadsTotal": 669,
+      "threadsUnread": 146,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b80832ec7a6a01",
+          "subject": "January 2 Community Update",
+          "from": "JENNIFER ANKNEY <ankneyj@wilsonk12tn.us>",
+          "date": "Fri, 02 Jan 2026 21:00:22 -0000"
+        },
+        {
+          "id": "19b8083279325129",
+          "subject": "Happy New Year!",
+          "from": "Kristyn Bell via ParentSquare <donotreply+128205f4-8bb1-5b36-8d06-0714fe87acfe@parentsquare.com>",
+          "date": "Fri, 02 Jan 2026 21:00:37 +0000 (UTC)"
+        },
+        {
+          "id": "19b806a8f89cfb7a",
+          "subject": "To: Amazon >>>",
+          "from": "An open letter from you -- Distributed via Progressive Turnout Project <admin@e.turnoutpac.org>",
+          "date": "Fri, 2 Jan 2026 20:32:57 +0000 (UTC)"
+        }
+      ]
+    },
+    {
+      "id": "TRASH",
+      "name": "TRASH",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelHide",
+      "messagesTotal": 2710,
+      "messagesUnread": 1997,
+      "threadsTotal": 2679,
+      "threadsUnread": 1983,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b7faeb3f8e03fa",
+          "subject": "Let\u2019s make your next project easier,  together",
+          "from": "Wayfair <noreply@service.wayfair.com>",
+          "date": "Fri, 2 Jan 2026 12:08:33 -0500 (EST)"
+        },
+        {
+          "id": "19b7f79cd9ed5869",
+          "subject": "Kick off 2026 with $70 in savings \ud83d\ude4c",
+          "from": "Fubo <stream@newsletters.fubo.tv>",
+          "date": "Fri, 02 Jan 2026 16:10:45 +0000 (UTC)"
+        },
+        {
+          "id": "19b7f5f329ab1da8",
+          "subject": "This One Image Mistake Slows 90% of Websites",
+          "from": "Sujay from Astra <hello@news.bsf.io>",
+          "date": "Fri, 2 Jan 2026 15:41:43 +0000"
+        }
+      ]
+    },
+    {
+      "id": "DRAFT",
+      "name": "DRAFT",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": null,
+      "sample_emails": []
+    },
+    {
+      "id": "SPAM",
+      "name": "SPAM",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelHide",
+      "messagesTotal": 402,
+      "messagesUnread": 401,
+      "threadsTotal": 388,
+      "threadsUnread": 387,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b8070dac143e19",
+          "subject": "Explore Our Latest Appliances and Savings",
+          "from": "\"DT McCall & Sons\" <info@michaeldblog.com>",
+          "date": "Fri, 02 Jan 2026 20:37:32 +0000"
+        },
+        {
+          "id": "19b8001df584072e",
+          "subject": "Brian Kaplan can obtain funding at lower rates",
+          "from": "Julia Hopper <julia@approvdfundsdirect.com>",
+          "date": "Fri, 02 Jan 2026 16:53:18 +0000"
+        },
+        {
+          "id": "19b7ff1631288819",
+          "subject": "REMINDER: Experience Avis First and Save with this Special Offer.",
+          "from": "Avis <avis@e.avis.com>",
+          "date": "Fri, 02 Jan 2026 12:05:19 -0600"
+        }
+      ]
+    },
+    {
+      "id": "CATEGORY_FORUMS",
+      "name": "CATEGORY_FORUMS",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelHide",
+      "messagesTotal": 547,
+      "messagesUnread": 29,
+      "threadsTotal": 441,
+      "threadsUnread": 16,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b43d01a523a5d1",
+          "subject": "[briankaplan/tallyups] Run failed: .github/workflows/ios-testflight.yml - main (175d732)",
+          "from": "briankaplan <notifications@github.com>",
+          "date": "Sun, 21 Dec 2025 18:07:49 -0800"
+        },
+        {
+          "id": "19afcca4ed517486",
+          "subject": "Secretly filmed",
+          "from": "Jorn from Cellular <team@joincellular.com>",
+          "date": "Mon, 08 Dec 2025 07:08:27 +0000"
+        },
+        {
+          "id": "19acc1d76b6cdbda",
+          "subject": "Give Sparkle another try\u2014$99 for lifetime access",
+          "from": "Sparkle <sparkle@every.to>",
+          "date": "Fri, 28 Nov 2025 20:17:52 +0000 (UTC)"
+        }
+      ]
+    },
+    {
+      "id": "CATEGORY_UPDATES",
+      "name": "CATEGORY_UPDATES",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelHide",
+      "messagesTotal": 29991,
+      "messagesUnread": 3278,
+      "threadsTotal": 28850,
+      "threadsUnread": 3187,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b809d0017e1b8f",
+          "subject": "Ordered: \"SONOFF Zigbee 3.0 USB...\"",
+          "from": "\"Amazon.com\" <auto-confirm@amazon.com>",
+          "date": "Fri, 2 Jan 2026 21:28:51 +0000"
+        },
+        {
+          "id": "19b80832ec7a6a01",
+          "subject": "January 2 Community Update",
+          "from": "JENNIFER ANKNEY <ankneyj@wilsonk12tn.us>",
+          "date": "Fri, 02 Jan 2026 21:00:22 -0000"
+        },
+        {
+          "id": "19b8083279325129",
+          "subject": "Happy New Year!",
+          "from": "Kristyn Bell via ParentSquare <donotreply+128205f4-8bb1-5b36-8d06-0714fe87acfe@parentsquare.com>",
+          "date": "Fri, 02 Jan 2026 21:00:37 +0000 (UTC)"
+        }
+      ]
+    },
+    {
+      "id": "CATEGORY_PERSONAL",
+      "name": "CATEGORY_PERSONAL",
+      "type": "system",
+      "messageListVisibility": null,
+      "labelListVisibility": null,
+      "messagesTotal": 11863,
+      "messagesUnread": 446,
+      "threadsTotal": 7841,
+      "threadsUnread": 249,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b8058f1eeadf83",
+          "subject": "Re: Switching emails",
+          "from": "Scott Siman <Scott@em.co>",
+          "date": "Fri, 2 Jan 2026 20:14:27 +0000"
+        },
+        {
+          "id": "19b7ca609ab4e879",
+          "subject": "New sign-in to your Samsung account",
+          "from": "Samsung account <sa.noreply@samsung-mail.com>",
+          "date": "Fri, 2 Jan 2026 03:00:14 +0000 (UTC)"
+        },
+        {
+          "id": "19b7c7f9979566ac",
+          "subject": "You have granted access to your account",
+          "from": "ecobee <noreply@auth.ecobee.com>",
+          "date": "Fri, 02 Jan 2026 02:18:14 +0000 (UTC)"
+        }
+      ]
+    },
+    {
+      "id": "CATEGORY_PROMOTIONS",
+      "name": "CATEGORY_PROMOTIONS",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelHide",
+      "messagesTotal": 24180,
+      "messagesUnread": 2490,
+      "threadsTotal": 24086,
+      "threadsUnread": 2466,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b809cc83ebbe06",
+          "subject": "Batch 1 Is Almost Sold Out: Join the Mentra Founder\u2019s Club",
+          "from": "Mentra <team@mentraglass.com>",
+          "date": "Fri, 02 Jan 2026 21:28:31 +0000"
+        },
+        {
+          "id": "19b809a9912962a3",
+          "subject": "CRIBS\ud83d\udcc5 \ud83c\udf89 The NEW YEAR SUPER SALE is ON \ud83d\udcc5 \ud83c\udf89",
+          "from": "Wayfair <editor@members.wayfair.com>",
+          "date": "Fri, 2 Jan 2026 16:26:13 -0500 (EST)"
+        },
+        {
+          "id": "19b8084bee36b16b",
+          "subject": "Better fabrics, better habits",
+          "from": "Quince <hello@mail.quince.com>",
+          "date": "Fri, 02 Jan 2026 21:02:20 +0000"
+        }
+      ]
+    },
+    {
+      "id": "CATEGORY_SOCIAL",
+      "name": "CATEGORY_SOCIAL",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelHide",
+      "messagesTotal": 807,
+      "messagesUnread": 24,
+      "threadsTotal": 803,
+      "threadsUnread": 24,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b6c9eb212e02a5",
+          "subject": "Check out what you missed from EM.CO last week",
+          "from": "LinkedIn <messages-noreply@linkedin.com>",
+          "date": "Tue, 30 Dec 2025 00:18:17 +0000 (UTC)"
+        },
+        {
+          "id": "19b6b88b8a50d5fe",
+          "subject": "Brian, your posts got 21 impressions last week",
+          "from": "LinkedIn <notifications-noreply@linkedin.com>",
+          "date": "Mon, 29 Dec 2025 19:14:37 +0000 (UTC)"
+        },
+        {
+          "id": "19b477c257bf9a31",
+          "subject": "Brian, your posts got 64 impressions last week",
+          "from": "LinkedIn <notifications-noreply@linkedin.com>",
+          "date": "Mon, 22 Dec 2025 19:14:33 +0000 (UTC)"
+        }
+      ]
+    },
+    {
+      "id": "YELLOW_STAR",
+      "name": "YELLOW_STAR",
+      "type": "system",
+      "messageListVisibility": null,
+      "labelListVisibility": null,
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "199f759d416d1135",
+          "subject": "Ordered: \"Starfrit Rotato Express...\"",
+          "from": "\"Amazon.com\" <auto-confirm@amazon.com>",
+          "date": "Sat, 18 Oct 2025 12:44:43 +0000"
+        },
+        {
+          "id": "1998be62a29f795b",
+          "subject": "Your receipt from Midjourney Inc #2591-7818-7706",
+          "from": "Midjourney Inc <invoice+statements@midjourney.com>",
+          "date": "Sat, 27 Sep 2025 15:59:00 +0000"
+        },
+        {
+          "id": "195b9f03f520d6fe",
+          "subject": "Your Apple case 102548844748",
+          "from": "Apple Support <ac_customer_relations@apple.com>",
+          "date": "Fri, 21 Mar 2025 18:21:19 +0000 (UTC)"
+        }
+      ]
+    },
+    {
+      "id": "STARRED",
+      "name": "STARRED",
+      "type": "system",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelHide",
+      "messagesTotal": 31,
+      "messagesUnread": 1,
+      "threadsTotal": 27,
+      "threadsUnread": 1,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19a0b09638e65ac7",
+          "subject": "Your receipt from Runway AI, Inc. #2643-1740",
+          "from": "\"Runway AI, Inc.\" <invoice+statements@runwayml.com>",
+          "date": "Wed, 22 Oct 2025 08:29:15 +0000"
+        },
+        {
+          "id": "199f759d416d1135",
+          "subject": "Ordered: \"Starfrit Rotato Express...\"",
+          "from": "\"Amazon.com\" <auto-confirm@amazon.com>",
+          "date": "Sat, 18 Oct 2025 12:44:43 +0000"
+        },
+        {
+          "id": "1998be62a29f795b",
+          "subject": "Your receipt from Midjourney Inc #2591-7818-7706",
+          "from": "Midjourney Inc <invoice+statements@midjourney.com>",
+          "date": "Sat, 27 Sep 2025 15:59:00 +0000"
+        }
+      ]
+    },
+    {
+      "id": "UNREAD",
+      "name": "UNREAD",
+      "type": "system",
+      "messageListVisibility": null,
+      "labelListVisibility": null,
+      "messagesTotal": 6270,
+      "messagesUnread": 6270,
+      "threadsTotal": 5884,
+      "threadsUnread": 5884,
+      "color": null,
+      "sample_emails": [
+        {
+          "id": "19b809d0017e1b8f",
+          "subject": "Ordered: \"SONOFF Zigbee 3.0 USB...\"",
+          "from": "\"Amazon.com\" <auto-confirm@amazon.com>",
+          "date": "Fri, 2 Jan 2026 21:28:51 +0000"
+        },
+        {
+          "id": "19b809cc83ebbe06",
+          "subject": "Batch 1 Is Almost Sold Out: Join the Mentra Founder\u2019s Club",
+          "from": "Mentra <team@mentraglass.com>",
+          "date": "Fri, 02 Jan 2026 21:28:31 +0000"
+        },
+        {
+          "id": "19b809a9912962a3",
+          "subject": "CRIBS\ud83d\udcc5 \ud83c\udf89 The NEW YEAR SUPER SALE is ON \ud83d\udcc5 \ud83c\udf89",
+          "from": "Wayfair <editor@members.wayfair.com>",
+          "date": "Fri, 2 Jan 2026 16:26:13 -0500 (EST)"
+        }
+      ]
+    },
+    {
+      "id": "Label_322",
+      "name": "Receipts",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 1766,
+      "messagesUnread": 494,
+      "threadsTotal": 1405,
+      "threadsUnread": 427,
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#16a765"
+      },
+      "sample_emails": [
+        {
+          "id": "19b809d0017e1b8f",
+          "subject": "Ordered: \"SONOFF Zigbee 3.0 USB...\"",
+          "from": "\"Amazon.com\" <auto-confirm@amazon.com>",
+          "date": "Fri, 2 Jan 2026 21:28:51 +0000"
+        },
+        {
+          "id": "19b808299e4d81a6",
+          "subject": "Oops! Correction: The Final Days to Save on a Membership are Here!",
+          "from": "Adventure Science Center <marketing@adventuresci.org>",
+          "date": "Fri, 02 Jan 2026 21:00:00 -0000"
+        },
+        {
+          "id": "19b806f3d24a6d6f",
+          "subject": "PJ Parties, Winter Camps, & Big Giveaway Tomorrow \ud83d\udc40",
+          "from": "Adventure Science Center <marketing@adventuresci.org>",
+          "date": "Fri, 02 Jan 2026 20:38:51 -0000"
+        }
+      ]
+    },
+    {
+      "id": "Label_323",
+      "name": "Action",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#fb4c2f"
+      },
+      "sample_emails": []
+    },
+    {
+      "id": "Label_324",
+      "name": "Waiting",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#ffad47"
+      },
+      "sample_emails": []
+    },
+    {
+      "id": "Label_325",
+      "name": "Reference",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#4986e7"
+      },
+      "sample_emails": []
+    },
+    {
+      "id": "Label_326",
+      "name": "Newsletters",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 10,
+      "messagesUnread": 3,
+      "threadsTotal": 10,
+      "threadsUnread": 3,
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#b99aff"
+      },
+      "sample_emails": [
+        {
+          "id": "19b35011d5edd8e5",
+          "subject": "\ud83e\uddec Taskade Genesis: App Analytics & Custom Domains",
+          "from": "John at Taskade <updates@taskade.com>",
+          "date": "Fri, 19 Dec 2025 05:07:03 +0000"
+        },
+        {
+          "id": "19b34c55ea37be91",
+          "subject": "Complete your order before we sell out!",
+          "from": "Quince <hello@email.quince.com>",
+          "date": "Fri, 19 Dec 2025 04:01:47 +0000"
+        },
+        {
+          "id": "19b3403e6ebcf46f",
+          "subject": "New | Realism Update with 6 model releases",
+          "from": "Topaz Labs <news@topazlabs.com>",
+          "date": "Fri, 19 Dec 2025 00:30:29 +0000 (UTC)"
+        }
+      ]
+    },
+    {
+      "id": "Label_327",
+      "name": "Notifications",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 103,
+      "messagesUnread": 8,
+      "threadsTotal": 95,
+      "threadsUnread": 8,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#a4c2f4"
+      },
+      "sample_emails": [
+        {
+          "id": "19b8083279325129",
+          "subject": "Happy New Year!",
+          "from": "Kristyn Bell via ParentSquare <donotreply+128205f4-8bb1-5b36-8d06-0714fe87acfe@parentsquare.com>",
+          "date": "Fri, 02 Jan 2026 21:00:37 +0000 (UTC)"
+        },
+        {
+          "id": "19b394796fe607b5",
+          "subject": "Live from Chicago: PBR Action Tonight on Paramount+",
+          "from": "Professional Bull Riders <news@emails.pbr.com>",
+          "date": "20 Dec 2025 01:02:26 -0000"
+        },
+        {
+          "id": "19b39253240610f4",
+          "subject": "Thank you!!!",
+          "from": "Teka Hendrickson via ParentSquare <donotreply+fdb0193b-5556-518e-a67c-093c22c96ef1@parentsquare.com>",
+          "date": "Sat, 20 Dec 2025 00:24:57 +0000 (UTC)"
+        }
+      ]
+    },
+    {
+      "id": "Label_330",
+      "name": "Actioned",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 61,
+      "messagesUnread": 0,
+      "threadsTotal": 61,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#ffc8af"
+      },
+      "sample_emails": [
+        {
+          "id": "19b7fc9cffc9b46f",
+          "subject": "Switching emails",
+          "from": "Brian Kaplan <kaplan.brian@gmail.com>",
+          "date": "Fri, 2 Jan 2026 11:38:00 -0600"
+        },
+        {
+          "id": "19b6b07fe58ab286",
+          "subject": "Fwd: Order received! Does everything look right?",
+          "from": "kaplan.brian@gmail.com",
+          "date": "Mon, 29 Dec 2025 08:54:04 -0800"
+        },
+        {
+          "id": "19b636411ac79f53",
+          "subject": "Fwd: Payment confirmation",
+          "from": "kaplan.brian@gmail.com",
+          "date": "Sun, 28 Dec 2025 00:17:41 -0500"
+        }
+      ]
+    },
+    {
+      "id": "Label_331",
+      "name": "Inbox Zero",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#b3efd3"
+      },
+      "sample_emails": []
+    },
+    {
+      "id": "Label_332",
+      "name": "Inbox Zero/Unsubscribed",
+      "type": "user",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 172,
+      "messagesUnread": 171,
+      "threadsTotal": 171,
+      "threadsUnread": 170,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#f2b2a8"
+      },
+      "sample_emails": [
+        {
+          "id": "19b8060c7c078fe1",
+          "subject": "Why Are Banks Dumping the Dollar?",
+          "from": "The Babylon Bee <editor@babylonbee.com>",
+          "date": "Fri, 2 Jan 2026 15:22:51 -0500 (EST)"
+        },
+        {
+          "id": "19b8044dd1082f41",
+          "subject": "States Move Against CDC Vaccine Recommendation",
+          "from": "Epoch Newsroom <newsletter@theepochtimes.com>",
+          "date": "Fri, 02 Jan 2026 19:52:34 +0000"
+        },
+        {
+          "id": "19b7fe897e7a949e",
+          "subject": "Way-too-early look at 2026 fantasy \ud83d\udc40 \ud83c\udfc8",
+          "from": "Yahoo Fantasy <get-to-the-points@newsletters.yahoo.net>",
+          "date": "02 Jan 2026 18:11:45 -0000"
+        }
+      ]
+    },
+    {
+      "id": "Label_333",
+      "name": "@Action",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 2,
+      "messagesUnread": 1,
+      "threadsTotal": 2,
+      "threadsUnread": 1,
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#fb4c2f"
+      },
+      "sample_emails": [
+        {
+          "id": "19b347bf2ebac40f",
+          "subject": "Your reservation confirmation for Rainforest Cafe - Opry Mills",
+          "from": "\"OpenTable | Rainforest Cafe - Opry Mills Reservations\" <no-reply@opentable.com>",
+          "date": "Fri, 19 Dec 2025 02:41:35 +0000 (UTC)"
+        },
+        {
+          "id": "19b33df5154f635f",
+          "subject": "Brian, please read: We're emailing you about your Chase credit card.",
+          "from": "Chase <Chase@e.chase.com>",
+          "date": "Thu, 18 Dec 2025 23:50:30 +0000"
+        }
+      ]
+    },
+    {
+      "id": "Label_334",
+      "name": "@Waiting",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#ffad47"
+      },
+      "sample_emails": []
+    },
+    {
+      "id": "Label_335",
+      "name": "@Someday",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#b99aff"
+      },
+      "sample_emails": []
+    },
+    {
+      "id": "Label_336",
+      "name": "@Reference",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#a4c2f4"
+      },
+      "sample_emails": []
+    },
+    {
+      "id": "Label_337",
+      "name": "To Reply",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 1,
+      "messagesUnread": 1,
+      "threadsTotal": 1,
+      "threadsUnread": 1,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#b6cff5"
+      },
+      "sample_emails": [
+        {
+          "id": "19b37b941a48ea95",
+          "subject": "JOA Explanation Deck",
+          "from": "Dawn Gates <Dawn@joanofarcmusic.com>",
+          "date": "Fri, 19 Dec 2025 17:47:21 +0000"
+        }
+      ]
+    },
+    {
+      "id": "Label_338",
+      "name": "Awaiting Reply",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 1,
+      "messagesUnread": 0,
+      "threadsTotal": 1,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#b3efd3"
+      },
+      "sample_emails": [
+        {
+          "id": "19b634db82c24020",
+          "subject": "API Access Request - Trimlight Edge Integration (Homebridge/HomeKit)",
+          "from": "Brian Kaplan <kaplan.brian@gmail.com>",
+          "date": "Sat, 27 Dec 2025 22:53:05 -0600"
+        }
+      ]
+    },
+    {
+      "id": "Label_339",
+      "name": "Receipt",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 1,
+      "messagesUnread": 0,
+      "threadsTotal": 1,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#f2b2a8"
+      },
+      "sample_emails": [
+        {
+          "id": "19b6b07edf01dacf",
+          "subject": "Order received! Does everything look right?",
+          "from": "Wayfair <account-updates@wayfair.com>",
+          "date": "Mon, 29 Dec 2025 11:53:59 -0500 (EST)"
+        }
+      ]
+    },
+    {
+      "id": "Label_340",
+      "name": "Notification",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 14,
+      "messagesUnread": 14,
+      "threadsTotal": 13,
+      "threadsUnread": 13,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#ffc8af"
+      },
+      "sample_emails": [
+        {
+          "id": "19b80832ec7a6a01",
+          "subject": "January 2 Community Update",
+          "from": "JENNIFER ANKNEY <ankneyj@wilsonk12tn.us>",
+          "date": "Fri, 02 Jan 2026 21:00:22 -0000"
+        },
+        {
+          "id": "19b7fe766c20b281",
+          "subject": "How was your delivery experience?",
+          "from": "Wayfair <noreply@wayfair.com>",
+          "date": "Fri, 2 Jan 2026 13:10:30 -0500 (EST)"
+        },
+        {
+          "id": "19b7fd1c713f56a1",
+          "subject": "Your order has arrived! See what's inside.",
+          "from": "Wayfair <account-updates@wayfair.com>",
+          "date": "Fri, 2 Jan 2026 12:46:52 -0500 (EST)"
+        }
+      ]
+    },
+    {
+      "id": "Label_341",
+      "name": "Marketing",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 17,
+      "messagesUnread": 17,
+      "threadsTotal": 17,
+      "threadsUnread": 17,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#e3d7ff"
+      },
+      "sample_emails": [
+        {
+          "id": "19b809cc83ebbe06",
+          "subject": "Batch 1 Is Almost Sold Out: Join the Mentra Founder\u2019s Club",
+          "from": "Mentra <team@mentraglass.com>",
+          "date": "Fri, 02 Jan 2026 21:28:31 +0000"
+        },
+        {
+          "id": "19b806a8f89cfb7a",
+          "subject": "To: Amazon >>>",
+          "from": "An open letter from you -- Distributed via Progressive Turnout Project <admin@e.turnoutpac.org>",
+          "date": "Fri, 2 Jan 2026 20:32:57 +0000 (UTC)"
+        },
+        {
+          "id": "19b8025ba1331166",
+          "subject": "Thank you for trusting us with your vision health",
+          "from": "Visionworks <visionworks@c.visionworks.com>",
+          "date": "Fri, 02 Jan 2026 19:18:33 +0000 (UTC)"
+        }
+      ]
+    },
+    {
+      "id": "Label_342",
+      "name": "Newsletter",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 2,
+      "messagesUnread": 2,
+      "threadsTotal": 2,
+      "threadsUnread": 2,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#98d7e4"
+      },
+      "sample_emails": [
+        {
+          "id": "19b7bda0ebe17d13",
+          "subject": "Ref update (Dec 31, 2025)",
+          "from": "Ref <matt@ref.tools>",
+          "date": "Thu,  1 Jan 2026 23:17:13 +0000"
+        },
+        {
+          "id": "19b7ad25241010f2",
+          "subject": "Parents - It Only Takes 5 Minutes",
+          "from": "Soccer Parenting <skye@soccerparenting.com>",
+          "date": "Thu, 1 Jan 2026 18:28:00 +0000 (GMT)"
+        }
+      ]
+    },
+    {
+      "id": "Label_343",
+      "name": "Zero Inbox",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#ffdeb5"
+      },
+      "sample_emails": []
+    },
+    {
+      "id": "Label_344",
+      "name": "Zero Inbox/Promotions",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 3,
+      "messagesUnread": 3,
+      "threadsTotal": 3,
+      "threadsUnread": 3,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#fdedc1"
+      },
+      "sample_emails": [
+        {
+          "id": "19b809a9912962a3",
+          "subject": "CRIBS\ud83d\udcc5 \ud83c\udf89 The NEW YEAR SUPER SALE is ON \ud83d\udcc5 \ud83c\udf89",
+          "from": "Wayfair <editor@members.wayfair.com>",
+          "date": "Fri, 2 Jan 2026 16:26:13 -0500 (EST)"
+        },
+        {
+          "id": "19b8084bee36b16b",
+          "subject": "Better fabrics, better habits",
+          "from": "Quince <hello@mail.quince.com>",
+          "date": "Fri, 02 Jan 2026 21:02:20 +0000"
+        },
+        {
+          "id": "19b7ff7b341ccd1e",
+          "subject": "Final hours: One free month of IMDbPro",
+          "from": "IMDbPro <no-reply@imdbpro.com>",
+          "date": "Fri, 2 Jan 2026 17:19:06 +0000"
+        }
+      ]
+    },
+    {
+      "id": "Label_345",
+      "name": "Zero Inbox/Newsletters",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 0,
+      "messagesUnread": 0,
+      "threadsTotal": 0,
+      "threadsUnread": 0,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#b6cff5"
+      },
+      "sample_emails": []
+    },
+    {
+      "id": "Label_346",
+      "name": "FYI",
+      "type": "user",
+      "messageListVisibility": "show",
+      "labelListVisibility": "labelShow",
+      "messagesTotal": 1,
+      "messagesUnread": 1,
+      "threadsTotal": 1,
+      "threadsUnread": 1,
+      "color": {
+        "textColor": "#000000",
+        "backgroundColor": "#fbd3e0"
+      },
+      "sample_emails": [
+        {
+          "id": "19b8058f1eeadf83",
+          "subject": "Re: Switching emails",
+          "from": "Scott Siman <Scott@em.co>",
+          "date": "Fri, 2 Jan 2026 20:14:27 +0000"
+        }
+      ]
+    }
+  ],
+  "filters": [
+    {
+      "id": "ANe1BmjoeHMAhoYSS71Ym0aDx-giCIOrG-p_EA",
+      "criteria": {
+        "from": "shipment-tracking@amazon.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives amazon emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjNWIv67yv7XUpNmJr5-apIOh4uOtDDOQ",
+      "criteria": {
+        "from": "auto-confirm@amazon.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives amazon emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhrTzTMwt7zXGeQyCtF9gfMGncjyJ-k4A",
+      "criteria": {
+        "from": "digital-no-reply@amazon.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives amazon emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmilIs-EFZTb2P8Ktxmmh6NZimogr8XCRQ",
+      "criteria": {
+        "from": "no_reply@email.apple.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives apple emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmisGG5sY640V3ecBvXJqm8tjH3b7z_j0Q",
+      "criteria": {
+        "from": "googleplay-noreply@google.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives google emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhmY0jNPQ0Cqe9SWjYQ9A_mhRt1vgeS-g",
+      "criteria": {
+        "from": "no-reply@doordash.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives doordash emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhwBE2KoTceoc3_IJw_r1skf-_gQZv1ZA",
+      "criteria": {
+        "from": "uber.eats@uber.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives uber emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjXw83y8Z1kLFJAgc-rzAjH1hJISzZbkw",
+      "criteria": {
+        "from": "receipts@uber.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives uber emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjXCPG44Brs04HeMq9Luq228KuS_0bDdQ",
+      "criteria": {
+        "from": "no-reply@lyftmail.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives lyft emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjV1W5AJTseh2PDLjgLRYRZccIMA6IeNQ",
+      "criteria": {
+        "from": "service@paypal.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives paypal emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjLVb7EV-oDXVc8bTli1n77sQ545ibZuA",
+      "criteria": {
+        "from": "venmo@venmo.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiIf3NdJ1cbE1RI4A83cfz_Sob0L5ezIg",
+      "criteria": {
+        "from": "invoice+statements@mail.anthropic.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhUyMIA4LA-BPULud0SjL-WD43epwlxQQ",
+      "criteria": {
+        "from": "invoice+statements+acct_1hnrvlcjopsrzqsd@stripe.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives stripe emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiOnylcFyZ76pg_t9JBTrfSuPqFsbFNag",
+      "criteria": {
+        "from": "invoice+statements@midjourney.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiRjfSnfmmF3qcFnMQqnbExKBq-wLy0lg",
+      "criteria": {
+        "from": "noreply@notify.cloudflare.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiffLFiAXCKvHzaNG9ZeqF0rSuW3YBQxQ",
+      "criteria": {
+        "from": "cloud-manager-support@mongodb.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiwKA_hdlxlGLfEZSgoLBMgMPEMHJhOIg",
+      "criteria": {
+        "from": "receipts@stripe.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "medium",
+        "notes": [
+          "Removes from inbox (archives)",
+          "Archives stripe emails - receipts may be hidden!"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjJo6YOzU86-rPDrvgHt1lgqW7CirZ8gQ",
+      "criteria": {
+        "from": "donotreply@audible.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhzYIXC9C5-zLSJHvLFHMu-kSximN3hkA",
+      "criteria": {
+        "from": "noreply@order.eventbrite.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmil-5k1b7Ii8TyyR6FAD4l7jCU5tqi0Pw",
+      "criteria": {
+        "from": "bestbuyinfo@emailinfo.bestbuy.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhT09NTstoqbifqEN6ynJYIcV8gQhoHZQ",
+      "criteria": {
+        "from": "email@e.academy.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjvWrhh17H3cBNBkScbAiUan0onT-9GDA",
+      "criteria": {
+        "from": "donotreply@godaddy.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjNJesEf-3x-85gq6WM3tV1J-NhSOI6DA",
+      "criteria": {
+        "from": "cs-noreply@zappos.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmg1Q57R7VEjTulZ17BVx1oO-N2C62F_lw",
+      "criteria": {
+        "from": "no-reply@sonicdrivein.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmg2M7zOUisQAn91gG8dYbPShLmECfGJ9g",
+      "criteria": {
+        "from": "concierge@expensify.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmhp0Cj8ARqKD6dqG7OiMGzJJisNWwx2hQ",
+      "criteria": {
+        "from": "invoice@elementor.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmj-y6WRsopGd43iSUIzDdSlXCGP0D8x2w",
+      "criteria": {
+        "subject": "receipt OR \"order confirmation\" OR invoice"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmh5oByFzRINfyu29TeUWLTXa2Q8VOzItw",
+      "criteria": {
+        "from": "jetblueairways@email.jetblue.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmg_JZHOVjtrCFHNQeNN-UWpIW_Qy7P3vA",
+      "criteria": {
+        "from": "southwestairlines@iluv.southwest.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmg2hdBwDr9EodtDL-yBew-WDYma5Dzk1Q",
+      "criteria": {
+        "from": "southwestairlines@luv.southwest.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmg2yWmrzpSoh1fDJur4XBcdvUl4yWqYOQ",
+      "criteria": {
+        "from": "unitedairlines@united.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmhb6hfh4MH30QqB6-rHFc9dGoy5RPMH4g",
+      "criteria": {
+        "from": "noreply@premiumparking.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjXSomYHp--UklzvVwiowzg43gvq72Aww",
+      "criteria": {
+        "from": "no-reply@spplus.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiMKoEHCR6teyFlxNChxEpnjwKQ8KUJPQ",
+      "criteria": {
+        "from": "postmaster@text2park.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgRSA4sUSJ3wk9WlBnyAibDmyr9QdFV6Q",
+      "criteria": {
+        "from": "noreply@alerts.parkmobile.io"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmjm7ban4hF6fSB1RVg4H31O1OJ7Fl36OA",
+      "criteria": {
+        "from": "help@hoteltonight.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhN5zSrVsE0t1Cef1XhQmELYRukqWZIgQ",
+      "criteria": {
+        "from": "noreply@h6.hilton.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmj54qOD4EtkSX3XqlxEGDiDOw4E5vtbrQ",
+      "criteria": {
+        "from": "reservations@res-marriott.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgRFcOC6Xyof-8oC8UjsNaA0MbNwOCkZw",
+      "criteria": {
+        "from": "reservations@nationalcar.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmh5lMyGL2GxkdYO8SKm6x8u7JBbm4TXaQ",
+      "criteria": {
+        "from": "avis@e.avis.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjweVuLdJcJkIKpWh0Nw9wAdWIQMHFOTg",
+      "criteria": {
+        "from": "receipts@messaging.squareup.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjJGo_6VYkdkcjMt1S9IVvrmjV4An6f-g",
+      "criteria": {
+        "from": "one@chick-fil-a.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmggPyc66k_bb5J45U6FY0uaT7aSlILSmA",
+      "criteria": {
+        "from": "one@email.chick-fil-a.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjRbq9ImLAUZbuQUs7_xo7fYawAiDoYkQ",
+      "criteria": {
+        "from": "no-reply@spotify.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhotfzGy51dbunxaRizDkkJy2gI8pOJKQ",
+      "criteria": {
+        "from": "info@account.netflix.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhRKVBchhqZqqAaFiFW4815KVBLvm5PgA",
+      "criteria": {
+        "from": "attuverse@e.online.att-mail.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmimoOAhvaFRSvfmYmAgHrsnH2v6qUm-6g",
+      "criteria": {
+        "from": "update@emailff.att-mail.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmg__0ESHp1nFDLHJzBYo0_4_AsSz65Tqw",
+      "criteria": {
+        "from": "vzwmail@ecrmemail.verizonwireless.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmhe4WC7TmvRv76mmJevPnkMnouwPp1SQQ",
+      "criteria": {
+        "from": "communications@em.aetna.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgS-iM5UNFequvFlkvGtZJTp5cAe5BH7Q",
+      "criteria": {
+        "from": "walgreens@eml.walgreens.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhkDyj484EiqHw8DqW9HRFVtJWeniTq9A",
+      "criteria": {
+        "from": "lowes@e.lowes.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmirpQrTku13UBp8XOxhMVNFCvmD2bRRhg",
+      "criteria": {
+        "from": "service@wayfair.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgWFubmEdk3W4cP2586dkk9F1FL92J9Kw",
+      "criteria": {
+        "from": "help@walmart.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgjrqU4xdyUWkjuo19SgweCRw3Ca2OT3Q",
+      "criteria": {
+        "from": "orders@oe.target.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiJeB_yqGq8BeormpekvUQ-IUcaA1mPtQ",
+      "criteria": {
+        "from": "homedepot@order.homedepot.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmggApSTlGxIcTw2uY7bMG9J0L77DkcyVg",
+      "criteria": {
+        "from": "mcdonalds"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmi48MqOJI0EzOK0t4TiDVPUwpk4xIXLlQ",
+      "criteria": {
+        "from": "kiafinanceamerica"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmga9m2WMh_IQS1OdSmthwFA2NKmJkiFbg",
+      "criteria": {
+        "from": "noreply@speedpay.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmiy1c-p9ZHSkzBYfLbcJxY2B6prbcCGgQ",
+      "criteria": {
+        "from": "adventuresci"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmgo6teNVYyn8AZDGmRvbFzTBtdjNqLZPw",
+      "criteria": {
+        "from": "playstation"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgKf6VBhjrYWXvVUeUVTewH9imI7RASew",
+      "criteria": {
+        "from": "spothero"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjMYjR_ju5Gy4ebOk4Ofx-t6gNj-SrzbQ",
+      "criteria": {
+        "from": "ticketmaster"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjpObli9G7J5tpb3YH-lf30VcRkUnwUeA",
+      "criteria": {
+        "from": "axs.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiB8QOuvs4-boYLRL7iSpGy9lxjLsNf5g",
+      "criteria": {
+        "from": "seatgeek"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmg5EWedDIR0OKXvEtxkQWZBy6CBCdsiZQ",
+      "criteria": {
+        "from": "stubhub"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmjwk4UpLLJU8zkycpm69A-r14KifvqAhA",
+      "criteria": {
+        "from": "livenation"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgiEFzlx5sdhSRLoj1E8ARkQKQZp7iM9w",
+      "criteria": {
+        "from": "fandango"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhXAm4r6AI1_bjEhemXHEVYQzfoqtNeSQ",
+      "criteria": {
+        "from": "amctheatres"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiLLLW10ue06I22ymAtGnymMpXBqH9yyg",
+      "criteria": {
+        "from": "regalcinemas"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjIriBUrvNhCt6FKqoqst6Cie-ffte4Og",
+      "criteria": {
+        "from": "grubhub"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgzXYdla0jE3DaBYjD1cL-lrsZ4G453Bw",
+      "criteria": {
+        "from": "postmates"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgqaJ-izLr4nIJF-UAyMbl1yWseJxO2Bg",
+      "criteria": {
+        "from": "instacart"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhtSmMDML4_S--ZroQPYYXV_bVSS_cOjA",
+      "criteria": {
+        "from": "shipt"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmhy_ekS8qwh-fYpkZSBtYtb6ufCMLIHXA",
+      "criteria": {
+        "from": "cvs.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmg1nh23ysaUO-ZRmZfUKQ7K9qiAk8m_1g",
+      "criteria": {
+        "from": "costco.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmj3JhvEiv0W7wNEpmp90H5Bj7KAedCelQ",
+      "criteria": {
+        "from": "southwest.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgAkoKGvndtcYGkTgCwW2wxH9KJd1-ZHg",
+      "criteria": {
+        "from": "delta.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhL0MCLSjqyXbY0YHd1-N3SKBG719H9rQ",
+      "criteria": {
+        "from": "aa.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiWRHGeyR35tt_Q8GwyM3gjMonGFrI59w",
+      "criteria": {
+        "from": "hcahealthcare"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmidJi4S9x1CJtZiAaati6zpuZTjaC8Ahg",
+      "criteria": {
+        "from": "valant.io"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_327"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmiG-fm_tugMivzxHUTi889occx9FDA1IQ",
+      "criteria": {
+        "from": "pbr.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_327"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgiWNFlHfG0nMIr7XmCKGxDPuT45eSvNA",
+      "criteria": {
+        "from": "choicehotels"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmjP77p59FzYRx6UKi5VpVZlSiect6ZVHw",
+      "criteria": {
+        "from": "cowboychannel"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_322"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhGUao_dKaZjvPTDDkYjtGf8x3ls-fCPQ",
+      "criteria": {
+        "from": "mtjulietdental"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_327"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmirSbHc_CkwrsJCcZu-y9FGU6Fd9gcSmQ",
+      "criteria": {
+        "from": "philips"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_327"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmgKXFtsjVm8ZNLwwhhT8_qlqhT9IKG-GA",
+      "criteria": {
+        "from": "parentlink",
+        "subject": "Progress Report"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_327"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1Bmig18oE_ffCqQdafkCGGCM6sULiWrlLGg",
+      "criteria": {
+        "from": "parentsquare.com"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_327"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    },
+    {
+      "id": "ANe1BmhGfHVvhvOy6oLi0dlLIlMYnWYP00B8-g",
+      "criteria": {
+        "from": "rutland",
+        "subject": "PTO"
+      },
+      "action": {
+        "addLabelIds": [
+          "Label_327"
+        ],
+        "removeLabelIds": [
+          "INBOX"
+        ]
+      },
+      "analysis": {
+        "type": "archive",
+        "risk_level": "low",
+        "notes": [
+          "Removes from inbox (archives)"
+        ]
+      }
+    }
+  ],
+  "statistics": {
+    "inbox": 201,
+    "sent": 201,
+    "drafts": 0,
+    "spam": 201,
+    "trash": 201,
+    "starred": 201,
+    "unread": 201,
+    "archived": 201,
+    "has_attachment": 201,
+    "from_amazon": 201,
+    "from_apple": 201,
+    "from_google": 201,
+    "from_paypal": 201,
+    "from_stripe": 201,
+    "receipts_label": 201
+  }
+}

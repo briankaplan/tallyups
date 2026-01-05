@@ -234,6 +234,46 @@ input:focus-visible {
   animation: shimmer 1.5s infinite;
 }
 
+/* Receipt placeholder (when image fails to load or doesn't exist) */
+.receipt-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+  border-radius: inherit;
+}
+
+.receipt-placeholder svg {
+  opacity: 0.4;
+  color: var(--text-secondary);
+}
+
+.receipt-thumb.no-image {
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+}
+
+.receipt-thumb.no-image .receipt-placeholder {
+  display: flex;
+}
+
+/* List view placeholder */
+.list-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+  border-radius: inherit;
+}
+
+.list-placeholder svg {
+  opacity: 0.4;
+  color: var(--text-secondary);
+}
+
 /* ============================================
    Search Enhancements
    ============================================ */

@@ -48,6 +48,8 @@ struct ScannerView: View {
                     Button(action: { showingHistory = true }) {
                         Image(systemName: "clock.arrow.circlepath")
                     }
+                    .accessibilityLabel("Scan History")
+                    .accessibilityHint("View your recent receipt scans")
                 }
             }
             .sheet(isPresented: $showingHistory) {
@@ -144,6 +146,9 @@ struct ScannerView: View {
                 .background(Color.tallyCard)
                 .cornerRadius(16)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Scan Document")
+            .accessibilityHint("Opens document scanner with automatic edge detection for receipts")
 
             HStack(spacing: 16) {
                 // Quick Photo - Full Screen Scanner
@@ -160,6 +165,8 @@ struct ScannerView: View {
                     .background(Color.tallyCard)
                     .cornerRadius(16)
                 }
+                .accessibilityLabel("Quick Photo")
+                .accessibilityHint("Opens full screen camera for quick receipt capture")
 
                 // From Library
                 Button(action: { showingPhotosPicker = true }) {
@@ -175,6 +182,8 @@ struct ScannerView: View {
                     .background(Color.tallyCard)
                     .cornerRadius(16)
                 }
+                .accessibilityLabel("From Photos")
+                .accessibilityHint("Select receipts from your photo library. You can select up to 10 images.")
             }
         }
     }
@@ -203,6 +212,8 @@ struct ScannerView: View {
                                 .background(Color.tallyCard)
                                 .cornerRadius(20)
                         }
+                        .accessibilityLabel("Quick scan for \(merchant)")
+                        .accessibilityHint("Opens camera with \(merchant) pre-selected as merchant")
                     }
                 }
             }
@@ -216,9 +227,11 @@ struct ScannerView: View {
             if uploadQueue.isUploading {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle(tint: .tallyAccent))
+                    .accessibilityLabel("Uploading")
             } else {
                 Image(systemName: "arrow.up.circle.fill")
                     .foregroundColor(.orange)
+                    .accessibilityHidden(true)
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -243,6 +256,23 @@ struct ScannerView: View {
         .padding()
         .background(Color.tallyCard)
         .cornerRadius(12)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(pendingQueueAccessibilityLabel)
+    }
+
+    private var pendingQueueAccessibilityLabel: String {
+        var label = "\(uploadQueue.pendingCount) receipt\(uploadQueue.pendingCount == 1 ? "" : "s") pending upload"
+        if uploadQueue.isUploading {
+            if let progress = uploadQueue.currentProgress {
+                label += ". Uploading, \(Int(progress * 100)) percent complete"
+            } else {
+                label += ". Uploading"
+            }
+        }
+        if !NetworkMonitor.shared.isConnected {
+            label += ". Waiting for network connection"
+        }
+        return label
     }
 
     // MARK: - Image Handling
@@ -360,6 +390,7 @@ struct StatCard: View {
             Image(systemName: icon)
                 .font(.title2)
                 .foregroundColor(color)
+                .accessibilityHidden(true)
 
             Text(value)
                 .font(.title.bold())
@@ -373,6 +404,8 @@ struct StatCard: View {
         .padding(.vertical, 16)
         .background(Color.tallyCard)
         .cornerRadius(12)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 }
 
