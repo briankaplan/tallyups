@@ -2276,7 +2276,7 @@ def extract_receipt_with_vision(path: Path) -> dict | None:
         return None
 
     prompt = """
-You are a world-class receipt parser for Brian Kaplan.
+You are a world-class receipt parser.
 
 Look at the receipt image and extract:
 - merchant_name: the business or venue name (normalized and human-readable)
@@ -13259,7 +13259,7 @@ If you cannot extract a field with confidence, set it to null."""
 # GEMINI AI CATEGORIZATION & NOTE GENERATION
 # =============================================================================
 
-# Valid expense categories for Brian Kaplan's businesses
+# Valid expense categories for business expense tracking
 EXPENSE_CATEGORIES = [
     "Meals & Entertainment",
     "Travel - Airfare",
@@ -13282,7 +13282,7 @@ EXPENSE_CATEGORIES = [
     "Miscellaneous Business Expense"
 ]
 
-# Business types for Brian's companies
+# Available business types for expense categorization
 BUSINESS_TYPES = [
     "Business",           # Music/Entertainment business (artist management, publishing)
     "Secondary",    # Event business (concerts, rodeos)
@@ -13374,7 +13374,7 @@ def gemini_categorize_transaction(merchant: str, amount: float, date: str = "", 
             pass
 
     try:
-        prompt = f"""You are an expense categorization expert for Brian Kaplan, a Nashville music industry executive.
+        prompt = f"""You are an expense categorization expert.
 
 TRANSACTION:
 - Merchant: {merchant}
@@ -13382,21 +13382,14 @@ TRANSACTION:
 - Date: {date}
 - Existing Category Hint: {category_hint or "None"}{merchant_context}{attendees_context}{calendar_context}
 
-BRIAN'S BUSINESSES:
-- "Business" - Music/entertainment company (artist management, production, publishing)
-- "Secondary" - Event production company (concerts, festivals)
-- "Compass RE" - Real estate business
-- "1099 Contractor" - Freelance consulting work
-- "Personal" - Personal expenses
+BUSINESS TYPES AVAILABLE:
+{chr(10).join(f'- {bt}' for bt in BUSINESS_TYPES)}
 
 KNOWN MERCHANT INTELLIGENCE:
-- Soho House / SH Nashville → Members club, always business meals with industry contacts
 - Anthropic / Claude AI → AI tool subscription for business productivity
-- Apple One / apple.com/bill → Business software/services subscription
-- CLEAR → Airport security for business travel
-- IMDbPro → Industry research subscription
-- Expensify → Business expense software
-- Cursor AI → Developer tools subscription
+- Apple One / apple.com/bill → Software/services subscription
+- CLEAR → Airport security for travel
+- Software/SaaS subscriptions → Business software
 
 CATEGORY (pick one):
 {chr(10).join(f'- {cat}' for cat in EXPENSE_CATEGORIES)}
@@ -13405,15 +13398,13 @@ BUSINESS TYPE (pick one):
 {chr(10).join(f'- {bt}' for bt in BUSINESS_TYPES)}
 
 CATEGORIZATION RULES:
-1. Restaurants in Nashville → "Meals & Entertainment" + "Business" (client/artist meetings)
-2. Airlines → "Travel - Airfare" (check calendar for destination context)
+1. Restaurants → "Meals & Entertainment"
+2. Airlines → "Travel - Airfare"
 3. Hotels → "Travel - Hotel"
 4. Uber/Lyft → "Travel - Ground Transportation"
-5. Software/AI/SaaS subscriptions → "Software & Subscriptions" + "Business"
-6. Parking near downtown Nashville → Probably "Business" meeting
-7. If calendar shows MCR event near date → "Secondary"
-8. Amazon under $100 → Likely "Office Supplies"
-9. Amazon over $500 → Likely "Equipment & Hardware"
+5. Software/AI/SaaS subscriptions → "Software & Subscriptions"
+6. Amazon under $100 → Likely "Office Supplies"
+7. Amazon over $500 → Likely "Equipment & Hardware"
 
 Return ONLY valid JSON:
 {{"category": "...", "business_type": "...", "confidence": 0-100, "reasoning": "brief explanation"}}"""
@@ -13626,8 +13617,7 @@ def gemini_generate_ai_note(merchant: str, amount: float, date: str = "", catego
             pass
 
     try:
-        prompt = f"""You are Brian Kaplan's executive assistant writing expense notes for IRS tax documentation.
-Brian is a Nashville music industry executive running Business (artist management/publishing) and Secondary (event production).
+        prompt = f"""You are an executive assistant writing expense notes for IRS tax documentation.
 
 TRANSACTION:
 - Merchant: {merchant}
@@ -13636,34 +13626,23 @@ TRANSACTION:
 - Category: {category or "Unknown"}
 - Business: {business_type or "Business"}{merchant_context}{attendees_context}{calendar_context}{ocr_context}{payment_recipient_context}
 
-BRIAN'S KEY CONTACTS (use when relevant):
-- Business Team: Jason Ross (GM), Tim Staples, Joel Bergvall, Kevin Sabbe, Andrew Cohen
-- MCR Team: Patrick Humes, Barry Stephenson
-- Industry Execs: Scott Siman, Cindy Mabe, Ken Robold, Ben Kline
-- Artists: Morgan Wade, Jelly Roll, Wynonna, and other roster artists
-
-KNOWN VENUES:
-- Soho House / SH Nashville = Members-only club for industry networking and artist meetings
-- 12 South Taproom = Nashville restaurant for team lunches
-- Corner Pub = Casual industry meeting spot
-
 CRITICAL REQUIREMENTS - Your note MUST:
 1. Be SPECIFIC enough to satisfy an IRS auditor asking "What was this for?"
 2. If Receipt OCR data is provided, USE THE ACTUAL PRODUCT NAMES (e.g., "USB-C to MagSafe 3 Cable" not "Apple purchase")
 3. Name WHO was there when known (from calendar/attendees context)
-4. State WHAT was discussed or the PURPOSE (artist deals, release strategy, contracts, etc.)
+4. State WHAT was discussed or the PURPOSE when known
 5. For travel: specify DESTINATION and REASON (event name, meeting purpose)
 6. For subscriptions: explain SPECIFIC business use (not just "for business")
 7. For payments to people (Venmo/Zelle): include the recipient name and purpose
 8. NEVER use vague phrases like "business expense", "client meeting", or "various business purposes"
 
 EXCELLENT NOTES (be this specific):
-- "USB-C to MagSafe 3 Cable (2m) for MacBook Pro charging - artist production travel gear"
-- "Artist development dinner at Soho House with Jason Ross - discussed Morgan Wade European tour logistics and Q1 release schedule"
-- "Delta flight to Los Angeles for Grammy week: artist showcase at The Troubadour and UMG label meetings"
-- "Claude AI monthly subscription - used for contract draft review, press release writing, and tour routing analysis"
-- "Venmo payment to Brandon Schaffner for taxi/rideshare during Las Vegas NFR production trip"
-- "Team lunch at 12 South Taproom with Joel Bergvall and Kevin Sabbe - Q4 budget review and artist roster planning"
+- "USB-C to MagSafe 3 Cable (2m) for MacBook Pro charging - production travel gear"
+- "Client development dinner - discussed project logistics and Q1 schedule"
+- "Delta flight to Los Angeles for industry event and partner meetings"
+- "Claude AI monthly subscription - used for contract review, document drafting, and business analysis"
+- "Venmo payment to contractor for rideshare during business trip"
+- "Team lunch - quarterly budget review and planning session"
 
 BAD NOTES (NEVER write these - too vague):
 - "Business expense" / "Business meal"
@@ -17072,12 +17051,20 @@ def gmail_status():
         Path('../Task/receipt-system/gmail_tokens'),
     ]
 
-    # Legacy hardcoded accounts (for admin/backwards compatibility)
-    LEGACY_ACCOUNTS = [
-        {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json'},
-        {'email': 'brian@downhome.com', 'token_file': 'tokens_brian_downhome_com.json'},
-        {'email': 'brian@musiccityrodeo.com', 'token_file': 'tokens_brian_musiccityrodeo_com.json'},
-    ]
+    # Legacy accounts loaded from database (no hardcoded emails)
+    LEGACY_ACCOUNTS = []
+    try:
+        conn_legacy, db_type_legacy = get_db_connection()
+        cursor_legacy = db_execute(conn_legacy, db_type_legacy, '''
+            SELECT account_email FROM oauth_tokens ORDER BY account_email
+        ''')
+        for row in cursor_legacy.fetchall():
+            email = row['account_email']
+            token_file = f"tokens_{email.replace('@', '_').replace('.', '_')}.json"
+            LEGACY_ACCOUNTS.append({'email': email, 'token_file': token_file})
+        return_db_connection(conn_legacy)
+    except Exception as e:
+        logger.warning(f"Could not load legacy Gmail accounts from DB: {e}")
 
     accounts_to_check = []
 
@@ -17362,11 +17349,51 @@ def gmail_refresh_all():
 # OAuth state storage (in-memory for simplicity, use Redis/DB for production)
 _oauth_states = {}
 
-GMAIL_ACCOUNTS = {
-    'kaplan.brian@gmail.com': {'token_file': 'tokens_kaplan_brian_gmail_com.json', 'name': 'Personal', 'business_type': 'Personal'},
-    'brian@downhome.com': {'token_file': 'tokens_brian_downhome_com.json', 'name': 'Down Home', 'business_type': 'Down Home'},
-    'brian@musiccityrodeo.com': {'token_file': 'tokens_brian_musiccityrodeo_com.json', 'name': 'Music City Rodeo', 'business_type': 'Music City Rodeo'},
-}
+def get_gmail_accounts_from_db():
+    """Load Gmail accounts dynamically from database - no hardcoded emails."""
+    accounts = {}
+    try:
+        conn, db_type = get_db_connection()
+        cursor = db_execute(conn, db_type, '''
+            SELECT account_email, token_data FROM oauth_tokens
+            ORDER BY account_email
+        ''')
+        rows = cursor.fetchall()
+        return_db_connection(conn)
+
+        for row in rows:
+            email = row['account_email']
+            token_file = f"tokens_{email.replace('@', '_').replace('.', '_')}.json"
+            # Derive business type from email domain
+            if 'downhome' in email.lower():
+                business_type = 'Down Home'
+                name = 'Down Home'
+            elif 'musiccityrodeo' in email.lower():
+                business_type = 'Music City Rodeo'
+                name = 'Music City Rodeo'
+            else:
+                business_type = 'Personal'
+                name = 'Personal'
+
+            accounts[email] = {
+                'token_file': token_file,
+                'name': name,
+                'business_type': business_type
+            }
+    except Exception as e:
+        logger.warning(f"Could not load Gmail accounts from DB: {e}")
+
+    return accounts
+
+# Gmail accounts loaded dynamically from database
+GMAIL_ACCOUNTS = {}  # Will be populated on first use
+
+def get_configured_gmail_accounts():
+    """Get Gmail accounts - loads from DB if empty."""
+    global GMAIL_ACCOUNTS
+    if not GMAIL_ACCOUNTS:
+        GMAIL_ACCOUNTS = get_gmail_accounts_from_db()
+    return GMAIL_ACCOUNTS
 
 GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
@@ -18296,7 +18323,7 @@ def get_gmail_service_for_account(account_email):
     creds = None
 
     # 1. First try environment variables (GMAIL_TOKEN_*)
-    # Convert email to env var format: brian@downhome.com -> GMAIL_TOKEN_brian_downhome_com
+    # Convert email to env var format: user@example.com -> GMAIL_TOKEN_user_example_com
     env_key = 'GMAIL_TOKEN_' + account_email.replace('@', '_').replace('.', '_')
     env_token = os.environ.get(env_key)
     if env_token:
@@ -18366,7 +18393,9 @@ def get_gmail_service_for_account(account_email):
 @login_required
 def gmail_top_senders():
     """Get top email senders by volume for cleanup analysis."""
-    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+    account_email = request.args.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
     days = int(request.args.get('days', 30))
     limit = int(request.args.get('limit', 50))
 
@@ -18447,7 +18476,9 @@ def gmail_top_senders():
 def gmail_bulk_delete():
     """Bulk delete emails from a sender or matching a query."""
     data = request.get_json() or {}
-    account_email = data.get('account', 'kaplan.brian@gmail.com')
+    account_email = data.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
     sender = data.get('sender')
     query = data.get('query')
     trash = data.get('trash', True)
@@ -18504,7 +18535,9 @@ def gmail_bulk_delete():
 def gmail_unsubscribe():
     """Create a filter to auto-delete future emails from a sender."""
     data = request.get_json() or {}
-    account_email = data.get('account', 'kaplan.brian@gmail.com')
+    account_email = data.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
     sender = data.get('sender')
     action = data.get('action', 'delete')
 
@@ -18539,7 +18572,9 @@ def gmail_unsubscribe():
 @login_required
 def gmail_list_filters():
     """List all Gmail filters."""
-    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+    account_email = request.args.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
 
     try:
         service = get_gmail_service_for_account(account_email)
@@ -18574,7 +18609,9 @@ def gmail_list_filters():
 @login_required
 def gmail_delete_filter(filter_id):
     """Delete a Gmail filter."""
-    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+    account_email = request.args.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
 
     try:
         service = get_gmail_service_for_account(account_email)
@@ -18593,7 +18630,9 @@ def gmail_delete_filter(filter_id):
 @login_required
 def gmail_list_labels():
     """List all Gmail labels with message counts."""
-    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+    account_email = request.args.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
 
     try:
         service = get_gmail_service_for_account(account_email)
@@ -18628,7 +18667,9 @@ def gmail_list_labels():
 def gmail_create_label():
     """Create a new Gmail label."""
     data = request.get_json() or {}
-    account_email = data.get('account', 'kaplan.brian@gmail.com')
+    account_email = data.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
     label_name = data.get('name')
 
     if not label_name:
@@ -18657,7 +18698,9 @@ def gmail_create_label():
 @login_required
 def gmail_delete_label(label_id):
     """Delete a Gmail label."""
-    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+    account_email = request.args.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
 
     try:
         service = get_gmail_service_for_account(account_email)
@@ -18675,7 +18718,9 @@ def gmail_delete_label(label_id):
 @login_required
 def gmail_inbox_stats():
     """Get inbox statistics for cleanup dashboard."""
-    account_email = request.args.get('account', 'kaplan.brian@gmail.com')
+    account_email = request.args.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
 
     try:
         service = get_gmail_service_for_account(account_email)
@@ -18720,7 +18765,9 @@ def gmail_inbox_stats():
 def gmail_quick_clean():
     """One-click cleanup for common spam patterns."""
     data = request.get_json() or {}
-    account_email = data.get('account', 'kaplan.brian@gmail.com')
+    account_email = data.get('account')
+    if not account_email:
+        return jsonify({'ok': False, 'error': 'Account email required'}), 400
     clean_type = data.get('type', 'promotions')
     days_old = data.get('days', 7)
 
@@ -24813,7 +24860,9 @@ def refetch_gmail_dates():
         # Group by gmail_account to minimize service creation
         by_account = {}
         for row in rows:
-            account = row.get('gmail_account', 'kaplan.brian@gmail.com')
+            account = row.get('gmail_account')
+            if not account:
+                continue  # Skip rows without gmail_account
             if account not in by_account:
                 by_account[account] = []
             by_account[account].append(row)
@@ -25096,7 +25145,7 @@ def scan_incoming_receipts():
 
     Body (optional):
     {
-        "accounts": ["kaplan.brian@gmail.com"],  // specific accounts, or leave empty for all
+        "accounts": [],  // specific account emails, or leave empty for all user accounts
         "since_date": "2024-09-01",  // optional date filter
         "auto_match": true,  // automatically match receipts after scanning (default: true)
         "use_intelligent": true  // use intelligent whitelist scanner (default: true)
@@ -25123,12 +25172,17 @@ def scan_incoming_receipts():
         since_date = data.get('since_date')
         use_intelligent = data.get('use_intelligent', True)
 
-        # Default accounts
-        all_accounts = [
-            'kaplan.brian@gmail.com',
-            'brian@business.com',
-            'brian@secondary.com'
-        ]
+        # Default accounts - load from database
+        all_accounts = []
+        try:
+            conn_accounts, db_type_accounts = get_db_connection()
+            cursor_accounts = db_execute(conn_accounts, db_type_accounts, '''
+                SELECT account_email FROM oauth_tokens ORDER BY account_email
+            ''')
+            all_accounts = [row['account_email'] for row in cursor_accounts.fetchall()]
+            return_db_connection(conn_accounts)
+        except Exception as e:
+            logger.warning(f"Could not load Gmail accounts from DB: {e}")
 
         # Use specific accounts if provided, otherwise all
         accounts_to_scan = specific_accounts if specific_accounts else all_accounts

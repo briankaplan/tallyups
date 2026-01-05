@@ -3,7 +3,7 @@
 Gmail Receipt Extraction Service
 
 Multi-account Gmail receipt extraction service
-- Connect to 3 Gmail accounts (brian@business.com, kaplan.brian@gmail.com, brian@secondary.com)
+- Connect to user's Gmail accounts (loaded from database)
 - Search for receipt emails
 - Extract merchant, amount, date, order number
 - Save to SQLite database + R2 storage
@@ -41,24 +41,40 @@ except ImportError:
 # Gmail API scopes
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
-# Gmail accounts to monitor
-GMAIL_ACCOUNTS = {
-    'kaplan.brian@gmail.com': {
-        'credentials_path': os.getenv('GMAIL_CREDENTIALS_PERSONAL', 'receipt-system/config/credentials.json'),
-        'token_path': os.getenv('GMAIL_TOKEN_PERSONAL', 'receipt-system/gmail_tokens/tokens_kaplan_brian_gmail_com.json'),
-        'business_type': 'Personal'
-    },
-    'brian@downhome.com': {
-        'credentials_path': os.getenv('GMAIL_CREDENTIALS_DOWNHOME', 'receipt-system/config/credentials.json'),
-        'token_path': os.getenv('GMAIL_TOKEN_DOWNHOME', 'receipt-system/gmail_tokens/tokens_brian_downhome_com.json'),
-        'business_type': 'Down Home'
-    },
-    'brian@musiccityrodeo.com': {
-        'credentials_path': os.getenv('GMAIL_CREDENTIALS_MCR', 'receipt-system/config/credentials.json'),
-        'token_path': os.getenv('GMAIL_TOKEN_MCR', 'receipt-system/gmail_tokens/tokens_brian_musiccityrodeo_com.json'),
-        'business_type': 'Music City Rodeo'
-    }
-}
+# Gmail accounts loaded from database - no hardcoded emails
+def get_gmail_accounts():
+    """Load Gmail accounts from database dynamically."""
+    accounts = {}
+    try:
+        import json
+        from db_mysql import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT account_email, token_data FROM oauth_tokens")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        for row in rows:
+            email = row['account_email']
+            token_file = f"tokens_{email.replace('@', '_').replace('.', '_')}.json"
+            # Derive business type from domain
+            if 'downhome' in email.lower():
+                btype = 'Down Home'
+            elif 'musiccityrodeo' in email.lower():
+                btype = 'Music City Rodeo'
+            else:
+                btype = 'Personal'
+            
+            accounts[email] = {
+                'credentials_path': os.getenv('GOOGLE_CREDENTIALS_PATH', 'config/credentials.json'),
+                'token_path': f'gmail_tokens/{token_file}',
+                'business_type': btype
+            }
+    except Exception as e:
+        print(f"Could not load Gmail accounts from DB: {e}")
+    return accounts
+
+GMAIL_ACCOUNTS = {}  # Loaded dynamically from database via get_gmail_accounts()
 
 # Receipt email patterns (common receipt senders)
 RECEIPT_PATTERNS = [

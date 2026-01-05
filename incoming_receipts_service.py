@@ -1240,9 +1240,18 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
     if subject_lower.startswith('re:') or subject_lower.startswith('fwd:'):
         return 0
 
-    # 2. Internal emails from yourself
-    if any(x in from_email for x in ['kaplan.brian@gmail.com', 'brian@downhome.com', 'brian@musiccityrodeo.com']):
-        return 0
+    # 2. Internal emails from yourself - load accounts from database
+    try:
+        from db_mysql import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT account_email FROM oauth_tokens")
+        user_accounts = [row['account_email'] for row in cursor.fetchall()]
+        conn.close()
+        if any(x in from_email for x in user_accounts):
+            return 0
+    except:
+        pass  # Skip check if DB unavailable
 
     # 3. Generic vague subjects
     if subject_lower in ['account payment', 'payment', 'notification', 'update', 'message', 'alert']:
@@ -3393,11 +3402,17 @@ def run_intelligent_scan(accounts=None, since_date=None, save=True):
         Dict with scan results
     """
     if accounts is None:
-        accounts = [
-            'kaplan.brian@gmail.com',
-            'brian@downhome.com',
-            'brian@musiccityrodeo.com'
-        ]
+        # Load accounts from database - no hardcoded emails
+        accounts = []
+        try:
+            from db_mysql import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT account_email FROM oauth_tokens ORDER BY account_email")
+            accounts = [row['account_email'] for row in cursor.fetchall()]
+            conn.close()
+        except Exception as e:
+            print(f"Could not load accounts from database: {e}")
 
     print("\n" + "="*60)
     print("🧠 INTELLIGENT RECEIPT SCANNER V2")
@@ -3449,12 +3464,17 @@ if __name__ == '__main__':
         # Initialize database
         init_incoming_receipts_table()
 
-    # Scan all Gmail accounts
-    accounts = [
-        'kaplan.brian@gmail.com',
-        'brian@downhome.com',
-        'brian@musiccityrodeo.com'
-    ]
+    # Scan all Gmail accounts - load from database
+    accounts = []
+    try:
+        from db_mysql import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT account_email FROM oauth_tokens ORDER BY account_email")
+        accounts = [row['account_email'] for row in cursor.fetchall()]
+        conn.close()
+    except Exception as e:
+        print(f"Could not load accounts from database: {e}")
 
     total_found = 0
 
