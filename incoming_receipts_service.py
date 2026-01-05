@@ -1241,7 +1241,7 @@ def calculate_receipt_confidence(subject, from_email, body_snippet, has_attachme
         return 0
 
     # 2. Internal emails from yourself
-    if any(x in from_email for x in ['kaplan.brian@gmail.com', 'brian@business.com', 'brian@secondary.com']):
+    if any(x in from_email for x in ['kaplan.brian@gmail.com', 'brian@downhome.com', 'brian@musiccityrodeo.com']):
         return 0
 
     # 3. Generic vague subjects
@@ -3394,9 +3394,9 @@ def run_intelligent_scan(accounts=None, since_date=None, save=True):
     """
     if accounts is None:
         accounts = [
-            'brian@business.com',
             'kaplan.brian@gmail.com',
-            'brian@secondary.com'
+            'brian@downhome.com',
+            'brian@musiccityrodeo.com'
         ]
 
     print("\n" + "="*60)
@@ -3452,8 +3452,8 @@ if __name__ == '__main__':
     # Scan all Gmail accounts
     accounts = [
         'kaplan.brian@gmail.com',
-        'brian@business.com',
-        'brian@secondary.com'
+        'brian@downhome.com',
+        'brian@musiccityrodeo.com'
     ]
 
     total_found = 0

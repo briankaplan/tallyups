@@ -17074,9 +17074,9 @@ def gmail_status():
 
     # Legacy hardcoded accounts (for admin/backwards compatibility)
     LEGACY_ACCOUNTS = [
-        {'email': 'brian@business.com', 'token_file': 'tokens_brian_business_com.json'},
         {'email': 'kaplan.brian@gmail.com', 'token_file': 'tokens_kaplan_brian_gmail_com.json'},
-        {'email': 'brian@secondary.com', 'token_file': 'tokens_brian_secondary_com.json'},
+        {'email': 'brian@downhome.com', 'token_file': 'tokens_brian_downhome_com.json'},
+        {'email': 'brian@musiccityrodeo.com', 'token_file': 'tokens_brian_musiccityrodeo_com.json'},
     ]
 
     accounts_to_check = []
