@@ -26170,6 +26170,7 @@ def fix_missing_receipt_urls():
 # SMART AUTO-MATCHING API
 # ============================================================================
 
+@csrf_exempt_route
 @app.route("/api/auto-match/run", methods=["POST"])
 def run_auto_match():
     """
@@ -26221,6 +26222,7 @@ def run_auto_match():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@csrf_exempt_route
 @app.route("/api/auto-match/preview", methods=["GET"])
 def preview_auto_match():
     """
