@@ -474,7 +474,7 @@ class SmartAutoMatcher:
         for tx in transactions:
             # Skip transactions that already have receipts
             if exclude_with_receipts:
-                if tx.get('receipt_file') or tx.get('receipt_url'):
+                if tx.get('receipt_file') or tx.get('r2_url'):
                     continue
 
             score, details = self.calculate_match_score(receipt, tx)
@@ -610,10 +610,10 @@ def get_unmatched_transactions(conn, days_back: int = 90) -> List[Dict]:
     cursor = conn.cursor()
     cursor.execute('''
         SELECT _index, chase_date, chase_description, chase_amount,
-               business_type, notes, receipt_file, receipt_url
+               business_type, notes, receipt_file, r2_url
         FROM transactions
         WHERE (receipt_file IS NULL OR receipt_file = '')
-        AND (receipt_url IS NULL OR receipt_url = '')
+        AND (r2_url IS NULL OR r2_url = '')
         AND chase_date >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
         ORDER BY chase_date DESC
     ''', (days_back,))
@@ -707,7 +707,7 @@ def auto_match_pending_receipts(conn) -> Dict:
                 # Attach receipt to transaction
                 cursor.execute('''
                     UPDATE transactions
-                    SET receipt_url = %s,
+                    SET r2_url = %s,
                         ai_note = CONCAT(IFNULL(ai_note, ''), ' [Auto-matched: ', %s, '% confidence]')
                     WHERE _index = %s
                 ''', (receipt_url, int(score * 100), tx['_index']))
