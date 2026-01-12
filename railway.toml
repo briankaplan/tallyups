@@ -15,7 +15,7 @@ startCommand = "gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --th
 
 # Health check configuration
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 120
 
 # Restart policy
 restartPolicyType = "ON_FAILURE"

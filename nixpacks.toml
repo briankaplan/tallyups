@@ -26,16 +26,15 @@ cmds = [
     "python -m venv /opt/venv",
     "/opt/venv/bin/pip install --upgrade pip",
     "/opt/venv/bin/pip install --no-cache-dir -r requirements.txt",
-    "/opt/venv/bin/playwright install chromium --with-deps || echo 'Playwright chromium install skipped'",
     "which wkhtmltoimage && echo 'wkhtmltoimage available' || echo 'wkhtmltoimage not found'",
-    "which chromium && echo 'chromium available' || echo 'chromium not found'",
-    "echo 'Fresh install completed: 2025-12-12T11:30'"
+    "which chromium && echo 'chromium available (system)' || echo 'chromium not found'",
+    "echo 'Fresh install completed: 2026-01-12 - Removed Playwright install (uses system chromium)'"
 ]
 
 [phases.build]
-cmds = ["echo 'Build v2025.12.12 - HTML screenshots with Playwright + wkhtmltoimage fallback'"]
+cmds = ["echo 'Build v2026.01.12 - Uses system chromium + wkhtmltoimage fallback (no Playwright browser download)'"]
 
 [start]
-cmd = "/opt/venv/bin/gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+cmd = "/opt/venv/bin/gunicorn viewer_server:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 300 --graceful-timeout 30 --keep-alive 65"
 
-# Force rebuild Sat Dec 13 14:21:34 CST 2025
+# Force rebuild Sun Jan 12 2026 - Fixed deployment hang
